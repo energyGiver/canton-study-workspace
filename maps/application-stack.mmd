@@ -1,0 +1,12 @@
+%% Research note: topics/ledger-api-app-architecture.md
+flowchart TB
+  User["End user"] --> FE["Frontend / wallet"]
+  FE --> BE["Backend / IAM / automation"]
+  External["KYC / oracle / enterprise systems"] <--> BE
+  BE -->|"commands / completions"| LAPI["Ledger API"]
+  LAPI --> Participant["Participant / Daml engine"]
+  Participant --> ACS["Private ACS / history"]
+  Participant --> PQS["PQS projection"]
+  BE -->|"SQL reads"| PQS
+  Participant <--> Sync["Synchronizer"]
+  Daml["Daml packages"] --> Participant

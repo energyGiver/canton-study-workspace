@@ -1,0 +1,19 @@
+%% Research notes: topics/README.md and maps/concept-map.md
+flowchart TD
+  Party["Party / topology / hosting"] --> Participant["Participant-local state"]
+  Party --> Daml["Daml contracts / authority"]
+  Participant --> Tx["Transaction lifecycle"]
+  Daml --> Tx
+  Tx --> Privacy["Views / privacy"]
+  Tx --> PoS["Proof of Stakeholder"]
+  Privacy --> Sync["Sequencing / mediation"]
+  PoS --> Sync
+  Sync --> Multi["Assignation / reassignment"]
+  Participant --> App["Ledger API / PQS / backend"]
+  Multi --> Global["Global / private synchronizers"]
+  Global --> Gov["SV governance / economics"]
+  App --> Integrations["Wallets / exchanges"]
+  Gov --> Integrations
+  Participant --> Ops["Operations / recovery"]
+  Multi --> RWA["Institutional / RWA mechanisms"]
+  App --> RWA

@@ -1,0 +1,275 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# DA.Crypto.Text
+
+> Reference documentation for Daml module DA.Crypto.Text.
+
+<span id="module-da-crypto-text-67266" />
+
+# DA.Crypto.Text
+
+Functions for working with Crypto builtins.
+
+For example, as used to implement CCTP functionality.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+  <Card title="Lifecycle">
+    Stable.
+  </Card>
+
+  <Card title="Notices">
+    Status: `active`
+    Introduced in: `3.4.9`
+    Removed in: `-`
+    Warnings: `0`
+    Deprecations: `0`
+    Deprecated since: `-`
+  </Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-da-crypto-text-byteshex-47880" />
+
+### `type BytesHex`
+
+\= [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+<span id="type-da-crypto-text-publickeyhex-51359" />
+
+### `type PublicKeyHex`
+
+\= [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+A DER formatted public key to be used for ECDSA signature verification
+
+<span id="type-da-crypto-text-signaturehex-12945" />
+
+### `type SignatureHex`
+
+\= [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+A DER formatted SECP256K1 signature
+
+## Typeclasses
+
+<span id="class-da-crypto-text-hastohex-92431" />
+
+### `class HasToHex a`
+
+Methods:
+
+* `toHex` : `a` -> [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+  Converts a typed data value into a hex encoded string.
+
+Instances:
+
+* instance [`HasToHex`](#class-da-crypto-text-hastohex-92431) [`Party`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-party-57932)
+* instance [`HasToHex`](#class-da-crypto-text-hastohex-92431) [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+* instance [`HasToHex`](#class-da-crypto-text-hastohex-92431) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+<span id="class-da-crypto-text-hasfromhex-84972" />
+
+### `class HasFromHex a`
+
+Methods:
+
+* `fromHex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> `a`
+  Converts a hex encoded string into a typed data value.
+
+Instances:
+
+* instance [`HasFromHex`](#class-da-crypto-text-hasfromhex-84972) ([`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`Party`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-party-57932))
+* instance [`HasFromHex`](#class-da-crypto-text-hasfromhex-84972) ([`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261))
+* instance [`HasFromHex`](#class-da-crypto-text-hasfromhex-84972) ([`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952))
+
+## Functions
+
+<span id="function-da-crypto-text-ishex-17968" />
+
+### `isHex`
+
+`isHex` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`isHex` is `True` if `t` is not empty and consists only of
+hex or hexadecimal characters.
+
+<span id="function-da-crypto-text-sha256-84499" />
+
+### `sha256`
+
+`sha256` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+Computes the SHA256 hash of the decoded UTF8 bytes of the `Text`, and returns it in its hex-encoded
+form. The hex encoding uses lowercase letters.
+
+<span id="function-da-crypto-text-keccak256-57106" />
+
+### `keccak256`
+
+`keccak256` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+Computes the KECCAK256 hash of the UTF8 bytes of the `Text`, and returns it in its hex-encoded
+form. The hex encoding uses lowercase letters.
+
+<span id="function-da-crypto-text-secp256k1withvalidation-31956" />
+
+### `secp256k1WithValidation`
+
+`secp256k1WithValidation` : [`SignatureHex`](#type-da-crypto-text-signaturehex-12945) -> [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`PublicKeyHex`](#type-da-crypto-text-publickeyhex-51359) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+Validate the SECP256K1 signature given a hex encoded message and a hex encoded DER formatted public key. Prior to
+signature validation, validate the public key and check it is on the SECP256K1 curve.
+
+<span id="function-da-crypto-text-secp256k1withecdsaonly-56908" />
+
+### `secp256k1WithEcdsaOnly`
+
+`secp256k1WithEcdsaOnly` : [`SignatureHex`](#type-da-crypto-text-signaturehex-12945) -> [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`PublicKeyHex`](#type-da-crypto-text-publickeyhex-51359) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+Validate the SECP256K1 signature given a hex encoded message and a hex encoded DER formatted public key.
+
+<span id="function-da-crypto-text-secp256k1-38075" />
+
+### `secp256k1`
+
+`secp256k1` : [`SignatureHex`](#type-da-crypto-text-signaturehex-12945) -> [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`PublicKeyHex`](#type-da-crypto-text-publickeyhex-51359) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+Validate the SECP256K1 signature given a SHA256 hash of a hex encoded message and a hex encoded DER formatted public key.
+
+<span id="function-da-crypto-text-numericviastringtohex-44461" />
+
+### `numericViaStringToHex`
+
+`numericViaStringToHex` : [`NumericScale`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-numericscale-83720) `n` => [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n` -> [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+<span id="function-da-crypto-text-numericviastringfromhex-60098" />
+
+### `numericViaStringFromHex`
+
+`numericViaStringFromHex` : [`NumericScale`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-numericscale-83720) `n` => [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) ([`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n`)
+
+<span id="function-da-crypto-text-bytecount-29784" />
+
+### `byteCount`
+
+`byteCount` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+Number of bytes present in a byte encoded string.
+
+<span id="function-da-crypto-text-minbytes32hex-29458" />
+
+### `minBytes32Hex`
+
+`minBytes32Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+Minimum Bytes32 hex value
+
+<span id="function-da-crypto-text-maxbytes32hex-56560" />
+
+### `maxBytes32Hex`
+
+`maxBytes32Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+Maximum Bytes32 hex value
+
+<span id="function-da-crypto-text-isbytes32hex-1801" />
+
+### `isBytes32Hex`
+
+`isBytes32Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+Validate that the byte encoded string is Bytes32Hex
+
+<span id="function-da-crypto-text-minuint32hex-58146" />
+
+### `minUInt32Hex`
+
+`minUInt32Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+Minimum UInt32 hex value
+
+<span id="function-da-crypto-text-maxuint32hex-80016" />
+
+### `maxUInt32Hex`
+
+`maxUInt32Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+Maximum UInt32 hex value
+
+<span id="function-da-crypto-text-isuint32hex-65583" />
+
+### `isUInt32Hex`
+
+`isUInt32Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+Validate that the byte encoded string is UInt32Hex
+
+<span id="function-da-crypto-text-minuint64hex-67161" />
+
+### `minUInt64Hex`
+
+`minUInt64Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+Minimum UInt64 hex value
+
+<span id="function-da-crypto-text-maxuint64hex-40555" />
+
+### `maxUInt64Hex`
+
+`maxUInt64Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+Maximum UInt64 hex value
+
+<span id="function-da-crypto-text-isuint64hex-49912" />
+
+### `isUInt64Hex`
+
+`isUInt64Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+Validate that the byte encoded string is UInt64Hex
+
+<span id="function-da-crypto-text-minuint256hex-23801" />
+
+### `minUInt256Hex`
+
+`minUInt256Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+Minimum UInt256 hex value
+
+<span id="function-da-crypto-text-maxuint256hex-58651" />
+
+### `maxUInt256Hex`
+
+`maxUInt256Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+Maximum UInt256 hex value
+
+<span id="function-da-crypto-text-isuint256hex-33362" />
+
+### `isUInt256Hex`
+
+`isUInt256Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+Validate that the byte encoded string is UInt256Hex
+
+<span id="function-da-crypto-text-packhexbytes-55939" />
+
+### `packHexBytes`
+
+`packHexBytes` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+Pack a byte encoded string to a given byte count size. If the byte string is shorter than the pad
+size, then prefix with 00 byte strings. If the byte string is larger, then truncate the byte string.
+
+<span id="function-da-crypto-text-slicehexbytes-22633" />
+
+### `sliceHexBytes`
+
+`sliceHexBytes` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+Extract the byte string starting at startByte up to, but excluding, endByte. Byte indexing starts at 1.

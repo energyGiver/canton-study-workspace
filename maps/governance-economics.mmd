@@ -1,0 +1,15 @@
+%% Research notes: topics/super-validators-governance.md and fees-rewards-economics.md
+flowchart LR
+  SV["Super Validators"] --> Vote["On-ledger votes / confirmations"]
+  Vote --> DSO["DSO / Amulet configuration"]
+  DSO --> Params["Traffic price / rounds / rewards"]
+  Validator["Sending validator"] --> Base["Base traffic allowance"]
+  Validator --> Burn["Burn CC for extra traffic"]
+  Base --> Usage["Sequencer traffic"]
+  Burn --> Usage
+  Usage --> Measure["Traffic / activity measurement"]
+  Measure --> Rewards["Governed reward coupons"]
+  Rewards --> SV
+  Rewards --> Validator
+  Rewards --> App["Featured application"]
+  DSO --> Rewards

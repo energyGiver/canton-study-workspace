@@ -1,0 +1,10 @@
+%% Research notes: topics/core-architecture.md, privacy-visibility.md, two-layer-consensus.md
+flowchart TD
+  User["Party owner"] -->|"confidentiality / availability"| Host["Hosting participant"]
+  User -->|"business consent / non-leakage"| Counterparty["Contract counterparties"]
+  User -->|"correct UI / IAM / submission"| App["Application provider"]
+  Host -->|"order / delivery / verdict"| Sync["Synchronizer operators"]
+  User -->|"parameters / upgrades"| Gov["Network governance"]
+  ExtKey["External signing keys"] -->|"reduces submission trust"| Host
+  MultiHost["Multi-hosting threshold"] -->|"distributes confirmation trust"| Host
+  Encryption["View encryption"] -->|"limits payload access"| Sync

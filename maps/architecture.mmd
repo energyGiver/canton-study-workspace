@@ -1,0 +1,23 @@
+%% Research notes: topics/core-architecture.md, participant-validator.md, sequencer-mediator.md
+flowchart LR
+  App["Application backend"] --> LAPI["Ledger API"]
+  subgraph VA["Validator A"]
+    PA["Participant A"]
+    ACSA["Local ACS A"]
+    PA --> ACSA
+  end
+  subgraph VB["Validator B"]
+    PB["Participant B"]
+    ACSB["Local ACS B"]
+    PB --> ACSB
+  end
+  subgraph Sync["One synchronizer"]
+    Seq["Sequencer / order"]
+    Med["Mediator / verdict"]
+    Seq --> Med
+  end
+  LAPI --> PA
+  PA <--> Seq
+  PB <--> Seq
+  PartyA["Party A"] --> PA
+  PartyB["Party B"] --> PB

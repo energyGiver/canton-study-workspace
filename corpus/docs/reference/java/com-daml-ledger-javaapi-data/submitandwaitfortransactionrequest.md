@@ -1,0 +1,31 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# SubmitAndWaitForTransactionRequest
+
+> Generated object reference page for SubmitAndWaitForTransactionRequest from local Javadoc snapshots.
+
+## SubmitAndWaitForTransactionRequest
+
+Upstream docs: [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/SubmitAndWaitForTransactionRequest.html)
+
+**Signature**
+
+```text theme={"theme":{"light":"github-light","dark":"github-dark"}}
+public final class SubmitAndWaitForTransactionRequest extends Object
+```
+
+**Members**
+
+| Docs                                                                                                                                                                                                                                            | Member                                                                      | Introduced | Deprecated | Removed |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ---------- | ---------- | ------- |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/SubmitAndWaitForTransactionRequest.html#%3Cinit%3E%28com.daml.ledger.javaapi.data.CommandsSubmission%29)                                                | `SubmitAndWaitForTransactionRequest(CommandsSubmission)`                    | `3.4.8`    | -          | -       |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/SubmitAndWaitForTransactionRequest.html#%3Cinit%3E%28com.daml.ledger.javaapi.data.CommandsSubmission,com.daml.ledger.javaapi.data.TransactionFormat%29) | `SubmitAndWaitForTransactionRequest(CommandsSubmission, TransactionFormat)` | `3.4.8`    | -          | -       |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/SubmitAndWaitForTransactionRequest.html#equals%28java.lang.Object%29)                                                                                   | `equals(Object)`                                                            | `3.4.8`    | -          | -       |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/SubmitAndWaitForTransactionRequest.html#fromProto%28com.daml.ledger.api.v2.CommandServiceOuterClass.SubmitAndWaitForTransactionRequest%29)              | `fromProto(CommandServiceOuterClass.SubmitAndWaitForTransactionRequest)`    | `3.4.8`    | -          | -       |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/SubmitAndWaitForTransactionRequest.html#getCommandsSubmission%28%29)                                                                                    | `getCommandsSubmission()`                                                   | `3.4.8`    | -          | -       |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/SubmitAndWaitForTransactionRequest.html#getTransactionFormat%28%29)                                                                                     | `getTransactionFormat()`                                                    | `3.4.8`    | -          | -       |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/SubmitAndWaitForTransactionRequest.html#hashCode%28%29)                                                                                                 | `hashCode()`                                                                | `3.4.8`    | -          | -       |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/SubmitAndWaitForTransactionRequest.html#toProto%28%29)                                                                                                  | `toProto()`                                                                 | `3.4.8`    | -          | -       |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/SubmitAndWaitForTransactionRequest.html#toString%28%29)                                                                                                 | `toString()`                                                                | `3.4.8`    | -          | -       |

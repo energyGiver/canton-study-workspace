@@ -1,0 +1,23 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# ContractCompanion.FromJson
+
+> Generated object reference page for ContractCompanion.FromJson from local Javadoc snapshots.
+
+## ContractCompanion.FromJson
+
+Upstream docs: [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractCompanion.FromJson.html)
+
+**Signature**
+
+```text theme={"theme":{"light":"github-light","dark":"github-dark"}}
+@FunctionalInterface public static interface ContractCompanion.FromJson<T>
+```
+
+**Members**
+
+| Docs                                                                                                                                                          | Member           | Introduced | Deprecated | Removed |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ---------- | ---------- | ------- |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractCompanion.FromJson.html#decode%28java.lang.String%29) | `decode(String)` | `3.4.8`    | -          | -       |

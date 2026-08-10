@@ -1,0 +1,25 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# JsonLfReader.UnknownValue
+
+> Generated object reference page for JsonLfReader.UnknownValue from local Javadoc snapshots.
+
+## JsonLfReader.UnknownValue
+
+Upstream docs: [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/json/JsonLfReader.UnknownValue.html)
+
+**Signature**
+
+```text theme={"theme":{"light":"github-light","dark":"github-dark"}}
+public static class JsonLfReader.UnknownValue extends Object
+```
+
+**Members**
+
+| Docs                                                                                                                                                                                                                                                                         | Member                                                     | Introduced | Deprecated | Removed |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ---------- | ---------- | ------- |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/json/JsonLfReader.UnknownValue.html#decodeWith%28com.daml.ledger.javaapi.data.codegen.json.JsonLfDecoder%29)                                                                 | `decodeWith(JsonLfDecoder<T>)`                             | `3.4.8`    | -          | -       |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/json/JsonLfReader.UnknownValue.html#decodeWith%28com.daml.ledger.javaapi.data.codegen.json.JsonLfDecoder,com.daml.ledger.javaapi.data.codegen.UnknownTrailingFieldPolicy%29) | `decodeWith(JsonLfDecoder<T>, UnknownTrailingFieldPolicy)` | `3.5.9`    | -          | -       |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/json/JsonLfReader.UnknownValue.html#read%28com.daml.ledger.javaapi.data.codegen.json.JsonLfReader%29)                                                                        | `read(JsonLfReader)`                                       | `3.4.8`    | -          | -       |

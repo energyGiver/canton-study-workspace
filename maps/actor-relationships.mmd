@@ -1,0 +1,17 @@
+%% Research notes: topics/identity-authorization.md, ledger-api-app-architecture.md, super-validators-governance.md
+flowchart LR
+  EndUser["End user"] --> Frontend["Frontend / wallet"]
+  Frontend --> Backend["Application backend"]
+  Backend --> Participant["Hosting participant"]
+  Party["Daml party"] --> Participant
+  Custody["External signing provider"] --> Party
+  Participant --> Sync["Synchronizer"]
+  Counterparty["Counterparty participant"] --> Sync
+  Regulator["Regulator party"] --> Counterparty
+  subgraph DSO["Global Synchronizer operators"]
+    SV["Super Validators"]
+    Foundation["Canton Foundation coordination"]
+    Foundation --> SV
+  end
+  SV --> Sync
+  SV --> Scan["Scan / governance services"]

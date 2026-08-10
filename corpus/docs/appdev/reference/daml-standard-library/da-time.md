@@ -1,0 +1,205 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# DA.Time
+
+> Reference documentation for Daml module DA.Time.
+
+<span id="module-da-time-32716" />
+
+# DA.Time
+
+This module provides a set of functions to manipulate Time values.
+
+The `Time` type represents a specific datetime in UTC,
+
+for example `time (date 2007 Apr 5) 14 30 05`.
+
+The bounds for Time are 0001-01-01T00:00:00.000000Z and
+
+9999-12-31T23:59:59.999999Z.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+  <Card title="Lifecycle">
+    Stable.
+  </Card>
+
+  <Card title="Notices">
+    Status: `active`
+    Introduced in: `3.4.9`
+    Removed in: `-`
+    Warnings: `0`
+    Deprecations: `0`
+    Deprecated since: `-`
+  </Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-da-time-types-reltime-23082" />
+
+### `data RelTime`
+
+The `RelTime` type describes a time offset, i.e. relative time.
+
+Instances:
+
+* instance `Serializable` [`RelTime`](#type-da-time-types-reltime-23082)
+* instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`RelTime`](#type-da-time-types-reltime-23082)
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`RelTime`](#type-da-time-types-reltime-23082)
+* instance [`Bounded`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-bounded-34379) [`RelTime`](#type-da-time-types-reltime-23082)
+* instance [`Additive`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-additive-25881) [`RelTime`](#type-da-time-types-reltime-23082)
+* instance [`Signed`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-signed-2671) [`RelTime`](#type-da-time-types-reltime-23082)
+* instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`RelTime`](#type-da-time-types-reltime-23082)
+
+## Functions
+
+<span id="function-da-internal-time-time-34667" />
+
+### `time`
+
+`time` : [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886)
+
+`time d h m s` turns given UTC date `d` and the UTC time (given in hours, minutes, seconds)
+into a UTC timestamp (`Time`). Does not handle leap seconds.
+
+<span id="function-da-time-addreltime-70617" />
+
+### `addRelTime`
+
+`addRelTime` : [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`RelTime`](#type-da-time-types-reltime-23082) -> [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886)
+
+Adjusts `Time` with given time offset.
+
+<span id="function-da-time-subtime-47226" />
+
+### `subTime`
+
+`subTime` : [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`RelTime`](#type-da-time-types-reltime-23082)
+
+Returns time offset between two given instants.
+
+<span id="function-da-time-wholedays-91725" />
+
+### `wholeDays`
+
+`wholeDays` : [`RelTime`](#type-da-time-types-reltime-23082) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+Returns the number of whole days in a time offset. Fraction of time is rounded towards zero.
+
+<span id="function-da-time-days-58759" />
+
+### `days`
+
+`days` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`RelTime`](#type-da-time-types-reltime-23082)
+
+A number of days in relative time.
+
+<span id="function-da-time-hours-54068" />
+
+### `hours`
+
+`hours` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`RelTime`](#type-da-time-types-reltime-23082)
+
+A number of hours in relative time.
+
+<span id="function-da-time-minutes-72520" />
+
+### `minutes`
+
+`minutes` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`RelTime`](#type-da-time-types-reltime-23082)
+
+A number of minutes in relative time.
+
+<span id="function-da-time-seconds-68512" />
+
+### `seconds`
+
+`seconds` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`RelTime`](#type-da-time-types-reltime-23082)
+
+A number of seconds in relative time.
+
+<span id="function-da-time-milliseconds-28552" />
+
+### `milliseconds`
+
+`milliseconds` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`RelTime`](#type-da-time-types-reltime-23082)
+
+A number of milliseconds in relative time.
+
+<span id="function-da-time-microseconds-56941" />
+
+### `microseconds`
+
+`microseconds` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`RelTime`](#type-da-time-types-reltime-23082)
+
+A number of microseconds in relative time.
+
+<span id="function-da-time-convertreltimetomicroseconds-23127" />
+
+### `convertRelTimeToMicroseconds`
+
+`convertRelTimeToMicroseconds` : [`RelTime`](#type-da-time-types-reltime-23082) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+Convert RelTime to microseconds
+Use higher level functions instead of the internal microseconds
+
+<span id="function-da-time-convertmicrosecondstoreltime-73643" />
+
+### `convertMicrosecondsToRelTime`
+
+`convertMicrosecondsToRelTime` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`RelTime`](#type-da-time-types-reltime-23082)
+
+Convert microseconds to RelTime
+Use higher level functions instead of the internal microseconds
+
+<span id="function-da-time-isledgertimelt-78120" />
+
+### `isLedgerTimeLT`
+
+`isLedgerTimeLT` : [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+True iff the ledger time of the transaction is less than the given time.
+
+<span id="function-da-time-isledgertimele-50101" />
+
+### `isLedgerTimeLE`
+
+`isLedgerTimeLE` : [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+True iff the ledger time of the transaction is less than or equal to the given time.
+
+<span id="function-da-time-isledgertimegt-6233" />
+
+### `isLedgerTimeGT`
+
+`isLedgerTimeGT` : [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+True iff the ledger time of the transaction is greater than the given time.
+
+<span id="function-da-time-isledgertimege-95212" />
+
+### `isLedgerTimeGE`
+
+`isLedgerTimeGE` : [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+True iff the ledger time of the transaction is greater than or equal to the given time.
+
+## Orphan Typeclass Instances
+
+* instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`RelTime`](#type-da-time-types-reltime-23082)
+
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`RelTime`](#type-da-time-types-reltime-23082)
+
+* instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`RelTime`](#type-da-time-types-reltime-23082)
+
+* instance [`Additive`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-additive-25881) [`RelTime`](#type-da-time-types-reltime-23082)
+
+* instance [`Signed`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-signed-2671) [`RelTime`](#type-da-time-types-reltime-23082)
+
+* instance [`Bounded`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-bounded-34379) [`RelTime`](#type-da-time-types-reltime-23082)
+
+* instance [`Bounded`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-bounded-34379) [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886)

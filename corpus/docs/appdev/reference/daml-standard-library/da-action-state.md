@@ -1,0 +1,106 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# DA.Action.State
+
+> Reference documentation for Daml module DA.Action.State.
+
+<span id="module-da-action-state-50232" />
+
+# DA.Action.State
+
+DA.Action.State
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+  <Card title="Lifecycle">
+    Stable.
+  </Card>
+
+  <Card title="Notices">
+    Status: `active`
+    Introduced in: `3.4.9`
+    Removed in: `-`
+    Warnings: `0`
+    Deprecations: `0`
+    Deprecated since: `-`
+  </Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-da-action-state-type-state-76783" />
+
+### `data State s a`
+
+```text theme={"theme":{"light":"github-light","dark":"github-dark"}}
+A value of type `State s a` represents a computation that has access to a state variable
+of type `s` and produces a value of type `a`.
+
+>>> runState (modify (+1)) 0
+((), 1)
+
+>>> evalState (modify (+1)) 0
+()
+
+>>> execState (modify (+1)) 0
+1
+
+>>> runState (do x <- get; modify (+1); pure x) 0
+(0, 1)
+
+>>> runState (put 1) 0
+((), 1)
+
+>>> runState (modify (+1)) 0
+((), 1)
+
+Note that values of type `State s a` are not serializable.
+```
+
+Constructors:
+
+<span id="constr-da-action-state-type-state-26" />
+
+* `State`
+
+<ResponseField name="runState" type="s -> (a, s)" />
+
+Instances:
+
+* instance [`ActionState`](/appdev/reference/daml-standard-library/da-action-state-class#class-da-action-state-class-actionstate-80467) `s` ([`State`](#type-da-action-state-type-state-76783) `s`)
+* instance [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) ([`State`](#type-da-action-state-type-state-76783) `s`)
+* instance [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) ([`State`](#type-da-action-state-type-state-76783) `s`)
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `runState` ([`State`](#type-da-action-state-type-state-76783) `s` `a`) (`s` -> (`a`, `s`))
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `runState` ([`State`](#type-da-action-state-type-state-76783) `s` `a`) (`s` -> (`a`, `s`))
+* instance [`Functor`](/appdev/reference/daml-standard-library/prelude#class-ghc-base-functor-31205) ([`State`](#type-da-action-state-type-state-76783) `s`)
+
+## Functions
+
+<span id="function-da-action-state-evalstate-95640" />
+
+### `evalState`
+
+`evalState` : [`State`](#type-da-action-state-type-state-76783) `s` `a` -> `s` -> `a`
+
+Special case of `runState` that does not return the final state.
+
+<span id="function-da-action-state-execstate-48251" />
+
+### `execState`
+
+`execState` : [`State`](#type-da-action-state-type-state-76783) `s` `a` -> `s` -> `s`
+
+Special case of `runState` that does only retun the final state.
+
+## Orphan Typeclass Instances
+
+* instance [`Functor`](/appdev/reference/daml-standard-library/prelude#class-ghc-base-functor-31205) ([`State`](#type-da-action-state-type-state-76783) `s`)
+
+* instance [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) ([`State`](#type-da-action-state-type-state-76783) `s`)
+
+* instance [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) ([`State`](#type-da-action-state-type-state-76783) `s`)
+
+* instance [`ActionState`](/appdev/reference/daml-standard-library/da-action-state-class#class-da-action-state-class-actionstate-80467) `s` ([`State`](#type-da-action-state-type-state-76783) `s`)

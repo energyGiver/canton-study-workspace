@@ -1,0 +1,26 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# ContractCompanion.WithKey
+
+> Generated object reference page for ContractCompanion.WithKey from local Javadoc snapshots.
+
+## ContractCompanion.WithKey
+
+Upstream docs: [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractCompanion.WithKey.html)
+
+**Signature**
+
+```text theme={"theme":{"light":"github-light","dark":"github-dark"}}
+public static final class ContractCompanion.WithKey<Ct,Id,Data,Key> extends ContractCompanion<Ct,Id,Data>
+```
+
+**Members**
+
+| Docs                                                                                                                                                                                                                                                                                                                         | Member                                                                                                     | Introduced | Deprecated | Removed |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------- | ---------- | ------- |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractCompanion.WithKey.html#fromCreatedEvent%28com.daml.ledger.javaapi.data.CreatedEvent%29)                                                                                                                              | `fromCreatedEvent(CreatedEvent)`                                                                           | `3.4.8`    | -          | -       |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractCompanion.WithKey.html#fromCreatedEvent%28com.daml.ledger.javaapi.data.CreatedEvent,com.daml.ledger.javaapi.data.codegen.UnknownTrailingFieldPolicy%29)                                                              | `fromCreatedEvent(CreatedEvent, UnknownTrailingFieldPolicy)`                                               | `3.5.9`    | -          | -       |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractCompanion.WithKey.html#fromIdAndRecord%28java.lang.String,com.daml.ledger.javaapi.data.DamlRecord,java.util.Optional,java.util.Set,java.util.Set%29)                                                                 | `fromIdAndRecord(String, DamlRecord, Optional<Key>, Set<String>, Set<String>)`                             | `3.4.8`    | -          | -       |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractCompanion.WithKey.html#fromIdAndRecord%28java.lang.String,com.daml.ledger.javaapi.data.DamlRecord,java.util.Optional,java.util.Set,java.util.Set,com.daml.ledger.javaapi.data.codegen.UnknownTrailingFieldPolicy%29) | `fromIdAndRecord(String, DamlRecord, Optional<Key>, Set<String>, Set<String>, UnknownTrailingFieldPolicy)` | `3.5.9`    | -          | -       |

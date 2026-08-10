@@ -1,0 +1,1605 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# Details and history
+
+> Reference documentation for Daml Standard Library modules.
+
+<div class="x2mdx-ref-hero">
+  <p class="x2mdx-ref-eyebrow">Daml Reference</p>
+
+  <h1 class="x2mdx-ref-title">Daml Standard Library</h1>
+
+  <p class="x2mdx-ref-summary">Generated module overview for the Daml Standard Library, built from versioned docs JSON snapshots.</p>
+
+  <div class="x2mdx-ref-badges">
+    <span class="x2mdx-ref-badge x2mdx-ref-badge--protocol">Daml</span>
+
+    <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">3.5.4</span>
+  </div>
+
+  <dl class="x2mdx-ref-meta-grid">
+    <div class="x2mdx-ref-meta-item">
+      <dt>Publish version</dt>
+      <dd>3.5.4</dd>
+    </div>
+
+    <div class="x2mdx-ref-meta-item">
+      <dt>Source</dt>
+      <dd>Published Daml Standard Library docs JSON from local SDK artifacts</dd>
+    </div>
+
+    <div class="x2mdx-ref-meta-item">
+      <dt>Version filter</dt>
+      <dd>configured Daml SDK artifact versions</dd>
+    </div>
+  </dl>
+</div>
+
+## Modules
+
+Open a module page for declarations, type signatures, warnings, and lifecycle details.
+
+<div class="x2mdx-ref-card-grid">
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-action">DA.Action</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Action</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-action-state">DA.Action.State</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">DA.Action.State</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-action-state-class">DA.Action.State.Class</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">DA.Action.State.Class</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-assert">DA.Assert</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">-</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-bifunctor">DA.Bifunctor</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">-</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-contractkeys">DA.ContractKeys</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.5.1</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Note: Docs TODO ([https://github.com/digital-asset/daml/issues/22673](https://github.com/digital-asset/daml/issues/22673))</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.5.1</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-crypto-text">DA.Crypto.Text</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Functions for working with Crypto builtins.</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-date">DA.Date</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">This module provides a set of functions to manipulate Date values.</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-either">DA.Either</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">The Either type represents values with two possibilities.</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-exception">DA.Exception</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--removed">Deprecated 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Exception handling in Daml.</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-fail">DA.Fail</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Fail, for FailureStatus</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-foldable">DA.Foldable</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Class of data structures that can be folded to a summary value.</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-functor">DA.Functor</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">The Functor class is used for types that can be mapped over.</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-internal-interface-anyview">DA.Internal.Interface.AnyView</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">-</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-internal-interface-anyview-types">DA.Internal.Interface.AnyView\.Types</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">-</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-list">DA.List</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">List</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-list-builtinorder">DA.List.BuiltinOrder</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Note: This is only supported in Daml-LF 1.11 or later.</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-list-total">DA.List.Total</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">-</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-logic">DA.Logic</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Logic - Propositional calculus.</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-map">DA.Map</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Note: This is only supported in Daml-LF 1.11 or later.</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-math">DA.Math</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Math - Utility Math functions for Decimal</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-monoid">DA.Monoid</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">-</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-nonempty">DA.NonEmpty</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Type and functions for non-empty lists. This module re-exports many functions with</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-nonempty-types">DA.NonEmpty.Types</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">This module contains the type for non-empty lists so we can give it a stable package id.</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-numeric">DA.Numeric</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">-</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-optional">DA.Optional</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">The Optional type encapsulates an optional value. A value of type</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-record">DA.Record</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Exports the record machinery necessary to allow one to annotate</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-semigroup">DA.Semigroup</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">-</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-set">DA.Set</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Note: This is only supported in Daml-LF 1.11 or later.</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-stack">DA.Stack</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">-</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-text">DA.Text</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Functions for working with Text.</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-textmap">DA.TextMap</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">TextMap - A map is an associative array data type composed of a</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-time">DA.Time</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">This module provides a set of functions to manipulate Time values.</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-traversable">DA.Traversable</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Class of data structures that can be traversed from left to right, performing an action on each element.</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-tuple">DA.Tuple</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Tuple - Ubiquitous functions of tuples.</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/da-validation">DA.Validation</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Validation type and associated functions.</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="x2mdx-ref-card">
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="/appdev/reference/daml-standard-library/prelude">Prelude</a>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Since 3.4.9</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">The pieces that make up the Daml language.</p>
+
+    <dl class="x2mdx-ref-meta-grid">
+      <div class="x2mdx-ref-meta-item">
+        <dt>Kind</dt>
+        <dd>Module</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Introduced</dt>
+        <dd>3.4.9</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Changed</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Deprecated</dt>
+        <dd>-</dd>
+      </div>
+
+      <div class="x2mdx-ref-meta-item">
+        <dt>Removed</dt>
+        <dd>-</dd>
+      </div>
+    </dl>
+  </div>
+</div>
+
+## Version Summary
+
+<div class="x2mdx-ref-card-grid">
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.4.9</span>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Added 38</span>
+
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--changed">Changed 0</span>
+
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--removed">Removed 0</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Module changes included in this Daml docs JSON snapshot.</p>
+  </div>
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.4.10</span>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Added 0</span>
+
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--changed">Changed 0</span>
+
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--removed">Removed 0</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Module changes included in this Daml docs JSON snapshot.</p>
+  </div>
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.4.11</span>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Added 0</span>
+
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--changed">Changed 0</span>
+
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--removed">Removed 0</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Module changes included in this Daml docs JSON snapshot.</p>
+  </div>
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.5.1</span>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Added 1</span>
+
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--changed">Changed 0</span>
+
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--removed">Removed 0</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Module changes included in this Daml docs JSON snapshot.</p>
+  </div>
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.5.2</span>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Added 0</span>
+
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--changed">Changed 0</span>
+
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--removed">Removed 0</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Module changes included in this Daml docs JSON snapshot.</p>
+  </div>
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.5.3</span>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Added 0</span>
+
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--changed">Changed 0</span>
+
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--removed">Removed 0</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Module changes included in this Daml docs JSON snapshot.</p>
+  </div>
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.5.4</span>
+
+      <div class="x2mdx-ref-badges">
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--added">Added 0</span>
+
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--changed">Changed 0</span>
+
+        <span class="x2mdx-ref-badge x2mdx-ref-badge--removed">Removed 0</span>
+      </div>
+    </div>
+
+    <p class="x2mdx-ref-card-summary">Module changes included in this Daml docs JSON snapshot.</p>
+  </div>
+</div>

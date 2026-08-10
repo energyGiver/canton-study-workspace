@@ -1,0 +1,96 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# DA.Semigroup
+
+> Reference documentation for Daml module DA.Semigroup.
+
+<span id="module-da-semigroup-27147" />
+
+# DA.Semigroup
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+  <Card title="Lifecycle">
+    Stable.
+  </Card>
+
+  <Card title="Notices">
+    Status: `active`
+    Introduced in: `3.4.9`
+    Removed in: `-`
+    Warnings: `0`
+    Deprecations: `0`
+    Deprecated since: `-`
+  </Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-da-semigroup-types-max-52699" />
+
+### `data Max a`
+
+Semigroup under `max`
+
+```
+> Max 23 <> Max 42
+Max 42
+```
+
+Constructors:
+
+<span id="constr-da-semigroup-types-max-20326" />
+
+* `Max a`
+
+Instances:
+
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Max`](#type-da-semigroup-types-max-52699) `a`)
+* instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Max`](#type-da-semigroup-types-max-52699) `a`)
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`Max`](#type-da-semigroup-types-max-52699) `a`)
+* instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Max`](#type-da-semigroup-types-max-52699) `a`)
+
+<span id="type-da-semigroup-types-min-78217" />
+
+### `data Min a`
+
+Semigroup under `min`
+
+```
+> Min 23 <> Min 42
+Min 23
+```
+
+Constructors:
+
+<span id="constr-da-semigroup-types-min-6532" />
+
+* `Min a`
+
+Instances:
+
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Min`](#type-da-semigroup-types-min-78217) `a`)
+* instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Min`](#type-da-semigroup-types-min-78217) `a`)
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`Min`](#type-da-semigroup-types-min-78217) `a`)
+* instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Min`](#type-da-semigroup-types-min-78217) `a`)
+
+## Orphan Typeclass Instances
+
+* instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Min`](#type-da-semigroup-types-min-78217) `a`)
+
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`Min`](#type-da-semigroup-types-min-78217) `a`)
+
+* instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Min`](#type-da-semigroup-types-min-78217) `a`)
+
+* instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Max`](#type-da-semigroup-types-max-52699) `a`)
+
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`Max`](#type-da-semigroup-types-max-52699) `a`)
+
+* instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Max`](#type-da-semigroup-types-max-52699) `a`)
+
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Min`](#type-da-semigroup-types-min-78217) `a`)
+
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Max`](#type-da-semigroup-types-max-52699) `a`)

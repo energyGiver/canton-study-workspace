@@ -1,0 +1,17 @@
+%% Research notes: topics/sequencer-mediator.md, multi-synchronizer-architecture.md, private-vs-global-synchronizer.md
+flowchart LR
+  subgraph GS["Global Synchronizer"]
+    GOrder["BFT ordering"] --> GSeq["Sequencers"]
+    GSeq --> GMed["Mediators"]
+  end
+  subgraph PS["Private Synchronizer"]
+    POrder["Centralized or BFT order"] --> PSeq["Sequencer"]
+    PSeq --> PMed["Mediator"]
+  end
+  V1["Validator A"] <--> GSeq
+  V1 <--> PSeq
+  V2["Validator B"] <--> GSeq
+  V2 <--> PSeq
+  V3["Validator C"] <--> GSeq
+  Contract["Contract assignation"] --> GSeq
+  Contract -. "unassign / assign" .-> PSeq

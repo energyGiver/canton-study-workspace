@@ -1,0 +1,8 @@
+{
+  "index_url": "https://docs.canton.network/llms.txt",
+  "retrieved_at": "2026-08-10T08:53:39+00:00",
+  "document_count": 804,
+  "manifest": "corpus/manifest.jsonl",
+  "content_root": "corpus/docs",
+  "integrity": "SHA-256 over each downloaded Markdown response body"
+}

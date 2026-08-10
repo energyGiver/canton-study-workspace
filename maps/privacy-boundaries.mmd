@@ -1,0 +1,12 @@
+%% Research note: topics/privacy-visibility.md
+flowchart LR
+  Full["Prepared transaction tree"] --> Views["Merkle-linked views"]
+  Views --> PA["Participant A payload"]
+  Views --> PB["Participant B payload"]
+  Views --> PC["Participant C gets nothing"]
+  Views --> Cipher["Encrypted envelopes"]
+  Cipher --> Seq["Sequencer: route / size / time"]
+  Seq --> Med["Mediator: informees / responses"]
+  PA --> PQSA["A backend / PQS / backups"]
+  PB --> PQSB["B backend / PQS / backups"]
+  PublicApp["Public Splice / Scan contracts"] --> Scan["Public Scan projection"]

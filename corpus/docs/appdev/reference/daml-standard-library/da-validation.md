@@ -1,0 +1,137 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# DA.Validation
+
+> Reference documentation for Daml module DA.Validation.
+
+<span id="module-da-validation-69700" />
+
+# DA.Validation
+
+`Validation` type and associated functions.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+  <Card title="Lifecycle">
+    Stable.
+  </Card>
+
+  <Card title="Notices">
+    Status: `active`
+    Introduced in: `3.4.9`
+    Removed in: `-`
+    Warnings: `0`
+    Deprecations: `0`
+    Deprecated since: `-`
+  </Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-da-validation-types-validation-39644" />
+
+### `data Validation err a`
+
+A `Validation` represents eithor a non-empty list of errors, or a successful value.
+This generalizes `Either` to allow more than one error to be collected.
+
+Constructors:
+
+<span id="constr-da-validation-types-errors-73825" />
+
+* `Errors (NonEmpty err)`
+
+<span id="constr-da-validation-types-success-12286" />
+
+* `Success a`
+
+Instances:
+
+* instance [`Foldable`](/appdev/reference/daml-standard-library/da-foldable#class-da-foldable-foldable-25994) ([`Validation`](#type-da-validation-types-validation-39644) `err`)
+* instance [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) ([`Validation`](#type-da-validation-types-validation-39644) `err`)
+* instance [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Validation`](#type-da-validation-types-validation-39644) `err` `a`)
+* instance [`Traversable`](/appdev/reference/daml-standard-library/da-traversable#class-da-traversable-traversable-18144) ([`Validation`](#type-da-validation-types-validation-39644) `err`)
+* instance (`Serializable` `err`, `Serializable` `a`) => `Serializable` ([`Validation`](#type-da-validation-types-validation-39644) `err` `a`)
+* instance [`Functor`](/appdev/reference/daml-standard-library/prelude#class-ghc-base-functor-31205) ([`Validation`](#type-da-validation-types-validation-39644) `err`)
+* instance ([`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `err`, [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a`) => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Validation`](#type-da-validation-types-validation-39644) `err` `a`)
+* instance ([`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `err`, [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a`) => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Validation`](#type-da-validation-types-validation-39644) `err` `a`)
+
+## Functions
+
+<span id="function-da-validation-invalid-71114" />
+
+### `invalid`
+
+`invalid` : `err` -> [`Validation`](#type-da-validation-types-validation-39644) `err` `a`
+
+Fail for the given reason.
+
+<span id="function-da-validation-ok-57346" />
+
+### `ok`
+
+`ok` : `a` -> [`Validation`](#type-da-validation-types-validation-39644) `err` `a`
+
+Succeed with the given value.
+
+<span id="function-da-validation-validate-15676" />
+
+### `validate`
+
+`validate` : [`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) `err` `a` -> [`Validation`](#type-da-validation-types-validation-39644) `err` `a`
+
+Turn an `Either` into a `Validation`.
+
+<span id="function-da-validation-run-73024" />
+
+### `run`
+
+`run` : [`Validation`](#type-da-validation-types-validation-39644) `err` `a` -> [`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `err`) `a`
+
+Convert a `Validation err a` value into an `Either`,
+taking the non-empty list of errors as the left value.
+
+<span id="function-da-validation-run1-16566" />
+
+### `run1`
+
+`run1` : [`Validation`](#type-da-validation-types-validation-39644) `err` `a` -> [`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) `err` `a`
+
+Convert a `Validation err a` value into an `Either`,
+taking just the first error as the left value.
+
+<span id="function-da-validation-runwithdefault-81974" />
+
+### `runWithDefault`
+
+`runWithDefault` : `a` -> [`Validation`](#type-da-validation-types-validation-39644) `err` `a` -> `a`
+
+Run a `Validation err a` with a default value in case of errors.
+
+<span id="function-da-validation-ltwhatgt-24976" />
+
+### `<?>`
+
+`<?>` : [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `b` -> `err` -> [`Validation`](#type-da-validation-types-validation-39644) `err` `b`
+
+Convert an `Optional t` into a `Validation err t`, or
+more generally into an `m t` for any `ActionFail` type `m`.
+
+## Orphan Typeclass Instances
+
+* instance ([`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `err`, [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a`) => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Validation`](#type-da-validation-types-validation-39644) `err` `a`)
+
+* instance ([`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `err`, [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a`) => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Validation`](#type-da-validation-types-validation-39644) `err` `a`)
+
+* instance [`Functor`](/appdev/reference/daml-standard-library/prelude#class-ghc-base-functor-31205) ([`Validation`](#type-da-validation-types-validation-39644) `err`)
+
+* instance [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) ([`Validation`](#type-da-validation-types-validation-39644) `err`)
+
+* instance [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Validation`](#type-da-validation-types-validation-39644) `err` `a`)
+
+* instance [`Foldable`](/appdev/reference/daml-standard-library/da-foldable#class-da-foldable-foldable-25994) ([`Validation`](#type-da-validation-types-validation-39644) `err`)
+
+* instance [`Traversable`](/appdev/reference/daml-standard-library/da-traversable#class-da-traversable-traversable-18144) ([`Validation`](#type-da-validation-types-validation-39644) `err`)

@@ -1,0 +1,78 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# DA.Traversable
+
+> Reference documentation for Daml module DA.Traversable.
+
+<span id="module-da-traversable-75075" />
+
+# DA.Traversable
+
+Class of data structures that can be traversed from left to right, performing an action on each element.
+
+You typically would want to import this module qualified to avoid clashes with
+
+functions defined in `Prelude`. Ie.:
+
+```
+
+import DA.Traversable   qualified as F
+
+```
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+  <Card title="Lifecycle">
+    Stable.
+  </Card>
+
+  <Card title="Notices">
+    Status: `active`
+    Introduced in: `3.4.9`
+    Removed in: `-`
+    Warnings: `0`
+    Deprecations: `0`
+    Deprecated since: `-`
+  </Card>
+</CardGroup>
+
+## Typeclasses
+
+<span id="class-da-traversable-traversable-18144" />
+
+### `class (Functor t, Foldable t) => Traversable t`
+
+Functors representing data structures that can be traversed from left to right.
+
+Methods:
+
+* `mapA` : [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `f` => (`a` -> `f` `b`) -> `t` `a` -> `f` (`t` `b`)
+  Map each element of a structure to an action, evaluate these actions
+  from left to right, and collect the results.
+* `sequence` : [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `f` => `t` (`f` `a`) -> `f` (`t` `a`)
+  Evaluate each action in the structure from left to right, and
+  collect the results.
+
+Instances:
+
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => [`Traversable`](#class-da-traversable-traversable-18144) ([`Map`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-map-90052) `k`)
+* instance [`Traversable`](#class-da-traversable-traversable-18144) [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691)
+* instance [`Traversable`](#class-da-traversable-traversable-18144) [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153)
+* instance [`Traversable`](#class-da-traversable-traversable-18144) [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010)
+* instance [`Traversable`](#class-da-traversable-traversable-18144) ([`Validation`](/appdev/reference/daml-standard-library/da-validation#type-da-validation-types-validation-39644) `err`)
+* instance [`Traversable`](#class-da-traversable-traversable-18144) ([`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) `a`)
+* instance [`Traversable`](#class-da-traversable-traversable-18144) [`[]`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-x-2599)
+* instance [`Traversable`](#class-da-traversable-traversable-18144) `a`
+
+## Functions
+
+<span id="function-da-traversable-fora-19271" />
+
+### `forA`
+
+`forA` : ([`Traversable`](#class-da-traversable-traversable-18144) `t`, [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `f`) => `t` `a` -> (`a` -> `f` `b`) -> `f` (`t` `b`)
+
+`forA` is `mapA` with its arguments flipped.

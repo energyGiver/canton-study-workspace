@@ -1,0 +1,228 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# DA.TextMap
+
+> Reference documentation for Daml module DA.TextMap.
+
+<span id="module-da-textmap-81719" />
+
+# DA.TextMap
+
+TextMap - A map is an associative array data type composed of a
+
+collection of key/value pairs such that, each possible key appears
+
+at most once in the collection.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+  <Card title="Lifecycle">
+    Stable.
+  </Card>
+
+  <Card title="Notices">
+    Status: `active`
+    Introduced in: `3.4.9`
+    Removed in: `-`
+    Warnings: `0`
+    Deprecations: `0`
+    Deprecated since: `-`
+  </Card>
+</CardGroup>
+
+## Functions
+
+<span id="function-da-textmap-fromlist-19033" />
+
+### `fromList`
+
+`fromList` : \[([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952), `a`)] -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+Create a map from a list of key/value pairs.
+
+<span id="function-da-textmap-fromlistwithl-22912" />
+
+### `fromListWithL`
+
+`fromListWithL` : (`a` -> `a` -> `a`) -> \[([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952), `a`)] -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+Create a map from a list of key/value pairs with a combining
+function. The combining function is only used when a key appears multiple
+times in the list and it takes two arguments: the first one is the new value
+being inserted at that key and the second one is the value accumulated so
+far at that key.
+Examples:
+
+```
+>>> fromListWithL (++) [("A", [1]), ("A", [2]), ("B", [2]), ("B", [1]), ("A", [3])]
+fromList [("A", [3, 2, 1]), ("B", [1, 2])]
+>>> fromListWithL (++) [] == (empty : TextMap [Int])
+True
+```
+
+<span id="function-da-textmap-fromlistwithr-69626" />
+
+### `fromListWithR`
+
+`fromListWithR` : (`a` -> `a` -> `a`) -> \[([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952), `a`)] -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+Create a map from a list of key/value pairs like `fromListWithL`
+with the combining function flipped. Examples:
+
+```
+>>> fromListWithR (++) [("A", [1]), ("A", [2]), ("B", [2]), ("B", [1]), ("A", [3])]
+fromList [("A", [1, 2, 3]), ("B", [2, 1])]
+>>> fromListWithR (++) [] == (empty : TextMap [Int])
+True
+```
+
+<span id="function-da-textmap-fromlistwith-41741" />
+
+### `fromListWith`
+
+`fromListWith` : (`a` -> `a` -> `a`) -> \[([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952), `a`)] -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+<span id="function-da-textmap-tolist-95168" />
+
+### `toList`
+
+`toList` : [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a` -> \[([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952), `a`)]
+
+Convert the map to a list of key/value pairs where the keys are
+in ascending order.
+
+<span id="function-da-textmap-empty-66187" />
+
+### `empty`
+
+`empty` : [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+The empty map.
+
+<span id="function-da-textmap-size-46150" />
+
+### `size`
+
+`size` : [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a` -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+Number of elements in the map.
+
+<span id="function-da-textmap-null-64690" />
+
+### `null`
+
+`null` : [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `v` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+Is the map empty?
+
+<span id="function-da-textmap-lookup-87021" />
+
+### `lookup`
+
+`lookup` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a`
+
+Lookup the value at a key in the map.
+
+<span id="function-da-textmap-member-14417" />
+
+### `member`
+
+`member` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `v` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+Is the key a member of the map?
+
+<span id="function-da-textmap-filter-317" />
+
+### `filter`
+
+`filter` : (`v` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `v` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `v`
+
+Filter the `TextMap` using a predicate: keep only the entries where the
+value satisfies the predicate.
+
+<span id="function-da-textmap-filterwithkey-64027" />
+
+### `filterWithKey`
+
+`filterWithKey` : ([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> `v` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `v` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `v`
+
+Filter the `TextMap` using a predicate: keep only the entries which
+satisfy the predicate.
+
+<span id="function-da-textmap-delete-54270" />
+
+### `delete`
+
+`delete` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+Delete a key and its value from the map. When the key is not a
+member of the map, the original map is returned.
+
+<span id="function-da-textmap-singleton-39431" />
+
+### `singleton`
+
+`singleton` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> `a` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+Create a singleton map.
+
+<span id="function-da-textmap-insert-41312" />
+
+### `insert`
+
+`insert` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> `a` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+Insert a new key/value pair in the map. If the key is already
+present in the map, the associated value is replaced with the
+supplied value.
+
+<span id="function-da-textmap-insertwith-45464" />
+
+### `insertWith`
+
+`insertWith` : (`v` -> `v` -> `v`) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> `v` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `v` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `v`
+
+Insert a new key/value pair in the map. If the key is already
+present in the map, it is combined with the previous value using the given function
+`f new_value old_value`.
+
+<span id="function-da-textmap-union-13945" />
+
+### `union`
+
+`union` : [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+The union of two maps, preferring the first map when equal
+keys are encountered.
+
+<span id="function-da-textmap-merge-26784" />
+
+### `merge`
+
+`merge` : ([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> `a` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `c`) -> ([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> `b` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `c`) -> ([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> `a` -> `b` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `c`) -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `b` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `c`
+
+Merge two maps. `merge f g h x y` applies `f` to all key/value pairs
+whose key only appears in `x`, `g` to all pairs whose key only appears
+in `y` and `h` to all pairs whose key appears in both `x` and `y`.
+In the end, all pairs yielding `Some` are collected as the result.
+
+## Orphan Typeclass Instances
+
+* instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`)
+
+* instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`)
+
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`)
+
+* instance [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `b`)
+
+* instance [`Monoid`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-monoid-6742) ([`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `b`)
+
+* instance [`Functor`](/appdev/reference/daml-standard-library/prelude#class-ghc-base-functor-31205) [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691)
+
+* instance [`Foldable`](/appdev/reference/daml-standard-library/da-foldable#class-da-foldable-foldable-25994) [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691)
+
+* instance [`Traversable`](/appdev/reference/daml-standard-library/da-traversable#class-da-traversable-traversable-18144) [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691)

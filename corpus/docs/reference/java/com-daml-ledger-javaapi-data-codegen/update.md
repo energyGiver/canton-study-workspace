@@ -1,0 +1,25 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# Update
+
+> Generated object reference page for Update from local Javadoc snapshots.
+
+## Update
+
+Upstream docs: [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/Update.html)
+
+**Signature**
+
+```text theme={"theme":{"light":"github-light","dark":"github-dark"}}
+public abstract class Update<U> extends Object implements HasCommands
+```
+
+**Members**
+
+| Docs                                                                                                                                                              | Member                                  | Introduced | Deprecated | Removed |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ---------- | ---------- | ------- |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/Update.html#%3Cinit%3E%28com.daml.ledger.javaapi.data.Command%29) | `Update(Command)`                       | `3.4.8`    | -          | -       |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/Update.html#commands%28%29)                                       | `commands()`                            | `3.4.8`    | -          | -       |
+| [Open](https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/Update.html#map%28java.util.function.Function%29)                 | `map(Function<? super U, ? extends V>)` | `3.4.8`    | -          | -       |

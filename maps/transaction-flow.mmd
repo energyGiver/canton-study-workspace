@@ -1,0 +1,21 @@
+%% Research note: topics/transaction-lifecycle.md
+sequenceDiagram
+  participant App as Application
+  participant Sub as Submitting participant
+  participant Seq as Sequencer
+  participant Conf as Confirming participants
+  participant Med as Mediator
+  App->>Sub: Submit Daml command
+  Sub->>Sub: Interpret and build encrypted views
+  Sub->>Seq: Confirmation request batch
+  Seq->>Seq: Order and timestamp
+  Seq->>Conf: Deliver entitled views
+  Seq->>Med: Deliver informees and policy
+  Conf->>Conf: Validate Daml, authority and ACS
+  Conf->>Seq: Signed approve or reject
+  Seq->>Med: Ordered responses
+  Med->>Seq: Commit or reject verdict
+  Seq->>Conf: Final verdict
+  Conf->>Conf: Apply or discard local effects
+  Seq-->>Sub: Completion path
+  Sub-->>App: Completion

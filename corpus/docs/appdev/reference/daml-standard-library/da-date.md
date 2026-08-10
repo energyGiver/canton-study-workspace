@@ -1,0 +1,284 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# DA.Date
+
+> Reference documentation for Daml module DA.Date.
+
+<span id="module-da-date-80009" />
+
+# DA.Date
+
+This module provides a set of functions to manipulate Date values.
+
+The bounds for Date are 0001-01-01T00:00:00.000000Z and
+
+9999-12-31T23:59:59.999999Z.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+  <Card title="Lifecycle">
+    Stable.
+  </Card>
+
+  <Card title="Notices">
+    Status: `active`
+    Introduced in: `3.4.9`
+    Removed in: `-`
+    Warnings: `0`
+    Deprecations: `0`
+    Deprecated since: `-`
+  </Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-da-date-types-dayofweek-18120" />
+
+### `data DayOfWeek`
+
+Constructors:
+
+<span id="constr-da-date-types-monday-43349" />
+
+* `Monday`
+
+<span id="constr-da-date-types-tuesday-5501" />
+
+* `Tuesday`
+
+<span id="constr-da-date-types-wednesday-18786" />
+
+* `Wednesday`
+
+<span id="constr-da-date-types-thursday-55301" />
+
+* `Thursday`
+
+<span id="constr-da-date-types-friday-14884" />
+
+* `Friday`
+
+<span id="constr-da-date-types-saturday-99714" />
+
+* `Saturday`
+
+<span id="constr-da-date-types-sunday-48181" />
+
+* `Sunday`
+
+Instances:
+
+* instance `Serializable` [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+* instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+* instance [`Bounded`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-bounded-34379) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+* instance [`Enum`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-enum-63048) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+* instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+
+<span id="type-da-date-types-month-22803" />
+
+### `data Month`
+
+The `Month` type represents a month in the Gregorian calendar.
+
+Note that, while `Month` has an `Enum` instance, the `toEnum` and `fromEnum`
+functions start counting at 0, i.e. `toEnum 1 :: Month` is `Feb`.
+
+Constructors:
+
+<span id="constr-da-date-types-jan-1103" />
+
+* `Jan`
+
+<span id="constr-da-date-types-feb-88523" />
+
+* `Feb`
+
+<span id="constr-da-date-types-mar-5472" />
+
+* `Mar`
+
+<span id="constr-da-date-types-apr-12091" />
+
+* `Apr`
+
+<span id="constr-da-date-types-may-50999" />
+
+* `May`
+
+<span id="constr-da-date-types-jun-17739" />
+
+* `Jun`
+
+<span id="constr-da-date-types-jul-21893" />
+
+* `Jul`
+
+<span id="constr-da-date-types-aug-18125" />
+
+* `Aug`
+
+<span id="constr-da-date-types-sep-63548" />
+
+* `Sep`
+
+<span id="constr-da-date-types-oct-96134" />
+
+* `Oct`
+
+<span id="constr-da-date-types-nov-72317" />
+
+* `Nov`
+
+<span id="constr-da-date-types-dec-74760" />
+
+* `Dec`
+
+Instances:
+
+* instance `Serializable` [`Month`](#type-da-date-types-month-22803)
+* instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`Month`](#type-da-date-types-month-22803)
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`Month`](#type-da-date-types-month-22803)
+* instance [`Bounded`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-bounded-34379) [`Month`](#type-da-date-types-month-22803)
+* instance [`Enum`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-enum-63048) [`Month`](#type-da-date-types-month-22803)
+* instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`Month`](#type-da-date-types-month-22803)
+
+## Functions
+
+<span id="function-da-date-adddays-7836" />
+
+### `addDays`
+
+`addDays` : [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253)
+
+Add the given number of days to a date.
+
+<span id="function-da-date-subtractdays-16626" />
+
+### `subtractDays`
+
+`subtractDays` : [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253)
+
+Subtract the given number of days from a date.
+
+`subtractDays d r` is equivalent to `addDays d (- r)`.
+
+<span id="function-da-date-subdate-25598" />
+
+### `subDate`
+
+`subDate` : [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253) -> [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+Returns the number of days between the two given dates.
+
+<span id="function-da-date-dayofweek-99931" />
+
+### `dayOfWeek`
+
+`dayOfWeek` : [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253) -> [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+
+Returns the day of week for the given date.
+
+<span id="function-da-date-fromgregorian-85346" />
+
+### `fromGregorian`
+
+`fromGregorian` : ([`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261), [`Month`](#type-da-date-types-month-22803), [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)) -> [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253)
+
+Constructs a `Date` from the triplet `(year, month, days)`.
+
+<span id="function-da-date-togregorian-84541" />
+
+### `toGregorian`
+
+`toGregorian` : [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253) -> ([`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261), [`Month`](#type-da-date-types-month-22803), [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261))
+
+Turn `Date` value into a `(year, month, day)` triple, according
+to the Gregorian calendar.
+
+<span id="function-da-date-date-21355" />
+
+### `date`
+
+`date` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Month`](#type-da-date-types-month-22803) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253)
+
+Given the three values (year, month, day), constructs a `Date` value.
+`date y m d` turns the year `y`, month `m`, and day `d` into a `Date` value.
+Raises an error if `d` is outside the range `1 .. monthDayCount y m`.
+
+<span id="function-da-date-isleapyear-61920" />
+
+### `isLeapYear`
+
+`isLeapYear` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+Returns `True` if the given year is a leap year.
+
+<span id="function-da-date-frommonth-90328" />
+
+### `fromMonth`
+
+`fromMonth` : [`Month`](#type-da-date-types-month-22803) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+Get the number corresponding to given month. For example, `Jan` corresponds
+to `1`, `Feb` corresponds to `2`, and so on.
+
+<span id="function-da-date-monthdaycount-59295" />
+
+### `monthDayCount`
+
+`monthDayCount` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Month`](#type-da-date-types-month-22803) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+Get number of days in the given month in the given year, according to Gregorian calendar.
+This does not take historical calendar changes into account (for example, the
+moves from Julian to Gregorian calendar), but does count leap years.
+
+<span id="function-da-date-datetime-90284" />
+
+### `datetime`
+
+`datetime` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Month`](#type-da-date-types-month-22803) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886)
+
+Constructs an instant using `year`, `month`, `day`, `hours`, `minutes`, `seconds`.
+
+<span id="function-da-date-todateutc-87953" />
+
+### `toDateUTC`
+
+`toDateUTC` : [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253)
+
+Extracts UTC date from UTC time.
+
+This function will truncate Time to Date, but in many cases it will not return the date you really want.
+The reason for this is that usually the source of Time would be getTime, and getTime returns UTC, and most likely
+the date you want is something local to a location or an exchange. Consequently the date retrieved this way would be
+yesterday if retrieved when the market opens in say Singapore.
+
+## Orphan Typeclass Instances
+
+* instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+
+* instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+
+* instance [`Enum`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-enum-63048) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+
+* instance [`Bounded`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-bounded-34379) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+
+* instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`Month`](#type-da-date-types-month-22803)
+
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`Month`](#type-da-date-types-month-22803)
+
+* instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`Month`](#type-da-date-types-month-22803)
+
+* instance [`Enum`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-enum-63048) [`Month`](#type-da-date-types-month-22803)
+
+* instance [`Bounded`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-bounded-34379) [`Month`](#type-da-date-types-month-22803)
+
+* instance [`Enum`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-enum-63048) [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253)
+
+* instance [`Bounded`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-bounded-34379) [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253)

@@ -1,0 +1,268 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# DA.Exception
+
+> Reference documentation for Daml module DA.Exception.
+
+<span id="module-da-exception-55791" />
+
+# DA.Exception
+
+Exception handling in Daml.
+
+DEPRECATED: Use `failWithStatus` and `FailureStatus` over Daml Exceptions
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+  <Card title="Lifecycle">
+    Deprecated.
+  </Card>
+
+  <Card title="Notices">
+    Status: `active`
+    Introduced in: `3.4.9`
+    Removed in: `-`
+    Warnings: `0`
+    Deprecations: `2`
+    Deprecated since: `3.4.9`
+  </Card>
+</CardGroup>
+
+<Warning>
+  Exceptions are deprecated, prefer `failWithStatus`, and avoid using catch.
+</Warning>
+
+<AccordionGroup>
+  <Accordion title="All deprecations (2)">
+    * Exceptions are deprecated, prefer `failWithStatus`, and avoid using catch.
+    * Use `-Wno-deprecated-exceptions` to disable this warning.
+  </Accordion>
+</AccordionGroup>
+
+## Data Types
+
+<span id="type-da-internal-exception-exception-4133" />
+
+### `type Exception e`
+
+\= ([`HasThrow`](#class-da-internal-exception-hasthrow-30284) `e`, [`HasMessage`](#class-da-internal-exception-hasmessage-3179) `e`, [`HasToAnyException`](#class-da-internal-exception-hastoanyexception-55973) `e`, [`HasFromAnyException`](#class-da-internal-exception-hasfromanyexception-16788) `e`)
+
+Exception typeclass. This should not be implemented directly,
+instead, use the `exception` syntax.
+
+<span id="type-da-exception-arithmeticerror-arithmeticerror-68828" />
+
+### `data ArithmeticError`
+
+Exception raised by an arithmetic operation, such as divide-by-zero or overflow.
+
+<Warning>
+  Deprecated: Exceptions are deprecated, prefer `failWithStatus`, and avoid using catch.
+</Warning>
+
+<Warning>
+  Deprecated: Use `-Wno-deprecated-exceptions` to disable this warning.
+</Warning>
+
+Constructors:
+
+<span id="constr-da-exception-arithmeticerror-arithmeticerror-83141" />
+
+* `ArithmeticError`
+
+<ResponseField name="message" type="Text" />
+
+<span id="type-da-exception-assertionfailed-assertionfailed-69740" />
+
+### `data AssertionFailed`
+
+Exception raised by assert functions in DA.Assert
+
+<Warning>
+  Deprecated: Exceptions are deprecated, prefer `failWithStatus`, and avoid using catch.
+</Warning>
+
+<Warning>
+  Deprecated: Use `-Wno-deprecated-exceptions` to disable this warning.
+</Warning>
+
+Constructors:
+
+<span id="constr-da-exception-assertionfailed-assertionfailed-2357" />
+
+* `AssertionFailed`
+
+<ResponseField name="message" type="Text" />
+
+<span id="type-da-exception-generalerror-generalerror-5800" />
+
+### `data GeneralError`
+
+Exception raised by `error`.
+
+<Warning>
+  Deprecated: Exceptions are deprecated, prefer `failWithStatus`, and avoid using catch.
+</Warning>
+
+<Warning>
+  Deprecated: Use `-Wno-deprecated-exceptions` to disable this warning.
+</Warning>
+
+Constructors:
+
+<span id="constr-da-exception-generalerror-generalerror-9293" />
+
+* `GeneralError`
+
+<ResponseField name="message" type="Text" />
+
+<span id="type-da-exception-preconditionfailed-preconditionfailed-61218" />
+
+### `data PreconditionFailed`
+
+Exception raised when a contract is invalid, i.e. fails the ensure clause.
+
+<Warning>
+  Deprecated: Exceptions are deprecated, prefer `failWithStatus`, and avoid using catch.
+</Warning>
+
+<Warning>
+  Deprecated: Use `-Wno-deprecated-exceptions` to disable this warning.
+</Warning>
+
+Constructors:
+
+<span id="constr-da-exception-preconditionfailed-preconditionfailed-18759" />
+
+* `PreconditionFailed`
+
+<ResponseField name="message" type="Text" />
+
+## Typeclasses
+
+<span id="class-da-internal-exception-hasthrow-30284" />
+
+### `class HasThrow e`
+
+Part of the `Exception` constraint.
+
+Methods:
+
+* `throwPure` : `e` -> `t`
+  Throw exception in a pure context.
+
+Instances:
+
+* instance [`HasThrow`](#class-da-internal-exception-hasthrow-30284) [`ArithmeticError`](#type-da-exception-arithmeticerror-arithmeticerror-68828)
+* instance [`HasThrow`](#class-da-internal-exception-hasthrow-30284) [`AssertionFailed`](#type-da-exception-assertionfailed-assertionfailed-69740)
+* instance [`HasThrow`](#class-da-internal-exception-hasthrow-30284) [`GeneralError`](#type-da-exception-generalerror-generalerror-5800)
+* instance [`HasThrow`](#class-da-internal-exception-hasthrow-30284) [`PreconditionFailed`](#type-da-exception-preconditionfailed-preconditionfailed-61218)
+
+<span id="class-da-internal-exception-hasmessage-3179" />
+
+### `class HasMessage e`
+
+Part of the `Exception` constraint.
+
+Methods:
+
+* `message` : `e` -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+  Get the error message associated with an exception.
+
+Instances:
+
+* instance [`HasMessage`](#class-da-internal-exception-hasmessage-3179) [`AnyException`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-anyexception-7004)
+* instance [`HasMessage`](#class-da-internal-exception-hasmessage-3179) [`ArithmeticError`](#type-da-exception-arithmeticerror-arithmeticerror-68828)
+* instance [`HasMessage`](#class-da-internal-exception-hasmessage-3179) [`AssertionFailed`](#type-da-exception-assertionfailed-assertionfailed-69740)
+* instance [`HasMessage`](#class-da-internal-exception-hasmessage-3179) [`GeneralError`](#type-da-exception-generalerror-generalerror-5800)
+* instance [`HasMessage`](#class-da-internal-exception-hasmessage-3179) [`PreconditionFailed`](#type-da-exception-preconditionfailed-preconditionfailed-61218)
+
+<span id="class-da-internal-exception-hastoanyexception-55973" />
+
+### `class HasToAnyException e`
+
+Part of the `Exception` constraint.
+
+Methods:
+
+* `toAnyException` : `e` -> [`AnyException`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-anyexception-7004)
+  Convert an exception type to AnyException.
+
+Instances:
+
+* instance [`HasToAnyException`](#class-da-internal-exception-hastoanyexception-55973) [`AnyException`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-anyexception-7004)
+* instance [`HasToAnyException`](#class-da-internal-exception-hastoanyexception-55973) [`ArithmeticError`](#type-da-exception-arithmeticerror-arithmeticerror-68828)
+* instance [`HasToAnyException`](#class-da-internal-exception-hastoanyexception-55973) [`AssertionFailed`](#type-da-exception-assertionfailed-assertionfailed-69740)
+* instance [`HasToAnyException`](#class-da-internal-exception-hastoanyexception-55973) [`GeneralError`](#type-da-exception-generalerror-generalerror-5800)
+* instance [`HasToAnyException`](#class-da-internal-exception-hastoanyexception-55973) [`PreconditionFailed`](#type-da-exception-preconditionfailed-preconditionfailed-61218)
+
+<span id="class-da-internal-exception-hasfromanyexception-16788" />
+
+### `class HasFromAnyException e`
+
+Part of the `Exception` constraint.
+
+Methods:
+
+* `fromAnyException` : [`AnyException`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-anyexception-7004) -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `e`
+  Convert an AnyException back to the underlying exception type, if possible.
+
+Instances:
+
+* instance [`HasFromAnyException`](#class-da-internal-exception-hasfromanyexception-16788) [`AnyException`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-anyexception-7004)
+* instance [`HasFromAnyException`](#class-da-internal-exception-hasfromanyexception-16788) [`ArithmeticError`](#type-da-exception-arithmeticerror-arithmeticerror-68828)
+* instance [`HasFromAnyException`](#class-da-internal-exception-hasfromanyexception-16788) [`AssertionFailed`](#type-da-exception-assertionfailed-assertionfailed-69740)
+* instance [`HasFromAnyException`](#class-da-internal-exception-hasfromanyexception-16788) [`GeneralError`](#type-da-exception-generalerror-generalerror-5800)
+* instance [`HasFromAnyException`](#class-da-internal-exception-hasfromanyexception-16788) [`PreconditionFailed`](#type-da-exception-preconditionfailed-preconditionfailed-61218)
+
+<span id="class-da-internal-exception-actionthrow-37623" />
+
+### `class Action m => ActionThrow m`
+
+Action type in which `throw` is supported.
+
+Methods:
+
+* `throw` : [`Exception`](#type-da-internal-exception-exception-4133) `e` => `e` -> `m` `t`
+
+Instances:
+
+* instance [`ActionThrow`](#class-da-internal-exception-actionthrow-37623) [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072)
+
+<span id="class-da-internal-exception-actioncatch-69238" />
+
+### `class ActionThrow m => ActionCatch m`
+
+Action type in which `try ... catch ...` is supported.
+DEPRECATED: Avoid the use of catch in daml code, prefer error handling on client, and throwing using `failWithStatus`
+
+Methods:
+
+* `_tryCatch` : (() -> `m` `t`) -> ([`AnyException`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-anyexception-7004) -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) (`m` `t`)) -> `m` `t`
+  Handle an exception. Use the `try ... catch ...` syntax
+  instead of calling this method directly.
+
+Instances:
+
+* instance [`ActionCatch`](#class-da-internal-exception-actioncatch-69238) [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072)
+
+## Orphan Typeclass Instances
+
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `message` [`GeneralError`](#type-da-exception-generalerror-generalerror-5800) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `message` [`GeneralError`](#type-da-exception-generalerror-generalerror-5800) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `message` [`ArithmeticError`](#type-da-exception-arithmeticerror-arithmeticerror-68828) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `message` [`ArithmeticError`](#type-da-exception-arithmeticerror-arithmeticerror-68828) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `message` [`PreconditionFailed`](#type-da-exception-preconditionfailed-preconditionfailed-61218) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `message` [`PreconditionFailed`](#type-da-exception-preconditionfailed-preconditionfailed-61218) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `message` [`AssertionFailed`](#type-da-exception-assertionfailed-assertionfailed-69740) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `message` [`AssertionFailed`](#type-da-exception-assertionfailed-assertionfailed-69740) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)

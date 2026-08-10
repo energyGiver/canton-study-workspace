@@ -1,0 +1,229 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# DA.NonEmpty
+
+> Reference documentation for Daml module DA.NonEmpty.
+
+<span id="module-da-nonempty-15701" />
+
+# DA.NonEmpty
+
+Type and functions for non-empty lists. This module re-exports many functions with
+
+the same name as prelude list functions, so it is expected to import the module qualified.
+
+For example, with the following import list you will have access to the `NonEmpty` type
+
+and any functions on non-empty lists will be qualified, for example as `NE.append, NE.map, NE.foldl`:
+
+```
+
+import DA.NonEmpty (NonEmpty)
+
+import qualified DA.NonEmpty as NE
+
+```
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+  <Card title="Lifecycle">
+    Stable.
+  </Card>
+
+  <Card title="Notices">
+    Status: `active`
+    Introduced in: `3.4.9`
+    Removed in: `-`
+    Warnings: `0`
+    Deprecations: `0`
+    Deprecated since: `-`
+  </Card>
+</CardGroup>
+
+## Functions
+
+<span id="function-da-nonempty-cons-63704" />
+
+### `cons`
+
+`cons` : `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`
+
+Prepend an element to a non-empty list.
+
+<span id="function-da-nonempty-append-34337" />
+
+### `append`
+
+`append` : [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`
+
+Append or concatenate two non-empty lists.
+
+<span id="function-da-nonempty-map-69362" />
+
+### `map`
+
+`map` : (`a` -> `b`) -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `b`
+
+Apply a function over each element in the non-empty list.
+
+<span id="function-da-nonempty-nonempty-24939" />
+
+### `nonEmpty`
+
+`nonEmpty` : \[`a`] -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`)
+
+Turn a list into a non-empty list, if possible. Returns
+`None` if the input list is empty, and `Some` otherwise.
+
+<span id="function-da-nonempty-singleton-99101" />
+
+### `singleton`
+
+`singleton` : `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`
+
+A non-empty list with a single element.
+
+<span id="function-da-nonempty-tolist-15474" />
+
+### `toList`
+
+`toList` : [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> \[`a`]
+
+Turn a non-empty list into a list (by forgetting that it is not empty).
+
+<span id="function-da-nonempty-reverse-64050" />
+
+### `reverse`
+
+`reverse` : [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`
+
+Reverse a non-empty list.
+
+<span id="function-da-nonempty-find-73910" />
+
+### `find`
+
+`find` : (`a` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a`
+
+Find an element in a non-empty list.
+
+<span id="function-da-nonempty-deleteby-6333" />
+
+### `deleteBy`
+
+`deleteBy` : (`a` -> `a` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> \[`a`]
+
+The 'deleteBy' function behaves like 'delete', but takes a
+user-supplied equality predicate.
+
+<span id="function-da-nonempty-delete-59160" />
+
+### `delete`
+
+`delete` : [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> \[`a`]
+
+Remove the first occurence of x from the non-empty list, potentially
+removing all elements.
+
+<span id="function-da-nonempty-foldl1-17561" />
+
+### `foldl1`
+
+`foldl1` : (`a` -> `a` -> `a`) -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> `a`
+
+Apply a function repeatedly to pairs of elements from a non-empty list,
+from the left. For example, `foldl1 (+) (NonEmpty 1 [2,3,4]) = ((1 + 2) + 3) + 4`.
+
+<span id="function-da-nonempty-foldr1-43627" />
+
+### `foldr1`
+
+`foldr1` : (`a` -> `a` -> `a`) -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> `a`
+
+Apply a function repeatedly to pairs of elements from a non-empty list,
+from the right. For example, `foldr1 (+) (NonEmpty 1 [2,3,4]) = 1 + (2 + (3 + 4))`.
+
+<span id="function-da-nonempty-foldr-65043" />
+
+### `foldr`
+
+`foldr` : (`a` -> `b` -> `b`) -> `b` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> `b`
+
+Apply a function repeatedly to pairs of elements from a non-empty list,
+from the right, with a given initial value. For example,
+`foldr (+) 0 (NonEmpty 1 [2,3,4]) = 1 + (2 + (3 + (4 + 0)))`.
+
+<span id="function-da-nonempty-foldra-91227" />
+
+### `foldrA`
+
+`foldrA` : [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) `m` => (`a` -> `b` -> `m` `b`) -> `b` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> `m` `b`
+
+The same as `foldr` but running an action each time.
+
+<span id="function-da-nonempty-foldr1a-13463" />
+
+### `foldr1A`
+
+`foldr1A` : [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) `m` => (`a` -> `a` -> `m` `a`) -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> `m` `a`
+
+The same as `foldr1` but running an action each time.
+
+<span id="function-da-nonempty-foldl-91113" />
+
+### `foldl`
+
+`foldl` : (`b` -> `a` -> `b`) -> `b` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> `b`
+
+Apply a function repeatedly to pairs of elements from a non-empty list,
+from the left, with a given initial value. For example,
+`foldl (+) 0 (NonEmpty 1 [2,3,4]) = (((0 + 1) + 2) + 3) + 4`.
+
+<span id="function-da-nonempty-foldla-69961" />
+
+### `foldlA`
+
+`foldlA` : [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) `m` => (`b` -> `a` -> `m` `b`) -> `b` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> `m` `b`
+
+The same as `foldl` but running an action each time.
+
+<span id="function-da-nonempty-foldl1a-63665" />
+
+### `foldl1A`
+
+`foldl1A` : [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) `m` => (`a` -> `a` -> `m` `a`) -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> `m` `a`
+
+The same as `foldl1` but running an action each time.
+
+## Orphan Typeclass Instances
+
+* instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`)
+
+* instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`)
+
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`)
+
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `hd` ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`) `a`
+
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `hd` ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`) `a`
+
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `tl` ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`) \[`a`]
+
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `tl` ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`) \[`a`]
+
+* instance [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`)
+
+* instance [`Functor`](/appdev/reference/daml-standard-library/prelude#class-ghc-base-functor-31205) [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010)
+
+* instance [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010)
+
+* instance [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010)
+
+* instance [`Foldable`](/appdev/reference/daml-standard-library/da-foldable#class-da-foldable-foldable-25994) [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010)
+
+* instance [`Traversable`](/appdev/reference/daml-standard-library/da-traversable#class-da-traversable-traversable-18144) [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010)
+
+* instance [`IsParties`](/appdev/reference/daml-standard-library/prelude#class-da-internal-template-functions-isparties-53750) ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) [`Party`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-party-57932))

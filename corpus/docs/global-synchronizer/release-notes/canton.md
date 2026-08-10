@@ -1,0 +1,22 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# Canton
+
+> Release notes for Canton.
+
+Canton release notes are reproduced below from the upstream `digital-asset/canton` release-note sources.
+
+## Releases
+
+* [Canton 3.5.10](/global-synchronizer/release-notes/canton-releases/3-5-10)
+* [Canton 3.5.9](/global-synchronizer/release-notes/canton-releases/3-5-9)
+* [Canton 3.5.8](/global-synchronizer/release-notes/canton-releases/3-5-8)
+* [Canton 3.5.7](/global-synchronizer/release-notes/canton-releases/3-5-7)
+* [Canton 3.5.6](/global-synchronizer/release-notes/canton-releases/3-5-6)
+* [Canton 3.5.5](/global-synchronizer/release-notes/canton-releases/3-5-5)
+* [Canton 3.5.4](/global-synchronizer/release-notes/canton-releases/3-5-4)
+* [Canton 3.5.3](/global-synchronizer/release-notes/canton-releases/3-5-3)
+* [Canton 3.5.2](/global-synchronizer/release-notes/canton-releases/3-5-2)
+* [Canton 3.5.1](/global-synchronizer/release-notes/canton-releases/3-5-1)

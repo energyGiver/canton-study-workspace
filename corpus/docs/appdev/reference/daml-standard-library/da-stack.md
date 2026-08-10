@@ -1,0 +1,140 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# DA.Stack
+
+> Reference documentation for Daml module DA.Stack.
+
+<span id="module-da-stack-24914" />
+
+# DA.Stack
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+  <Card title="Lifecycle">
+    Stable.
+  </Card>
+
+  <Card title="Notices">
+    Status: `active`
+    Introduced in: `3.4.9`
+    Removed in: `-`
+    Warnings: `0`
+    Deprecations: `0`
+    Deprecated since: `-`
+  </Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-da-stack-types-srcloc-15887" />
+
+### `data SrcLoc`
+
+Location in the source code.
+
+Line and column are 0-based.
+
+Constructors:
+
+<span id="constr-da-stack-types-srcloc-29880" />
+
+* `SrcLoc`
+
+<ResponseField name="srcLocPackage" type="Text" />
+
+<ResponseField name="srcLocModule" type="Text" />
+
+<ResponseField name="srcLocFile" type="Text" />
+
+<ResponseField name="srcLocStartLine" type="Int" />
+
+<ResponseField name="srcLocStartCol" type="Int" />
+
+<ResponseField name="srcLocEndLine" type="Int" />
+
+<ResponseField name="srcLocEndCol" type="Int" />
+
+Instances:
+
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `srcLocEndCol` [`SrcLoc`](#type-da-stack-types-srcloc-15887) [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `srcLocEndLine` [`SrcLoc`](#type-da-stack-types-srcloc-15887) [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `srcLocFile` [`SrcLoc`](#type-da-stack-types-srcloc-15887) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `srcLocModule` [`SrcLoc`](#type-da-stack-types-srcloc-15887) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `srcLocPackage` [`SrcLoc`](#type-da-stack-types-srcloc-15887) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `srcLocStartCol` [`SrcLoc`](#type-da-stack-types-srcloc-15887) [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `srcLocStartLine` [`SrcLoc`](#type-da-stack-types-srcloc-15887) [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `srcLocEndCol` [`SrcLoc`](#type-da-stack-types-srcloc-15887) [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `srcLocEndLine` [`SrcLoc`](#type-da-stack-types-srcloc-15887) [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `srcLocFile` [`SrcLoc`](#type-da-stack-types-srcloc-15887) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `srcLocModule` [`SrcLoc`](#type-da-stack-types-srcloc-15887) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `srcLocPackage` [`SrcLoc`](#type-da-stack-types-srcloc-15887) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `srcLocStartCol` [`SrcLoc`](#type-da-stack-types-srcloc-15887) [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `srcLocStartLine` [`SrcLoc`](#type-da-stack-types-srcloc-15887) [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+<span id="type-ghc-stack-types-callstack-86244" />
+
+### `data CallStack`
+
+Type of callstacks constructed automatically from `HasCallStack` constraints.
+
+Use `callStack` to get the current callstack, and use `getCallStack`
+to deconstruct the `CallStack`.
+
+<span id="type-ghc-stack-types-hascallstack-63713" />
+
+### `type HasCallStack`
+
+\= `IP` `callStack` [`CallStack`](#type-ghc-stack-types-callstack-86244)
+
+Request a `CallStack`. Use this as a constraint in type signatures in order
+to get nicer callstacks for error and debug messages.
+
+For example, instead of declaring the following type signature:
+
+```
+myFunction : Int -> Update ()
+```
+
+You can declare a type signature with the `HasCallStack` constraint:
+
+```
+myFunction : HasCallStack => Int -> Update ()
+```
+
+The function `myFunction` will still be called the same way, but it will also show up
+as an entry in the current callstack, which you can obtain with `callStack`.
+
+Note that only functions with the `HasCallStack` constraint will be added to the
+current callstack, and if any function does not have the `HasCallStack` constraint,
+the callstack will be reset within that function.
+
+## Functions
+
+<span id="function-da-stack-prettycallstack-78669" />
+
+### `prettyCallStack`
+
+`prettyCallStack` : [`CallStack`](#type-ghc-stack-types-callstack-86244) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+Pretty-print a `CallStack`.
+
+<span id="function-da-stack-getcallstack-34576" />
+
+### `getCallStack`
+
+`getCallStack` : [`CallStack`](#type-ghc-stack-types-callstack-86244) -> \[([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952), [`SrcLoc`](#type-da-stack-types-srcloc-15887))]
+
+Extract the list of call sites from the `CallStack`.
+
+The most recent call comes first.
+
+<span id="function-da-stack-callstack-89067" />
+
+### `callStack`
+
+`callStack` : [`HasCallStack`](#type-ghc-stack-types-hascallstack-63713) => [`CallStack`](#type-ghc-stack-types-callstack-86244)
+
+Access to the current `CallStack`.

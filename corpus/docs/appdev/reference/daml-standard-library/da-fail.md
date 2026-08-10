@@ -1,0 +1,207 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# DA.Fail
+
+> Reference documentation for Daml module DA.Fail.
+
+<span id="module-da-fail-58029" />
+
+# DA.Fail
+
+Fail, for FailureStatus
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+  <Card title="Lifecycle">
+    Stable.
+  </Card>
+
+  <Card title="Notices">
+    Status: `active`
+    Introduced in: `3.4.9`
+    Removed in: `-`
+    Warnings: `0`
+    Deprecations: `0`
+    Deprecated since: `-`
+  </Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-da-internal-fail-types-failurecategory-97811" />
+
+### `data FailureCategory`
+
+The category of the failure, which determines the status code and log
+level of the failure. Maps 1-1 to the Canton error categories documented
+here: [https://docs.digitalasset.com/operate/3.4/reference/error\_codes.html#error-categories-inventory](https://docs.digitalasset.com/operate/3.4/reference/error_codes.html#error-categories-inventory)
+
+If you are more familiar with gRPC error codes, you can use the synonyms referenced in the
+comments.
+
+Constructors:
+
+<span id="constr-da-internal-fail-types-invalidindependentofsystemstate-84432" />
+
+* `InvalidIndependentOfSystemState`
+
+Use this to report errors that are independent of the current state of the ledger,
+and should thus not be retried.
+
+Corresponds to the gRPC status code `INVALID_ARGUMENT`.
+
+See [https://docs.digitalasset.com/operate/3.4/reference/error\_codes.html#invalidindependentofsystemstate](https://docs.digitalasset.com/operate/3.4/reference/error_codes.html#invalidindependentofsystemstate)
+for more information.
+
+<span id="constr-da-internal-fail-types-invalidgivencurrentsystemstateother-6547" />
+
+* `InvalidGivenCurrentSystemStateOther`
+
+Use this to report errors that are due to the current state of the ledger,
+but might disappear if the ledger state changes. Clients should retry these
+requests after reading updated state from the ledger.
+
+Corresponds to the gRPC status code `FAILED_PRECONDITION`.
+
+See [https://docs.digitalasset.com/operate/3.4/reference/error\_codes.html#error-categories-inventory](https://docs.digitalasset.com/operate/3.4/reference/error_codes.html#error-categories-inventory)
+for more information.
+
+Instances:
+
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `category` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) [`FailureCategory`](#type-da-internal-fail-types-failurecategory-97811)
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `category` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) [`FailureCategory`](#type-da-internal-fail-types-failurecategory-97811)
+* instance `Serializable` [`FailureCategory`](#type-da-internal-fail-types-failurecategory-97811)
+* instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`FailureCategory`](#type-da-internal-fail-types-failurecategory-97811)
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`FailureCategory`](#type-da-internal-fail-types-failurecategory-97811)
+* instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`FailureCategory`](#type-da-internal-fail-types-failurecategory-97811)
+
+<span id="type-da-internal-fail-types-failurestatus-69615" />
+
+### `data FailureStatus`
+
+Constructors:
+
+<span id="constr-da-internal-fail-types-failurestatus-61878" />
+
+* `FailureStatus`
+
+<ResponseField name="errorId" type="Text">
+  Unambiguous identifier of the error.
+
+  SHOULD be prefixed with the DNS name identifying the app provider
+
+  or the API standard defining the error. For example,
+
+  `splice.lfdecentralizedtrust.org/insufficient-funds` could be used for
+
+  reporting an out of funds error in the context of the CN token standards.
+</ResponseField>
+
+<ResponseField name="category" type="FailureCategory">
+  Category of the failure, which determines how clients are expected to handle the error.
+</ResponseField>
+
+<ResponseField name="message" type="Text">
+  Developer-facing error message, which should be in English.
+</ResponseField>
+
+<ResponseField name="meta" type="TextMap Text">
+  Machine-readable metadata about the error in a key-value format.
+
+  Use this to provide extra context to clients for errors.
+
+  SHOULD be less than \< 512 characters as it MAY be truncated otherwise.
+</ResponseField>
+
+Instances:
+
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `category` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) [`FailureCategory`](#type-da-internal-fail-types-failurecategory-97811)
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `errorId` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `message` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `meta` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) ([`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952))
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `category` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) [`FailureCategory`](#type-da-internal-fail-types-failurecategory-97811)
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `errorId` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `message` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `meta` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) ([`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952))
+* instance `Serializable` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615)
+* instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615)
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615)
+* instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615)
+
+## Typeclasses
+
+<span id="class-da-internal-fail-actionfailwithstatus-58664" />
+
+### `class Action m => ActionFailWithStatus m`
+
+Methods:
+
+* `failWithStatus` : [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) -> `m` `a`
+  Fail with a failure status
+
+Instances:
+
+* instance [`ActionFailWithStatus`](#class-da-internal-fail-actionfailwithstatus-58664) [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072)
+
+## Functions
+
+<span id="function-da-fail-invalidargument-67588" />
+
+### `invalidArgument`
+
+`invalidArgument` : [`FailureCategory`](#type-da-internal-fail-types-failurecategory-97811)
+
+Alternative name for `InvalidIndependentOfSystemState`.
+
+<span id="function-da-fail-failedprecondition-95960" />
+
+### `failedPrecondition`
+
+`failedPrecondition` : [`FailureCategory`](#type-da-internal-fail-types-failurecategory-97811)
+
+Alternative name for `InvalidGivenCurrentSystemStateOther`.
+
+<span id="function-da-internal-fail-failwithstatuspure-20043" />
+
+### `failWithStatusPure`
+
+`failWithStatusPure` : [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) -> `a`
+
+Fail with a failure status in a pure context
+
+## Orphan Typeclass Instances
+
+* instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615)
+
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615)
+
+* instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615)
+
+* instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`FailureCategory`](#type-da-internal-fail-types-failurecategory-97811)
+
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`FailureCategory`](#type-da-internal-fail-types-failurecategory-97811)
+
+* instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`FailureCategory`](#type-da-internal-fail-types-failurecategory-97811)
+
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `errorId` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `errorId` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `category` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) [`FailureCategory`](#type-da-internal-fail-types-failurecategory-97811)
+
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `category` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) [`FailureCategory`](#type-da-internal-fail-types-failurecategory-97811)
+
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `message` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `message` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+* instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `meta` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) ([`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952))
+
+* instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `meta` [`FailureStatus`](#type-da-internal-fail-types-failurestatus-69615) ([`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952))
+
+* instance [`ActionFail`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-actionfail-34438) [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072)
+
+* instance [`CanAbort`](/appdev/reference/daml-standard-library/prelude#class-da-internal-lf-canabort-29060) [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072)

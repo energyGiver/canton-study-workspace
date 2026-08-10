@@ -1,0 +1,168 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.canton.network/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# DA.Foldable
+
+> Reference documentation for Daml module DA.Foldable.
+
+<span id="module-da-foldable-94882" />
+
+# DA.Foldable
+
+Class of data structures that can be folded to a summary value.
+
+It's a good idea to import this module qualified to avoid clashes with
+
+functions defined in `Prelude`. Ie.:
+
+```
+
+import DA.Foldable qualified as F
+
+```
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+  <Card title="Lifecycle">
+    Stable.
+  </Card>
+
+  <Card title="Notices">
+    Status: `active`
+    Introduced in: `3.4.9`
+    Removed in: `-`
+    Warnings: `0`
+    Deprecations: `0`
+    Deprecated since: `-`
+  </Card>
+</CardGroup>
+
+## Typeclasses
+
+<span id="class-da-foldable-foldable-25994" />
+
+### `class Foldable t`
+
+Class of data structures that can be folded to a summary value.
+
+Methods:
+
+* `fold` : [`Monoid`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-monoid-6742) `m` => `t` `m` -> `m`
+  Combine the elements of a structure using a monoid.
+* `foldMap` : [`Monoid`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-monoid-6742) `m` => (`a` -> `m`) -> `t` `a` -> `m`
+  Combine the elements of a structure using a monoid.
+* `foldr` : (`a` -> `b` -> `b`) -> `b` -> `t` `a` -> `b`
+  Right-associative fold of a structure.
+* `foldl` : (`b` -> `a` -> `b`) -> `b` -> `t` `a` -> `b`
+  Left-associative fold of a structure.
+* `foldr1` : (`a` -> `a` -> `a`) -> `t` `a` -> `a`
+  A variant of foldr that has no base case, and thus should only be applied to non-empty structures.
+* `foldl1` : (`a` -> `a` -> `a`) -> `t` `a` -> `a`
+  A variant of foldl that has no base case, and thus should only be applied to non-empty structures.
+* `toList` : `t` `a` -> \[`a`]
+  List of elements of a structure, from left to right.
+* `null` : `t` `a` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+  Test whether the structure is empty. The default implementation is optimized for structures that are similar to cons-lists, because there is no general way to do better.
+* `length` : `t` `a` -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+  Returns the size/length of a finite structure as an `Int`. The default implementation is optimized for structures that are similar to cons-lists, because there is no general way to do better.
+* `elem` : [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => `a` -> `t` `a` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+  Does the element occur in the structure?
+* `sum` : [`Additive`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-additive-25881) `a` => `t` `a` -> `a`
+  The sum function computes the sum of the numbers of a structure.
+* `product` : [`Multiplicative`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-multiplicative-10593) `a` => `t` `a` -> `a`
+  The product function computes the product of the numbers of a structure.
+* `minimum` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => `t` `a` -> `a`
+  The least element of a non-empty structure.
+* `maximum` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => `t` `a` -> `a`
+  The largest element of a non-empty structure.
+
+Instances:
+
+* instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => [`Foldable`](#class-da-foldable-foldable-25994) ([`Map`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-map-90052) `k`)
+* instance [`Foldable`](#class-da-foldable-foldable-25994) [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691)
+* instance [`Foldable`](#class-da-foldable-foldable-25994) [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153)
+* instance [`Foldable`](#class-da-foldable-foldable-25994) [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010)
+* instance [`Foldable`](#class-da-foldable-foldable-25994) [`Set`](/appdev/reference/daml-standard-library/da-set#type-da-set-types-set-90436)
+* instance [`Foldable`](#class-da-foldable-foldable-25994) ([`Validation`](/appdev/reference/daml-standard-library/da-validation#type-da-validation-types-validation-39644) `err`)
+* instance [`Foldable`](#class-da-foldable-foldable-25994) ([`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) `a`)
+* instance [`Foldable`](#class-da-foldable-foldable-25994) [`[]`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-x-2599)
+* instance [`Foldable`](#class-da-foldable-foldable-25994) `a`
+
+## Functions
+
+<span id="function-da-foldable-mapa-78745" />
+
+### `mapA_`
+
+`mapA_` : ([`Foldable`](#class-da-foldable-foldable-25994) `t`, [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `f`) => (`a` -> `f` `b`) -> `t` `a` -> `f` ()
+
+Map each element of a structure to an action, evaluate these
+actions from left to right, and ignore the results. For a version
+that doesn't ignore the results see 'DA.Traversable.mapA'.
+
+<span id="function-da-foldable-fora-54422" />
+
+### `forA_`
+
+`forA_` : ([`Foldable`](#class-da-foldable-foldable-25994) `t`, [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `f`) => `t` `a` -> (`a` -> `f` `b`) -> `f` ()
+
+'for\_' is 'mapA\_' with its arguments flipped. For a version
+that doesn't ignore the results see 'DA.Traversable.forA'.
+
+<span id="function-da-foldable-form-34370" />
+
+### `forM_`
+
+`forM_` : ([`Foldable`](#class-da-foldable-foldable-25994) `t`, [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `f`) => `t` `a` -> (`a` -> `f` `b`) -> `f` ()
+
+<span id="function-da-foldable-sequence-26917" />
+
+### `sequence_`
+
+`sequence_` : ([`Foldable`](#class-da-foldable-foldable-25994) `t`, [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) `m`) => `t` (`m` `a`) -> `m` ()
+
+Evaluate each action in the structure from left to right,
+and ignore the results. For a version that doesn't ignore the
+results see 'DA.Traversable.sequence'.
+
+<span id="function-da-foldable-concat-71538" />
+
+### `concat`
+
+`concat` : [`Foldable`](#class-da-foldable-foldable-25994) `t` => `t` \[`a`] -> \[`a`]
+
+The concatenation of all the elements of a container of lists.
+
+<span id="function-da-foldable-and-52214" />
+
+### `and`
+
+`and` : [`Foldable`](#class-da-foldable-foldable-25994) `t` => `t` [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`and` returns the conjunction of a container of Bools. For the result to be `True`, the container must be finite; `False`, however, results from a `False` value finitely far from the left end.
+
+<span id="function-da-foldable-or-15333" />
+
+### `or`
+
+`or` : [`Foldable`](#class-da-foldable-foldable-25994) `t` => `t` [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`or` returns the disjunction of a container of Bools. For the result to be `False`, the container must be finite; `True`, however, results from a `True` value finitely far from the left end.
+
+<span id="function-da-foldable-any-93587" />
+
+### `any`
+
+`any` : [`Foldable`](#class-da-foldable-foldable-25994) `t` => (`a` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> `t` `a` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+Determines whether any element of the structure satisfies the predicate.
+
+<span id="function-da-foldable-all-59560" />
+
+### `all`
+
+`all` : [`Foldable`](#class-da-foldable-foldable-25994) `t` => (`a` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> `t` `a` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+Determines whether all elements of the structure satisfy the predicate.
