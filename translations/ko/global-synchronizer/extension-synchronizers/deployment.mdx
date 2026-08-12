@@ -1,0 +1,154 @@
+---
+title: "Dedicated Synchronizer Deploy"
+description: "Dedicated Synchronizer를 위한 Sequencer 및 Mediator Node deployment 단계별 가이드"
+source_id: "SRC-6E1E1A7A96"
+source_path: "global-synchronizer/extension-synchronizers/deployment"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "c94100a0ea295fcdbca9640bbf24dcdbfb8af4a4fa06c427482b55d38da504dc"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import CANTON_DOCS_CN_GS_EXTENSION_SYNCHRONIZERS_DEPLOYMENT_0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-extension-synchronizers-deployment-0.mdx";
+import CANTON_DOCS_CN_GS_EXTENSION_SYNCHRONIZERS_DEPLOYMENT_1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-extension-synchronizers-deployment-1.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/extension-synchronizers/deployment.md)을 사용하세요.
+</Warning>
+
+
+Dedicated Synchronizer에는 Sequencer 및 Mediator Node를 deploy하고 database backend를 구성하며 Validator를 연결해야 합니다. 이 가이드에서는 standalone 및 hybrid deployment의 infrastructure setup을 설명합니다.
+
+## 사전 요구 사항
+
+시작 전에 다음을 준비하세요.
+
+- Helm 3가 설치된 Kubernetes cluster(1.27 이상)
+- PostgreSQL 14 이상(production에는 managed service 권장)
+- Sequencer endpoint용 TLS certificate
+- Canton release artifact(Docker image 또는 JAR)
+- [Canton Synchronizer architecture](/overview/reference/synchronizer-overview)에 대한 이해
+
+## Ordering backend
+
+Sequencer에는 message를 저장하고 ordering할 backend가 필요합니다. Canton은 두 option을 지원합니다.
+
+- **Centralized ordering** — 하나의 ordering Node가 ordering backend 역할을 합니다. 운영하기가 더 간단하며 한 operator가 infrastructure를 관리하는 Dedicated Synchronizer에 적합합니다. 현재 **Alpha** 상태입니다.
+- **Decentralized ordering(CometBFT를 사용하는 BFT)** — 여러 Sequencer Node가 BFT consensus를 실행합니다. 여러 독립 Party가 Synchronizer를 운영하며 어떤 단일 Party도 ordering을 control해서는 안 될 때 필요합니다. Global Synchronizer가 이 방식으로 운영됩니다.
+
+한 조직이 infrastructure를 control하는 대부분의 Dedicated Synchronizer deployment에는 centralized ordering backend가 더 간단합니다.
+
+## Database setup
+
+Sequencer 및 Mediator에 별도의 PostgreSQL database가 필요합니다. 각 Node는 자체 state를 독립적으로 저장합니다.
+
+전용 user가 있는 별도 database(`sequencer_db`, `mediator_db`)를 생성하세요. Production에는 automated backup, high availability, 최소 4 vCPU / 16GB memory 및 SSD-backed storage가 있는 managed PostgreSQL service(Cloud SQL, RDS, Azure Database for PostgreSQL)를 사용하세요.
+
+## Sequencer deploy
+
+### Helm chart configuration
+
+Sequencer용 values file을 생성합니다.
+
+```yaml
+# sequencer-values.yaml
+sequencer:
+  storage:
+    type: postgres
+    config:
+      dataSourceClass: "org.postgresql.ds.PGSimpleDataSource"
+      properties:
+        serverName: "<postgres-host>"
+        portNumber: 5432
+        databaseName: "sequencer_db"
+        user: "sequencer_user"
+        password: "<password>"
+  publicApi:
+    tls:
+      certChainFile: "/certs/tls.crt"
+      privateKeyFile: "/certs/tls.key"
+  parameters:
+    synchronizerName: "my-private-sync"
+```
+
+Helm으로 deploy합니다.
+
+```bash
+helm install sequencer canton/canton-sequencer \
+  -f sequencer-values.yaml \
+  --namespace canton-sync
+```
+
+## Mediator deploy
+
+Mediator용 values file을 생성합니다.
+
+```yaml
+# mediator-values.yaml
+mediator:
+  storage:
+    type: postgres
+    config:
+      dataSourceClass: "org.postgresql.ds.PGSimpleDataSource"
+      properties:
+        serverName: "<postgres-host>"
+        portNumber: 5432
+        databaseName: "mediator_db"
+        user: "mediator_user"
+        password: "<password>"
+  sequencerConnection:
+    address: "https://sequencer.canton-sync.svc.cluster.local"
+```
+
+Helm으로 deploy합니다.
+
+```bash
+helm install mediator canton/canton-mediator \
+  -f mediator-values.yaml \
+  --namespace canton-sync
+```
+
+## Synchronizer initialize
+
+두 Node가 실행되면 Synchronizer Topology를 initialize합니다. Sequencer에 연결된 Canton Console을 사용합니다.
+
+
+<CANTON_DOCS_CN_GS_EXTENSION_SYNCHRONIZERS_DEPLOYMENT_0 />
+
+
+이 작업은 Synchronizer identity를 생성하고 Synchronizer Topology에 Sequencer 및 Mediator를 등록합니다.
+
+## Validator 연결
+
+Synchronizer가 initialize되면 Validator가 연결할 수 있습니다. 각 Validator의 Canton Console에서:
+
+
+<CANTON_DOCS_CN_GS_EXTENSION_SYNCHRONIZERS_DEPLOYMENT_1 />
+
+
+또는 Validator Helm value에서 connection을 구성합니다.
+
+```yaml
+participant:
+  additionalSynchronizerConnections:
+    - alias: "my-private-sync"
+      sequencerConnection: "https://sequencer.private-sync.example.com"
+```
+
+연결 후 `participant.synchronizers.list_connected()`로 확인합니다.
+
+## Verification
+
+Test Party를 allocate하고 Dedicated Synchronizer에서 contract를 생성하여 end-to-end functionality를 확인합니다. Sequencer health endpoint를 확인하고(HTTP 200은 ready 상태) Mediator가 Synchronizer Topology에 등록되어 있는지 확인합니다.
+
+## Production 고려 사항
+
+- **모든 위치에 TLS 적용** — Validator와 Synchronizer 사이의 모든 connection에 TLS 사용
+- **Network policy** — 알려진 Validator IP로 Sequencer endpoint access 제한
+- **Monitoring** — Sequencer 및 Mediator Node가 Prometheus metric을 제공하므로 Validator와 동일한 monitoring stack 사용
+- **Backup** — Sequencer 및 Mediator database를 정기적으로 backup
+
+<Warning>
+Centralized ordering backend(PostgreSQL)는 Alpha 상태입니다. Production workload에서는 예상 Transaction volume으로 철저히 test하고 향후 Canton release의 breaking change 가능성에 대비하세요.
+</Warning>

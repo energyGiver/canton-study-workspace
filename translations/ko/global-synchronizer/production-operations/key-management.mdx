@@ -1,0 +1,651 @@
+---
+title: "Key Management"
+description: "Canton Node의 cryptographic key 목록 조회, rotation, 생성 및 제한 관리"
+source_id: "SRC-24E1004D55"
+source_path: "global-synchronizer/production-operations/key-management"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "4b1990fe9d25dd87c11e7cbb1d5c2f43f84778dc97d9940e64edc6cd1f8451c1"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/secure/keys/key_management-0.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/secure/keys/key_management-1.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement2 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/secure/keys/key_management-2.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement3 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/secure/keys/key_management-3.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement4 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/secure/keys/key_management-4.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement5 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/secure/keys/key_management-5.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement6 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/secure/keys/key_management-6.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement7 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/secure/keys/key_management-7.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement8 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/secure/keys/key_management-8.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyRestrictions0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/secure/keys/key_restrictions-0.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyRestrictions1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/secure/keys/key_restrictions-1.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyRestrictions2 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/secure/keys/key_restrictions-2.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyRestrictions3 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/secure/keys/key_restrictions-3.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyRestrictions4 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/secure/keys/key_restrictions-4.mdx";
+import ExternalCantonMainCommunityAppSrcTestResourcesDocumentationSnippetsCryptoSchemes from "/snippets/external/canton/main/community/app/src/test/resources/documentation-snippets/crypto-schemes.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonParticipantHowtosSecureKeysNamespaceKey8 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/secure/keys/namespace_key-8.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonParticipantHowtosSecureKeysNamespaceKey10 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/secure/keys/namespace_key-10.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonParticipantHowtosSecureKeysNamespaceKey11 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/secure/keys/namespace_key-11.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/key-management.md)을 사용하세요.
+</Warning>
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/keys/key_management.rst" hash="cdb61626" */}
+
+## Crypto key management
+이 페이지에서는 Canton Node의 key를 나열, rotate, 생성, deactivate 및 삭제하는 방법을 설명합니다. 또한 Node가 지원하는 cryptographic scheme을 구성하는 방법도 설명합니다.
+
+Namespace key 관리는 별도 section에서 다룹니다.
+
+### Key 목록 조회
+Node `myNode`가 vault에 저장한 public key를 나열하려면 다음 Command를 사용합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement0 />
+
+`myNode`가 실행 중이며 default 동작에 따라 startup 중 key를 생성했다면 비어 있지 않은 key sequence가 표시됩니다.
+
+마찬가지로 user는 `myNode`의 private key를 나열할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement1 />
+
+Node가 Synchronizer에서 사용하도록 authorize한 key는 다음과 같이 나열할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement2 />
+
+### Key rotate
+Canton은 단일 Command로 Node `myNode`의 key를 rotate할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement3 />
+
+Continuous operation을 보장하기 위해 이 Command는 새 key를 먼저 activate한 다음에만 이전 key를 deactivate합니다. 이 Command는 `myNode`의 **모든** key를 rotate하지만 namespace key는 rotate하지 않습니다. Node는 모든 Synchronizer에서 이전 key를 deactivate하지만 해당 key는 `myNode`의 vault에 남습니다.
+
+다음 Command는 `myNode`의 key 하나를 rotate합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement4 />
+
+<Note>
+Key rotation 사이에 backup을 수행해야 합니다.
+</Note>
+
+{/* TODO: Update the commands and docs so that one can actually pause in between and take a backup. https://github.com/DACH-NY/canton/issues/27699 */}
+
+### Key 생성 및 activate
+Canton은 모든 Node에 default parameter로 key를 생성합니다. 다른 key parameter를 사용하려면 key를 수동으로 생성하세요.
+
+`myNode`의 새 signing key를 생성하고 activate하려면 다음 Command를 실행합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement5 />
+
+마찬가지로 다음 Command는 새 encryption key를 생성하고 activate합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement6 />
+
+`SigningKeyUsage`에 관한 자세한 내용은 key restriction 페이지를 참조하세요. Key는 특정 cryptographic key format에 따라 생성됩니다. Canton에서 요구하는 key format에 관한 자세한 내용은 아래 표를 참조하세요.
+
+### Key deactivate
+모든 Synchronizer에서 key를 deactivate하려면 다음 Command를 실행합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement7 />
+
+Node는 key rotation 시 이전 key를 deactivate하므로 Node operator가 일반적으로 key를 직접 deactivate할 필요는 없습니다. 다른 scheme으로 변경할 때는 operator가 key를 명시적으로 deactivate해야 할 수 있습니다.
+
+### Key 삭제
+Key를 rotate하거나 deactivate해도 Node vault에 남습니다. Vault에서 key를 영구적으로 삭제하려면 다음 Console Command를 사용합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyManagement8 />
+
+<Warning>
+Private key를 삭제할 때는 주의해야 합니다. 해당 key가 더 이상 사용되지 않고 이전 message를 decrypt하거나 signature를 생성하는 데 필요하지 않은지 확인하세요. 따라서 key를 deactivate하고 deactivation보다 이후 timestamp까지 Node를 pruning한 후에만 key를 삭제하세요. 이는 open Network의 Sequencer에 특히 중요합니다. 예를 들어 Participant가 sequenced event를 retrieve하는 데 뒤처진 상태에서 Sequencer operator가 Sequencer signing key를 rotate하면, 뒤처진 Participant를 위해 key rotation 이전 event에 signature할 수 있도록 이전 signing key에 계속 접근할 수 있어야 합니다. 그렇지 않으면 key를 너무 일찍 삭제하여 해당 Participant에 되돌릴 수 없는 issue가 발생할 수 있습니다.
+</Warning>
+
+### Cryptographic scheme 구성
+Canton은 여러 cryptographic scheme을 지원합니다. Default로 Node는 Canton이 지원하는 모든 cryptographic scheme을 사용할 수 있도록 허용합니다.
+
+Node의 default scheme과 허용 scheme을 구성하려면 다음과 같은 snippet을 Canton configuration에 포함합니다.
+
+<ExternalCantonMainCommunityAppSrcTestResourcesDocumentationSnippetsCryptoSchemes />
+
+<Note>
+각 Synchronizer는 member가 지원해야 하는 최소 cryptographic scheme 집합을 적용합니다. Node가 이 최소 scheme 집합을 지원하지 않으면 Synchronizer에 연결할 수 없습니다.
+</Note>
+
+### Session key 비활성화
+Session key의 목적과 security implication은 [Canton의 Cryptographic key](/overview/learn/cryptographic-keys)에서 설명합니다.
+
+Session key는 performance를 개선하지만 짧은 시간일지라도 key가 memory에 저장되므로 security risk도 발생시킵니다. 그에 따른 performance 저하를 감수하고 session key를 비활성화하려면 다음 configuration을 설정합니다.
+
+**Session encryption key**를 비활성화하려면 다음을 설정합니다.
+
+```scala
+canton.participants.participant3.caching.session-encryption-key-cache.enabled = false
+```
+
+**Session signing key**를 비활성화하려면 다음을 설정합니다.
+
+```scala
+canton.participants.participant3.crypto.kms.session-signing-keys.enabled = false
+```
+
+**Session signing key**는 [external KMS(Key Management Service) provider](/global-synchronizer/production-operations/kms-operations#enable-external-key-storage-with-a-kms)와 함께 사용할 때만 사용되며 default로 비활성화된다는 점에 유의하세요.
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/keys/key_restrictions.rst" hash="a29520ac" */}
+
+## Restrict key usage
+이 페이지에서는 compromise되었을 가능성이 있는 key의 피해를 제한하는 best practice로서 Canton Node의 cryptographic key usage를 특정 목적으로 제한하는 방법을 설명합니다.
+
+### Signing key usage
+Canton은 signing key에 대해 다음 key usage를 정의합니다.
+
+- `Namespace`: Node identity를 정의하고 Topology request에 signature하는 key(namespace key management 참조)
+- `SequencerAuthentication`: Sequencer에 Network member를 authenticate하는 key
+- `Protocol`: Synchronization protocol 실행의 일부로 다양한 structure에 signature하는 key
+
+#### Signing key usage 제한
+
+새 key를 생성할 때 원하는 usage로 `usage` parameter를 설정합니다.
+
+예를 들어 `Protocol` usage로만 제한된 signing key를 생성하려면 다음 Command를 사용합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyRestrictions0 />
+
+일반적인 usage에는 `NamespaceOnly`, `SequencerAuthenticationOnly`, `ProtocolOnly`, `All`과 같은 predefined set을 사용할 수 있습니다. 그 밖에는 개별 usage를 `Set`으로 결합할 수 있지만 key가 여러 목적으로 사용되지 않도록 하기 위해 권장하지 않습니다.
+
+<Note>
+Key 생성 시 지정한 usage 집합은 고정되며 해당 key의 lifetime 동안 수정할 수 없습니다. 대신 새 key를 생성하고 activate한 다음 이전 key를 deactivate해야 합니다. Key Management Command에 관한 자세한 내용은 key management를 참조하세요.
+</Note>
+
+External key storage mode에서 Canton key를 처리하기 위해 Key Management Service(KMS)를 사용하며 KMS에 이미 저장된 수동 생성 key를 사용하려면 Canton에 key를 등록할 때 원하는 usage로 `usage` parameter를 설정합니다.
+
+```scala
+node.keys.secret.register_kms_signing_key(
+  kmsKeyId,
+  usage = SigningKeyUsage.ProtocolOnly,
+  name = s"${node.name}-signing-new",
+)
+```
+
+반환된 key는 다른 Key Management Command에서 사용할 수 있습니다.
+
+#### 기존 signing key usage 확인
+Signing key에 assign된 usage를 확인하려면 다음 Command를 사용합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyRestrictions1 />
+
+`filterFingerprint` parameter를 생략하면 기존 key가 모두 반환됩니다.
+
+#### 특정 usage가 있는 기존 key 확인
+특정 usage가 assign된 모든 signing key를 찾으려면 다음 Command를 사용합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyRestrictions2 />
+
+`filterUsage`에 지정한 usage 중 하나 이상이 assign된 모든 key가 반환됩니다.
+
+### Namespace key delegation restriction
+Identity management 페이지의 설명과 같이 Canton은 Topology Transaction으로 identity를 관리하며, 이 Transaction은 `Namespace` usage가 있는 key로 signature됩니다. Namespace key management에서는 Topology Transaction에 signature할 intermediate key를 생성하여 root namespace key의 exposure를 제한할 수 있음을 보여 줍니다. Fine-grained delegation restriction을 사용하면 이 intermediate key가 signature할 수 있는 Topology Transaction 유형을 더 제한할 수 있습니다.
+
+Canton은 namespace key에 대해 다음 restriction을 정의합니다.
+
+``` none
+// the key can sign all currently known mappings and all mappings that will be added in future releases
+message CanSignAllMappings {}
+// the key can sign all currently known mappings and all mappings that will be added in future releases, except for
+// namespace delegations
+message CanSignAllButNamespaceDelegations {}
+// the key can only sign the explicitly specified mappings
+message CanSignSpecificMappings {
+  repeated Enums.TopologyMappingCode mappings = 1;
+}
+```
+
+#### Key가 signature할 수 있는 mapping 유형 제한
+먼저 최소한 `Namespace` usage가 있는 새 key를 생성한 다음 `delegationRestriction` parameter에 원하는 restriction을 지정하여 해당 key에 namespace signing privilege를 delegate해야 합니다.
+
+예를 들어 다음에서 첫 번째 Command는 root namespace의 intermediate key를 생성하고, 두 번째 Command는 해당 key에 signing privilege를 delegate하여 namespace delegation 자체를 제외한 모든 Topology mapping 유형에 signature할 수 있도록 합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyRestrictions3 />
+
+모든 Topology mapping과 마찬가지로 namespace key의 delegation restriction도 update할 수 있습니다. 이를 위해 update된 delegation restriction으로 새 `propose_delegation` Command를 실행합니다.
+
+<Warning>
+Delegation이 제한된 intermediate namespace key를 정의하는 경우 모든 authorization을 포괄하고 여러 namespace key를 결합하여 모든 Topology Transaction을 authorize할 수 있는지 확인해야 합니다. 그렇지 않으면 일부 operation procedure가 실패할 수 있습니다. 예를 들어 `OwnerToKey` mapping을 authorize할 수 있는 namespace key가 하나 이상 없으면 key rotation이 실패합니다.
+
+이 경우 operation은 "Could not find an appropriate signing key to issue the topology transaction" error message와 `TOPOLOGY_NO_APPROPRIATE_SIGNING_KEY_IN_STORE` code로 실패합니다.
+</Warning>
+
+#### 기존 namespace key의 restriction 확인
+Namespace key에 정의된 signing restriction을 확인하려면 다음 Command를 사용합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosSecureKeysKeyRestrictions4 />
+
+`filterTargetKey` parameter를 생략하면 기존 namespace delegation이 모두 반환됩니다.
+
+{/* COPIED_END */}
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/keys/namespace_key.rst" hash="196f8887" */}
+
+이 문서는 작성 중입니다. 이 feature는 문서에 설명된 procedure에 따라 향후 개발 및 release될 예정입니다.
+
+## Namespace Key Management
+### Online Root Namespace Key
+Default로 Canton Node는 Node initialization 중 root namespace key를 생성합니다. Operator는 Topology Transaction을 authorize하기 위해 Node에 intermediate key를 수동으로 생성할 수 있습니다. Intermediate key만 변경할 수 있으므로 root key를 안전하게 보관하는 것이 중요합니다.
+
+Canton Node가 KMS system을 사용하도록 구성된 경우 KMS Administration control로 Node의 root key access를 제거하여 root key를 관리 차원에서 격리할 수 있습니다. Root key는 새 intermediate key를 authorize하거나 기존 authorization을 revoke할 때만 필요하므로 이러한 operation을 수행할 때만 Node가 key에 선택적으로 접근하도록 허용하면 충분합니다.
+
+Root key만 격리할 수 있습니다. 다른 모든 key는 Canton이 올바르게 작동하는 데 필수입니다. 선택적으로 intermediate key도 격리할 수 있지만 DAR upload나 Party 추가 같은 administrative operation 중 필요에 따라 활성화하고 비활성화해야 합니다.
+
+### Offline Root Namespace Key
+Root namespace key를 더 안전하게 관리하는 방법은 offline root namespace key를 사용하는 것입니다. 이 경우 root namespace key는 Canton Node에서 접근할 수 없는 안전한 위치, 가능하면 air-gapped location에 저장됩니다.
+
+Root key 저장 위치는 조직의 security requirement에 따라 달라집니다. 이 guide의 나머지 부분에서는 intermediate key가 있는 Node의 online site와 root key가 있는 offline site, 두 site가 있다고 가정합니다. Offline root key는 Node intermediate key에 대한 delegation에 signature하는 데 사용되고, intermediate key는 Topology Transaction을 authorize하는 데 사용됩니다.
+
+Offline root key procedure는 Canton `scripts` directory의 utility script 집합(`scripts/offline-root-key`)에서 지원합니다.
+
+#### Channel for Key Exchange
+Online site와 offline site 사이에서 public intermediate key와 signed intermediate namespace delegation을 교환할 channel 또는 방법이 있어야 합니다. Secret information은 교환되지 않으므로 confidentiality 측면에서 trusted할 필요는 없지만 authenticity 측면에서는 trusted해야 합니다. 즉 transport 중 data가 tamper되지 않도록 보장해야 하지만 data 자체를 encrypt할 필요는 없습니다.
+
+Site가 air-gapped 상태인지 Network로 연결되어 있는지에 따라 여러 방법을 사용할 수 있습니다. 예로 secure file transfer, QR code, physical storage medium이 있습니다.
+
+이러한 trusted channel이 있다고 가정하면 offline root namespace key를 설정하는 데 다음 단계가 필요합니다.
+
+#### 1. External Root Key를 사용하도록 Node 구성
+첫 startup 전에 Canton Node가 자동으로 initialize되지 않도록 구성해야 합니다. 다음을 설정합니다.
+
+``` none
+participant1.init.identity.type = manual
+```
+
+이 configuration으로 Node를 시작할 수 있습니다. Node는 Admin API를 시작하지만 startup process를 중지하고 필요한 Topology Transaction과 함께 Node identity가 initialize되기를 기다립니다.
+
+#### 2. Node Public Key export
+Node remote Console에 접근할 수 있다고 가정하고 intermediate key로 사용할 새 signing key를 생성합니다.
+
+``` none
+@ val key = participant1.keys.secret.generate_signing_key(name = "NamespaceDelegation", usage = com.digitalasset.canton.crypto.SigningKeyUsage.NamespaceOnly)
+    key : SigningPublicKey = SigningPublicKey(
+      id = 122080b595e9...,
+      format = DER-encoded X.509 SubjectPublicKeyInfo,
+      keySpec = EC-Curve25519,
+      usage = namespace
+    )
+```
+
+``` none
+@ val intermediateKeyPath = better.files.File.newTemporaryFile(prefix = "intermediate-key.pub").pathAsString
+    intermediateKeyPath : String = "/tmp/intermediate-key.pub3520580670384386470"
+```
+
+``` none
+@ participant1.keys.public.download_to(key.id, intermediateKeyPath)
+```
+
+그러면 intermediate key의 public key가 담긴 file이 생성됩니다.
+
+지원되는 key specification은 다음 protobuf definition에 나열되어 있습니다.
+
+``` none
+enum SigningKeySpec {
+  SIGNING_KEY_SPEC_UNSPECIFIED = 0;
+
+  // Elliptic Curve Key from Curve25519
+  // as defined in http://ed25519.cr.yp.to/
+  SIGNING_KEY_SPEC_EC_CURVE25519 = 1;
+
+  // Elliptic Curve Key from the NIST P-256 curve (aka secp256r1)
+  // as defined in https://doi.org/10.6028/NIST.FIPS.186-4
+  SIGNING_KEY_SPEC_EC_P256 = 2;
+
+  // Elliptic Curve Key from the NIST P-384 curve (aka secp384r1)
+  // as defined in https://doi.org/10.6028/NIST.FIPS.186-4
+  SIGNING_KEY_SPEC_EC_P384 = 3;
+
+  // Elliptic Curve Key from SECG P256k1 curve (aka secp256k1)
+  // commonly used in bitcoin and ethereum
+  // as defined in https://www.secg.org/sec2-v2.pdf
+  SIGNING_KEY_SPEC_EC_SECP256K1 = 4;
+}
+```
+
+Participant Node가 연결하려는 Synchronizer는 지원되는 key specification 목록을 더 제한할 수 있습니다. Synchronizer에서 이 정보를 직접 얻으려면 Synchronizer Public API에서 다음 Command를 실행합니다.
+
+```
+grpcurl -d '{}' <sequencer_endpoint> com.digitalasset.canton.sequencer.api.v30.SequencerConnectService/GetSynchronizerParameters
+```
+
+Console에 접근할 수 없으면 bootstrap script 또는 Admin API를 대상으로 하는 `grpccurl`을 사용해 Command를 invoke할 수 있습니다.
+
+#### 3. Node Public Key를 Offline Site와 공유
+다음으로 위에서 설명한 대로 intermediate public key를 offline site로 transport해야 합니다. Transport 중 public key가 tamper되지 않도록 보장하세요.
+
+#### 4. Root Key 및 Root Certificate 생성
+##### OpenSSL 사용
+Secure site에서 필요한 script를 사용할 수 있는지 확인하세요. 이 script는 Canton release package의 `scripts/offline-root-key`에 포함되어 있습니다. `openssl`로 key를 생성하고 certificate에 signature할 때 이 script를 사용하는 예는 `examples/10-offline-root-namespace-init`에서 확인할 수 있습니다. 다음 Command 집합을 `examples/10-offline-root-namespace-init` directory에서 실행합니다.
+
+먼저 아래 snippet에서 사용하는 variable을 initialize합니다.
+
+``` none
+# Points to the location of the offline root key scripts under the scripts/offline-root-key directory in the release artifact
+SCRIPTS_ROOT="$(dirname "$0")/../../scripts/offline-root-key"
+PRIVATE_KEY="$OUTPUT_DIR/root_private_key.der"
+PUBLIC_KEY="$OUTPUT_DIR/root_public_key.der"
+ROOT_NAMESPACE_PREFIX="$OUTPUT_DIR/root_namespace"
+INTERMEDIATE_NAMESPACE_PREFIX="$OUTPUT_DIR/intermediate_namespace"
+```
+
+```bash
+mkdir -p tmp/certs
+OUTPUT_DIR="tmp/certs"
+CANTON_NAMESPACE_DELEGATION_PUB_KEY=<Path to the intermediate key downloaded from Canton. ``intermediateKeyPath`` in this example>
+```
+
+그리고 certificate 생성에 필요한 protobuf definition이 포함된 protobuf image path를 설정합니다.
+
+``` none
+CURRENT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null && pwd)
+export BUF_PROTO_IMAGE="$CURRENT_DIR/../../scripts/offline-root-key/root_namespace_buf_image.bin"
+source "$CURRENT_DIR/../../scripts/offline-root-key/utils.sh"
+```
+
+그런 다음 secure environment에서 root key를 생성하고 public key를 extract합니다.
+
+``` none
+openssl ecparam -name prime256v1 -genkey -noout -outform DER -out "$PRIVATE_KEY"
+openssl ec -inform der -in "$PRIVATE_KEY" -pubout -outform der -out "$PUBLIC_KEY" 2> /dev/null
+```
+
+그런 다음 self-signed root namespace delegation을 생성합니다. 이는 해당 namespace의 trust anchor로 사용되는 self-signed certificate입니다.
+
+``` none
+"$SCRIPTS_ROOT/prepare-certs.sh" --root-delegation --root-pub-key "$PUBLIC_KEY" --target-pub-key "$PUBLIC_KEY" --output "$ROOT_NAMESPACE_PREFIX"
+```
+
+Root public key는 `x509 SPKI DER` format이어야 합니다. Canton이 지원하는 key format에 관한 자세한 내용은 아래 표를 참조하세요. 이 작업은 `root-delegation.prep`와 `root-delegation.hash` 두 file을 생성합니다. `.prep` file에는 byte로 serialize된 unsigned Topology Transaction이 들어 있습니다. Signature 대상을 확실히 확인하려면 `prepare-certs.sh` script가 Topology Transaction을 생성하고 hash를 계산하는 방식을 검사하세요. 다음으로 hash에 signature해야 합니다.
+
+OpenSSL을 사용하는 경우 다음 Command로 hash에 signature할 수 있습니다.
+
+``` none
+openssl pkeyutl -rawin -inkey "$PRIVATE_KEY" -keyform DER -sign < "$ROOT_NAMESPACE_PREFIX.hash" > "$ROOT_NAMESPACE_PREFIX.signature"
+```
+
+마지막으로 signature와 prepared Transaction을 assemble합니다. 지원되는 signature format에 관한 자세한 내용은 아래 표를 참조하세요.
+
+``` none
+"$SCRIPTS_ROOT/assemble-cert.sh" --prepared-transaction "$ROOT_NAMESPACE_PREFIX.prep" --signature "$ROOT_NAMESPACE_PREFIX.signature" --signature-algorithm ecdsa256 --output "$ROOT_NAMESPACE_PREFIX.cert"
+```
+
+그러면 signed Topology Transaction이 생성됩니다.
+
+##### GCP KMS 사용
+GCP KMS를 사용하는 경우 다음 Command와 함께 KMS CLI([https://cloud.google.com/kms/docs/create-validate-signatures](https://cloud.google.com/kms/docs/create-validate-signatures))를 사용하여 key를 생성할 수 있습니다.
+
+```
+gcloud kms keyrings create key-ring --location location (APPROXIMATE)
+```
+
+그리고 다음 Command로 signature를 생성할 수 있습니다.
+
+```
+gcloud kms asymmetric-sign \
+    --version key-version \
+    --key <root-key> \
+    --keyring key-ring \
+    --location location \
+    --digest-algorithm digest-algorithm \
+    --input-file root-delegation.prep \
+    --signature-file root-delegation.signature
+```
+
+#### 5. Intermediate Certificate 생성
+Root key와 self-signed root delegation을 사용할 수 있으면 intermediate certificate를 생성할 수 있습니다. 단계는 root certificate와 매우 비슷하지만 target이 intermediate key의 public key이며 `--root-delegation` 대신 `--intermediate-delegation` flag를 사용합니다.
+
+``` none
+"$SCRIPTS_ROOT/prepare-certs.sh" --intermediate-delegation --root-pub-key "$PUBLIC_KEY" --canton-target-pub-key "$CANTON_NAMESPACE_DELEGATION_PUB_KEY" --output "$INTERMEDIATE_NAMESPACE_PREFIX"
+```
+
+생성되어 stdout에 출력된 Topology Transaction이 올바르고 정확한 key를 참조하는지 확인합니다. 확인 후 생성된 hash에 signature해야 합니다.
+
+``` none
+openssl pkeyutl -rawin -inkey "$PRIVATE_KEY" -keyform DER -sign < "$INTERMEDIATE_NAMESPACE_PREFIX.hash" > "$INTERMEDIATE_NAMESPACE_PREFIX.signature"
+```
+
+마찬가지로 signature와 prepared Transaction을 assemble할 수 있습니다.
+
+``` none
+"$SCRIPTS_ROOT/assemble-cert.sh" --prepared-transaction "$INTERMEDIATE_NAMESPACE_PREFIX.prep" --signature "$INTERMEDIATE_NAMESPACE_PREFIX.signature" --signature-algorithm ecdsa256 --output "$INTERMEDIATE_NAMESPACE_PREFIX.cert"
+```
+
+#### 7. Certificate를 Online Site로 복사
+생성된 certificate를 online site로 transfer해야 합니다. Root private key는 절대 transfer하지 마세요. Public key는 certificate에 포함되어 있으므로 별도로 transport할 필요가 없습니다. Root delegation과 intermediate delegation certificate를 모두 online site로 transfer해야 합니다.
+
+#### 8. Certificate를 Node로 import
+Target site에서 다음 Console Command를 사용하여 대기 중인 Node에 certificate를 import합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonParticipantHowtosSecureKeysNamespaceKey8 />
+
+또는 `grpccurl`을 통해 Admin API를 직접 사용하여 Node를 initialize할 수 있습니다.
+
+### 사전 생성 Certificate
+Certificate를 미리 생성한 경우 Node configuration file을 통해 직접 제공할 수도 있습니다. 이 경우 위에서 설명한 Node의 `generate_signing_key` Command로 intermediate key를 생성하는 대신 KMS에서 key를 생성하고 public key material을 download해야 합니다. 동일한 script를 사용해 certificate를 생성할 수 있지만 intermediate public key는 Canton format이 아니라 DER format이므로 `--target-pub-key`로 설정해야 합니다. Certificate를 사용할 수 있게 되면 다음을 실행하여 intermediate KMS key를 등록해야 합니다.
+
+```scala
+val intermediateKey = node.keys.secret
+  .register_kms_signing_key(
+    intermediateNsKmsKeyId,
+    SigningKeyUsage.NamespaceOnly,
+    name = s"${node.name}-${SigningKeyUsage.Namespace.identifier}",
+  )
+// user-manual-entry-begin: ManualRegisterKmsNamespaceKey
+node.crypto.cryptoPrivateStore
+  .existsPrivateKey(intermediateKey.id, Signing)
+  .valueOrFail("intermediate key not registered")
+  .futureValueUS
+
+// user-manual-entry-begin: ManualRegisterKmsKeys
+
+// Register the KMS signing key used to define the node identity.
+val namespaceKey = node.keys.secret
+  .register_kms_signing_key(
+    namespaceKmsKeyId,
+    SigningKeyUsage.NamespaceOnly,
+    name = s"${node.name}-${SigningKeyUsage.Namespace.identifier}",
+  )
+
+// Register the KMS signing key used to authenticate the node toward the Sequencer.
+val sequencerAuthKey = node.keys.secret
+  .register_kms_signing_key(
+    sequencerAuthKmsKeyId,
+    SigningKeyUsage.SequencerAuthenticationOnly,
+    name = s"${node.name}-${SigningKeyUsage.SequencerAuthentication.identifier}",
+  )
+
+// Register the signing key used to sign protocol messages.
+val signingKey = node.keys.secret
+  .register_kms_signing_key(
+    signingKmsKeyId,
+    SigningKeyUsage.ProtocolOnly,
+    name = s"${node.name}-${SigningKeyUsage.Protocol.identifier}",
+  )
+
+// Register the encryption key.
+val encryptionKey = node.keys.secret
+  .register_kms_encryption_key(encryptionKmsKeyId, name = node.name + "-encryption")
+
+// user-manual-entry-end: ManualRegisterKmsKeys
+
+(namespaceKey, sequencerAuthKey, signingKey, encryptionKey)
+} else {
+// architecture-handbook-entry-begin: ManualInitKeys
+
+// Create a signing key used to define the node identity.
+val namespaceKey =
+  node.keys.secret
+    .generate_signing_key(
+      name = node.name + s"-${SigningKeyUsage.Namespace.identifier}",
+      SigningKeyUsage.NamespaceOnly,
+    )
+
+// Create a signing key used to authenticate the node toward the Sequencer.
+val sequencerAuthKey =
+  node.keys.secret.generate_signing_key(
+    name = node.name + s"-${SigningKeyUsage.SequencerAuthentication.identifier}",
+    SigningKeyUsage.SequencerAuthenticationOnly,
+  )
+
+// Create a signing key used to sign protocol messages.
+val signingKey =
+  node.keys.secret
+    .generate_signing_key(
+      name = node.name + s"-${SigningKeyUsage.Protocol.identifier}",
+      SigningKeyUsage.ProtocolOnly,
+    )
+
+// Create the encryption key.
+val encryptionKey =
+  node.keys.secret.generate_encryption_key(name = node.name + "-encryption")
+
+// architecture-handbook-entry-end: ManualInitKeys
+
+(namespaceKey, sequencerAuthKey, signingKey, encryptionKey)
+}
+
+// architecture-handbook-entry-begin: ManualInitNode
+
+// Use the fingerprint of this key for the node identity.
+val namespace = Namespace(namespaceKey.id)
+node.topology.init_id_from_uid(
+UniqueIdentifier.tryCreate("manual-" + node.name, namespace)
+)
+
+// Wait until the node is ready to receive the node identity.
+node.health.wait_for_ready_for_node_topology()
+
+// Create the self-signed root certificate.
+node.topology.namespace_delegations.propose_delegation(
+namespace,
+namespaceKey,
+CanSignAllMappings,
+)
+
+// Assign the new keys to this node.
+node.topology.owner_to_key_mappings.propose(
+member = node.id.member,
+keys = NonEmpty(Seq, sequencerAuthKey, signingKey, encryptionKey),
+signedBy = Seq(namespaceKey.fingerprint, sequencerAuthKey.fingerprint, signingKey.fingerprint),
+)
+
+// architecture-handbook-entry-end: ManualInitNode
+
+}
+
+}
+```
+
+그런 다음 certificate를 Node로 import합니다.
+
+이 configuration directive는 Node가 initialize된 이후에는 효력이 없으므로 제거할 수 있습니다.
+
+### Delegation Restriction
+Delegation이 authorize할 수 있는 Topology Transaction 유형을 더 제한할 수 있습니다. `prepare-certs` script는 이를 위한 `--delegation-restrictions` flag를 제공합니다.
+
+``` none
+"$SCRIPTS_ROOT/prepare-certs.sh" --delegation-restrictions PARTY_TO_PARTICIPANT,PARTY_TO_KEY_MAPPING --root-pub-key "$PUBLIC_KEY" --canton-target-pub-key "$CANTON_RESTRICTED_PUB_KEY" --output "$RESTRICTED_KEY_NAMESPACE_PREFIX"
+```
+
+그런 다음 이전과 같이 delegation에 signature하고 assemble할 수 있습니다. Signed certificate를 사용할 수 있게 되면 Node에 load합니다.
+
+``` none
+participant1.topology.transactions.load_single_from_file(s"$opensslKeysDirectory/restricted_key_namespace.cert", TopologyStoreId.Authorized)
+```
+
+### Intermediate Key rotate
+#### 새 Intermediate Key 생성
+다른 intermediate key를 생성하려면 이전과 같은 단계를 따릅니다. Online site에서 key를 생성하고 export합니다.
+
+동일한 단계에 따라 새 intermediate key의 새 intermediate delegation을 생성합니다.
+
+- Secure site로 복사합니다.
+- Intermediate delegation을 생성합니다. Self-signed root delegation은 이미 생성되었으므로 건너뜁니다.
+- Certificate를 Node site로 복사합니다.
+
+그런 다음 여기 나온 방법으로 새 intermediate delegation을 Node로 import할 수 있습니다.
+
+새 delegation을 import한 후 이전 intermediate key를 revoke할 수 있습니다.
+
+#### Intermediate Key revoke
+Intermediate key를 revoke하려면 root key를 사용하여 revocation Transaction에 signature해야 합니다. Revocation Transaction은 intermediate delegation과 같은 방식으로 준비합니다. 생성된 hash에도 signature한 후 certificate로 assemble해야 합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonParticipantHowtosSecureKeysNamespaceKey10 />
+
+Node site에서 다음을 사용하여 revocation certificate를 import할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonParticipantHowtosSecureKeysNamespaceKey11 />
+
+#### Root Namespace Key rotate
+Root namespace key는 rotate할 수 없습니다. Namespace 사용을 중단해야 한다면 새 namespace를 생성하고 해당 namespace에 새 Party와 Participant를 만든 다음 Contract를 새 Party로 transfer해야 합니다.
+
+{/* COPIED_END */}
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/optimize/session_keys.rst" hash="23551d35" */}
+
+## Configure session keys
+Canton은 protocol 실행 중 비용이 큰 cryptographic operation을 줄여 performance를 개선하기 위해 session key를 사용합니다. 두 가지 유형이 있습니다. Session encryption key는 asymmetric encryption 횟수를 줄이고, session signing key는 KMS와 같은 external signer의 잦은 call을 방지하는 데 도움이 됩니다.
+
+근거와 security consideration에 관한 자세한 내용은 [Session Key](/overview/learn/cryptographic-keys#kms-with-session-signing-keys)를 참조하세요.
+
+현재 **session encryption key는 default로 활성화**되어 있지만 KMS와 직접 연결되는 **session signing key는 default로 비활성화**되어 있습니다. 그러나 external KMS를 사용하여 private key를 저장하는 경우 [configuration parameter를 통해](/global-synchronizer/production-operations/key-management#enable-session-signing-keys-and-increase-lifetime) session signing key를 활성화할 수 있습니다.
+
+<Warning>
+**Important:**
+    Session key lifetime을 늘리면 반복적인 key negotiation 또는 remote signing/encryption 필요성이 줄어들지만, key가 memory에 저장되는 기간도 길어져 compromise risk가 커집니다.
+</Warning>
+
+### Session **encryption** key lifetime 연장
+Configuration의 `expire-after-timeout` 값을 조정하여 session encryption key가 active 상태로 유지되는 기간을 제어할 수 있습니다. Session encryption key lifetime을 global하게 늘리려면 `sender-cache`와 `receiver-cache`의 `expire-after-timeout`을 모두 늘립니다.
+
+```scala
+canton.participants.participant1 {
+    caching {
+        session-encryption-key-cache {
+            # these are the default values
+            enabled = true
+            sender-cache {
+                maximum-size = 10000
+                expire-after-timeout = 10s
+            }
+            receiver-cache {
+                maximum-size = 10000
+                expire-after-timeout = 10s
+            }
+        }
+    }
+}
+```
+
+### Session **signing** key 활성화 및 lifetime 연장
+[External KMS(Key Management Service) provider](/global-synchronizer/production-operations/kms-operations#enable-external-key-storage-with-a-kms)를 사용할 때 ``enabled = true``를 설정하고 ``key-validity-duration``과 ``key-eviction-period``를 조정하여 session signing key를 활성화하고 active 상태 유지 기간을 제어할 수 있습니다. ``key-eviction-period``는 항상 ``key-validity-duration``보다 길어야 하며, [dynamic Synchronizer parameter](/global-synchronizer/extension-synchronizers/synchronizer-operations#manage-dynamic-synchronizer-parameters)에 구성된 ``defaultMaxSequencingTimeOffset``과 ``confirmation_response_timeout`` 및 ``mediator_reaction_timeout``의 합보다 짧아서는 안 됩니다. 각 configurable parameter와 수정 시 고려 요소에 관한 자세한 내용은 session signing key의 [Configurable Parameter](/overview/learn/cryptographic-keys#configurable-parameters) section을 참조하세요.
+
+```scala
+canton.participants.participant1.crypto.kms {
+  session-signing-keys {
+    enabled = true
+    key-validity-duration = 5m
+    tolerance-shift-duration = 2m
+    cut-off-duration = 1m,
+    key-eviction-period = 10m,
+    signing-algorithm-spec = ed-25519,
+    signing-key-spec = ec-curve-25519,
+  }
+}
+```
+
+{/* COPIED_END */}
+
+{/* COPIED_END */}

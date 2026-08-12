@@ -1,0 +1,105 @@
+---
+title: "0.13.0"
+description: "Wallet SDK 0.13.0 release note"
+source_id: "SRC-889BAE6DCB"
+source_path: "integrations/release-notes/wallet-sdk-releases/0-13-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "15caeeacde75462ced3582be2ac612c5678e339114b76d9fc75f4fcdb00aa3ff"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-sdk-releases/0-13-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-sdk" format="split-release" version="0.13.0" source="158b3ff4c316ba7a5d6c89a6099a5303b76d4f77" */}
+
+# 0.13.0
+
+**2025년 10월 22일 release**
+
+   release 0.13.0 및 0.13.1에는 손상된 dependency가 있으므로 0.14.0을 사용하세요.
+
+- **중요: await completion signature가 변경되었습니다**
+
+```javascript
+    // old version
+    async waitForCompletion(
+        ledgerEnd: number | Types['GetLedgerEndResponse'],
+        timeoutMs: number,
+        commandId?: string,
+        submissionId?: string
+    ): Promise<Types['Completion']['value']> {
+
+    // new version
+    async waitForCompletion(
+        ledgerEnd: number | Types['GetLedgerEndResponse'],
+        timeoutMs: number,
+        commandIdOrSubmissionId: string
+    ): Promise<Types['Completion']['value']> {
+```
+
+*이 변경은 method를 더 단순하게 만들기 위한 것입니다. commandId와 SubmissionId가 undefined이면 기존에도 error를 throw했습니다.*
+
+- retry logic 및 stress testing
+
+*MainNet을 모방한 moderate 및 heavy load에서 SDK 작동을 상당히 test하고 verify했습니다. 그 과정에서 처리할 수 있는 일부 retryable error가 드러났습니다.*
+
+- multi-hosted Party fix 및 synchronized handling
+
+*multi-hosted Party의 내부 동작이 변경되었습니다. 이전에는 Party를 asynchronously 반환했습니다. 사용 가능한 모든 ledger에서 allocation을 호출하도록 해결하여 method가 Party를 반환하는 시점에 사용할 준비가 되었음을 보장합니다.*
+
+- deposit용 featured app marker의 proxy delegation
+
+*deposit에 proxy delegation support가 추가되어 incoming deposit에 featured app marker flag를 연결할 수 있습니다. Validator에서 DAR `splice-util-featured-app-proxies-1.1.0.dar`을 실행해야 합니다.*
+
+```javascript
+const delegateCommand = await sdk.userLedger?.createDelegateProxyCommand(
+    exchangeParty!,
+    treasuryParty!.partyId
+)
+
+const delegationContractResult =
+    await sdk.userLedger?.submitCommand(delegateCommand)
+
+const [acceptCommand, disclosedContracts4] =
+    await sdk.tokenStandard?.exerciseTransferInstructionChoiceWithDelegate(
+        transferCid, //incoming transfer
+        'Accept',
+        proxyCid!,
+        featuredAppRights?.contract_id!,
+        [
+            {
+                beneficiary: exchangeParty!,
+                weight: 1.0,
+            },
+        ],
+        featuredAppRights!
+    )!
+
+//prepare, sign and execute the above command
+```
+
+- 수동 preapproval renewal 및 cancellation
+
+*이제 SDK를 사용해 preapproval을 수동으로 renew하거나 cancel할 수 있습니다.*
+
+```javascript
+//create renew command to be prepared, signed and executed
+const [renewCmd, disclosedContractsRenew] =
+    await sdk.tokenStandard!.createRenewTransferPreapproval(
+        preapproval.contractId,
+        preapproval.templateId,
+        validatorOperatorParty!
+    )
+
+//create cancel command to be prepared, signed and executed
+const [cancelCmd, disclosedContractsCancel] =
+    await sdk.tokenStandard!.createCancelTransferPreapproval(
+        preapprovalAfterRenewal.contractId,
+        preapprovalAfterRenewal.templateId,
+        receiver!.partyId
+    )
+```

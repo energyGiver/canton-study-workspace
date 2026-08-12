@@ -1,0 +1,428 @@
+---
+title: "Running the Demo"
+description: "Canton Network QuickStart demo를 시작하고 licensing workflow 진행"
+source_id: "SRC-691AD4055E"
+source_path: "appdev/quickstart/running-the-demo"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "a00d3891b6b54f9b4bcbf6d26ec693ceb1e1728b8f416d1da7d1bb451f3a1e85"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/quickstart/running-the-demo.md)을 사용하세요.
+</Warning>
+
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateExploreTheDemoBash104 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-explore-the-demo-bash-104.mdx";
+
+{/* COPIED_START source="docs-website:docs/replicated/quickstart/3.4/sdk/quickstart/operate/explore-the-demo.rst" hash="e3cafd0e" */}
+
+# Explore the Canton Network Application Quickstart demo
+
+## Business case
+
+Canton Network(CN) Quickstart는 CN application의 build, test, deploy를 위한 development effort를 지원하는 scaffolding입니다. 모든 CN application이 해결해야 하는 infrastructure problem을 해결합니다. 여러분과 팀이 build system, deployment configuration, testing infrastructure가 아니라 application 구축에 집중할 수 있도록 CN Quickstart Application을 사용하세요.
+
+### Core business operations
+
+Quickstart는 Canton development pattern을 보여 주는 sample licensing app을 제공합니다. App에서 Provider는 service에 대한 time-based access를 판매합니다. User는 Canton Coin(CC)으로 지급하고 Canton Wallet을 통해 payment를 관리합니다.
+
+App에는 네 Party가 관여합니다.
+
+- License를 판매하는 **Application Provider**
+- License를 구매하는 **Application User**
+- [CC](https://www.canton.network/blog/canton-coin-a-canton-network-native-payment-application)를 사용하는 payment 처리 기반 **Amulet** token system
+- Amulet payment system을 운영하는 Decentralized Synchronizer Operations Party인 **DSO Party**. CN에서는 Super Validator입니다.
+
+Application은 다음 process로 License를 issue합니다.
+
+#### Issuing a license
+
+Provider가 onboard된 User를 위한 새 License를 생성합니다. License는 expired 상태로 시작하며 사용 전에 renew해야 합니다.
+
+#### Requesting a license renewal
+
+Provider가 renewal request를 생성하여 User를 위한 payment request를 만듭니다. 일치하는 CC payment request가 Ledger에 생성됩니다.
+
+#### Paying for a license renewal
+
+User가 Canton Wallet을 통해 payment를 approve하면 accepted payment Contract가 Ledger에 생성됩니다.
+
+#### Renewing the license
+
+Provider가 accepted payment를 처리하고 License를 새 expiration date로 update합니다.
+
+## Overview
+
+이 section에서는 CN App Quickstart 안의 Canton Network(CN) business operation에 익숙해지도록 돕습니다. App Quickstart application은 팀이 business need에 맞게 확장하도록 만들어졌습니다. App Quickstart에 익숙해지면 technology choice와 application design을 검토하여 필요한 변경을 결정하세요. Technology와 design decision은 궁극적으로 여러분의 몫입니다.
+
+오류를 발견하면 Canton Network 담당자에게 문의하세요.
+
+## Prerequisites
+
+Demo를 시작하기 전에 [CN App Quickstart](/appdev/quickstart/prerequisites)를 설치하세요.
+
+## Walkthrough
+
+CN App Quickstart는 business need에 따라 authorization 사용 여부를 선택할 수 있습니다. `quickstart` subdirectory에서 `make setup` Command로 authorization을 toggle합니다. `make setup`은 Observability와 OAUTH2 enable 여부, Party hint를 묻습니다. 이 demo에서는 `TEST MODE`를 disable하고 default Party hint를 사용하며 OAUTH2가 enable된 경우와 disable된 경우를 모두 보여 줍니다. OAUTH2로 인해 차이가 있을 때 두 path를 차례로 표시합니다. 자신의 path를 따르고 다른 path는 무시하면 됩니다. Observability를 enable할 수 있지만 이 demo에는 필요하지 않습니다.
+
+**Choose your adventure:**
+
+OAUTH2 **없이** `make setup`:
+
+![Make setup no auth](/images/docs_website/make-setup-noauth.png)
+
+OAUTH2 **사용** `make setup`:
+
+![Make setup with auth](/images/docs_website/make-setup-with-oauth.png)
+
+### Build Quickstart
+
+<iframe
+  width="560"
+  height="315"
+  src="https://www.youtube.com/embed/xsuMDLED6gI"
+  title="Build Quickstart"
+  frameBorder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowFullScreen
+/>
+
+App Quickstart를 build하고 시작합니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateExploreTheDemoBash104 />
+
+Incognito browser를 열고 다음으로 이동합니다.
+
+    app-provider.localhost:3000
+
+다른 방법으로 terminal의 quickstart/에서 다음을 실행합니다.
+
+```bash
+make open-app-ui
+```
+
+<Note>
+Safari user는 `/etc/hosts`에서 `app-provider` subdomain을 manually mapping해야 할 수 있습니다. Terminal Command `sudo nano /etc/hosts`를 사용하여 다음을 추가합니다.
+
+`127.0.0.1       app-provider.localhost`
+
+이 설정은 system이 `app-provider.localhost`를 local machine으로 resolve하도록 합니다. File을 저장하고 닫은 뒤 Safari를 restart합니다.
+</Note>
+
+### Login
+
+**OAUTH2 disabled**
+
+OAUTH2가 **disabled**이면 homepage에 간단한 login field가 나타납니다. User field에 "app-provider"를 입력하여 `AppProvider`로 login합니다.
+
+![CN App Quickstart Login screen without Auth](/images/docs_website/01-login-app-qs-noauth.png)
+
+**OAUTH2 enabled**
+
+OAUTH2가 **enabled**이면 homepage에서 Keycloak OAuth 2.0 portal을 통해 login하라는 prompt가 나타납니다.
+
+![CN App Quickstart Login screen with Auth](/images/docs_website/01-login-app-qs-auth.png)
+
+`AppProvider` username은 “app-provider”이고 password는 "abc123"(모두 lowercase)임을 기억하세요.
+
+Keycloak을 사용하여 `app-provider`로 login합니다.
+
+Login credential을 입력합니다. Username: app-provider, password: abc123
+
+![AppProvider login screen](/images/docs_website/login-app-provider-view.png)
+
+### The App Installs Menu
+
+Login 후 menu에서 **AppInstalls**를 선택합니다.
+
+![App Installs view](/images/docs_website/qs-demo-app-installs-view.png)
+
+Terminal을 열어 App Install Request를 생성합니다.
+
+`/quickstart/`에서 다음을 실행합니다.
+
+    make create-app-install-request
+
+이 Command는 Participant를 대신하여 App Installation Request를 생성합니다.
+
+![App Install Request](/images/docs_website/04-create-install-req.png)
+
+<Note>
+Machine 성능이 `LocalNet`을 hosting하기에 부족하거나 Docker container가 responsive하지 않으면 response에 status code 404 또는 000 failure가 표시될 수 있습니다(아래 image 참조). Docker memory limit을 최소 8 GB로 늘리면 `LocalNet` container가 올바르게 작동할 수 있습니다.
+</Note>
+
+![App Install Request error](/images/docs_website/05-error-app-install.png)
+
+Browser로 돌아갑니다.
+
+### AppInstallRequest
+
+Install request가 list에 나타납니다.
+
+**Accept**를 click합니다.
+
+![accept request](/images/docs_website/accept-awaiting-request.png)
+
+`AppInstallRequest`가 accept됩니다.
+
+![accepted request](/images/docs_website/success-accepted-appinstallrequest.png)
+
+Action이 Cancel과 Create license로 update됩니다.
+
+### Create a license
+
+**Create License**를 click합니다. License가 생성되고 “# Licenses” field가 update됩니다.
+
+![create license](/images/docs_website/created-license.png)
+
+다음으로 Licenses menu로 이동하여 **Renewals**를 선택합니다.
+
+![Licenses view](/images/docs_website/new-license-select-renewals.png)
+
+License를 renew하는 option이 있는 "License Renewal Request” modal이 열립니다.
+
+![license renewal request modal](/images/docs_website/license-renewal-request-modal.png)
+
+**New**를 click하여 "Renew License" modal을 엽니다.
+
+![renew license modal](/images/docs_website/renew-license-modal.png)
+
+Modal에서 License renewal day 수, fee, License 준비 시간, License settle 시간을 설정합니다. 계속하려면 description을 추가해야 합니다.
+
+"Prepare in"은 sender(app-user)가 해당 time 전에 allocation을 accept해야 함을 나타냅니다. "Settle in"은 Provider가 `completeRenewal`을 수행할 수 있는 time입니다. 이후 allocation이 expire됩니다.
+
+**Issue License Renewal Request**를 click합니다.
+
+![new license renewal request](/images/docs_website/new-license-renewal-request.png)
+
+Daml Contract에 따라 License는 expired 상태로 생성됩니다. License를 activate하려면 renewal payment request를 issue해야 합니다.
+
+### Make a payment
+
+Payment를 하려면 [http://wallet.localhost:2000/allocations](http://wallet.localhost:2000/allocations)의 Canton Wallet로 이동하고 prompt가 나타나면 `app-user`로 login합니다.
+
+Wallet location은 다음 방법으로 찾을 수 있습니다.
+
+1.  [LocalNet Application UIs reference](/sdks-tools/development-tools/localnet#application-uis)를 읽습니다.
+2.  App Provider의 "Tenants" menu로 이동합니다.
+
+![AppProvider Tenants menu](/images/docs_website/app-provider-tenants.png)
+
+3.  App에 `app-user`로 login하고 Licenses menu로 이동한 다음 **Renewals** action을 click합니다.
+
+![AppUser Licenses menu](/images/docs_website/app-user-licenses-menu.png)
+
+Prompt가 나타나면 CC Wallet에 `app-user`로 login합니다.
+
+![Canton Coin Wallet login](/images/docs_website/canton-coin-wallet-app-user-log-in.png)
+
+Wallet에 CC가 없으면 amount를 입력하고 **TAP**을 click합니다. 잠시 후 available balance가 자동으로 update됩니다.
+
+![Tap for CC](/images/docs_website/tap-canton-wallet.png)
+
+CC Wallet에 fund가 들어오면 "Allocations" menu로 이동하여 "Allocate before" time이 expire되기 전에 "Allocation Request"를 accept합니다.
+
+![CC Wallet accept allocation](/images/docs_website/canton-coin-wallet-allocations-menu.png)
+
+Allocation request가 accept되면 새 "Allocations" section이 나타납니다. 이 section은 `licenseFeePayment` information을 표시합니다.
+
+![CC Wallet accepted allocation](/images/docs_website/canton-coin-wallet-accepted-allocation.png)
+
+### Renew the license
+
+`AppProvider`로 Quickstart에 돌아갑니다. Licenses menu에서 **Renewals**를 선택합니다. License Renewals Request modal이 열립니다. Green **Complete Renewal** button을 click합니다.
+
+![complete renewal after payment](/images/docs_website/app-provider-complete-renewal-after-payment.png)
+
+License renewal이 성공적으로 완료되었다는 confirmation이 나타납니다.
+
+![renewal success after payment](/images/docs_website/license-renewal-completed-successfully.png)
+
+`AppProvider`에서 logout하고 `AppUser`로 login합니다.
+
+**OAUTH2 disabled**
+
+OAUTH2가 disabled이면 `app-user`로 login하기만 하면 됩니다.
+
+![AppUser login screen without Auth](/images/docs_website/login-app-user-noauth.png)
+
+**OAUTH2 enabled**
+
+OAUTH2가 enabled이면 app-user username/password를 사용하여 login합니다.
+
+![login screen](/images/docs_website/01-login-app-qs-auth.png)
+
+Username “app-user", password “abc123”으로 `AppUser` login합니다.
+
+![AppUser login screen](/images/docs_website/appuser-auth-login-view.png)
+
+AppInstall이 이제 accepted 상태로 표시됩니다.
+
+![accepted AppInstall](/images/docs_website/accepted-app-install.png)
+
+License가 active 상태로 표시됩니다.
+
+![logout AppProvider](/images/docs_website/app-user-license-active.png)
+
+축하합니다. Canton Wallet의 payment allocation으로 License를 성공적으로 생성하고 activate했습니다!
+
+## Canton Console
+
+<iframe
+  width="560"
+  height="315"
+  src="https://www.youtube.com/embed/zADHja_8TSg"
+  title="Canton Console"
+  frameBorder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowFullScreen
+/>
+
+Canton Console은 실행 중인 application Ledger에 연결됩니다. Console을 사용하면 developer가 UI를 우회하여 CN과 더 직접적으로 상호 작용할 수 있습니다. 예를 들어 Canton Console에서 Participant에 연결하여 Participant location과 Synchronizer domain을 확인할 수 있습니다.
+
+`quickstart/` directory의 terminal에서 Canton Console을 activate합니다. 다음을 실행합니다.
+
+    make canton-console
+
+Console이 시작되면 각각 `participants`와 `participants.all` Command를 실행합니다.
+
+    participants
+
+Participant를 상세하게 categorize한 결과를 반환합니다.
+
+![Participant location in the ledger](/images/docs_website/canton-console-participants.png)
+
+    participants.all
+
+모든 Participant reference list를 표시합니다.
+
+![Participant synchronizer](/images/docs_website/canton-console-participants-all.png)
+
+`LocalNet`에서는 list에 있는 어느 Participant에도 연결할 수 있습니다. 다음을 사용하여 App User Validator에 연결합니다.
+
+    `app-user`
+
+![App User](/images/docs_website/app-user.png)
+
+Error가 발생하면 backtick을 사용했는지 다시 확인하세요.
+
+App Provider는 다음으로 연결할 수 있습니다.
+
+    `app-provider`
+
+![App Provider](/images/docs_website/app-provider.png)
+
+다음을 사용하여 Global Synchronizer를 simulate하는 Super Valdiator에 연결합니다.
+
+    `sv`
+
+![super validator](/images/docs_website/sv.png)
+
+Canton Console은 Canton Network Validator health를 표시하는 diagnostic tool도 제공합니다.
+
+    health.status
+
+![Ping yourself](/images/docs_website/health-status.png)
+
+## Daml Shell
+
+<iframe
+  width="560"
+  height="315"
+  src="https://www.youtube.com/embed/bwUyYEFCo5w"
+  title="Daml Shell"
+  frameBorder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowFullScreen
+/>
+
+Daml Shell은 Application Provider Participant의 실행 중인 PQS database에 연결됩니다. Shell에서 asset과 detail을 real time으로 확인할 수 있습니다.
+
+Terminal의 quickstart/에서 다음을 사용하여 shell을 실행합니다.
+
+    make shell
+
+Data를 보려면 다음 Command를 실행합니다.
+
+    active
+
+Unique identifier와 asset count를 표시합니다.
+
+![Active identifiers](/images/docs_website/28-shell-ids.png)
+
+    active quickstart-licensing:Licensing.License:License
+
+License detail list를 표시합니다.
+
+![License details](/images/docs_website/29-license-details.png)
+
+    active quickstart-licensing:Licensing.License:LicenseRenewalRequest
+
+License renewal request detail을 표시합니다.
+
+![License renewal request details](/images/docs_website/active-quickstart-appinstallrequest.png)
+
+    archives quickstart-licensing:Licensing.AppInstall:AppInstallRequest
+
+Archived License를 표시합니다.
+
+![Archived licenses](/images/docs_website/30-archive-licenses.png)
+
+## Canton Coin Scan
+
+[http://scan.localhost:4000/](http://scan.localhost:4000/)에서 CC Scan Web UI를 살펴보세요.
+
+Default activity view는 total CC balance와 Validator reward를 표시합니다.
+
+![CC balance](/images/docs_website/36-cc-balance.png)
+
+SV identification을 보려면 **Network Info** menu를 선택합니다.
+
+![Active SVs](/images/docs_website/34-active-svs.png)
+
+Validators menu는 Local Validator가 SV에 register되었음을 보여 줍니다.
+
+![Registered validator](/images/docs_website/37-registered-validator.png)
+
+## Observability Dashboard
+
+<Note>
+App Quickstart revision 중에는 Observability가 작동하지 않을 수 있습니다.
+</Note>
+
+Web browser에서 [http://localhost:3030/dashboards](http://localhost:3030/dashboards)로 이동하여 observability dashboard를 확인합니다. **Quickstart - consolidated logs**를 선택합니다.
+
+![observability dashboard](/images/docs_website/38-obs-dash.png)
+
+Default view는 모든 service의 running stream을 표시합니다.
+
+![service stream](/images/docs_website/39-service-stream.png)
+
+Participant log를 보려면 service filter를 “All”에서 “participant”로 변경합니다. Log entry를 선택하여 detail을 확인합니다.
+
+![log entry details](/images/docs_website/40-log-entry-details.png)
+
+## SV UIs
+
+SV Web UI를 보려면 [http://sv.localhost:4000/](http://sv.localhost:4000/)로 이동합니다. SV view는 쉽게 navigate할 수 있는 GUI에 Validator의 data를 직접 표시합니다.
+
+‘sv’로 login합니다.
+
+![SV UI login](/images/docs_website/33-sv-ui-login.png)
+
+UI는 SV information을 표시하고 active SV를 나열합니다.
+
+![Active SVs](/images/docs_website/34-active-svs.png)
+
+Validator Onboarding menu에서 Validator onboarding secret을 생성할 수 있습니다.
+
+![Validator onboarding](/images/docs_website/35-validator-onboarding.png)
+
+## Next steps
+
+CN App Quickstart에서 business operation을 완료하고 Canton Console과 Daml Shell의 기초를 살펴보았습니다. CN App Quickstart codebase를 살펴보고 business need에 맞게 수정하는 것을 권장합니다. [App Quickstart project structure](/appdev/quickstart/project-structure) 또는 [Module 4: Building Applications](/appdev/modules/m4-building-apps-intro)의 application development module에 관심이 있을 수 있습니다.
+
+
+{/* COPIED_END */}

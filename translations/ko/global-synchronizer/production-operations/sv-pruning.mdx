@@ -1,0 +1,55 @@
+---
+title: "SV Pruning"
+description: "Super Validator Node의 Sequencer 및 CometBFT pruning"
+source_id: "SRC-02C6401440"
+source_path: "global-synchronizer/production-operations/sv-pruning"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "9518be032e770b2c17bda0d2700f9922aca81f2bd12dd1534a6d33284f010367"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvPruningYaml62 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-pruning-yaml-62.mdx";
+import ExternalSpliceMainSpliceRstLiteralMarkerAppsAppSrcPackExamplesSvHelmSvValuesDocsPruningStart from "/snippets/external/splice/main/splice-literal-marker-apps-app-src-pack-examples-sv-helm-sv-values-docs-pruning-start.mdx";
+import ExternalSpliceMainSpliceRstLiteralMarkerClusterHelmSpliceCometbftValuesTemplateDocsCometbftPruningStart from "/snippets/external/splice/main/splice-literal-marker-cluster-helm-splice-cometbft-values-template-docs-cometbft-pruning-start.mdx";
+import ExternalSpliceMainSpliceRstLiteralMarkerAppsAppSrcPackExamplesSvHelmSvValidatorValuesSvParticipantPruningScheduleStart from "/snippets/external/splice/main/splice-literal-marker-apps-app-src-pack-examples-sv-helm-sv-validator-values-sv-participant-pruning-schedule-start.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/sv-pruning.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/sv_operator/sv_pruning.rst" hash="07e081c3" */}
+
+Sequencer, Participant 및 CometBFT에는 storage 사용량을 합리적인 범위로 유지하는 pruning option이 있습니다.
+
+## Sequencer pruning
+
+다음 config를 통해 Helm에서 활성화할 수 있습니다.
+
+<ExternalSpliceMainSpliceRstLiteralMarkerAppsAppSrcPackExamplesSvHelmSvValuesDocsPruningStart />
+
+<Note>
+Sequencer pruning을 활성화하고 `pruningInterval`을 `1 hour`, `retentionPeriod`를 `30 days`로 설정하는 것이 좋습니다.
+</Note>
+
+## CometBFT pruning
+
+Default로 활성화되어 있습니다. Pruning은 유지할 block 수로 정의하며 이전 block은 prune됩니다.
+
+유지할 block 수는 `node` Helm values key 아래에서 구성할 수 있습니다.
+
+<ExternalSpliceMainSpliceRstLiteralMarkerClusterHelmSpliceCometbftValuesTemplateDocsCometbftPruningStart />
+
+## Participant pruning
+
+Participant pruning도 지원되며 권장됩니다. 활성화하려면 Validator chart에서 다음 Helm value를 설정합니다.
+
+<ExternalSpliceMainSpliceRstLiteralMarkerAppsAppSrcPackExamplesSvHelmSvValidatorValuesSvParticipantPruningScheduleStart />
+
+또한 Participant가 지난 30일 동안 counter Participant 중 하나에서 ACS commitment를 받지 못했더라도 pruning을 계속하도록 설정해야 합니다. 이 설정이 없으면 Validator가 비교적 자주 shutdown되는 MainNet에서 pruning이 사실상 실행되지 않습니다. 이를 위해 Participant의 `additionalEnvVars`를 통해 다음을 설정합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvPruningYaml62 />
+
+
+{/* COPIED_END */}

@@ -1,0 +1,189 @@
+---
+title: "PQS로 Contract와 Transaction Query하기"
+description: "Participant Query Store (PQS)를 사용해 SQL로 Daml contract와 Transaction query하기"
+source_id: "SRC-98CF31EE05"
+source_path: "appdev/modules/m4-query-with-pqs"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "2e84260eb1092989b0b2f688b8519a8138f8bd2e1cb9d17b0d6ef90f4256a33b"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m4-query-with-pqs.md)을 사용하세요.
+</Warning>
+
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql19 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-sql-19.mdx";
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexText23 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-text-23.mdx";
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql58 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-sql-58.mdx";
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql69 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-sql-69.mdx";
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql75 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-sql-75.mdx";
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql96 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-sql-96.mdx";
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql109 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-sql-109.mdx";
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql122 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-sql-122.mdx";
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql135 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-sql-135.mdx";
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql144 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-sql-144.mdx";
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql161 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-sql-161.mdx";
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql175 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-sql-175.mdx";
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql216 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-sql-216.mdx";
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql225 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-sql-225.mdx";
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql248 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-sql-248.mdx";
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql254 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-sql-254.mdx";
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql267 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-sql-267.mdx";
+import ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql277 from "/snippets/external/scribe/main/scribe-rst-code-docs-user-sdlc-howtos-applications-develop-pqs-index-sql-277.mdx";
+
+{/* COPIED_START source="docs-website:docs/replicated/pqs/3.4/sdlc-howtos/applications/develop/pqs/index.rst" hash="a0009fae" */}
+
+# SQL을 사용해 Contract와 Transaction을 Query하는 방법
+
+## Query
+
+### Active Contract Set (ACS)의 Contract를 Query하는 방법
+
+ACS의 contract를 fetch하려면 Participant Query Store (PQS) schema의 일부이며 다른 PostgreSQL function처럼 사용할 수 있는 `active()` table function[^1]을 사용하세요.
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql19 />
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexText23 />
+
+### Type별로 ACS의 Contract를 Query하는 방법
+
+이전 예시는 resource를 매우 많이 사용하므로 아주 작은 dataset을 제외하면 사용하지 않는 것이 좋습니다. 더 일반적이면서 효율적인 use case는 result set을 특정 Daml template type으로 제한하는 것입니다. PostgreSQL은 query execution을 계획할 때 사용하지 않는 partition을 prune할 수 있으므로 효율이 향상됩니다. type resolution에 ambiguity가 없다면 다음 form은 동등합니다.
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql58 />
+
+### Payload Information으로 ACS의 Contract를 Query하는 방법
+
+payload의 business information으로 contract를 query하려면 `WHERE` clause에서 JSONB operator[^2]를 사용하세요.
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql69 />
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql75 />
+
+<Note>
+`pqs-how-to-add-an-index-on-expression-over-jsonb-payload`도 참고하세요.
+</Note>
+
+<Warning>
+payload content로 query할 때 원하는 performance를 얻으려면 추가 development 및 administrative work가 필요할 수 있습니다. 시작 방법은 [Performance Optimization](/appdev/deep-dives/performance-optimization)을 참고하세요.
+</Warning>
+
+### ACS의 Contract를 Join하는 방법
+
+여러 Daml template type의 contract를 join하려면 standard `JOIN` syntax를 사용하세요.
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql96 />
+
+### Contract Value의 Data를 Aggregate하는 방법
+
+PQS는 PostgreSQL database를 기반으로 하므로 Structured Query Language (SQL) syntax의 aggregate function을 사용할 수 있습니다.
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql109 />
+
+### 과거 State를 Query하는 방법
+
+PQS는 Event Sourcing[^3] architecture를 사용하므로 offset을 명시적으로 제공하면 ledger history의 임의 시점 state를 살펴볼 수 있습니다.
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql122 />
+
+### Contract ID로 Contract를 Fetch하는 방법
+
+contract는 active status와 관계없이 Contract ID로 fetch할 수 있습니다. interface view와 contract가 동일한 Contract ID를 공유하므로 function이 interface view도 반환한다는 점을 기억하세요.
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql135 />
+
+### Offset Range에서 생성된 Contract List를 가져오는 방법
+
+특정 offset range 안의 "contract created" event를 정렬된 list로 가져옵니다.
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql144 />
+
+<div className="caution">
+
+이 query는 여러 template type이 있으면 많은 resource를 사용할 수 있으며 Ledger API Transaction stream의 적절한 대안이 아닙니다.
+
+</div>
+
+### Open Offset Range에서 생성된 Contract List를 가져오는 방법
+
+기본적으로 `creates()` 및 `archives()` SQL function의 offset edge는 closed range를 나타냅니다. 한쪽 또는 양쪽을 open으로 만들려면 원하는 refinement가 있는 `WHERE` clause를 사용하세요.
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql161 />
+
+### SQL로 "Contract Created" Event Stream을 모방하는 방법
+
+PQS는 Ledger API event stream의 적절한 대안이 아니지만 PQS database에서 직접 "contract created" event stream을 가져오는 것이 정당한 경우도 있습니다.
+
+이러한 stream을 모방하려면 유사한 query를 사용해 database에 대한 client-side busy polling을 구현해야 합니다.
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql175 />
+
+client driver는 이 query를 loop에서 실행하며 마지막으로 관찰한 offset을 memoize[^4]하고 다음 iteration에 전달해야 합니다. result가 반환되지 않을 때 resource 낭비를 최소화하려면 loop에 sleep interval을 추가하는 것이 좋을 수 있습니다.
+
+하지만 latency와 scalability에 엄격한 requirement가 있다면 Ledger API에서 ledger event를 직접 가져오는 것이 가장 좋습니다. PQS는 event stream을 제공하기보다 특정 offset의 ledger *state*를 query하기 위한 Ledger API Transaction stream의 complementary source로 사용하는 데 가장 적합하도록 설계되었습니다.
+
+## Optimize
+
+PQS는 PostgreSQL database를 기반으로 합니다. 모든 query optimization은 본질적으로 database/SQL tuning concern입니다. 일반적인 SQL development best practice가 적용됩니다.
+
+- 자주 사용하는 clause에 index 적용
+- data fetching 제한, final projection에서 불필요한 column을 제거하고 `SELECT *` 사용 방지
+- 읽기 쉬운 Daml model design
+- `OFFSET` SQL clause를 사용한 pagination 방지
+- 가능하면 `SELECT COUNT(*)`와 유사한 query 사용 방지
+
+performance optimization에 관한 추가 information은 [Performance Optimization](/appdev/deep-dives/performance-optimization)을 참고하세요.
+
+### JSONB Payload Expression에 Index를 추가하는 방법
+
+payload information을 포함하는 `WHERE` clause를 사용하는 query의 read performance를 optimize하려면 expression[^5]에 index를 추가하세요.
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql216 />
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql225 />
+
+`WHERE` clause에 사용하는 전체 expression을 operator와 cast까지 포함해 제공하세요.
+
+### Data Fetching을 제한하는 방법
+
+필요한 data가 있는 column만 나열하고 `*`를 사용하지 마세요.
+
+대부분의 Read API function은 contract의 liveness, divulgence, disclosure metadata를 포함해 매우 많은 data를 result set으로 반환합니다. 이러한 data를 fetch하려면 여러 internal table을 join해야 합니다. metadata가 필요하지 않으면 query가 PostgreSQL resource에 불필요한 부담을 줍니다. 반면 PostgreSQL query planner는 불필요한 join을 자동으로 prune할 만큼 지능적입니다.[^6]
+
+나쁜 예:
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql248 />
+
+좋은 예:
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql254 />
+
+### 효율적으로 Paginate하는 방법
+
+data에 대한 paginated access[^7]가 효율적이며 performance degradation을 유발하지 않는지 확인하세요.
+
+나쁜 예:
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql267 />
+
+좋은 예:
+
+<ExternalScribeMainScribeRstCodeDocsUserSdlcHowtosApplicationsDevelopPqsIndexSql277 />
+
+[^1]: [https://www.postgresql.org/docs/current/xfunc-sql.html#XFUNC-SQL-TABLE-FUNCTIONS](https://www.postgresql.org/docs/current/xfunc-sql.html#XFUNC-SQL-TABLE-FUNCTIONS)
+
+[^2]: [https://www.postgresql.org/docs/current/functions-json.html](https://www.postgresql.org/docs/current/functions-json.html)
+
+[^3]: [https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing](https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing)
+
+[^4]: [https://en.wikipedia.org/wiki/Memoization](https://en.wikipedia.org/wiki/Memoization)
+
+[^5]: [https://www.postgresql.org/docs/current/indexes-expressional.html](https://www.postgresql.org/docs/current/indexes-expressional.html)
+
+[^6]: [https://www.oreilly.com/library/view/mastering-postgresql-12/9781838988821/736b4431-b85e-4879-9a93-e5133b42db1f.xhtml](https://www.oreilly.com/library/view/mastering-postgresql-12/9781838988821/736b4431-b85e-4879-9a93-e5133b42db1f.xhtml)
+
+[^7]: [https://www.postgresql.org/docs/current/queries-limit.html](https://www.postgresql.org/docs/current/queries-limit.html)
+
+
+{/* COPIED_END */}

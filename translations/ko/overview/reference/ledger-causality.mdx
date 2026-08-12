@@ -1,0 +1,346 @@
+---
+title: "Causality and Time"
+description: "Daml Ledger의 causality graph, Local Ledger, time"
+source_id: "SRC-0436AE8A3D"
+source_path: "overview/reference/ledger-causality"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "e4e4f282adad2e99e97e8785c5e6c4a237ebb64cf9174f17da50625fc37aa917"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/reference/ledger-causality.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/overview/explanations/ledger-model/local-ledger.rst" hash="2871e956" */}
+
+# Causality
+
+Daml Ledger는 모든 Transaction을 total order로 정렬하지 않습니다. 따라서 서로 다른 Party가 gRPC Ledger API를 통해 서로 다른 Participant Node에서 두 Transaction을 다른 순서로 관찰할 수 있습니다. 또한 서로 다른 Participant Node가 동일한 Party에 두 Transaction을 다른 순서로 output할 수도 있습니다.
+이 문서에서는 Daml Ledger가 제공하는 ordering guarantee를 example로 설명하고 causality graph와 Local Ledger 개념을 사용하여 formal하게 설명합니다.
+
+이 설명에서는 다음 concept을 알고 있다고 가정합니다.
+
+- Ledger API
+- Daml Ledger Model
+
+## Causality Examples
+
+Daml Ledger Model의 Ledger와 달리 Daml Ledger는 모든 Transaction을 total order로 정렬할 필요가 없습니다. 다음 example은 Daml Ledger Model에서 비롯되는 total ordering을 제외하고 Ledger API의 ordering guarantee를 보여 줍니다. Party projection은 다음과 같다는 점을 기억하세요.
+
+<Frame caption="Time sequences for parties.">
+  <img src="/images/docs_website/divulgence-for-disclosure-counteroffer.svg" className="align-center" style={{width: "100.0%"}} alt="The time sequences for individual parties in the paint counteroffer workflow, with disclosures, as described in the Privacy section linked above." />
+</Frame>
+
+### Stakeholders of a Contract See Creation and Archival in the Same Order
+
+모든 Daml Ledger는 painter가 `CounterOffer`에서 consuming Choice를 exercise하기 전에 `CounterOffer A P Bank`가 생성되도록 order합니다. (**Create**가 **Exercise** 뒤에 order되면 결과 shared Ledger가 inconsistent하여 Daml Ledger의 validity guarantee를 위반합니다.) 따라서 Alice는 자신의 Transaction stream에서 archival보다 creation을 먼저 보며 painter도 마찬가지입니다. 두 Party가 같은 Participant Node에서 hosting되는지는 영향을 주지 않습니다.
+
+### Signatories of a Contract and Stakeholder Actors See Usages After the Creation and Before the Archival
+
+`Fetch A (Iou Bank A)` action은 Alice와 Bank 모두에게 `Iou Bank A` creation 뒤와 archival 앞에 나타납니다. Bank는 `Iou Bank A` Contract의 Signatory이고 Alice는 `Iou Bank A` Contract의 Stakeholder이면서 **Fetch** action의 Actor이기 때문입니다.
+
+### Commits Are Atomic
+
+Alice는 자신의 `Iou` **Create**를 `CounterOffer` creation보다 먼저 봅니다. `CounterOffer`는 `Iou` **Fetch**와 같은 commit에서 생성되고 **Fetch** commit은 `Iou` **Create** 뒤에 나타나기 때문입니다.
+
+### Non-Consuming Usages in Different Commits May Appear in Different Orders
+
+Alice가 `CounterOffer`를 생성하는 동안 Bank가 consequence 없이 `Iou Bank A`의 non-consuming Choice를 exercise한다고 가정합니다. 아래 Ledger에서는 Bank의 commit이 Alice의 commit보다 먼저 나타납니다.
+
+<img src="/images/docs_website/counteroffer-double-fetch.svg" className="align-center" style={{width: "100.0%"}} alt="The shared ledger view of the time sequence for the paint counteroffer workflow." />
+
+Bank의 projection에는 `Iou`의 non-consuming **Exercise**와 **Fetch** action이 포함됩니다. 그러나 Bank의 Transaction tree stream에서는 **Fetch**가 non-consuming **Exercise**보다 먼저 나타날 수 있습니다.
+
+### Out-of-Band Causality Is Not Respected
+
+다음 example에서는 Alice가 자신의 commit을 다음과 같이 둘로 나눈다고 가정합니다.
+
+<div id="split-counteroffer-ledger">
+
+<Frame caption="Counteroffer workflow with four commits.">
+  <img src="/images/docs_website/counteroffer-split-commit.svg" className="align-center" style={{width: "100.0%"}} alt="./../images/counteroffer-split-commit.svg" />
+</Frame>
+
+</div>
+
+Alice는 painter에게 지급하려는 `Iou`를 `CounterOffer`에 지정할 수 있습니다. Deployed implementation에서 Alice의 application은 먼저 Update Service 또는 State Service를 통해 생성된 `Iou` Contract를 관찰한 다음 `CounterOffer` 생성을 요청합니다. 이러한 application logic은 commit 간 ordering을 유도하지 않습니다. 따라서 `CounterOffer` creation이 `Iou` creation 뒤에 나타날 필요는 없습니다.
+
+Alice가 여러 Participant Node에서 hosting되는 경우 Participant Node는 두 creation을 어느 순서로든 output할 수 있습니다.
+
+이 behavior의 이유는 Alice가 Contract ID를 out-of-band로 알게 되었거나 임의로 만들었을 수도 있기 때문입니다. 따라서 Participant Node는 해당 Contract의 **Create** event가 ever 존재할지 알 수 없습니다. Participant Node가 `Iou` Contract의 **Create** event가 publish될 때까지 `CounterOffer`의 **Create** action output을 지연한다면 이 지연이 영원히 지속되어 liveness를 잃을 수 있습니다. 그러므로 Daml Ledger는 application을 통한 data flow를 capture하지 않습니다.
+
+### Divulged Actions Do Not Induce Order
+
+`ShowIou` Contract가 consume될 때 painter는 Alice의 `Iou` fetch를 witness합니다. Painter가 `CounterOffer`를 accept한 consequence로 Alice가 transfer Choice를 exercise할 때 painter는 `Iou`의 **Exercise**도 witness합니다. 그러나 painter는 Alice의 `Iou` Contract Stakeholder가 아니므로 `CounterOffer` accept 과정에서 `Iou`가 archive된 뒤 Alice의 `ShowIou` commit을 관찰할 수도 있습니다.
+
+실제로 painter를 두 Participant Node `N``1`과 `N``2`가 hosting하는 setup에서 이러한 일이 발생할 수 있습니다. Painter는 `N``1`의 Transaction tree stream을 통해 divulged `Iou`와 생성된 `CounterOffer`를 확인한 다음 `N``1`을 통해 acceptance를 제출합니다. 이전 example과 마찬가지로 `N``2`는 두 commit의 dependency를 알지 못합니다. 따라서 `N``2`는 Transaction stream에서 `ShowIou` Contract보다 accepting Transaction을 *먼저* output할 수 있습니다.
+
+예상 밖으로 보일 수 있지만 이는 Stakeholder 기반 Ledger와 일치합니다. Painter는 `Iou` Contract Stakeholder가 아니므로 Contract archival이나 creation을 신경 쓰지 않아야 합니다. 실제로 divulged `Iou` Contract는 painter의 State Service에도 update stream의 ACS delta에도 나타나지 않습니다. 이러한 witnessed event는 편의를 위해 Transaction tree stream에 포함됩니다. Painter가 Choice consequence를 계산할 필요를 없애고 action이 Daml model을 준수하는지 확인할 수 있게 합니다.
+
+마찬가지로 **Exercise** action의 Actor인 사실은 Actor가 Contract Stakeholder인 경우에만 Contract의 다른 usage에 대한 order를 유도합니다. **Exercise** action의 non-Stakeholder Actor는 action을 authorize할 뿐 Contract가 active인지 추적하지 않기 때문입니다. 이는 Signatory와 Contract Observer의 역할입니다. 이와 비슷하게 **Exercise** action의 Choice Observer도 Contract Stakeholder인 경우에만 ordering guarantee의 혜택을 받습니다.
+
+### The Ordering Guarantees Depend on the Party
+
+앞 example에 따르면 painter에게 `Iou` fetch는 `Iou` transfer보다 먼저 order되지 않습니다. 그러나 Alice는 `Iou` Contract Stakeholder이므로 **Fetch**가 **Exercise**보다 먼저 나타나야 합니다. 이는 ordering guarantee가 Party에 따라 달라짐을 보여 줍니다.
+
+## Causality Graphs
+
+위 example은 Daml Ledger가 Transaction을 partial order로만 정렬함을 보여 줍니다. Daml Ledger는 Transaction의 finite directed acyclic graph(DAG)로 표현할 수 있습니다.
+
+<div id="def-causality-graph">
+
+Definition »causality graph«
+**Causality graph**는 transitively closed인 Transaction의 finite directed acyclic graph `G`입니다. Transitively closed란 `G`에 `v``1` -\> `v``2`와 `v``2` -\> `v``3` edge가 있을 때 `v``1` -\> `v``3` edge도 있음을 의미합니다.
+
+</div>
+
+<div id="def-action-order">
+
+Definition »action order«
+Causality graph `G`에서 Transaction action의 induced **action order**는 Transaction 간 graph-induced order와 각 Transaction 내부 action의 execution order를 결합합니다. 다음과 같은 두 action `act``1`과 `act``2` 간 ordering relation을 포함하는 least partial order입니다.
+
+- `act``1`과 `act``2`가 같은 Transaction에 속하며 Transaction에서 `act``1`이 `act``2`보다 먼저 나타납니다.
+
+- `act``1`과 `act``2`가 vertex `tx``1`과 `tx``2`의 서로 다른 Transaction에 속하며 `G`에서 `tx``1`부터 `tx``2`까지 path가 있습니다.
+
+</div>
+
+<Note>
+Causality graph는 transitively closed이므로 `G`에서 `tx``1`부터 `tx``2`까지 *path* 대신 *edge*를 확인해도 동일합니다. 아래 figure에서는 가독성을 위해 transitive edge를 생략하므로 definition에서는 *path*를 사용합니다.
+</Note>
+
+Action order는 causality graph action의 partial order입니다. 예를 들어 다음 diagram은 위 Out-of-band causality example의 Ledger에 해당하는 causality graph를 보여 줍니다. 각 grey box는 하나의 Transaction을 나타내며 graph edge는 box 사이의 solid arrow입니다. Diagram에서는 가독성을 위해 transitive edge를 생략하므로 이 graph에서 `tx1`에서 `tx4`로 향하는 edge는 표시되지 않습니다. Alice의 `Iou` **Create**가 있는 Transaction `tx1`에서 `ShowIou` **Create**가 있는 Transaction `tx3`으로 edge가 있으므로 Alice의 `Iou` **Create** action은 `ShowIou` Contract의 **Create** action보다 먼저 order됩니다. 또한 Transaction에서 **Create** action이 **Fetch** action보다 먼저 나타나므로 `ShowIou` **Create** action은 Alice의 `Iou` **Fetch**보다 먼저 order됩니다. 반면 `CounterOffer`와 Alice의 `Iou` **Create** action은 unordered입니다. 서로 다른 Transaction에 속하고 두 Transaction 사이에 directed path가 없으므로 어느 것도 다른 것보다 먼저 나타나지 않습니다.
+
+<div id="causality-graph-counteroffer-split">
+
+<Frame caption="Causality graph for the counteroffer workflow with four commits.">
+  <img src="/images/docs_website/counteroffer-split-action-order.svg" className="align-center" style={{width: "100.0%"}} alt="./../images/counteroffer-split-action-order.svg" />
+</Frame>
+
+</div>
+
+### Consistency
+
+Consistency는 causality graph가 모든 Transaction을 충분히 order하도록 보장합니다. 아래 설명처럼 Daml Ledger Model의 Ledger consistency를 일반화합니다.
+
+<div id="def-causal-consistency-contract">
+
+Definition »Causal consistency for a contract«
+`G`를 causality graph, `X`를 `G`의 Transaction에 속하는 Contract `c`의 action 집합이라고 하겠습니다. 다음 조건이 모두 성립하면 graph `G`는 `X`의 Contract `c`에 대해 **causally consistent**합니다.
+
+- `X`가 비어 있지 않으면 `X`에는 정확히 하나의 **Create** action이 있습니다. 이 action은 `G`의 action order에서 `X`의 다른 모든 action보다 먼저 나타납니다.
+- `X`에 consuming **Exercise** action `act`가 있으면 `act`는 `G`의 action order에서 `act`를 제외한 `X`의 모든 action 뒤에 나타납니다.
+
+Definition »Causal consistency for a key«
+`G`를 causality graph, `X`를 `G`의 Transaction에 속하는 Key `k`의 action 집합이라고 하겠습니다. 다음 조건이 모두 성립하면 graph `G`는 `X`의 Key `k`에 대해 **causally consistent**합니다.
+
+- `X`의 모든 **Create**와 consuming **Exercise** action은 `G`의 action order에서 total order를 이루고 **Create**부터 시작해 **Create**와 consuming **Exercise**가 교대로 나타납니다. 연속된 모든 **Create**-**Exercise** pair는 같은 Contract에 작용합니다.
+- `X`의 모든 **NoSuchKey** action은 `X`의 모든 **Create** 및 consuming **Exercise** action에 대해 action-order됩니다. **NoSuchKey** action은 `X`에서 **Create** action과 그에 이어지는 consuming **Exercise** action 사이에 action-order되지 않습니다.
+
+</div>
+
+<div id="def-consistency-causality-graph">
+
+Definition »Consistency for a causality graph«
+`X`가 causality graph `G` action의 subset이라고 하겠습니다. `G`가 `X`의 각 Contract `c`에 대한 action 집합에서 모든 Contract `c`에 대해 causally consistent하고 `X`의 각 Key `k`에 대한 action 집합에서 모든 Key `k`에 대해 causally consistent하면 `G`는 `X`에서 **consistent**(또는 `X`-**consistent**)합니다. `G`의 모든 action에서 consistent하면 `G`는 **consistent**합니다.
+
+</div>
+
+`X`-consistent causality graph에 edge를 추가하면서 acyclic 및 transitively closed 상태를 유지하면 결과 graph도 `X`-consistent합니다. 따라서 minimal consistent causality graph를 고려하는 것이 타당합니다.
+
+<div id="minimal-consistent-causality-graph">
+
+Definition »Minimal consistent causality graph«
+`X`-consistent causality graph `G`는 `G`의 strict subgraph(같은 vertex, 더 적은 edge) 중 `X`-consistent causality graph가 없으면 `X`-**minimal**입니다. `X`가 `G`의 모든 action 집합이면 `X`를 생략합니다.
+
+</div>
+
+예를 들어 위 split counteroffer workflow의 causality graph는 consistent합니다. 다음 analysis에서 보듯 이 causality graph는 minimal합니다.
+
+| Edge                                                                      | Justification                                                                                                     |
+|---------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
+| `tx1` -\> `tx3` | Alice의 `Iou` **Create** action은 **Fetch** action보다 먼저 나타나야 합니다.                |
+| `tx2` -\> `tx4` | `CounterOffer` **Create** action은 **Exercise** action보다 먼저 나타나야 합니다.        |
+| `tx3` -\> `tx4` | Alice의 `Iou`에 대한 consuming **Exercise** action은 **Fetch** action 뒤에 나타나야 합니다. |
+
+`X` 집합을 제한하여 causality graph 일부에 집중할 수 있습니다. `X`가 `Iou` Contract의 action으로 구성되면 이 causality graph는 `X`-consistent합니다. 그러나 `tx2` -\> `tx4` edge는 `X`-consistency를 위반하지 않고 제거할 수 있으므로 `X`-minimal하지 않습니다. 이 edge는 `X`에서 제외된 `CounterOffer` action 때문에만 필요합니다. `X`의 action을 red로 highlight한 `X`-minimal consistent causality graph는 다음과 같습니다.
+
+<div id="causality-counteroffer-Iou-minimal">
+
+<Frame caption="Minimal consistent causality graph for the highlighted actions.">
+  <img src="/images/docs_website/causality-counteroffer-Iou-minimal.svg" className="align-center" style={{width: "100.0%"}} alt="./../images/causality-counteroffer-Iou-minimal.svg" />
+</Frame>
+
+</div>
+
+Minimal causality graph의 또 다른 example은 아래와 같습니다. 위쪽에서 Transaction `tx1`부터 `tx4`는 Alice를 위한 `Iou`를 생성하고 두 non-consuming Choice를 exercise한 뒤 `Iou`를 painter에게 transfer합니다. 아래쪽에서 `tx5`는 painter의 Account Contract에 대한 Key가 없음을 assert합니다. 이어 `tx6`는 balance 0인 Account를 생성하고 `tx7`은 `tx4`의 painter `Iou`를 Account에 deposit하여 balance를 1로 update합니다.
+
+<img src="/images/docs_website/causality-consistency-examples.svg" className="align-center" style={{width: "100.0%"}} alt="A minimal causality graph for a workflow in which the painter receives an Iou from Alice and has an Account contract to hold the Iou created automatically, as described above." />
+
+Linearly ordered Ledger와 달리 causality graph는 `Iou` transfer workflow와 `Account` creation workflow의 Transaction을 `Iou`가 Account에 deposit되는 마지막 시점에만 연결합니다. 아래에서 formal하게 설명하듯 따라서 Bank, Alice, painter가 Transaction `tx1`부터 `tx7`을 같은 순서로 관찰할 필요는 없습니다.
+
+또한 Transaction `tx2`와 `tx3`은 같은 `Iou` Contract에 작용하지만 이 causality graph에서 unordered입니다. 그러나 두 action 모두 non-consuming이므로 서로 interfere하지 않으며 parallelize할 수도 있습니다. 따라서 Alice와 Bank가 이들을 다른 순서로 관찰할 수 있습니다.
+
+Key consistency condition에 따라 `tx5`의 **NoSuchKey** action은 `tx6` 및 `tx7`의 두 Account **Create** action과 `tx7`의 Account Contract consuming **Exercise**에 대해 order되어야 합니다. 이 Transaction 집합에서 consistency가 허용하는 order는 하나뿐입니다. `tx7`은 atomic이므로 `tx5`가 `tx6`보다 먼저 나타납니다. 즉 `tx5`는 `tx7` 안에서, 예를 들어 `Acc Bank P P 0`의 consuming **Exercise**와 updated Account `Acc Bank P P 1`의 **Create** 사이에 interleave될 수 없습니다.
+
+Causal ordering에서 **NoSuchKey** action은 Contract의 non-consuming **Exercise** 및 **Fetch**와 유사합니다. **NoSuchKey** `(Acc, Bank, P)` action이 있는 또 다른 Transaction `tx5'`가 있다면 `tx2`와 `tx3`가 unordered인 것처럼 `tx5`와 `tx5'`를 order할 필요가 없습니다.
+
+### From Causality Graphs to Ledgers
+
+Causality graph는 acyclic이므로 vertex를 topologically sort할 수 있고 결과 list 역시 모든 vertex에서 이후 모든 vertex로 outgoing edge가 있는 causality graph입니다. 원래 causality graph가 `X`-consistent하면 topological sort는 단지 edge를 추가하므로 이 역시 `X`-consistent합니다. 예를 들어 out-of-band causality example의 Ledger Transaction은 해당 causality graph의 topological sort입니다.
+
+반대로 `X`-consistent causality graph를 `X`-consistency가 부과하는 causal dependency로만 reduce할 수 있습니다. 그 결과 minimal `X`-consistent causality graph를 얻습니다.
+
+<div id="def-reduction-causality-graph">
+
+Definition »Reduction of a consistent causality graph«
+`X`-consistent causality graph `G`에는 같은 vertex를 가지며 edge가 `G`의 subset인 unique minimal `X`-consistent causality graph `reduce``X``(G)`가 존재합니다. Graph `reduce``X``(G)`를 `G`의 `X`-**reduction**이라고 합니다. 앞에서와 마찬가지로 `X`가 `G`의 모든 action을 포함하면 `X`를 생략합니다.
+
+</div>
+
+Split `CounterOffer` workflow의 causality graph는 minimal이므로 자체 reduction입니다. 또한 topological sort, 즉 out-of-band causality example Ledger의 reduction이기도 합니다.
+
+<Note>
+`X`-consistent causality graph `G`의 reduction `reduce``X``(G)`는 다음과 같이 계산할 수 있습니다.
+
+1.  `G'`의 vertex를 `G`의 vertex로 설정합니다.
+2.  Contract와 Key의 causal consistency condition은 `X`의 특정 action pair `act``1`과 `act``2`가 action-order되어야 함을 요구합니다. 각 pair에 대해 `G`에서 action ordering을 결정하고 더 이른 action의 Transaction부터 더 늦은 action의 Transaction으로 향하는 edge를 `G'`에 추가합니다.
+3.  `reduce``X``(G)`는 `G'`의 transitive closure입니다.
+</Note>
+
+Topological sort와 reduction은 causality graph `G`를 Daml Ledger Model의 Ledger `L`에 연결합니다. Topological sort는 causality graph `G`를 Transaction sequence로 transform합니다. Requester로 이를 확장하면 commit sequence, 즉 Daml Ledger Model의 Ledger를 얻습니다. 반대로 commit sequence `L`은 Transaction을 vertex로 삼고 sequence에서 `tx1`의 commit이 `tx2`의 commit보다 먼저 나타날 때마다 `tx1`에서 `tx2`로 edge를 추가하여 causality graph `G``L`을 만듭니다.
+
+이제 두 가지 consistency definition이 있습니다.
+
+- Daml Ledger Model에 따른 Ledger Consistency
+- Causality graph의 Consistency
+
+다행히 두 definition은 equivalent합니다. `G`가 consistent causality graph이면 topological sort는 Ledger consistent합니다. 반대로 commit sequence `L`이 Ledger consistent하면 `G``L`은 consistent causality graph이고 reduction `reduce(G``L``)`도 마찬가지입니다.
+
+## Local Ledgers
+
+Daml Ledger Model에서 설명했듯 Party는 privacy를 위해 shared Ledger의 projection만 봅니다. Consistency와 마찬가지로 projection은 다음과 같이 causality graph로 확장됩니다.
+
+Definition »Stakeholder informee«
+다음 조건을 모두 충족하면 Party `P`는 action `act`의 **Stakeholder Informee**입니다.
+
+- `P`는 `act`의 Informee입니다.
+- `act`가 Contract의 action이면 `P`는 해당 Contract의 Stakeholder입니다.
+
+**Exercise**와 **Fetch** action은 input Contract에 작용하고 **Create** action은 생성된 Contract에 작용하며 **NoSuchKey** action은 Contract에 작용하지 않습니다. 따라서 **NoSuchKey** action의 Stakeholder Informee는 Key Maintainer입니다.
+
+Definition »Causal consistency for a party«
+Causality graph `G`가 `P`가 Stakeholder Informee인 모든 action에서 consistent하면 `G`는 Party `P`에 대해 **consistent**(`P`-consistent)합니다.
+
+`X`-minimality와 `X`-reduction 개념은 그에 따라 Party로 확장됩니다.
+
+예를 들어 tx2 -\> tx4 edge가 없는 split counteroffer causality graph는 Bank가 정확히 highlighted action의 Stakeholder Informee이므로 Bank에 대해 consistent합니다. 또한 minimal Bank-consistent이며 원래 split counteroffer causality graph의 Bank-reduction입니다.
+
+Definition »Projection of a consistent causality graph«
+Consistent causality graph `G`를 Party `P`에 projection한 **projection** `proj``P``(G)`는 다음 causality graph \`G'\`의 `P`-reduction입니다.
+
+- `G'`의 vertex는 `G`의 vertex를 `P`에 projection한 것으로, empty projection은 제외합니다.
+- `G'`의 두 vertex `v``1`과 `v``2` 사이에는 `v``1`에 대응하는 `G`-vertex에서 `v``2`에 대응하는 `G`-vertex로 edge가 있는 경우 edge가 존재합니다.
+
+Split counteroffer causality graph를 Alice, Bank, painter에 projection한 결과는 다음과 같습니다.
+
+<div id="counteroffer-causality-projections">
+
+<Frame caption="Projections of the split counteroffer causality graph.">
+  <img src="/images/docs_website/counteroffer-causality-projection.svg" className="align-center" style={{width: "100.0%"}} alt="./../images/counteroffer-causality-projection.svg" />
+</Frame>
+
+</div>
+
+Alice의 projection은 원래 minimal causality graph와 같습니다. Bank는 `Iou` Contract의 action만 보므로 causality graph projection에 더 이상 `tx2`가 포함되지 않습니다. 마찬가지로 painter는 Alice의 `Iou`가 생성되는 `tx1`을 알지 못합니다. 또한 painter의 Local Ledger에는 더 이상 `tx3`에서 `tx4`로 향하는 edge가 없습니다. 이 edge는 Alice의 `Iou` **Fetch**가 consuming **Exercise**보다 먼저 나타나서 유도됩니다. 그러나 painter는 두 action의 Informee가 아니며 divulgence의 일부로 **Fetch**와 **Exercise** action을 witness할 뿐입니다. 따라서 painter의 관점에서는 ordering이 필요하지 않습니다. 이 차이가 divulgence causality example을 설명합니다.
+
+### Ledger API Ordering Guarantees
+
+Update Service는 update를 Daml Transaction stream으로 제공하고 State Service는 특정 시점까지의 모든 update를 해당 시점에 active한 Contract로 요약합니다. 개념적으로 두 service 모두 Participant Node가 hosted Party별로 관리하는 Local Ledger에서 파생됩니다. 즉 Party의 Transaction tree stream은 Party Local Ledger의 topological sort입니다. Flat Transaction stream에는 Party가 영향받는 Contract Stakeholder인 Transaction tree stream의 Transaction tree에서 **Create** 및 consuming **Exercise** action에 대응하는 `CreatedEvent`와 `ArchivedEvent`가 정확히 포함됩니다.
+
+<Note>
+Update Service의 Transaction tree는 Local Ledger Transaction의 일부인 **Fetch**와 **NoSuchKey** action을 생략합니다. 따라서 Update Service가 Transaction tree를 output하기 전에 **Fetch**와 **NoSuchKey** action이 제거됩니다.
+</Note>
+
+마찬가지로 State Service는 Update Service stream에 따라 반환된 offset에서 active한 Contract 집합을 제공합니다. 즉 Transaction event stream의 모든 event로 인한 Contract state 변경이 제공되는 Contract 집합에 반영됩니다. 특히 application은 snapshot 이전의 event를 고려하지 않고 Flat Transaction stream 또는 Transaction tree stream의 이후 모든 event를 processing할 수 있습니다.
+
+Local Ledger의 topological sort는 unique하지 않으므로 서로 다른 Participant Node가 동일한 Party의 Transaction stream에 다른 order를 선택할 수 있습니다. 마찬가지로 Party Local Ledger가 서로 다른 ordering constraint를 부과하므로 서로 다른 Party의 Transaction stream이 공통 Transaction을 다르게 order할 수 있습니다. 그럼에도 Daml Ledger는 모든 Local Ledger가 위에서 설명한 방식으로 Daml Ledger Model에 연결되는 virtual shared causality graph의 projection임을 보장합니다. 따라서 Ledger validity guarantee는 Local Ledger를 통해 Ledger API로 확장됩니다. 이러한 guarantee에는 deployed Daml Ledger의 trust assumption이 적용됩니다.
+
+<Note>
+Virtual shared causality graph는 Daml Ledger guarantee를 reasoning하기 위한 concept으로만 존재합니다. 일반적으로 deployed Daml Ledger는 이러한 shared causality graph를 저장하거나 생성하지도 않습니다. Participant Node는 Party를 위한 Local Ledger만 유지합니다. 이 Local Ledger가 consistent 상태를 유지하는 범위에서 이를 synchronize합니다. 즉 이론상 모든 Local Ledger를 결합하여 그 projection에 해당하는 하나의 consistent causality graph로 만들 수 있습니다.
+</Note>
+
+### Explaining the Causality Examples
+
+Causality example은 causality graph와 Local Ledger 관점에서 다음과 같이 설명할 수 있습니다.
+
+1.  `causality-example-create-archive` Contract의 causal consistency는 **Create**가 해당 Contract의 consuming **Exercise** action보다 먼저 나타나도록 요구합니다. 모든 Stakeholder는 자기 Contract의 **Create**와 consuming **Exercise** action의 Informee이므로 Stakeholder Local Ledger는 action에 이 order를 부과합니다.
+2.  `causality-example-create-use-archive` Contract의 causal consistency는 **Create**가 Contract의 non-consuming **Exercise** 및 **Fetch** action보다 먼저 나타나고 consuming **Exercise**가 그 뒤에 나타나도록 요구합니다. Signatory와 Stakeholder Actor는 **Create**, **Exercise**, **Fetch** action의 Informee이므로 Stakeholder Local Ledger는 action에 이 order를 부과합니다.
+3.  `causality-example-commit-atomic` Local Ledger는 projected Transaction의 DAG입니다. 이러한 DAG를 topologically sort할 때 Transaction이 여러 top-level action으로 구성되어 있어도 한 Transaction에 다른 Transaction을 interleave할 수 없습니다.
+4.  `causality-example-non-consuming` Causal consistency는 Contract의 non-consuming usage 간 ordering을 요구하지 않습니다. Transaction에 ordering을 규정하는 다른 action이 없으므로 Participant Node는 이들을 어느 순서로든 output할 수 있습니다.
+5.  `causality-example-out-of-band` Out-of-band data flow는 causal consistency에 capture되지 않으므로 ordering을 유도하지 않습니다.
+6.  `causality-divulgence-example` Painter는 Alice의 `Iou` **Fetch**와 **Exercise** action의 Informee가 아니며 이를 witness할 뿐입니다. 따라서 painter Local Ledger는 `tx3`을 `tx4`보다 먼저 order하지 않습니다. 그러므로 painter의 Transaction stream은 `tx3`보다 `tx4`를 먼저 output할 수 있습니다.
+7.  `causality-example-depend-on-party` Alice는 자신의 `Iou` **Fetch**와 **Exercise** action의 Informee입니다. Painter와 달리 Alice의 Local Ledger는 `tx3`을 `tx4`보다 먼저 order하므로 Alice는 Daml Ledger에 연결되는 모든 Participant Node를 통해 `tx4`보다 `tx3`을 먼저 관찰하도록 보장됩니다.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/overview/explanations/ledger-model/time.rst" hash="e88a1d96" */}
+
+<Note>
+- LAPI 부분을 BUILD subsite로 이동
+- Time monotonicity를 Ledger Model에 integrate
+- SKEW는 어디에 들어가야 하는가?
+</Note>
+
+# Time on Daml Ledgers
+
+Daml language에는 “current time”을 반환하는 getTime function이 있습니다. 그러나 distributed setting에서는 “current time” concept이 어려울 수 있습니다.
+
+이 문서는 각 Transaction에 할당되는 두 timestamp, 즉 *ledger time* `lt_TX`와 *record time* `rt_TX`를 중심으로 Daml Ledger time의 상세 semantics를 설명합니다.
+
+## Ledger Time
+
+*Ledger time* `lt_TX`는 Transaction property입니다. 해당 Transaction의 모든 getTime call value를 정의하는 timestamp이며 microsecond resolution을 갖습니다. Ledger time은 Daml Command interpretation의 일부로 Submitting Participant가 할당합니다.
+
+## Record Time
+
+*Record time* `rt_TX`는 Transaction의 또 다른 property입니다. Microsecond resolution을 가진 timestamp이며 Transaction이 persist될 때 backing storage mechanism이 할당합니다.
+
+Record time은 “real time”의 intuitive representation이어야 하지만 Daml abstract Ledger Model은 record time 할당 방식을 정확히 규정하지 않습니다. 각 persistence technology가 distributed setting의 time을 서로 다른 방식으로 표현할 수 있습니다.
+
+## Guarantees
+
+Valid Transaction `TX`의 ledger time은 다음 rule을 충족해야 합니다.
+
+1.  **Causal monotonicity**: Contract `C`에 대한 `TX`의 모든 action(create, exercise, fetch, lookup)에서 `lt_TX >= lt_C`이며, 여기서 `lt_C`는 `C`를 생성한 Transaction의 ledger time입니다.
+2.  **Bounded skew**: `rt_TX - skew_min <= lt_TX <= rt_TX + skew_max`이며, `skew_min`과 `skew_max`는 Ledger가 정의하는 parameter입니다.
+
+그 외에는 ledger time에 관한 다른 guarantee가 없습니다. 특히 ledger time과 record time 모두 monotonically increasing일 필요가 없습니다.
+
+따라서 Daml에서 time은 어느 정도 fuzzy한 것으로 간주해야 하며 fuzziness는 skew parameter에 따라 달라집니다. Daml application은 getTime이 반환하는 value를 precise timestamp로 해석해서는 안 됩니다.
+
+## Assign Ledger Time
+
+Ledger time은 Participant가 자동으로 할당합니다. 대부분의 경우 Daml application은 ledger time과 record time을 전혀 신경 쓸 필요가 없습니다.
+
+참고로 이 section에서는 현재 ledger time이 할당되는 상세 방식을 설명합니다. Algorithm은 Daml time definition의 일부가 아니며 향후 변경될 수 있습니다.
+
+1.  Ledger API로 Command를 제출할 때 user는 선택적으로 `min_ledger_time_rel` 또는 `min_ledger_time_abs` argument를 지정할 수 있습니다. 이는 각각 relative 및 absolute term으로 ledger time의 lower bound를 정의합니다.
+2.  Ledger time은 다음 value 중 가장 큰 값으로 설정됩니다.
+    1.  `max(lt_C_1, ..., lt_C_n)`, 주어진 Transaction이 사용하는 모든 Contract의 maximum ledger time
+    2.  `t_p`, Participant의 local time
+    3.  `t_p + min_ledger_time_rel`, `min_ledger_time_rel`이 주어진 경우
+    4.  `min_ledger_time_abs`, `min_ledger_time_abs`가 주어진 경우
+3.  주어진 Transaction이 사용하는 Command 집합은 선택한 time에 따라 달라질 수 있으므로 적합한 ledger time을 찾을 때까지 위 process를 반복해야 할 수 있습니다.
+4.  세 번 iteration한 뒤에도 적합한 ledger time을 찾지 못하면 submission이 reject됩니다. Contract 관련 contention이 있거나 Transaction이 time에 기반해 매우 fine-grained한 control flow를 사용하는 경우 발생할 수 있습니다.
+5.  이 시점에 ledger time이 미래일 수 있습니다(예: `min_ledger_time_rel`에 큰 value가 주어진 경우). Participant는 Transaction을 Ledger에 제출하기 전에 `lt_TX - transaction_latency`까지 기다립니다. Transaction이 `lt_TX == rt_TX`에 기록되도록 하는 것이 목적입니다.
+
+Command interpretation에 상당한 시간이 걸려 결과 Transaction을 Ledger에 제출할 때 할당된 ledger time이 더 이상 valid하지 않을 것으로 예상하면 `min_ledger_time_rel`과 `min_ledger_time_abs` parameter를 사용하세요. 이 parameter는 Transaction이 Ledger의 `rt_TX` 부근에 도착하도록 하는 것만 보장할 수 있습니다. 이후 Ledger validation이 `skew_max`보다 오래 걸리면 Transaction은 여전히 reject되며 Ledger operator에게 `skew_max` time model parameter를 늘려 달라고 요청해야 합니다.
+
+
+{/* COPIED_END */}

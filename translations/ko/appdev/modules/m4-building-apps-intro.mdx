@@ -1,0 +1,55 @@
+---
+title: "Application 구축"
+description: "Daml smart contract에서 full-stack Canton Network application으로 확장하기"
+source_id: "SRC-C80C4AC74F"
+source_path: "appdev/modules/m4-building-apps-intro"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "8039ba237423d7d5e5ebbea824ea07825155e6de42c664735d0866c6df960093"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m4-building-apps-intro.md)을 사용하세요.
+</Warning>
+
+Module 4는 Daml contract 작성과 완전한 application 출시 사이의 간극을 연결합니다. Canton application의 구조, 사용 가능한 SDK와 API, ledger와 interaction하는 backend 및 frontend component를 구축하는 방법을 학습합니다.
+
+## 사전 요구 사항
+
+이 module을 시작하기 전에 [Module 3: Daml Smart Contract](/appdev/modules/m3-dev-environment)를 완료해야 합니다. Daml의 template, choice, authorization을 실무적으로 이해해야 합니다. Java 또는 TypeScript에 익숙하면 도움이 되지만 필수는 아닙니다.
+
+## 학습 내용
+
+- Canton application architecture에서 role인 App Provider, App User, End User를 infrastructure에 매핑하는 방법
+- ledger를 대상으로 개발할 때 사용할 수 있는 SDK, API, code generation tool
+- Command를 submit하고 Transaction을 읽는 backend service 구축 방법
+- contract data를 표시하고 wallet과 integrate하는 frontend 구축 방법
+- application developer 관점에서 Canton Coin과 traffic이 작동하는 방식
+
+## Module Page
+
+<CardGroup cols={2}>
+
+<Card title="Application Architecture" icon="sitemap" href="/appdev/modules/m4-app-architecture">
+  Canton application의 role, layer, 각 요소가 맞물리는 방식을 설명합니다.
+</Card>
+
+<Card title="SDK와 API" icon="plug" href="/appdev/modules/m4-sdks-apis">
+  code generation, Ledger API, JSON API, PQS, Wallet SDK를 설명합니다.
+</Card>
+
+<Card title="Backend 개발" icon="server" href="/appdev/modules/m4-backend-dev">
+  ledger 연결, Command submit, Transaction 읽기, PQS query를 설명합니다.
+</Card>
+
+<Card title="Frontend 개발" icon="browser" href="/appdev/modules/m4-frontend-dev">
+  생성된 TypeScript binding과 wallet integration을 사용하는 React UI를 구축합니다.
+</Card>
+
+<Card title="Canton Coin과 Traffic" icon="coins" href="/appdev/modules/m4-canton-coin">
+  CC로 traffic을 구매하는 방식과 Transaction cost 관리 방법을 이해합니다.
+</Card>
+
+</CardGroup>

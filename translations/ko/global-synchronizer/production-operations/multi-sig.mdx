@@ -1,0 +1,229 @@
+---
+title: "Canton의 Multi-Sig"
+description: "Canton의 decentralized namespace, decentralized Party hosting 및 submission의 decentralized signing"
+source_id: "SRC-E46990CAFE"
+source_path: "global-synchronizer/production-operations/multi-sig"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "2c4caf676cd380d4292b97274b5ee9ef0cbed0ad32b4541e8de1cc7e20bd284c"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/multi-sig.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/operate/parties/multi-sig-in-canton.rst" hash="05a0ef64" */}
+
+## Introduction
+
+Canton protocol에는 high level에서 signature가 필요한 세 가지 Transaction 유형, 즉 submission, confirmation 및 Topology Transaction이 있습니다. Submission은 하나 이상의 Party가 제출하는 on-ledger state 변경 요청입니다. Confirmation은 제출된 Transaction이 valid하고 commit할 수 있음을 증명하는 counterparty의 승인입니다. 마지막으로 Topology Transaction은 Network의 shared global Topology state를 수정합니다. 즉 어떤 Validator가 Party를 host하는지, 해당 Party가 Validator에 어떤 권한(submission, confirmation 또는 observation)을 부여하는지, 그리고 Party가 Transaction authorize에 사용할 public/private keypair가 무엇인지 결정합니다.
+
+하나의 action에 여러 signature가 필요한 multi-sig 또는 decentralization 개념은 이러한 각 Transaction 유형에 적용할 수 있습니다. 이 문서에서는 다음을 설정하는 option을 안내합니다.
+
+1.  Decentralized namespace(Topology Transaction을 decentralized 방식으로 제어)
+2.  Decentralized Party hosting(Transaction validation 및 confirmation의 decentralization)
+3.  특정 Party에 대한 Transaction submission의 decentralized signing. 여기에는 Daml Transaction의 multi-sig workflow를 구현하는 Daml model과 External Party를 사용하는 multi-signature submission이 포함됩니다.
+
+## 1: Topology 변경 제어의 decentralization
+
+Canton의 root of trust는 private Transaction signing key(또는 key들)입니다. 이 key는 Transaction에 대한 signature를 생성하여 특정 Party가 해당 Transaction을 authorize했음을 증명합니다. *Signing key를 Party에 연결하는* Transaction은 *Topology* Transaction의 한 예입니다. Validator Node에 Party를 대신하여 data를 생성하고 저장할 권한(confirmation 및 observation 권한)을 부여하는 Transaction도 Topology Transaction의 예입니다.
+
+따라서 Canton에서 첫 번째 decentralization level은 특정 Party의 Topology Transaction에 대한 제어를 decentralized 방식으로 운영할지 여부입니다. 하나의 private/public keypair가 이 association을 제어하면 해당 keypair의 private key signature로 Party의 signing key를 변경할 수 있습니다.
+
+Key와 Party의 association에 여러 key set의 signature가 필요하면 Party 자체에 대한 제어가 decentralized됩니다. Party signing key에 대한 제어의 decentralization을 "decentralized namespace"라고 합니다. 즉 decentralized namespace는 하나의 authority에 의존하지 않고 Party ID를 key에 mapping합니다.
+
+### Decentralized Namespace 생성
+
+Key와 Party의 mapping에 대한 제어가 decentralized namespace에서 이루어지는 Party를 생성하려면 특정 Topology Transaction 집합을 구성하고 authorize한 다음 제출합니다.
+
+1.  Namespace Delegation Transaction
+
+N개의 `NamespaceDelegation` Transaction을 생성합니다. 각 Transaction은 decentralized namespace의 foundation 역할을 할 public key 하나를 등록합니다. Authorize되려면 각 Transaction에 해당 key가 직접 signature해야 합니다. 이는 self-signed root certificate와 비슷하게 작동합니다.
+
+2.  Decentralized Namespace 구성
+
+`DecentralizedNamespaceDefinition` Transaction을 생성합니다. 이 Transaction은 앞 단계에서 설정한 N개 key를 참조하며 N 이하의 validity threshold T를 정의합니다. Authorize되려면 `DecentralizedNamespaceDefinition` Transaction에 N개 namespace owner key가 모두 signature해야 합니다.
+
+### Decentralized Namespace가 제어하는 Party 생성 및 hosting
+
+Party가 host될 위치를 명시하는 `PartyToParticipant transaction`을 생성합니다. Canton 3.4에서 이 Transaction은 다음 세 가지 용도로 사용됩니다.
+
+- Party hosting authorize: `PartyToParticipant` Transaction은 Party가 어디에서 어떤 권한(submission, confirmation, observation)으로 host될지 명시합니다.
+  - N개 namespace owner 중 최소 T개의 signature가 필요합니다.
+- Key 등록: Canton 3.4에서는 Party의 protocol signing key도 `PartyToParticipant` Transaction에 등록할 수 있으며 등록하는 것이 좋습니다.
+- Possession 증명: 이 Transaction에는 등록되는 protocol key도 signature하여 해당 private key의 ownership을 증명해야 합니다.
+
+위 Transaction과 해당 signature를 확보하면 이 Topology Transaction을 Ledger API의 allocateExternalParty endpoint에 제출하여 decentralized Party를 생성할 수 있습니다. Transaction에 지정된 모든 hosting Node가 Transaction을 승인해야 효력이 발생합니다.
+
+이 설정에서 Party는 서로 구분되는 두 threshold layer에서 보호됩니다.
+
+1.  Identity Control: Party namespace는 `DecentralizedNamespaceDefinition`을 통해 namespace owner가 governance합니다(T개의 signature 필요).
+2.  Operational control: Daml Transaction authorization은 `PartyToParticipant` Transaction에 정의된 protocol key가 governance합니다.
+
+*Decentralized namespace를 설정하거나 Party를 여러 confirming Node에 분산하는 방법에 관한 자세한 내용은 Canton documentation을 참조하세요.*
+
+Decentralized namespace를 사용해 Topology Transaction에 대한 제어를 decentralized 방식으로 운영하는지 여부와 관계없이, 특정 Party의 submission에는 하나 이상의 signing key를 사용할 수 있습니다. 이는 section 3에서 다룹니다.
+
+## 2: Confirmation의 decentralization
+
+Canton privacy model로 인해 모든 Transaction은 해당 Transaction의 stakeholder인 Party를 host하는 Participant의 confirmation을 받아야 합니다. Topology state의 `partyToParticipant` mapping은 Network의 각 Party를 어떤 Participant가 host하는지 정의하며, 그에 따라 해당 Party를 위해 어느 Participant가 confirmation에 signature해야 하는지도 정의합니다. `partyToParticipant` mapping에 둘 이상의 Validator가 포함된 Party를 *multi-hosted Party*라고 합니다. Confirmation threshold가 1보다 큰 multi-hosted Party는 *decentralized Party*라고 부를 수 있습니다. Threshold는 confirmation이 Party의 signature를 받은 것으로 간주되기 전에 몇 개 Validator Node가 signature해야 하는지 정의합니다. 이 Party의 confirmation이 필요한 모든 Transaction은 `partyToParticipant` mapping에 나열된 모든 Participant에 전송되며, 서로 다른 Participant의 confirmation 수가 threshold를 넘으면 해당 Party가 Transaction을 confirm한 것으로 간주됩니다.
+
+## 3: Command Submission 제어의 decentralization
+
+Canton ledger state는 Participant를 통해 Command를 제출하면 변경되며, Participant는 Command를 Daml Transaction으로 확장합니다. 각 Command submission은 이 Command를 authorize하고 제출하는 Party가 signature합니다. Canton의 표준(non-decentralized) Party에서는 간단합니다. 해당 Party가 Participant Node에 host되고 그 Node를 통해 Command를 제출합니다. Decentralized Party의 경우 실제 submission을 누가(어느 Participant를 통해 어느 user가) 수행하는지, 그리고 decentralized Party를 대신하여 행동할 권한을 일정 threshold의 user로부터 받았음을 어떻게 증명할지 정해야 하므로 더 복잡합니다.
+
+Decentralized Party를 대신하는 submission에는 세 가지 주요 접근 방식이 있으며 각각 장단점이 있습니다.
+
+1.  Daml workflow를 사용하여 delegation을 통해 authority 수집
+2.  In-Daml signature verification
+3.  Multi-signature를 사용한 External Signing
+
+### Delegation Daml Workflow를 통한 Authority 수집
+
+Daml의 일반적인 pattern은 다른 Party를 대신해 action을 실행할 authority를 delegate하는 것입니다. 예를 들어 propose/accept workflow는 특정 Transaction을 수행하기 위해 asset의 sender와 receiver로부터 delegation을 수집하는 여러 단계로 구성될 수 있습니다. 정확한 workflow에 따라 어느 Party든 다른 Party의 authority로 transfer Transaction을 제출할 수 있습니다.
+
+이 pattern을 활용하면 decentralized Party가 나중에 confirm할 Transaction을 "simple"한 non-decentralized Party가 제출하도록 authority를 delegate할 수 있습니다. 이 경우 일반적으로 decentralized Party가 signatory인 "rules" Contract 하나와, 서로 다른 actor가 수행할 수 있는 action을 정의하는 해당 Contract의 Choice가 있습니다. 그리고 "rules"에는 일반적으로 실제 action을 수행할 수 있는 Party와 해당 조건의 목록이 포함됩니다.
+
+예를 들어 Canton Coin app에서 `dsoParty`는 [dsoRules Contract](https://github.com/hyperledger-labs/splice/blob/0f194d4e5b55722cfd14b82a74e4b0db47f0f251/daml/splice-dso-governance/daml/Splice/DsoRules.daml#L441)의 signatory인 decentralized Party입니다. 이 Contract에는 application에 참여하는 Super Validator 목록(Contract의 `svs` [field](https://github.com/hyperledger-labs/splice/blob/0f194d4e5b55722cfd14b82a74e4b0db47f0f251/daml/splice-dso-governance/daml/Splice/DsoRules.daml#L444))이 있습니다.
+
+특정 조건이 충족되면 어떤 SV든 일부 action을 수행할 수 있습니다. 이 조건은 Daml workflow 자체의 assertion으로 enforce됩니다. 예를 들어 어떤 SV든 expiration date가 이미 지난 Amulet Contract를 archive하기 위해 [DsoRules_Amulet_Expire Choice](https://github.com/hyperledger-labs/splice/blob/0f194d4e5b55722cfd14b82a74e4b0db47f0f251/daml/splice-dso-governance/daml/Splice/DsoRules.daml#L1095C34-L1095C43)를 exercise할 수 있습니다.
+
+다른 action에는 다른 SV의 충분한 confirmation 수집이 필요합니다. 이 과정도 Daml에서 구현됩니다. 예를 들어 어떤 SV든 [DsoRules_RequestVote Choice](https://github.com/hyperledger-labs/splice/blob/0f194d4e5b55722cfd14b82a74e4b0db47f0f251/daml/splice-dso-governance/daml/Splice/DsoRules.daml#L674C34-L674C43)를 invoke할 수 있습니다. 이후 어떤 SV든 [DsoRules_CastVote Choice](https://github.com/hyperledger-labs/splice/blob/0f194d4e5b55722cfd14b82a74e4b0db47f0f251/daml/splice-dso-governance/daml/Splice/DsoRules.daml#L712)를 invoke하여 vote할 수 있습니다. 어떤 SV든 [DsoRules_CloseVoteRequest Choice](https://github.com/hyperledger-labs/splice/blob/0f194d4e5b55722cfd14b82a74e4b0db47f0f251/daml/splice-dso-governance/daml/Splice/DsoRules.daml#L761)를 invoke하여 process를 완료할 수도 있습니다. Daml에 encode된 조건(예: 충분한 "Yay" vote를 받고 특정 time에 도달함)에 따라 `dsoParty`가 vote 대상 action을 수행할 수 있습니다. 이 process의 모든 submission은 "simple"한 non-decentralized Party, 즉 Canton Coin 예시에서는 SV Party가 수행했다는 점에 유의하세요.
+
+Decentralized Party가 소유한 "rules" Contract를 처음에 생성하는 bootstrapping 문제는 문서 끝부분에서 다시 다룹니다.
+
+**이 접근 방식의 장점:**
+
+- 모든 action, 특히 vote와 action submission이 별도의 on-ledger Transaction으로 표시됩니다.
+- Decentralized Party를 host하는 개별 Node operator 사이에 off-ledger communication이 필요하지 않습니다. 이들은 서로의 action을 on-ledger에서 관찰하며 그에 따라 on-ledger에서 행동하는 데 필요한 모든 정보를 갖습니다.
+
+**이 접근 방식의 단점:**
+
+- 각 단계(예: 각 vote)가 on-ledger Transaction이므로 Synchronizer traffic 관점에서 비교적 비용이 많이 듭니다. Operation 빈도에 따라 실용적이지 않을 수 있습니다.
+
+### In-Daml Signature Verification
+
+이 접근 방식에서도 이전 접근 방식과 마찬가지로 decentralized Party가 *아닌* 하나의 Party가 decentralized Party를 대신하여 Command를 제출합니다. 그러나 signature를 수집하는 process는 off-ledger에서 수행됩니다. 수집된 signature는 Daml Choice의 argument로 제출되며 signature verification은 Daml assertion으로 구현됩니다.
+
+Signature의 validity를 assert하는 Daml Choice의 예는 [Daml test code](https://github.com/digital-asset/daml/blob/main/sdk/daml-script/test/daml/crypto/AttestationTests.daml)에서 찾을 수 있습니다. 이를 확장하여 일정 threshold의 signature 존재와 validity를 assert하는 Choice를 만들 수 있습니다. 이 Choice는 여전히 decentralized Party가 소유한 "rules" Contract에 속하며 Choice controller는 다른 Party이지만, signature 또는 "vote" 수집 process는 더 이상 이 Contract에서 구현하지 않습니다.
+
+이러한 Choice를 통해 signature를 수집하고 Transaction을 제출하는 process는 다음과 같습니다.
+
+- 각 member(signing key controller)가 합의된 "encoded Command"에 off-ledger에서 signature합니다. 예를 들어 실행할 Command 세부 정보를 encode하는 합의된 JSON structure가 될 수 있습니다.
+- Signature는 off-ledger channel을 통해 Transaction을 제출할 하나의 Node로 수집됩니다.
+- 제출 Node는 위에서 설명한 Choice를 통해 하나의 Daml Transaction을 구성하며, 수집한 signature를 argument에 포함합니다.
+- Daml code의 assertion이 validity를 confirm하면 action이 실행됩니다.
+
+**이 접근 방식의 장점:**
+
+- 제출된 Transaction이 어떤 signature를 수집했는지 on-ledger에 기록하므로 첫 번째 접근 방식과 비슷하게 auditability가 여전히 높습니다.
+- Signature 수집(예: "voting")이 off-ledger에서 이루어지므로 Daml workflow가 더 간단합니다.
+- On-ledger traffic 비용이 더 저렴합니다.
+- Attestation이 signature된 시점과 on-ledger에서 verify되는 시점 사이에 timeout이 없습니다. 예를 들어 air-gapped offline signing처럼 authorizing signature가 submission time보다 훨씬 전에 제공될 수 있는 workflow를 지원합니다.
+
+**이 접근 방식의 단점:**
+
+- Signature를 수집하고 유실되지 않도록 보장하기 위한 추가 off-ledger channel 등이 필요합니다.
+- 제출되지 않은 signature는 on-ledger에 기록되지 않으므로 auditability가 약간 낮습니다.
+
+### Daml Transaction submission의 External multi-sig signing
+
+External Party가 Daml Transaction을 제출할 때 일정 threshold의 signature(multi-sig)를 요구하도록 구성할 수 있습니다. 이 설정은 on-ledger Daml code를 더 간단하게 유지하면서 signature coordination을 off-ledger로 이동합니다.
+
+먼저 PartyToParticipant Topology Transaction을 통해 여러 protocol signing key를 Party에 연결합니다. 이 configuration은 다음을 규정합니다.
+
+- **Hosting:** 어떤 Node가 Party를 host하는지 규정합니다.
+- **Submission Rights:** Submission을 authorize하는 데 필요한 public key(Protocol Signing Key) 목록과 threshold(예: 5개 중 3개)를 규정합니다.
+
+여러 external signature가 필요한 Transaction을 준비하고 제출하는 process는 다음과 같습니다.
+
+- **Prepare:** Participant Node가 Transaction payload를 준비합니다. 이 작업에는 global timeout이 적용되며 일반적으로 24시간입니다.
+- **Distribute:** Payload를 필요한 signer에게 off-band로 전송합니다.
+- **Sign:** 각 member가 local에서 payload를 validate하고 signature합니다.
+- **Collect & Submit:** 제출 Node가 signature를 수집합니다. PartyToParticipant에 정의된 threshold를 충족하면 최종 envelope를 구성하고 ledger에 제출합니다.
+
+<Note>
+Prepared Transaction에는 timeout이 적용되며, 이 시간이 지나면 submission이 실패합니다. 이는 Synchronizer의 global timeout이며 현재 Global Synchronizer에서는 24시간으로 구성되어 있습니다.
+</Note>
+
+External multi-sig signing은 key 탈취를 방지하지만, 악의적인 hosting Node가 signature requirement를 무시하는 것은 방지하지 못한다는 점에도 유의하세요. 악의적인 Node로부터 보호하려면 Party가 Section 2에서 설명한 것처럼 confirmation threshold가 \> 1인 **Multi-Hosted** Party여야 합니다. 이렇게 하면 여러 Node가 external signature를 독립적으로 verify해야 합니다.
+
+**이 접근 방식의 장점:**
+
+- 더 간단한 Daml: Daml model을 변경할 필요가 없으며 Party는 code에서 다른 entity와 동일하게 동작합니다.
+- Standard Identity: Decentralized 특성이 application logic에서 추상화됩니다.
+
+**이 접근 방식의 단점:**
+
+- 복잡한 Coordination: Payload를 배포하고 signature를 수집하려면 견고한 off-ledger infrastructure가 필요합니다.
+- 복잡한 Validation: Signer는 signature하기 전에 raw Transaction binary를 decode하고 검사해야 합니다.
+- 제한적인 Auditability: 개별 signature는 protocol에서 validate되지만 Daml model history에는 표시되지 않습니다.
+
+### Command submission 접근 방식 선택 지침
+
+위의 장단점을 바탕으로 선호하는 구현 방식을 선택할 수 있습니다. 요약하면 다음과 같습니다.
+
+- Decentralized Party의 submission 빈도가 비교적 낮을 것으로 예상되고 더 복잡한 Daml coordination logic을 작성해도 괜찮다면 "Delegation Daml Workflow를 통한 Authority 수집"을 선택할 수 있습니다. Off-ledger channel을 구축할 필요가 없고 on-ledger에서 모든 정보를 확인할 수 있다는 이점이 있습니다.
+- On-ledger visibility를 유지하면서 Daml workflow를 덜 복잡하게 만들고 싶고 Node 사이에 off-ledger channel을 구축할 수 있거나 이미 구축했다면 "In-Daml Signature Verification"이 좋은 선택일 수 있습니다.
+- 마지막으로 signature의 on-ledger visibility가 필수 요건이 아니고 더 복잡한 off-ledger process와 Node 간 communication을 감당할 수 있다면 "External multi-sig signing"을 고려할 수 있습니다.
+
+## Additional Topics
+
+### Multi-sig Daml Workflow bootstrapping
+
+첫 두 접근 방식에는 모두 decentralized Party가 소유한 "rules" Contract가 있어야 합니다. 따라서 이 Contract가 처음부터 어떻게 존재하게 할 것인지, 즉 bootstrapping 문제를 해결해야 합니다.
+
+이 질문에는 두 가지 답이 있습니다.
+
+- 처음에는 decentralized Party를 centralized Party로 bootstrap하고 Party를 decentralized 방식으로 전환하기 전에 이 Contract를 생성합니다. Bootstrapping Transaction submission이 단순한 non-decentralized submission이므로 더 간단한 접근 방식이지만, 특정 상황에서는 bootstrapping Node의 trust와 liability에 관한 우려가 생길 수 있습니다.
+- Multi-sig External Signing을 사용하여 "rules" Contract를 생성합니다. 기본적으로 세 번째 접근 방식인 External multi-sig signing을 사용하여 initial Contract를 생성함으로써 process만 bootstrap하는 하나의 Transaction에 signature합니다. 이후 workflow는 다른 두 option 중 하나를 따라 해당 Contract에서 authority를 derive할 수 있습니다.
+
+Centralized 방식으로 시작하면 single key holder가 absolute power를 갖습니다. Decentralized 방식으로 전환하려면 해당 single key holder가 `DecentralizedNamespaceDefinition`에 signature해야 합니다. 이는 "trusted setup" 접근 방식입니다.
+
+## Key Management
+
+설정에 따라 위에서 사용할 수 있는 key set은 네 가지이며, 각 설정에서는 이 중 두세 개의 set을 사용합니다.
+
+- Participant가 confirmation에 signature할 때 사용하는 Participant internal key
+- Topology Transaction에 signature하는 데 사용하는 namespace member key. [Documentation의 예](https://docs.digitalasset-staging.com/operate/3.3/howtos/operate/parties/decentralized_parties.html#setup-a-decentralized-party)처럼 이 key를 별도의 key로 만드는 것을 강력히 권장합니다.
+- External Signing을 사용하는 경우 External Signing을 위한 key도 필요합니다. 일반적으로 namespace key와 같은 key를 재사용해도 되지만 보안을 강화하기 위해 다른 key를 사용할 수도 있습니다.
+- 마찬가지로 In-Daml Signature Verification을 사용하는 경우 이 signing을 위한 key가 필요합니다. In-Daml signature는 namespace key와 같은 key를 재사용할 수 있지만 보안을 강화하기 위해 다른 key를 사용할 수도 있습니다.
+
+## Topology 변경 관련 Risk
+
+### Confirmation 권한이 있는 추가 Node에 Party hosting(추가 Node onboarding)
+
+Decentralized namespace와 Party를 host하는 Participant 집합 및 해당 threshold는 [Offline Party Replication](https://docs.digitalasset-staging.com/operate/3.3/howtos/operate/parties/party_replication.html#offline-party-replication)이라는 process를 통해 변경할 수 있습니다.
+
+현재 Offline Party Replication process는 Party를 새로 host하는 Node에 일부 risk를 발생시키며, 현재 process 중 특정 실수로 인해 Node가 error state에 빠질 수 있다는 점에 유의하세요.
+
+구체적으로 새 Node는 승인해서는 안 되는 새 Transaction을 confirm할 수 있으며, 특정 조건에서는 Party replication 중 duplicate Contract를 생성할 수도 있습니다. 알려진 이 두 issue는 향후 Canton release에서 해결될 예정입니다.
+
+이 issue가 해결될 때까지 decentralized Party를 host하는 Node pool을 확장할 때는 항상 fresh Node를 사용해야 합니다. Onboarding process에서 위에 설명한 error condition 중 하나가 발생하여 Node를 사용할 수 없게 되면 새 Node를 쉽게 교체할 수 있습니다.
+
+Decentralized Party가 새 Node에 onboarding된 이후에는 해당 Node를 다른 용도로 사용해도 안전합니다. Canton 3.3과 Canton 3.4에서는 Node에서 decentralized Party를 offboard하는 process가 안전한 것으로 간주되기 때문입니다.
+
+### Party를 host하는 Node에서 Party 제거/offboarding
+
+Canton 3.4부터는 다음 조건이 충족되는 경우 Validator Node에서 Party를 제거해도 안전합니다.
+
+1.  Validator가 지금까지 하나의 Synchronizer에만 연결되었으며 해당 Node에 multi-Synchronizer app을 설치한 적이 없습니다.
+2.  Party가 해당 Validator Node에 다시 onboarding되지 않습니다.
+
+### (Submission, confirmation, observation?) 권한으로 Party를 host하는 Node 종료
+
+Decentralized confirmation pool에 참여하는 하나 이상의 Party를 host하는 Validator Node를 완전히 종료("offboard" 또는 "decommission")해도 안전합니다.
+
+Sequencer pruning window 내에 이 Node를 Network에 다시 연결하는 것도 안전합니다. 예를 들어 Global Synchronizer에서 이 기간은 30일입니다. Sequencer pruning window가 지나면 현재 알려진 해결 방법이 없는 여러 failure가 발생할 수 있습니다.
+
+### 악의적인 Hosting Participant가 미치는 영향
+
+Multi-sig Party를 host하는 악의적이거나 faulty 상태인 Node는 quorum에 도달하기에 충분한 valid Participant가 available한 한 Transaction processing의 integrity나 availability에 영향을 주지 않습니다.
+
+그러나 악의적이거나 faulty 상태인 Node가 invalid ACS commitment를 보낼 수 있습니다. 이 commitment는 Participant Node가 current state에 대해 서로 확인하기 위해 교환하는 정기 checkpoint입니다. 이 commitment는 Transaction processing에 영향을 주지 않지만, 두 Participant Node가 diverge하기 시작하면 Node operator에게 alert를 보내며 disagreement가 해결되거나 명시적으로 ignore될 때까지 Node pruning을 차단합니다.
+
+추가 자료는 Decentralization을 참조하세요.
+
+{/* COPIED_END */}

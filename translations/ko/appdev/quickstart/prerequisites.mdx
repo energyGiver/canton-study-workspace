@@ -1,0 +1,239 @@
+---
+title: "Prerequisites and Installation"
+description: "Development environment를 설정하고 Canton Network QuickStart 설치"
+source_id: "SRC-D7491E319B"
+source_path: "appdev/quickstart/prerequisites"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "327655c8cdd19cdf2d1f40752a2258f1f576a99dcf29681b472485faa3c35a19"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/quickstart/prerequisites.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/quickstart/3.4/sdk/quickstart/download/cnqs-installation.rst" hash="75fb6807" */}
+
+# Canton Network quickstart installation
+
+## Introduction
+
+Quickstart application은 **essential** scaffolding을 제공하여 여러분과 팀이 CN application development에 익숙해지도록 돕습니다. Quickstart application은 출발점을 제공하며 business need에 맞게 확장하도록 만들어졌습니다. Quickstart에 익숙해지면 technology choice와 application design을 검토하여 필요한 변경을 결정하세요. Technology와 design decision은 궁극적으로 여러분의 몫입니다.
+
+## Overview
+
+이 guide에서는 CN Quickstart 설치와 `LocalNet` deployment를 안내합니다. 편의를 위해 경험 수준에 따른 [fast path installation](#fast-path-installation)과 [step-by-step instructions](#step-by-step-instructions)를 제공합니다. 오류를 발견하면 Canton Network 담당자에게 문의하세요.
+
+### Roadmap
+
+- 설치 후 example application에서 business operation을 완료하려면 [demo를 살펴보세요](/appdev/quickstart/running-the-demo).
+- Quickstart project structure의 overview는 [project structure guide](/appdev/quickstart/project-structure)를 읽으세요.
+- [Debugging and troubleshooting with lnav](/appdev/quickstart/lnav)에서 lnav를 사용한 debugging을 알아보세요.
+- 추가 debugging information은 [cn-quickstart repository](https://github.com/digital-asset/cn-quickstart)의 observability and troubleshooting section에 있습니다.
+
+## Prerequisites
+
+[CN-Quickstart GitHub repository](https://github.com/digital-asset/cn-quickstart)는 public으로 access할 수 있습니다.
+
+CN Quickstart는 Dockerized application이며 [Docker Desktop](https://www.docker.com/products/docker-desktop/)이 필요합니다. Docker Desktop에 memory 8 GB를 할당하는 것을 권장합니다. Unhealthy container가 보이면 가능한 경우 resource를 추가로 할당하세요. Machine memory가 충분하지 않으면 Observability를 사용하지 마세요.
+
+그 밖의 requirement는 다음과 같습니다.
+- [Curl](https://curl.se/download.html)
+- [Direnv](https://direnv.net/docs/installation.html)
+- [Nix](https://nixos.org/download/)
+- Windows user는 administrator privilege로 [WSL 2](https://learn.microsoft.com/en-us/windows/wsl/install)를 설치하고 사용해야 합니다.
+
+### Nix download support
+
+Machine에 Nix가 있는지 확인합니다.
+
+```bash
+nix --version
+```
+
+Command가 `Nix (Nix) 2.25.2`와 같은 결과를 반환하면 완료입니다.
+
+MacOS 권장 설치 방법:
+
+```bash
+sh <(curl -L https://nixos.org/nix/install)
+```
+
+Linux 권장 설치 방법(Windows user는 이 Command와 이후 모든 Command를 WSL 2에서 실행해야 함):
+
+```bash
+sh <(curl -L https://nixos.org/nix/install) --daemon
+```
+
+## Fast path installation
+
+Prerequisite에 익숙하다면 다음의 축약된 설치 instruction을 사용하세요. 더 자세한 instruction은 아래에 있습니다.
+
+1.  [GitHub에서 clone](#clone-from-github)하고 `cn-quickstart` repository로 cd합니다. `git clone https://github.com/digital-asset/cn-quickstart.git`
+2.  Repository root에서 [Direnv](#clone-from-github)가 development toolchain을 provision하도록 허용합니다. `direnv allow`
+3.  Computer에서 [Docker Desktop](#docker) app이 실행 중인지 확인합니다. `docker info`
+4.  Terminal에서 Docker repository에 login합니다. `docker login`
+5.  `quickstart` subdirectory로 **cd**합니다. `cd quickstart`
+6.  [Local development](#deploy-a-validator-on-localnet) environment를 구성합니다. `make setup`
+7.  Prompt가 나타나면 OAuth2를 enable하고 Observability와 TEST MODE를 disable하며 Party hint는 비워 default value를 사용합니다.
+8.  `quickstart` subdirectory에서 application을 build합니다. `make build`
+9.  새 terminal window에서 `quickstart` subdirectory의 log collection을 시작합니다. `make capture-logs`
+10. 이전 terminal window로 돌아가 application과 Canton service를 시작합니다. `make start`
+11. Optional - 별도 shell에서 `quickstart` subdirectory의 [Canton Console](#connecting-to-the-local-canton-nodes)을 실행합니다. `make canton-console`
+12. Optional - 네 번째 shell에서 `quickstart` subdirectory의 Daml Shell을 시작합니다. `make shell`
+13. 완료되면 `make stop && make clean-all`로 [application](#closing-the-application)과 다른 service를 종료합니다.
+14. 해당하는 경우 `exit`로 Canton Console을 종료하고 `quit`로 Daml Shell을 종료합니다.
+
+## Step-by-step instructions
+
+### Clone from GitHub
+
+Local machine에 `cn-quickstart` repository를 clone하고 **cd**합니다.
+
+    git clone https://github.com/digital-asset/cn-quickstart.git
+    cd cn-quickstart
+    direnv allow
+
+![allow direnv](/images/docs_website/01-allow-direnv.png)
+
+### Docker
+
+Computer에서 Docker Desktop application이 실행 중인지 확인합니다.
+
+Terminal에서 Docker repository에 login합니다.
+
+    docker login
+
+마지막 Command에는 [Docker Hub](https://app.docker.com/) username/password 또는 *Personal Access Token (PAT)*이 필요합니다.
+
+Command는 ‘Login Succeeded’를 반환해야 합니다.
+
+### Change to the quickstart directory
+
+Repository root에서 `direnv allow`를 실행하면 Daml tooling, JDK, Node.js를 포함한 development toolchain을 Nix가 자동으로 provision합니다.
+
+`quickstart` subdirectory로 **cd**합니다.
+
+    cd quickstart
+
+<Note>
+Project choreography를 제공하는 `Makefile`은 `quickstart/` directory에 있습니다. `make`는 `quickstart/` 안에서만 작동합니다.
+
+`make` 관련 error가 표시되면 present working directory를 다시 확인하세요.
+</Note>
+
+### Deploy a validator on LocalNet
+
+`make setup`을 실행하여 local development environment를 구성합니다.
+
+`Observability`를 disable하고 OAuth2를 enable합니다. Party hint는 비워 default를 사용하고 `TEST MODE`를 disable합니다.
+
+<Note>
+Party hint는 Party Node identification hash의 alias로 사용됩니다. Party Hint는 user Identity의 일부가 아니라 편의 기능입니다. 여러 Party Node가 같은 hint를 가질 수 있습니다.
+</Note>
+
+```text
+% make setup
+Starting local environment setup tool...
+./gradlew configureProfiles --no-daemon --console=plain --quiet
+Enable Observability? (Y/n): n
+OBSERVABILITY_ENABLED set to 'false'.
+
+Enable OAUTH2? (Y/n): y
+AUTH_MODE set to 'oauth2'.
+
+Specify a party hint (this will identify the participant in the
+  network) [quickstart-USERNAME-1]:
+PARTY_HINT set to 'quickstart-USERNAME-1'.
+
+Enable TEST_MODE? (Y/n): n
+TEST_MODE set to 'off'.
+
+.env.local updated successfully.
+```
+
+`make setup`을 다시 실행하여 언제든지 이 선택을 변경할 수 있습니다.
+
+<Note>
+Machine이 Docker Desktop에 할당할 memory가 8 GB 미만이면 OAuth2와 Observability가 불안정할 수 있습니다.
+</Note>
+
+Application을 build합니다.
+
+    make build
+
+![Build success](/images/docs_website/07-build-success-1.png)
+
+새 terminal window에서 `quickstart` subdirectory의 log collection을 시작합니다.
+
+    make capture-logs
+
+완료되면 이전 terminal로 돌아가 application과 Canton service를 시작합니다.
+
+    make start
+
+### Connecting to the Local Canton Nodes
+
+별도 shell에서 `quickstart` subdirectory의 Canton Console을 실행합니다.
+
+    make canton-console
+
+![Canton console](/images/docs_website/11-canton-console.png)
+
+네 번째 shell에서 quickstart subdirectory의 Daml Shell을 시작합니다.
+
+    make shell
+
+![Daml shell](/images/docs_website/12-daml-shell.png)
+
+### Closing the application
+
+*⚠️ (CN Quickstart를 바로 사용할 계획이라면 이 section 실행을 미루세요)*
+
+#### Close Canton console
+
+완료되면 Canton console terminal을 엽니다. `exit`를 실행하여 console container를 stop하고 remove합니다.
+
+#### Close Daml shell
+
+Daml shell terminal에서 `quit`를 실행하여 shell container를 stop합니다.
+
+#### Close the CN Quickstart
+
+마지막으로 다음 Command로 application과 observability service를 종료합니다.
+
+    make stop && make clean-all
+
+이후 application build의 conflict error를 피하려면 development 중과 각 session 끝에 make `clean-all`을 실행하는 것이 좋습니다.
+
+## Next steps
+
+CN Quickstart를 성공적으로 설치했습니다.
+
+다음 section인 “Exploring The Demo”에서는 example application을 시연합니다.
+
+### Connecting your application to The Canton Network
+
+`LocalNet` deployment는 local Validator에 연결되고 이 Validator는 다시 local Super Validator(Synchronizer)에 연결됩니다. Staging 및 final production deployment에서는 public Canton Network에 연결된 Validator에 연결해야 합니다.
+
+Canton Network는 세 개의 Synchronizer pool을 제공합니다. Production Network는 `MainNet`, production staging Network는 `TestNet`입니다. Developer는 주로 development staging Network인 `DevNet`에 연결합니다.
+
+DevNet에 연결하려면 CN에서 whitelist된 [SV Node](/global-synchronizer/deployment/onboarding-process)에 access해야 합니다. CF는 Validator Node를 sponsor할 수 있는 [SV Node list](https://sync.global/sv-network/)를 publish합니다. `DevNet`에 access하려면 sponsoring SV agent에게 VPN connection information을 문의하세요.
+
+## Resources
+
+- [Curl](https://curl.se/download.html)
+- [Direnv](https://direnv.net/docs/installation.html)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [Docker Hub](https://app.docker.com/)
+- [CF list of SV Nodes](https://sync.global/sv-network/)
+- [Digital Asset Docker](https://console.cloud.google.com/artifacts/docker/da-images/europe/public)
+- [Nix](https://nixos.org/download/)
+- [Quickstart GitHub repository](https://github.com/digital-asset/cn-quickstart)
+- [Validator onboarding documentation](/global-synchronizer/deployment/onboarding-process)
+- [WSL 2](https://learn.microsoft.com/en-us/windows/wsl/install)
+
+
+{/* COPIED_END */}

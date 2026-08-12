@@ -1,0 +1,31 @@
+---
+title: "Prerequisite"
+description: "Canton Network에서 Validator를 실행하기 위한 system requirement"
+source_id: "SRC-34DDC0872B"
+source_path: "global-synchronizer/deployment/prerequisites"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "3ac4d0af4fa0698242b7cda0eae1fbd65f866cc036404e7d0166c2b4b78e0bce"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/deployment/prerequisites.md)을 사용하세요.
+</Warning>
+
+이 section에서는 Validator 실행을 위한 hardware requirement를 설명합니다. 이 값은 reference value이며 실제 requirement는 Validator usage에 따라 달라질 수 있습니다. Production Validator Node의 모든 component에 대한 CPU 및 memory usage와 database disk usage를 monitor하고 필요에 따라 resource를 조정하는 것이 좋습니다.
+
+Requirement에는 Validator 및 Participant container가 모두 포함됩니다.
+
+이 requirement는 Docker Compose 기반 deployment와 Kubernetes deployment에서 대체로 동일하지만 Kubernetes 자체 또는 ingress의 overhead는 제외합니다.
+
+| Usage                                                           | CPU | Memory | DB CPU | DB Memory | DB size |
+|-----------------------------------------------------------------|-----|--------|--------|-----------|---------|
+| Local laptop 또는 최소 VM에서 experiment                       | 1   | 6GB    | 1      | 1GB       | 1GB     |
+| Activity가 적은 production Validator                            | 2   | 8GB    | 2      | 4GB       | 10GB    |
+| Activity가 보통인 app provider용 production Validator           | 2   | 16GB   | 2      | 4GB       | 100GB   |
+
+## Database Latency
+
+Component는 database latency에 비교적 민감합니다. GCP CloudSQL과 같은 managed database offering을 사용하는 경우 cluster가 실행되는 것과 동일한 region 및 zone에 allocate하는 것이 좋습니다.

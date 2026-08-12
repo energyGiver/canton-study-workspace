@@ -1,0 +1,38 @@
+---
+title: "대체 Docker Compose Deployment(Community)"
+description: "Helm chart 기반 community 제공 Docker Compose deployment"
+source_id: "SRC-A82A892141"
+source_path: "global-synchronizer/deployment/community-docker-compose-helm"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "6fa4b0d5e1166ec8b73c25960523b38ba42edbb6c5870041983e44ad79c3a80b"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/deployment/community-docker-compose-helm.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/community/docker-compose-helm-chart.rst" hash="901429e4" */}
+
+<Warning>
+이 section에서는 community member가 공유한 solution을 소개합니다. Splice maintainer가 공식적으로 test하지 않았으므로 user가 information을 독립적으로 verify하는 것이 좋습니다. Accuracy와 completeness 개선을 위한 contribution은 언제든 환영합니다.
+</Warning>
+
+이 guide는 Mario Delgado 팀이 blockchain onboarding에 사용하는 `x-docker` standard를 따르는, Canton Validator Node 및 지원 infrastructure deployment용 community 제공 Docker Compose solution을 소개합니다. DevNet의 scheduled upgrade 중 test했지만 `.env` file의 migration ID update, database rename(`participant_${MIGRATION_ID}` 및 `validator_${MIGRATION_ID}` 같은 standardized name을 사용하도록 변경 예정), migration setup에 `validator-migration.yaml` 포함이 필요했다는 점에 유의하세요. 자세한 내용은 contribution author에게 문의하세요. 이 solution은 extensibility, operational flexibility 및 더 넓은 infrastructure와의 integration을 강조합니다. 공식 지원 Docker Compose deployment는 [Validator Node의 Docker Compose 기반 Deployment](/global-synchronizer/deployment/validator-docker-compose)를 참조하세요.
+
+Community discussion에서 이 solution을 공유한 Mario Delgado에게 감사드립니다. 자세한 내용과 향후 update는 [CryptoManufaktur-io/canton-docker](https://github.com/CryptoManufaktur-io/canton-docker) repository를 참조하세요.
+
+## Solution의 주요 Feature
+
+- `x-docker` standard에 맞춘 Canton용 custom Docker Compose setup
+- Upgrade를 위한 `validator-migration.yaml` 기반 Validator migration 지원
+- Setup 및 maintenance용 자동 installation/update script
+- Custom override(`custom.yml`)와 environment variable 지원으로 base file 수정 없이 advanced configuration 가능
+- `central-proxy-docker` 및 `:ext-network.yml`을 통한 Traefik(proxy)과 Prometheus(monitoring) integration guide
+- Kubernetes environment용 experimental Helm chart(2025년 6월 기준 개발 중)
+- Disaster recovery feature(2025년 6월 기준 개발 중)
+
+
+{/* COPIED_END */}

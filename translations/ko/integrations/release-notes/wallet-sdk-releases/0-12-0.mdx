@@ -1,0 +1,156 @@
+---
+title: "0.12.0"
+description: "Wallet SDK 0.12.0 release note"
+source_id: "SRC-4F2AE697C4"
+source_path: "integrations/release-notes/wallet-sdk-releases/0-12-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "064a3051d77785bdaedf0156597073deb8af4951416cf9558784923226435292"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-sdk-releases/0-12-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-sdk" format="split-release" version="0.12.0" source="158b3ff4c316ba7a5d6c89a6099a5303b76d4f77" */}
+
+# 0.12.0
+
+**2025년 10월 15일 release**
+
+- **중요: create transfer의 custom metadata format이 변경되었습니다**
+
+```javascript
+//previous format
+await sdk.tokenStandard!.createTransfer(
+        sender!.partyId,
+        receiver!.partyId,
+        '100',
+        {
+            instrumentId: 'Amulet',
+            instrumentAdmin: instrumentAdminPartyId,
+        },
+        [],
+        'memo-ref',
+        new Date(Date.now() + 24 * 60 * 60 * 1000),
+        {
+            key1: "value1",
+            key2: "value2"
+        }
+    )
+
+//new format
+await sdk.tokenStandard!.createTransfer(
+        sender!.partyId,
+        receiver!.partyId,
+        '100',
+        {
+            instrumentId: 'Amulet',
+            instrumentAdmin: instrumentAdminPartyId,
+        },
+        [],
+        'memo-ref',
+        new Date(Date.now() + 24 * 60 * 60 * 1000),
+            {
+            values: {
+                key1: "value1",
+                key2: "value2"
+            }
+        }
+    )
+```
+
+- featured app marker delegation proxy
+
+*Wallet SDK는 External Party submission flow에 중점을 두지만 Validator Operator Party처럼 internally hosted된 Party를 사용해야 하는 administrative task도 있습니다. featured app marker에 필요한 delegation proxy contract를 설정할 때 특히 유용합니다.*
+
+```javascript
+const delegateCommand = await sdk.userLedger?.createDelegateProxyCommand(
+    exchangeParty,
+    treasuryParty
+)
+
+const delegationContractResult =  await sdk.userLedger?.submitCommand(delegateCommand)
+```
+
+- offline Command 생성 가능
+
+*transfer 같은 일부 Command는 transferInstruction choice context 같은 관련 data를 fetch해야 하므로 online context에서 수행해야 했습니다. 이제 미리 fetch하는 방식을 선호할 경우 사용할 수 있도록 이 method와 allocation에 optional parameter가 추가되었습니다.*
+
+```javascript
+const choiceContext = await sdk.tokenStandard?.getCreateTransferContext(
+    senderParty,
+    receiverParty,
+    amount,
+    { instrumentId, instrumentAdmin},
+    //normal optional parameters for a transfer here like memo and utxos
+    )
+
+ //OFFLINE
+
+ const transferCommand = await sdk.tokenStandard?.createTransfer(
+    senderParty,
+    receiverParty,
+    amount,
+    { instrumentId, instrumentAdmin},
+    prefetchedRegistryChoiceContext: choiceContext
+ )
+```
+
+- ID로 contract fetch
+
+```javascript
+const holding = await sdk.tokenStandard?.listHoldingsUtxo(contractId)
+```
+
+- grpc admin인 topologyController의 TLS 활성화
+
+*topologyController에 TLS configuration을 제공하여 안전한 connection을 사용할 수 있습니다.*
+
+```javascript
+const tlsTopologyController = (
+    userId: string,
+    userAdminToken: string
+): TopologyController => {
+    return new TopologyController(
+        '127.0.0.1:5012',
+        new URL('http://127.0.0.1:5003'),
+        userId,
+        userAdminToken,
+        'wallet::1220e7b23ea52eb5c672fb0b1cdbc916922ffed3dd7676c223a605664315e2d43edd',
+        {
+            useTls: true,
+            tls: {
+                rootCert: path.join(here, PATH_TO_TLS_DIR, 'ca.crt'),
+                mutual: false,
+            },
+        }
+    )
+}
+```
+
+- Party 생성 stress test
+
+*MainNet에서는 Party 생성에 load가 많이 걸려 `The server was not able to produce a timely response to your request`가 지속적으로 발생했습니다. 이에 대한 safeguard가 추가되어 error 발생 시 Party를 사용할 수 있을 때까지 계속 찾습니다. timeout이 필요하다면 method 밖에서 처리해야 합니다. ledger의 Party 생성에는 timeout이 없다는 점에 유의할 가치가 있습니다.*
+
+`expectHeavyLoad`를 false로 설정하면 비활성화할 수 있습니다.
+
+```javascript
+ /** Submits a prepared and signed external party topology to the ledger.
+ * This will also authorize the new party to the participant and grant the user rights to the party.
+ * @param signedHash The signed combined hash of the prepared transactions.
+ * @param preparedParty The prepared party object from prepareExternalPartyTopology.
+ * @param grantUserRights Defines if the transaction should also grant user right to current user (default is true)
+ * @param expectHeavyLoad If true, the method will handle potential timeouts from the ledger api (default is true).
+ * @returns An AllocatedParty object containing the partyId of the new party.
+ */
+
+async allocateExternalParty(
+    signedHash: string,
+    preparedParty: GenerateTransactionResponse,
+    grantUserRights: boolean = true,
+    expectHeavyLoad: boolean = true
+)
+```

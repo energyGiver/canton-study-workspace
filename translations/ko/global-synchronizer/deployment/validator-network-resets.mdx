@@ -1,0 +1,32 @@
+---
+title: "Validator Network Reset"
+description: "Validator Node에서 DevNet 및 TestNet reset 처리"
+source_id: "SRC-66F4FEDCDB"
+source_path: "global-synchronizer/deployment/validator-network-resets"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "72544bae9ed80842803c68518e4665acf21455a665cf144fdcc776a6bd7e0e25"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/deployment/validator-network-resets.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/validator_operator/validator_network_resets.rst" hash="dbd50be9" */}
+
+DevNet과 TestNet은 약 3개월마다 reset되며 두 Network에서 동시에 발생하지 않도록 reset 시기를 분산합니다. 정확한 시점은 [Canton Foundation](https://sync.global/)에서 운영하는 `#validator-operations` channel에 announce됩니다.
+
+Reset하려면 Node를 완전히 redeploy해야 하며 Node의 모든 data가 유실됩니다. Reset을 완료할 때까지 Node가 작동하지 않습니다.
+
+Reset을 완료하려면 다음 단계를 따르세요.
+
+1.  모든 Helm chart를 uninstall합니다.
+2.  모든 PVC, Docker volume 및 database를 삭제합니다. Amazon AWS, GCP CloudSQL 등의 database도 포함합니다.
+3.  Fresh onboarding secret을 확보합니다. DevNet에서는 해당 endpoint를 call하여 직접 얻을 수 있고, TestNet에서는 SV sponsor에게 문의합니다.
+4.  Migration ID 0으로 Node를 redeploy합니다. Validator Helm chart values와 Participant Helm chart values의 migration ID를 모두 변경해야 합니다.
+5.  Reset 과정에서 Node identity가 변경되므로 이를 backup합니다.
+
+
+{/* COPIED_END */}

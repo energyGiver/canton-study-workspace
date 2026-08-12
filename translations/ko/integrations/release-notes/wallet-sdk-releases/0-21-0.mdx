@@ -1,0 +1,52 @@
+---
+title: "0.21.0"
+description: "Wallet SDK 0.21.0 release note"
+source_id: "SRC-7159BF9852"
+source_path: "integrations/release-notes/wallet-sdk-releases/0-21-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "6927d303b0094780b13eca6ca651c6258ee0bbee9bf60cc8a8569d2dae3ea73d"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-sdk-releases/0-21-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-sdk" format="split-release" version="0.21.0" source="158b3ff4c316ba7a5d6c89a6099a5303b76d4f77" */}
+
+# 0.21.0
+
+**2026년 2월 6일 release**
+
+- UTXO 목록의 pagination 지원
+
+*이전에는 `listHoldingsUtxo`가 request당 Ledger API 상한인 200개 item으로 제한되었습니다. Holding이 많은 Party에서는 모든 UTXO를 반환하지 못했습니다. 새 optional `continueUntilCompletion` parameter를 `true`로 설정하면 모든 result를 자동으로 paging하므로 200개가 넘는 UTXO를 보유한 Party도 안정적으로 처리할 수 있습니다.*
+
+```javascript
+// fetch only the first page (default behaviour, up to 200 items)
+const utxos = await sdk.tokenStandard?.listHoldingsUtxo()
+
+// fetch ALL utxos regardless of how many there are
+const allUtxos = await sdk.tokenStandard?.listHoldingsUtxo(
+    true,  // include locked
+    undefined, // offset
+    undefined, // limit
+    true   // continueUntilCompletion
+)
+```
+
+- Canton 3.4 사용 시 cost estimation 반환
+
+*이전에는 Canton 3.4 Participant에 `prepareSubmission`을 호출하면 response에서 `costEstimation` field가 누락됐습니다. Response type을 수정해 cost estimation을 올바르게 expose합니다.*
+
+```javascript
+const prepared = await sdk.userLedger?.prepareSubmission(
+    transferCommand,
+    keyPairSender.publicKey
+)
+
+// costEstimation is now available when running against Canton 3.4
+logger.info(prepared?.costEstimation)
+```

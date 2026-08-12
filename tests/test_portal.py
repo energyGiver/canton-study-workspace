@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from portal.build import _translated_navigation_entries
 from portal.content import (
     ContentRepository,
     canonical_path,
@@ -21,6 +22,36 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ContentHelpersTest(unittest.TestCase):
+    def test_korean_navigation_preserves_nested_groups(self) -> None:
+        entries = [
+            "overview/one",
+            {
+                "group": "Nested",
+                "pages": ["overview/two", "overview/three"],
+            },
+        ]
+        translated = _translated_navigation_entries(
+            entries, {"overview/one", "overview/three"}
+        )
+        self.assertEqual(
+            translated,
+            [
+                "ko/overview/one",
+                {"group": "Nested", "pages": ["ko/overview/three"]},
+            ],
+        )
+
+    def test_korean_navigation_deduplicates_official_routes(self) -> None:
+        seen: set[str] = set()
+        first = _translated_navigation_entries(
+            ["overview/one"], {"overview/one"}, seen
+        )
+        second = _translated_navigation_entries(
+            ["overview/one"], {"overview/one"}, seen
+        )
+        self.assertEqual(first, ["ko/overview/one"])
+        self.assertEqual(second, [])
+
     def test_canonical_path_normalizes_locales_and_suffixes(self) -> None:
         self.assertEqual(
             canonical_path("/ko/overview/understand/what-is-canton.mdx?x=1"),

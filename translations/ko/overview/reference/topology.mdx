@@ -1,0 +1,342 @@
+---
+title: "Topology"
+description: "Canton Topology management: namespace, cryptographic key, Party-to-Participant mapping, authorization chain, Topology Transaction"
+source_id: "SRC-1AC3D32DF2"
+source_path: "overview/reference/topology"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "45e4b4b1c4240e8cd43f028eb9d2b4b64e473f8ccc4b3337f43d4fe449b54c95"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/reference/topology.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="canton:docs-open/src/sphinx/overview/explanations/canton/topology.rst@5f96e9893" hash="05973fe4" */}
+
+# Topology management
+
+모든 Participant Node와 Synchronizer component는 Synchronizer의 모든 Identity와 관련 Key를 포함하는 Synchronizer의 Topology state를 알아야 합니다. 따라서 Synchronizer의 two-phase commit protocol은 Identity와 Key가 common knowledge라고 가정하고 protocol message에서 해당 정보를 생략할 수 있습니다. Topology state update는 Synchronizer를 통해 배포되므로 Node는 state machine replication을 통해 동기화된 Topology state를 유지합니다.
+
+Synchronizer에서 이러한 공통 이해를 확립하는 mechanism을 *Topology management*라고 합니다. 각 Canton Node(Participant Node와 Synchronizer component)는 Topology state 변경을 validate하기 위해 deterministic state machine을 local에서 replicate합니다. 즉 각 Canton Node가 authorization rule에 따라 어떤 Topology 변경이 올바르게 authorize되었는지를 독립적으로 판단합니다. State machine의 deterministic 특성으로 인해 Synchronizer에 연결된 모든 Canton Node는 어느 시점에서든 해당 Synchronizer의 Topology state에 관해 같은 결론을 계산합니다.
+
+## Requirements
+
+다음의 일부 requirement가 Canton Topology management의 design과 implementation 결정을 이끕니다.
+
+- **No central authority**: Topology Transaction은 단일 entity만 실행할 수 있는 component에 의해 gate되지 않습니다.
+- **Authorization Rules**: 각 Topology Transaction type은 특정 Topology Transaction이 valid해지는 데 필요한 signature를 Node가 결정할 수 있는 rule을 명시합니다.
+- **No Replay Attacks**: Malicious actor가 나중에 Topology Transaction을 replay할 수 없어야 합니다.
+- **Consensus**: Synchronizer에서 동일한 sequenced time을 관찰한 모든 Node는 해당 시점의 해당 Synchronizer Topology state에 관해 같은 결론에 도달해야 합니다.
+- **Not block Daml Transaction processing**: Topology Transaction processing은 Daml Transaction processing을 block해서는 안 됩니다.
+
+## Design principles
+
+Canton의 Topology management 접근 방식을 이해하려면 몇 가지 핵심 principle을 먼저 소개해야 합니다.
+
+Daml Transaction synchronization을 위해 전 세계적으로 신뢰하는 단일 entity가 없는 것처럼 Identity를 확립하는 데에도 전 세계적으로 신뢰하는 단일 entity가 없습니다. 여기서 첫 번째 principle이 나옵니다.
+
+<div className="todo">
+
+Multi-Synchronizer motivation에 대한 cross-reference \<[https://github.com/DACH-NY/canton/issues/25656](https://github.com/DACH-NY/canton/issues/25656)\>
+
+*Principle 1: 실제로 global synchronization이 작동하려면 단일 trust anchor가 있어서는 안 됩니다.*
+
+</div>
+
+Cryptographic Key pair는 public key fingerprint를 통해 고유하게 식별할 수 있습니다. 관련 private key를 소유한 entity는 signature를 통해 자신이 public key owner임을 언제나 명확하게 증명할 수 있습니다. Canton Synchronizer에서 활동하는 Canton Key holder의 action을 verify하고 authorize하기 위해 system에서 이 principle을 광범위하게 사용합니다. 이에 따라 두 번째 principle을 제시할 수 있습니다.
+
+> *Principle 2: Canton Key holder는 action을 authorize할 수 있고 그 authorized action을 verify할 수 있는 entity입니다.*
+
+간단히 말하면 모든 Canton Key holder에는 서로 연관된 것으로 알려진 하나의 Key 또는 Key 집합이 있습니다. 그러나 앞의 정의가 반드시 Key owner를 안다는 뜻은 아닙니다. Ownership은 현실 세계의 추상적 측면이며 synchronization 자체에는 중요하지 않습니다. 현실 세계의 ownership은 일부 shared data의 의미를 해석하는 데에만 중요하며 data processing 자체에는 중요하지 않습니다.
+
+따라서 세 번째 principle을 제시합니다.
+
+> *Principle 3: System Identity와 Legal Identity의 certification을 분리합니다(또는 cryptographic Identity와 metadata의 분리).*
+
+Key가 다른 Key와 연관된 ownership 또는 사실을 certify하는 certificate에 sign하게 하여 trust chain을 구축할 수 있습니다. 그러나 이러한 chain의 root에는 항상 root key가 있습니다. Root key 자체는 certify되지 않으며 legal ownership도 verify할 수 없으므로 믿어야 합니다. 예를 들어 device의 local certificate store를 보면 특정 root를 지정된 certificate authority가 소유한다고 믿을 뿐입니다. 이 믿음은 operating system provider가 legitimate key만 포함했다는 신뢰에 뿌리를 둡니다.
+
+따라서 certificate를 통한 Legal Identity와 Cryptographic Key의 모든 연결은 root key를 제어하는 entity가 honest하며 trust root에 연결된 모든 주체를 적절히 vet했다는 믿음에 기반합니다. 그러므로 Legal Identity가 올바르게 연결되었다고 믿을 수만 있을 뿐 절대적인 의미에서 이를 verify하는 것은 매우 어렵고 특히 online에서는 불가능합니다.
+
+또 다른 관련 측면은 Identity requirement가 asymmetric property라는 점입니다. 대기업은 자신의 이름(BANK)으로 알려지기를 원하는 반면 개인은 더 폐쇄적인 경향이 있으며 필요할 때만 Identity가 공개되기를 원합니다(GDPR, HIPAA, confidential information, bank secrecy). Bearer bond를 예로 들어도 owner는 obligor가 owner에게 가지는 관심보다 obligor의 Identity에 훨씬 큰 관심이 있습니다. Obligor가 부실하거나 사기인 것으로 드러나면 owner가 모든 돈을 잃을 수 있습니다. 반면 일부 regulatory reason을 제외하면 obligor는 누구에게 bond를 상환하는지 신경 쓰지 않습니다. 이에 따라 네 번째 principle을 도출합니다.
+
+> *Principle 4: Ledger의 Identity는 asymmetric problem이며 privacy와 publicity를 case별로 신중하게 평가해야 합니다.*
+
+## Identities
+
+Canton Identity는 Canton Node나 Party처럼 Canton Synchronizer의 actor를 나타냅니다. Canton Identity는 cryptographic certificate로 뒷받침되므로 Identity는 자신이 action을 authorize했음을 증명할 수 있고 다른 주체는 해당 action이 실제로 그 Identity에 의해 authorize되었는지 verify할 수 있습니다.
+
+### Namespaces
+
+Namespace는 root certificate로 정의됩니다. 이 certificate는 fingerprint가 `abc123`인 signing public key가 namespace `abc123`을 대신하여 Topology Transaction에 sign할 수 있다고 선언합니다. Root certificate는 fingerprint가 `abc123`인 public key에 대응하는 private key로 sign됩니다. 이는 namespace `abc123`의 root certificate issuer가 실제로 해당 private key를 소유한다는 것을 보여 줍니다. Self-signed root certificate와 private key는 함께 namespace의 *root of trust* 또는 *trust anchor* 역할을 합니다.
+
+Canton은 단일 controlling key가 없는 multi-signature namespace도 bootstrap할 수 있습니다(`decentralization` 참조).
+
+다른 public key infrastructure system과 마찬가지로 Canton은 namespace를 대신하는 authorization right를 추가 Key에 delegate하는 intermediate certificate를 지원합니다(`topology-authorization-chains` 참조).
+
+### Unique identifiers
+
+Unique identifier(UID)는 Canton Node 또는 Party처럼 Canton Synchronizer의 Identity를 나타냅니다. Identifier라는 string과 namespace로 구성됩니다. Namespace가 다르면 두 UID가 같은 identifier를 가질 수 있습니다. Namespace를 소유하는 Canton Key holder는 해당 namespace 내 모든 UID를 제어하며 흔히 UID의 role을 나타내는 identifier를 선택합니다. 예를 들어 namespace `abc123`의 Canton Key holder는 자신이 아는 *Jane Doe*라는 특정 인물을 위해 UID `jane_doe:::abc123`을 가진 Party를 생성합니다.
+
+### Identity of a Canton node
+
+Auto initialization을 명시적으로 끄지 않았다면 기본적으로 모든 Canton Node는 처음 시작할 때 새 Identity를 생성합니다. 이 Identity는 protocol message(Topology Transaction, submission request)에서 해당 Node를 지칭하는 UID의 namespace 역할도 합니다.
+
+### Identity of a party
+
+Party identifier는 UID와 동일하며 namespace(`abc123`) 안의 identifier(`alice`)입니다. 기본적으로 Party identifier는 hosting Participant Node의 namespace(`abc123`) 안에 생성됩니다. 이로 인해 Party ownership은 Participant Node namespace owner에게 있습니다. 그러나 Party에 별도 namespace를 만들어 ownership과 hosting Participant Node를 분리할 수도 있습니다. 다른 private key(`xyz789`)에 대한 root certificate를 만들고 그 namespace에 Party identifier(`alice::xyz789`)를 생성하면 됩니다. Participant Node와 Party가 같은 namespace를 공유하지 않아도 Participant Node가 계속 Party를 hosting할 수 있습니다.
+
+### Reminder: LAPI users vs. parties (see protocol.rst)
+
+## Structure of topology transactions
+
+Topology Transaction은 key-value map으로 유지되는 Topology state를 구성합니다. 개별 Topology Transaction은 항상 정확히 하나의 key에 영향을 줍니다. Well-formed이고 well-authorized인 경우 value를 수정합니다. 현재 Topology state와 독립적으로 확인할 수 있는 모든 check를 통과하면 Topology Transaction이 well-formed인 것으로 간주되고, Topology Transaction effective time의 Topology state에 의존하는 모든 check를 통과하면 well-authorized인 것으로 간주됩니다(`topology-effectiveness` 참조).
+
+### Topology mappings
+
+Topology Transaction은 Synchronizer Topology state의 특정 측면에 관한 state를 보유하거나 수정합니다. 예를 들어 특정 Canton Node가 사용하는 모든 signing/encryption key 또는 특정 Party를 hosting하는 Participant Node list일 수 있습니다. Topology Transaction의 content를 mapping이라고도 합니다.
+
+각 mapping type은 mapping content를 기반으로 unique key를 계산하는 방법을 정의합니다. 특정 시점에는 unique key별 Topology Transaction을 최대 하나만 active 상태로 둘 수 있습니다. 예를 들어 `PartyToParticipantMapping` mapping의 unique key는 `partyId`로 구성됩니다. 즉 Synchronizer별로 주어진 `partyId`에 active `PartyToParticipantMapping` Topology Transaction이 최대 하나만 있을 수 있습니다.
+
+모든 mapping과 각각의 unique key 정의는 topology.proto를 참조하세요.
+
+<div className="todo">
+
+Topology proto link? \<[https://github.com/DACH-NY/canton/issues/25656](https://github.com/DACH-NY/canton/issues/25656)\>
+
+</div>
+
+### Serial
+
+Topology Transaction의 serial은 특정 unique key의 mapping을 evolve하는 데 사용됩니다. Unique key의 첫 serial은 항상 `1`에서 시작합니다. 이후 Topology Transaction은 같은 key의 이전 Topology Transaction serial을 정확히 1만큼 늘려야 합니다. Gap(`1`에서 `3`으로 이동)은 허용되지 않으며 repetition(같은 serial이지만 다른 content)도 허용되지 않습니다. 다만 이미 fully authorized되고 현재 effective한 Topology Transaction에 expected authorizer의 추가 signature를 더할 수 있습니다. 이는 뒤에서 더 설명합니다.
+
+<div className="todo">
+
+위의 "뒤에서 더 설명"하는 section link. \<[https://github.com/DACH-NY/canton/issues/25656](https://github.com/DACH-NY/canton/issues/25656)\>
+
+</div>
+
+Topology Transaction의 serial은 replay attack을 방지합니다. Synchronizer의 Canton Node가 예상하지 않은 serial을 탐지하여 Topology Transaction을 reject하므로 malicious actor가 이전의 fully authorized Transaction을 가져와 다시 제출할 수 없습니다.
+
+### Change operation
+
+Topology Transaction은 이전 mapping을 replace(`REPLACE`)할지 remove(`REMOVE`)할지 지정합니다. Serial `1`인 첫 mapping에서는 replace operation이 *create* 또는 *add* 역할을 합니다. Mapping을 remove할 때는 이전 serial의 Topology Transaction과 content가 같아야 합니다. `REMOVE` operation을 사용하는 Transaction도 `REPLACE` operation을 사용하는 Transaction과 같은 serial number rule을 따라야 합니다. Transaction log의 entry일 뿐이며 실제로 Topology state에서 data가 delete되지는 않기 때문입니다. 따라서 `REMOVE` operation Topology Transaction의 serial successor와 `REPLACE` operation을 사용한 Topology Transaction을 제출하여 이전에 remove한 mapping을 "reactivate"하는 것도 일반적으로 가능합니다.
+
+### Signatures
+
+모든 Topology mapping은 Topology Transaction이 well-authorized인 것으로 간주되기 전에 authorization을 제공해야 하는 Identity를 정확히 정의합니다. Canton에서 Identity는 Synchronizer의 모든 member에게 Topology Transaction의 cryptographic signature를 제공하여 authorization을 표시합니다.
+
+예를 들어 Participant Node(`p1::xyz789`)에 Party(`alice::abc123`)를 hosting하려면 Party owner와 Participant Node owner 양쪽의 authorization, 따라서 signature가 필요합니다. Party는 Participant Node가 Party의 sensitive data를 처리하기를 원한다는 점을 authorize해야 합니다. 반면 Participant Node는 Party의 Transaction을 수신하고 처리하는 것과 같은 Party hosting의 operational responsibility를 accept해야 합니다. Party와 Participant Node가 같은 Identity의 소유이면 하나의 signature로 충분합니다.
+
+Topology Transaction의 cryptographic signature는 mapping, serial, change operation을 포함합니다. 따라서 Topology Transaction의 이 attribute 중 하나라도 tamper하면 기존 signature가 invalid해집니다. 마찬가지로 이전 Topology Transaction의 signature는 다른 Topology Transaction에 사용할 수 없습니다. 같은 unique key와 같은 content에 대해서도 signature가 cover하는 data가 같지 않기 때문입니다. 적어도 이후 unique key value evolution에서는 serial이 변경되어야 합니다.
+
+<div className="todo">
+
+Section "Binding topology transactions to Synchronizers" \<[https://github.com/DACH-NY/canton/issues/25656](https://github.com/DACH-NY/canton/issues/25656)\>
+
+</div>
+
+## Types of topology mappings
+
+### Namespace definition and delegation
+
+`topology-namespaces` section에서 설명했듯 namespace는 self-signed root certificate로 정의됩니다. 구체적으로 root certificate는 namespace, target key, Transaction signing에 사용하는 Key가 동일한 self-signed `NamespaceDelegation`(NSD)입니다. 이는 `NSD(namespace=ROOT_KEY, target=ROOT_KEY, signedBy=ROOT_KEY)`로 표현됩니다. 이 Key는 해당 namespace를 대신하여 다른 모든 Topology Transaction에 sign하는 데 사용할 수 있습니다.
+
+Canton Key holder는 다른 Key에 authorization power를 delegate할 수도 있습니다. 이 주제에 대한 자세한 내용은 `topology-authorization-chains`와 `topology-key-revocation`을 참조하세요.
+
+`NamespaceDelegation` Topology mapping을 사용하면 target signing key가 특정 Topology Transaction에만 사용되도록 제한할 수 있습니다. 제한에는 세 종류가 있습니다.
+
+- `CanSignAllMappings`: Target key는 현재 알려진 모든 Topology mapping과 향후 Canton release에 추가될 모든 Topology mapping에 sign할 수 있습니다.
+- `CanSignAllButNamespaceDelegations`: Target key는 다른 `NamespaceDelegation` mapping을 제외하고 현재 알려진 모든 Topology mapping과 향후 Canton release에 추가될 모든 Topology mapping에 sign할 수 있습니다. 이 제한은 일반적으로 일상적으로 root key substitute 역할을 하는 Key에 사용되므로 실제 root key를 보안상의 이유로 cold storage로 이동할 수 있습니다.
+- `CanSignSpecificMappings(mappings)`: Target key는 `mappings` parameter에 명시적으로 나열된 Topology mapping에만 sign할 수 있습니다. Key가 compromise될 때 impact area를 compartmentalize하는 엄격한 security regimen의 구현을 지원합니다.
+
+### Cryptographic keys
+
+Canton Key holder는 shared Ledger에서 Sequencer를 통해 서로 통신할 때 cryptographic signing/encryption key를 사용합니다. Signature를 통해 receiver는 각 message originator를 verify할 수 있고 encryption은 message의 sensitive data가 confidential하게 유지되도록 합니다.
+
+Canton Key holder는 사용할 Key를 Topology mapping으로 선언합니다. Canton Node에는 `OwnerToKeyMapping`, External Party에는 `PartyToParticipant`를 사용합니다(`overview_canton_external_parties` 참조). Canton Key holder는 Topology management를 제외한 Canton communication protocol layer 전반의 다양한 use case에서 이 Topology mapping에 나열된 Key를 사용합니다(`protocols` 참조). 특히 `OwnerToKeyMapping`과 `PartyToParticipant`의 signing key는 같은 Key가 `NamespaceDelegation`의 target이기도 하지 않는 한 Topology Transaction signing에 사용할 수 없습니다. 보안상의 이유로 이 관행은 강력히 권장되지 않습니다.
+
+### Parties in the topology state
+
+Party는 이를 hosting하는 Participant Node를 정의하는 `PartyToParticipant` Topology mapping을 통해 선언됩니다. Party hosting은 Participant Node에 Party를 위한 Daml Transaction processing의 right 또는 obligation을 부여합니다. 이로 인해 Participant Node는 Party의 Contract에 access할 수 있습니다. 따라서 Party owner, 즉 Party namespace의 Key holder는 Party의 sensitive data를 처리하도록 신뢰할 수 있는 Participant Node를 신중히 선택해야 합니다.
+
+Participant Node 관점에서 Party hosting은 Party에 대한 특정 responsibility와 obligation을 수반합니다. 특히 Participant Node는 Party Transaction의 two-phase commit protocol에 참여하고 application이 Party를 대신하여 data에 access할 수 있도록 local에 저장해야 합니다.
+
+Party owner와 Participant Node 모두 해당 `PartyToParticipant` Topology Transaction을 authorize하여 이 관계에 진입하는 데 동의해야 합니다.
+
+<div id="topology-participant-permission">
+
+Participant Node는 Party owner가 할당하는 서로 다른 permission으로 Party를 hosting할 수 있습니다.
+
+</div>
+
+- **Observation**: Participant Node는 hosted Party가 stakeholder인 Transaction에 대해서만 notify됩니다.
+- **Confirmation**: Participant Node는 two-phase commit protocol의 일부로 Daml Transaction을 confirm 또는 reject합니다. 이 permission은 *Observation* permission을 포함합니다.
+- **Submission**: Participant Node는 Party를 위해 Daml Transaction을 제출하도록 authorize됩니다. 이 permission은 *Confirmation* permission을 포함합니다.
+
+Submission과 Confirmation의 구분은 Participant Node에서만 enforce됩니다. 특정 Party에 대한 Confirmation permission이 있는 malicious Participant Node는 Party 이름으로 Daml Transaction을 제출할 수 있습니다. 이는 Validator가 Submitting Participant Node의 Identity를 알지 못하는 Canton의 높은 privacy level 때문입니다. 따라서 Participant Node에 Confirmation permission을 delegate하는 Party는 해당 Participant Node를 충분히 신뢰해야 합니다.
+
+Party owner는 Party를 여러 Participant Node에서 hosting하도록 결정할 수 있습니다(`decentralized-parties` 참조).
+
+### Package vetting
+
+Daml Transaction validation은 궁극적으로 third party가 작성한 Daml code를 실행하는 것을 의미합니다. Daml code는 임의로 긴 시간 동안 실행되고 많은 memory를 소비할 수 있으므로 Participant Node는 일정한 risk에 노출됩니다. 따라서 Participant Node owner는 자신의 Participant Node에서 실행하는 데 동의하는 Package를 명시적으로 선언해야 합니다. `VettedPackages` Topology mapping을 통해 이를 수행합니다. Participant Node owner는 Package vetting을 특정 time window로 제한할 수 있으며 양쪽 끝은 open-ended일 수 있습니다. 또한 `VettedPackages` Topology mapping은 Ledger API Command를 interpret할 때 사용할 Daml Template version을 결정합니다.
+
+<div className="todo">
+
+Synchronizer Parameters section 추가 \<[https://github.com/DACH-NY/canton/issues/25656](https://github.com/DACH-NY/canton/issues/25656)\>
+
+</div>
+
+### Membership with a Synchronizer
+
+Canton Node를 Synchronizer에 onboard하려면 최소한 Node의 root certificate인 `NamespaceDelegation`과 `OwnerToKeyMapping` Topology Transaction의 Node cryptographic key를 포함하는 Identity Topology Transaction을 제공해야 합니다. 이 특정 Topology Transaction bundle을 *identity transactions*라고 합니다. Canton Node의 실제 membership은 세 Node type별로 다르게 표현됩니다.
+
+- **Participant Node**: Synchronizer에 연결할 때 Participant Node는 Identity Transaction과 자동 생성된 `SynchronizerTrustCertificate` Topology Transaction을 함께 제출합니다. 이 Transaction은 Participant Node UID와 Synchronizer의 `SynchronizerId` 조합에 고유합니다. 따라서 Topology mapping에 포함된 `SynchronizerId`가 target Synchronizer와 일치하지 않으므로 한 Synchronizer에서 가져와 다른 Synchronizer에서 replay할 수 없습니다. 즉 `SynchronizerTrustCertificate`는 Participant Node owner가 해당 Participant Node의 Synchronizer membership을 원한다는 명시적 signal입니다.
+
+- **Sequencer**: Synchronizer의 Topology state에 Sequencer Identity Transaction이 있고 Synchronizer owner가 Sequencer를 Synchronizer의 `SequencerSynchronizerState` Topology mapping에 추가하면 Sequencer가 Synchronizer member인 것으로 간주됩니다. 이 mapping은 Synchronizer의 모든 Sequencer를 나열하며 Synchronizer owner가 제어합니다. Sequencer가 `SequencerSynchronizerState` mapping에 추가되는 것을 authorize할 필요가 없는 데에는 여러 이유가 있습니다.
+
+  1.  Synchronizer owner는 Participant Node에 좋은 service를 제공하는 데 관심이 있습니다. 다른 member에게 service를 제공할 준비가 없거나 의사가 없는 Sequencer를 advertise하는 것은 좋은 service라는 목표에 도움이 되지 않습니다. 어떤 경우든 Synchronizer owner는 Synchronizer에서 실행되는 third-party Sequencer와의 관계를 관리하는 legal contract를 체결했을 가능성이 높습니다.
+  2.  Sequencer는 하나의 Synchronizer에만 service를 제공할 수 있습니다. 즉 Sequencer는 특정 Synchronizer member가 되기 위한 구체적인 목적으로 bootstrap되고 setup됩니다.
+  3.  Synchronizer owner와 Sequencer owner의 목표가 일치한다는 점을 고려하면 Sequencer owner에게 Sequencer의 Topology state 추가를 authorize하도록 요구하지 않는 것이 Sequencer onboarding process를 크게 단순화합니다.
+
+  Sequencer를 Synchronizer에 onboard하는 방법은 `dynamically_adding_sequencers`를 참조하세요.
+
+- **Mediator**: Mediator membership은 Sequencer membership과 유사하게 작동합니다. Identity Transaction이 Topology state에 있어야 하며 Synchronizer owner가 Mediator를 `MediatorSynchronizerState` Topology mapping에 추가해야 합니다. Synchronizer owner가 Mediator workload를 여러 Mediator group에 분배하도록 허용한 경우에는 이러한 mapping이 둘 이상일 수 있습니다(`optimize-mediator` 참조). Mediator는 하나의 Mediator group에만 속할 수 있습니다. Mediator를 onboard하는 방법은 `dynamically_adding_mediators`를 참조하세요.
+
+## Evolving a topology mapping
+
+### Proposals
+
+Canton Node는 authorization이 불충분한 Topology Transaction을 proposal로 간주하고 특정 timestamp의 Topology state를 계산할 때 반영하지 않습니다. 그러나 signature가 불충분해도 proposal은 fully authorized Transaction인 것처럼 well-formed여야 합니다.
+
+Canton Node가 proposal을 받으면 먼저 같은 Topology Transaction에 대해 이전에 성공적으로 validate한 proposal의 signature를 proposal에 merge한 다음, 알려진 모든 signature가 있는 결과 proposal을 계속 validate합니다. 이는 이미 local에 저장된 proposal에는 영향을 주지 않습니다. 충분한 수의 Identity가 proposal에 signature를 제출하면 모든 validation을 성공적으로 통과하는 경우 proposal이 fully authorized Topology Transaction이 됩니다.
+
+Proposal에는 expiration timestamp가 없습니다. 즉 proposal은 fully authorized될 만큼 충분한 signature가 제출되거나 Canton Node가 같은 unique key에 대해 fully authorized Topology Transaction을 성공적으로 validate할 때까지 pending 상태입니다.
+
+#### Example
+
+시작점은 Party `Alice::abc123`과 이를 hosting하는 Participant Node `P1::abc123`에 대한 serial `1`의 `PartyToParticipant` mapping입니다. 이제 Party owner는 Participant Node `P2::xyz789`도 Party를 hosting하기를 원합니다. 따라서 Party owner는 `P2::xyz789`를 hosting Participant Node로 포함하는 serial `2`의 mapping proposal을 제출합니다. `PartyToParticipant` mapping이 정의한 authorization rule에 따라 namespace `abc123`과 `xyz789`의 Key holder 모두 이 변경을 authorize해야 합니다. Party owner는 namespace `abc123`에 대한 signature만 제공할 수 있으므로 Canton Node는 serial `2`의 Topology Transaction을 proposal로 저장합니다. 새 hosting Participant Node의 Key holder가 이 Topology Transaction에 대한 signature를 Synchronizer에 제출하면 Canton Node가 signature를 merge하고 성공적인 validation 후 이제 fully authorized된 `PartyToParticipant` mapping을 저장합니다.
+
+<img src="/images/docs_website/topology-simple-proposal.svg" className="align-center" style={{width: "80.0%"}} alt="image" />
+
+<div className="todo">
+
+PartyToParticipant mapping Topology proto documentation link. \<[https://github.com/DACH-NY/canton/issues/25656](https://github.com/DACH-NY/canton/issues/25656)\>
+
+</div>
+
+### Concurrent / competing proposals
+
+Canton Node가 같은 unique key와 같은 serial이지만 content가 다른 mapping proposal을 제출하면 competing proposal이 생성됩니다. 이 Topology Transaction은 아직 fully authorized되지 않았으므로 proposal이고, 가장 먼저 fully authorized된 proposal이 같은 unique key와 같은 serial의 다른 모든 proposal을 자동으로 invalidate하므로 competing 관계입니다.
+
+#### Example
+
+Participant Node `P1::abc123`이 Party `Alice::abc123`을 hosting하는 scenario를 생각해 보겠습니다. `abc123`의 Key holder는 Participant Node `P2::xyz789`, `P3::jkl456`의 다른 두 Key holder와 협상 중입니다. 이 두 Key holder는 모두 `Alice::abc123` hosting proposal을 제출하기로 합니다. 두 주체 모두 자신을 hosting Participant Node로 추가하기 위해 serial `2`인 Topology Transaction을 전송합니다. Authorization requirement를 충족하려면 `abc123`의 signature가 필요하므로 `abc123`이 그중 하나에 sign하기로 결정할 때까지 두 Transaction 모두 proposal로 간주됩니다. 이 예에서 `abc123`은 `P3::jkl456`에서 Alice를 hosting하도록 허용하고 해당 proposal에 sign하여 fully authorized Transaction으로 만듭니다. 이제 serial `2`인 fully authorized Transaction이 있으므로 `P2::xyz789`의 proposal은 자동으로 invalidate됩니다. 특정 serial을 가진 unique key에는 fully authorized Topology Transaction이 최대 하나만 있을 수 있으므로 `P2::xyz789`의 proposal은 valid해질 가능성이 없습니다.
+
+<img src="/images/docs_website/topology-competing-proposals.svg" className="align-center" style={{width: "80.0%"}} alt="image" />
+
+### Validity / effectiveness
+
+Sequencer에서 받은 Topology Transaction을 validate할 때 Canton Node는 sequencing time을 기반으로 Topology Transaction의 이른바 *effective time*을 deterministically 계산합니다. Effective time 계산에 대한 자세한 내용은 `topology-sequential-validation`과 `topology-future-dating` section을 참조하세요. Serial `n`인 unique key의 Topology Transaction effective time은 해당 Topology Transaction validity period의 exclusive beginning을 표시하는 동시에 같은 unique key의 serial `n-1`인 predecessor Topology Transaction과 serial `n`인 모든 proposal의 inclusive end timestamp를 표시합니다. Serial `n`인 fully authorized Topology Transaction은 serial `n` proposal의 "expiry"를 trigger합니다. 다음 fully authorized Topology Transaction은 serial `n+1`이어야 하므로 이 proposal이 fully authorized되는 것을 막기 때문입니다. 반대로 serial `n+1`인 successfully validated proposal은 serial `n`인 fully authorized Topology Transaction validity period의 끝을 정하지 않습니다.
+
+Validity period 정의에 따라 unique key의 모든 fully authorized Topology Transaction은 gap 없는 "validity timeline"을 구성하며, 특정 시점에 어떤 Topology Transaction이 effective한 것으로 간주되는지를 명확하게 정의합니다.
+
+<div className="todo">
+
+"Operate"와 "Dedicated Synchronizer" subsite의 API docs 및 howto pointer 추가 \<[https://github.com/DACH-NY/canton/issues/25656](https://github.com/DACH-NY/canton/issues/25656)\>
+
+</div>
+
+## Disseminating topology transactions
+
+이 section은 Canton Participant Node와 Synchronizer component가 Synchronizer의 Topology state 변경을 파악하는 방법을 설명합니다. Topology state를 관리하고 validate하는 centralized component가 없으므로 각 Synchronizer component와 Participant Node가 Topology state의 모든 변경을 자체적으로 수신하고 validate합니다.
+
+### Broadcast of topology changes
+
+Synchronizer에 연결된 Canton Node는 broadcast recipient group `AllMembersOfSynchronizer`를 대상으로 Topology Transaction을 Sequencer에 제출합니다. Sequencer는 Transaction sequencing time을 reference time으로 사용하여 이 group address를 concrete member로 resolve합니다. Broadcast recipient group을 대상으로 하지 않은 Topology Transaction을 수락하면 서로 다른 Topology state로 인해 Ledger fork가 발생할 수 있으므로 Node는 이를 reject해야 합니다.
+
+Canton Node operator는 gRPC Admin API 또는 admin console Command를 사용하여 새 Topology Transaction을 issue할 수 있습니다.
+
+### Sequential validation
+
+Canton Node는 Topology Transaction을 엄격한 sequential 방식으로 하나씩 validate합니다. 현재 system은 Topology Transaction 간 dependency나 conflict를 추적하지 않습니다. 이는 오류가 발생하기 쉽고 취약한 복잡한 작업입니다. 이러한 추적 없이 Topology Transaction을 parallel로 processing하면 validating state machine이 non-deterministic해지고 Canton Node 간 Topology state가 달라질 수 있습니다. 따라서 Synchronizer의 모든 member에 걸쳐 Topology state integrity를 보장하려면 모든 Topology Transaction을 완전히 sequential하게 processing해야 합니다.
+
+Canton protocol의 여러 layer(`protocols` 참조)는 각 layer의 event 또는 message를 processing하는 데 필요한 Topology state에 access하기 위해 Topology snapshot에 의존합니다. Topology snapshot은 Topology Transaction을 통한 Topology update에 의해 구동되며, Topology snapshot을 계산하려면 Canton Node가 해당 timestamp까지의 모든 Topology Transaction이 processing되었음을 확신해야 합니다. 그렇지 않으면 Topology state가 불완전하여 Party hosting 또는 Vetted Package 변경이나 Sequencer signing key 변경처럼 해당 layer의 message processing과 관련된 중요한 변경을 놓칠 수 있습니다. 따라서 개별 protocol layer는 deadlock을 방지하기 위해 Topology snapshot timestamp를 신중하게 선택해야 합니다.
+
+일반적인 message processing과 Topology state 간 dependency는 주로 모든 message에서 Sequencer signature를 verify해야 하기 때문에 발생합니다.
+
+이 dependency를 해결하는 간단한 방법은 Topology Transaction을 다른 event와 분리하여 dedicated block에 넣는 것입니다. 그러면 별도 sequenced time을 받고 별도로 processing됩니다.
+
+이 간단한 접근 방식의 단점은 Topology Transaction이 다른 message processing을 잠시라도 일시 중지시킨다는 것입니다. 이는 latency와 throughput 모두에 악영향을 줍니다.
+
+### Future dating
+
+여러 protocol layer에서 Topology Transaction이 message processing을 pause하는 문제를 우회하는 한 가지 방법은 Topology Transaction이 미래의 특정 시점에 effective하게 만드는 것입니다. *Effective time* 개념은 `topology-effectiveness` section에서 이미 소개했습니다. Topology Transaction이 time `t`에 sequence되더라도 *topology change delay* `ε` 이후에만 effective해집니다. Time `t+ε`는 effective time의 lower bound를 제공합니다. Topology change delay가 최근 변경되지 않았다면 effective time은 lower bound `t+ε`와 같습니다. Topology change delay는 Topology state의 dynamic Synchronizer parameter이며 Synchronizer owner가 변경할 수 있습니다. 따라서 effective time 계산에 실제로 사용하는 Topology change delay는 Topology Transaction validation 중 Topology state에서 읽어야 합니다.
+
+<div className="todo">
+
+Synchronizer parameter 변경 howto link \<[https://github.com/DACH-NY/canton/issues/25656](https://github.com/DACH-NY/canton/issues/25656)\>
+
+</div>
+
+이 mechanism을 사용하면 `t`와 `t+ε` 사이의 다른 message와 event가 Topology processing layer를 기다리지 않고 정상적으로 processing될 수 있습니다.
+
+Topology change delay `ε`는 얼마나 커야 할까요? Trade-off는 다른 message processing을 block하지 않는 것과 Topology Transaction이 effective해질 때까지 너무 오래 기다리지 않는 것 사이에 있습니다. Topology change delay는 Topology Transaction processing 시간보다 약간 길어야 합니다. Topology change delay가 0 ms이면 Topology Transaction은 즉시 effective해지지만 앞 section에서 설명했듯 다른 message processing은 Canton Node가 해당 message에 필요한 Topology snapshot에 pending Topology Transaction이 없다고 확신할 때까지 기다려야 합니다. 반면 Topology change delay가 30 s이면 Daml Transaction processing이 block될 가능성은 낮지만 예를 들어 Party를 실제 Transaction에서 사용할 수 있을 때까지 상당한 시간이 걸립니다.
+
+Future dating의 이점을 설명하기 위해 다음 예를 살펴보겠습니다. t`3`의 Topology Transaction effective time이 t`5`로 계산됩니다. 따라서 Topology Transaction processing이 완료되면 t`4`의 Daml Transaction processing은 t`4`의 Topology snapshot에 access할 수 있습니다. Canton Node는 t`5`까지의 snapshot과 관련된 모든 Topology state 변경을 확인했음을 알기 때문입니다.
+
+<img src="/images/docs_website/topology-change-delay.svg" className="align-center" style={{width: "80.0%"}} alt="image" />
+
+<div className="todo">
+
+Dynamic Synchronizer parameter reference link. \<[https://github.com/DACH-NY/canton/issues/25656](https://github.com/DACH-NY/canton/issues/25656)\>
+
+</div>
+
+## Authorization
+
+`topology-signatures` section에서는 Topology mapping이 Topology Transaction을 fully authorized로 간주하는 데 필요한 authorizer를 결정하는 rule을 정의하며 Key holder가 Topology Transaction의 cryptographic signature를 Synchronizer에 disseminate하여 이 authorization을 표시한다고 언급합니다.
+
+이 section에서는 이러한 측면을 더 자세히 설명합니다.
+
+### Authorization rules
+
+각 Topology mapping type은 Synchronizer Topology state의 특정 측면을 변경하며, 이 변경으로 영향을 받거나 변경을 책임지는 Key holder가 authorize해야 합니다. 즉 Key holder만 자신의 책임 아래에 있는 Topology state를 변경할 수 있습니다. 예를 들어 Participant Node의 Key holder만 해당 Participant Node가 vet한 Package list를 변경할 수 있습니다. 마찬가지로 Synchronizer의 Key holder만 Synchronizer dynamic parameter를 변경할 수 있습니다.
+
+모든 mapping과 각각의 authorization rule 정의는 topology.proto를 참조하세요.
+
+<div className="todo">
+
+Topology proto link? \<[https://github.com/DACH-NY/canton/issues/25656](https://github.com/DACH-NY/canton/issues/25656)\>
+
+</div>
+
+일부 Topology mapping은 특정 변경에 필요한 authorizer를 둘 이상 정의합니다. 흔한 scenario는 Party와 동일한 Key holder가 소유하지 않는 Participant Node에 Party를 hosting하는 것입니다. 이 scenario는 evolving Topology mapping example에서 설명했습니다(`topology-proposals-example` 참조). 한편으로 Party hosting은 Participant Node가 Party와 관련된 Daml Transaction data에 access하도록 합니다. 따라서 Party Key holder는 Participant Node가 Party의 Daml Transaction을 수신하고 processing하기를 원한다는 consent를 표시해야 합니다. 다른 한편으로 Party hosting에는 Network/storage cost와 Party가 관여하는 Daml Transaction의 two-phase commit protocol을 준수할 obligation이 수반되므로 Participant Node Key holder도 Party hosting에 consent해야 합니다.
+
+### Authorization chains
+
+`topology-namespaces`와 `topology-delegation` section에서 설명했듯 namespace root certificate는 trust anchor 역할을 합니다. 보안상의 이유로 Key에 대한 unauthorized access risk를 줄이기 위해 root namespace key를 secure cold storage에 보관하는 것이 권장됩니다. 새 Key를 생성하면 사실상 새 namespace가 생성되므로 root namespace key를 rotate할 수 없다는 점에서 특히 중요합니다. 따라서 Canton은 Canton Key holder가 root namespace key가 아닌 다른 Key에 authorization right를 delegate하도록 허용하여 이 권장 security practice의 구현을 지원합니다.
+
+Namespace에 root certificate만 있는 경우 첫 namespace delegation은 root key로 sign해야 합니다. `NamespaceDelegation(namespace=ROOT_KEY, target=KEY1, signedBy=ROOT_KEY)`입니다. 이제 `ROOT_KEY`로 표현되는 namespace의 Key holder는 `KEY1`을 사용하여 추가 Key에 대한 namespace delegation을 포함한 다른 Topology Transaction에 sign하고 private key `ROOT_KEY`를 live system에서 제거할 수 있습니다.
+
+Canton Node는 Topology Transaction signature를 validate할 때 signature 자체가 Topology Transaction에 올바르게 sign하는지 validate할 뿐 아니라 signing key부터 root namespace key까지 gap 없는 certificate 또는 delegation chain이 있는지도 확인합니다.
+
+Namespace `abc123`의 Key holder가 root certificate와 Key `def456`의 "root-substitute" certificate를 생성하는 scenario를 살펴보겠습니다. 이어 root-substitute Key는 다른 namespace delegation에만 sign하도록 제한되고 "main topology signing key" `ghi789`에 sign합니다. 이 signing key는 다른 namespace delegation에 sign할 수 없지만 다른 모든 Topology Transaction에 sign하는 데 사용할 수 있습니다.
+
+<img src="/images/docs_website/topology-certificate-chain.svg" className="align-center" alt="image" />
+
+이 예를 이어서 namespace `abc123`의 Key holder가 Synchronizer에서 Key `ghi789`로 sign한 Party `alice::abc123`의 `PartyToParticipant` mapping을 broadcast한다고 가정합니다. 이 Topology Transaction을 validate할 때 Synchronizer의 모든 Canton Node는 namespace `abc123`의 모든 namespace delegation에 대한 directed acyclic graph를 만들고 Topology Transaction effective time의 Topology snapshot에 root certificate `abc123`부터 Key `ghi789`까지 valid한 certificate chain이 있는지 verify합니다. 실제로 `abc123 -> def456 -> ghi789`라는 chain이 있습니다.
+
+### Key revocation
+
+Canton Key holder는 해당 Key에 대해 `REMOVE` operation을 사용하는 namespace delegation을 broadcast하여 intermediate certificate를 revoke할 수 있습니다. Validation 당시에는 여전히 valid한 certificate였으므로 이 revocation은 지금은 revoke된 certificate의 Key로 sign한 이전의 validated Topology Transaction을 invalidate하지 않습니다. Revocation이 effective해진 후 Canton Node는 해당 namespace를 대신하여 그 Key가 만든 signature를 reject해야 합니다. 또한 revoke된 certificate의 Key로 sign된 모든 certificate는 이제 "dangling" 상태로 간주됩니다. 그 자체는 revoke되지 않았지만 이 certificate와 root certificate 사이에 더 이상 valid certificate chain이 없기 때문입니다. Revoke된 certificate scenario와 마찬가지로 certificate가 dangling 상태라는 사실은 현재 dangling certificate의 Key로 sign한 이전의 validated Topology Transaction을 invalidate하지 않습니다. 성공적으로 validation했을 때는 dangling 상태가 아니었기 때문입니다.
+
+앞 section의 예를 이어서 `abc123`의 Key holder가 Key `def456`의 certificate를 revoke하여 Key `ghi789`의 certificate가 dangling 상태가 됩니다. 따라서 Canton Node는 Key `def456` 또는 `ghi789`가 namespace `abc123`을 대신하여 만드는 향후 Topology Transaction signature를 모두 reject해야 합니다.
+
+<img src="/images/docs_website/topology-broken-certificate-chain.svg" className="align-center" alt="image" />
+
+
+{/* COPIED_END */}

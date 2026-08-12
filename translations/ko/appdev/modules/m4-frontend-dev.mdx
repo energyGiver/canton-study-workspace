@@ -1,0 +1,198 @@
+---
+title: "Frontend 개발"
+description: "TypeScript binding과 wallet integration을 사용해 Canton application용 React frontend 구축하기"
+source_id: "SRC-9099BC87F5"
+source_path: "appdev/modules/m4-frontend-dev"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "16b88bf542a27e26ae3528a3c04ed0fcdb6be0bcd341c884290133166309f9f8"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m4-frontend-dev.md)을 사용하세요.
+</Warning>
+
+import DamlDocsAppdevModulesM4FrontendDevL14 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L14.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL30 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L30.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL43 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L43.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL56 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L56.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL71 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L71.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL105 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L105.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL129 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L129.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL181 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L181.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL200 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L200.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL262 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L262.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL269 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L269.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL275 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L275.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL319 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L319.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL329 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L329.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL389 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L389.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL404 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L404.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL415 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L415.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL427 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L427.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL471 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L471.mdx";
+import DamlDocsAppdevModulesM4FrontendDevL479 from "/snippets/daml-docs/appdev_modules_m4-frontend-dev_L479.mdx";
+
+
+frontend는 Canton application의 user-facing layer입니다. 이 페이지에서는 [cn-quickstart](https://github.com/digital-asset/cn-quickstart)를 작동하는 예시로 사용합니다. cn-quickstart는 Canton Network에서 software licensing workflow를 구현하는 full-stack reference application입니다. [cn-quickstart frontend](https://github.com/digital-asset/cn-quickstart/tree/main/quickstart/frontend)는 TypeScript와 Vite로 구축된 React application입니다. 공유 OpenAPI schema에서 생성한 type을 사용해 HTTP로 backend와 communication합니다. 여기서 보여 주는 backend 연결, contract data 표시, authentication 처리 pattern은 모든 Canton frontend에 적용되지만 code sample은 cn-quickstart에서 직접 가져오므로 실제 작동 context에서 확인할 수 있습니다.
+
+## Backend 연결
+
+cn-quickstart에서 frontend는 Ledger API와 직접 통신하지 않으며 모든 ledger interaction은 backend REST endpoint를 통과합니다. Canton은 frontend가 ledger에 직접 access하는 데 사용할 수 있는 [JSON API](/sdks-tools/api-reference/json-api)를 제공하지만 cn-quickstart architecture는 concern separation을 위해 모든 것을 backend로 routing합니다.
+
+API client는 OpenAPI schema를 읽고 typed HTTP client를 생성하는 `openapi-client-axios` library를 사용해 [`api.ts`](https://github.com/digital-asset/cn-quickstart/blob/main/quickstart/frontend/src/api.ts)에 구성됩니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL14 />
+
+공유 [`common/openapi.yaml`](https://github.com/digital-asset/cn-quickstart/blob/main/quickstart/common/openapi.yaml)은 모든 endpoint, request body, response shape를 정의합니다. `openapi-client-axios` library는 build time에 이 spec에서 typed `Client` interface를 생성하므로 frontend의 모든 API 호출은 backend contract에 맞춰 type-check됩니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL30 />
+
+backend API가 변경되면 runtime에 조용히 실패하는 대신 frontend build가 실패합니다.
+
+## TypeScript Code Generation
+
+cn-quickstart frontend는 [`package.json`](https://github.com/digital-asset/cn-quickstart/blob/main/quickstart/frontend/package.json)의 `gen:openapi` script를 사용해 OpenAPI spec에서 TypeScript type을 생성합니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL43 />
+
+`build` script는 compilation 전에 type generation을 실행하므로 TypeScript type이 항상 OpenAPI schema와 일치합니다.
+
+별도로 `dpm codegen-js`는 compiled DAR file에서 TypeScript type을 생성합니다. 이러한 type은 Daml template, choice, data type을 반영합니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL56 />
+
+DAR에서 생성된 type을 사용할지는 architecture에 따라 달라집니다.
+
+- **fully mediated** (cn-quickstart default) -- frontend는 backend REST schema에서 OpenAPI로 생성한 type을 사용합니다. backend가 ledger concept와 REST DTO를 변환하므로 frontend에 Daml로 생성한 TypeScript type이 필요하지 않습니다.
+- **JSON API를 통한 direct ledger access** -- frontend는 Daml로 생성한 TypeScript binding을 사용해 [JSON API](/sdks-tools/api-reference/json-api)를 통해 Command를 submit합니다. ledger와 더 긴밀하게 integrate되지만 frontend가 Party ID, Contract ID, Command submission을 직접 처리해야 합니다.
+
+대부분의 application에는 fully mediated 접근 방식이 더 단순합니다. JSON API 접근 방식은 backend layer를 얇게 만들거나 없애려는 경우에 적합합니다.
+
+## Application Structure
+
+cn-quickstart frontend는 state management에 React Context provider를 사용합니다. [`App.tsx`](https://github.com/digital-asset/cn-quickstart/blob/main/quickstart/frontend/src/App.tsx)는 top level에서 이들을 compose합니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL71 />
+
+각 domain에는 [`stores/`](https://github.com/digital-asset/cn-quickstart/tree/main/quickstart/frontend/src/stores) 아래에 자체 store가 있으며 React Context를 해당 domain의 API call 및 state와 함께 wrapping합니다. store는 모든 backend communication에 OpenAPI schema의 typed `Client`를 사용합니다.
+
+## Contract Data 표시
+
+frontend는 backend GET endpoint에서 contract data를 fetch하고 React component에 render합니다. [`licenseStore`](https://github.com/digital-asset/cn-quickstart/blob/main/quickstart/frontend/src/stores/licenseStore.tsx)는 license state와 API call을 관리합니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL105 />
+
+[`LicensesView.tsx`](https://github.com/digital-asset/cn-quickstart/blob/main/quickstart/frontend/src/views/LicensesView.tsx)는 이 store를 사용하고 UI를 최신으로 유지하기 위해 주기적으로 polling하며 data를 render합니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL129 />
+
+backend가 모든 ledger translation을 처리하므로 frontend는 plain JSON object를 사용합니다. `License` type에서 `contractId`, `expiresAt`, `licenseNum` 같은 field는 ledger-specific type이 아니라 단순한 string과 number로 표시됩니다.
+
+## Backend를 통한 Choice Exercise
+
+user가 license renewal 또는 expiration 같은 action을 수행하면 frontend가 backend REST API에 post합니다. 각 request에는 backend가 deduplication을 위해 Ledger API로 전달하는 unique Command ID가 포함됩니다. license store의 예시는 다음과 같습니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL181 />
+
+[`generateCommandId()`](https://github.com/digital-asset/cn-quickstart/blob/main/quickstart/frontend/src/utils/commandId.ts) utility는 browser의 `crypto.randomUUID()` API를 사용해 UUID를 생성합니다. backend는 이 ID를 Ledger API로 전달하며 Ledger API는 user가 action을 retry할 때 duplicate Command submission을 방지하는 데 사용합니다.
+
+## Authentication
+
+Canton application은 일반적으로 user authentication에 OAuth2 / OpenID Connect (OIDC)를 사용합니다. LocalNet에서 cn-quickstart는 Keycloak을 identity provider로 사용합니다. backend는 OAuth2 flow를 처리하고 frontend는 [`userStore`](https://github.com/digital-asset/cn-quickstart/blob/main/quickstart/frontend/src/stores/userStore.tsx)를 통해 session state를 관리합니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL200 />
+
+OpenAPI spec의 `AuthenticatedUser` type에는 user name, admin 여부, wallet URL이 포함됩니다. component는 이를 사용해 admin-only feature를 조건부로 render하고 Splice wallet에 link합니다. backend가 모든 authorization decision을 처리하며 frontend는 user의 login 여부를 확인하고 적절한 UI를 표시하는 역할만 담당합니다.
+
+## Wallet Integration
+
+Canton Coin payment가 포함된 application은 frontend의 wallet component와 integrate합니다. cn-quickstart의 license renewal flow는 Splice wallet system을 통해 payment를 trigger합니다.
+
+1. user가 UI에서 "Renew License"를 클릭합니다
+2. frontend가 backend에 post하는 `client.renewLicense()`를 호출합니다
+3. backend가 `License_Renew` choice를 exercise하여 Splice `AllocationRequest` interface를 구현하는 `LicenseRenewalRequest`를 ledger에 생성합니다
+4. Splice wallet이 allocation request를 감지하고 user가 approve할 `AppPaymentRequest`를 생성합니다
+5. payment가 confirm되면 provider가 `completeLicenseRenewal()`을 호출해 갱신된 license를 생성합니다
+
+`LicensesView`는 polling으로 renewal state를 tracking합니다. 각 license object에는 `renewalRequests` array가 있으며 UI는 pending 및 accepted renewal 수를 표시합니다. user의 wallet URL은 `AuthenticatedUser` object에서 가져와 payment approval을 위한 Splice wallet link에 사용합니다.
+
+## Development Workflow
+
+frontend를 iteratively 개발하는 경우는 다음과 같습니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL262 />
+
+더 빠르게 iteration하려면 실행 중인 LocalNet backend를 대상으로 Vite dev server를 직접 실행하세요.
+
+<DamlDocsAppdevModulesM4FrontendDevL269 />
+
+Vite dev server는 API request를 backend로 proxy합니다. [`vite.config.ts`](https://github.com/digital-asset/cn-quickstart/blob/main/quickstart/frontend/vite.config.ts)의 proxy configuration은 `/api`, `/login`, `/oauth2` path를 backend로 routing합니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL275 />
+
+`ViteYaml` plugin을 사용하면 OpenAPI YAML file을 JavaScript module로 직접 import할 수 있으며 `api.ts`는 이 방식으로 build time에 schema를 load합니다.
+
+## 실습: License Comment UI 추가
+
+<Note>
+이 실습은 [Backend 개발](/appdev/modules/m4-backend-dev#exercise-add-license-comments)의 backend 실습을 기반으로 합니다. 먼저 해당 실습을 완료하세요. frontend에서 사용하려면 `LicenseComment` Daml template, OpenAPI endpoint, backend implementation이 필요합니다.
+</Note>
+
+cn-quickstart가 license에 사용하는 것과 동일한 store/view pattern에 따라 comment list와 comment form을 license view에 추가합니다.
+
+### Step 1: TypeScript Type 다시 생성하기
+
+backend 실습에서 `LicenseComment`, `AddCommentRequest`, 두 개의 새 endpoint를 `openapi.yaml`에 추가했습니다. typed client가 이를 인식하도록 frontend type을 다시 생성합니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL319 />
+
+공유 `openapi.yaml`을 대상으로 `openapicmd typegen`을 실행하고 `src/openapi.d.ts`를 overwrite합니다. 이후 `Client` type에는 올바른 parameter와 return type을 가진 `listLicenseComments()` 및 `addLicenseComment()` method가 포함됩니다.
+
+### Step 2: Comment Store 생성하기
+
+`quickstart/frontend/src/stores/commentStore.tsx`에 새 store를 생성합니다. [`licenseStore.tsx`](https://github.com/digital-asset/cn-quickstart/blob/main/quickstart/frontend/src/stores/licenseStore.tsx)가 사용하는 것과 같은 Context + Provider pattern을 따르세요.
+
+<DamlDocsAppdevModulesM4FrontendDevL329 />
+
+structure는 `licenseStore.tsx`를 반영합니다. React Context가 state를 보유하고 각 API call은 HTTP error에 toast message를 표시하는 `withErrorHandling`과 `useCallback`으로 wrapping됩니다. typed `Client`는 OpenAPI spec에 대한 compile-time checking을 제공합니다. `addComment` function은 deduplication을 위한 Command ID를 생성하며 `expireLicense` 및 `renewLicense`와 같은 pattern입니다.
+
+기존 provider 옆의 `App.tsx`에 provider를 register합니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL389 />
+
+### Step 3: Comment UI 추가하기
+
+[`LicensesView.tsx`](https://github.com/digital-asset/cn-quickstart/blob/main/quickstart/frontend/src/views/LicensesView.tsx)에 comment section을 추가합니다. comment store를 import하고 일부 local state를 추가해야 합니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL404 />
+
+license의 comment panel이 열려 있을 때 comment를 polling하는 effect를 추가합니다. 이는 `LicensesView`가 license list에 이미 사용하는 5초 `setInterval` pattern을 따릅니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL415 />
+
+각 license row의 action column에 "Comments" toggle button을 추가하고 license table 아래에 comment panel을 render합니다. panel에는 기존 comment와 새 comment form이 표시됩니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL427 />
+
+`showComments` state는 현재 expand된 license의 Contract ID를 tracking합니다. `formatDateTime` utility는 expiration column을 위해 `LicensesView`에 이미 import되어 있습니다. `handleAddComment` handler는 store의 `addComment`를 호출한 다음 input을 지웁니다.
+
+### Step 4: Build 및 Test
+
+OpenAPI 변경과 새 Java code를 적용하도록 backend와 frontend를 모두 다시 build합니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL471 />
+
+또는 hot reload로 frontend를 더 빠르게 iteration합니다.
+
+<DamlDocsAppdevModulesM4FrontendDevL479 />
+
+application을 열고 Licenses page로 이동하여 license의 "Comments" button을 클릭한 다음 comment를 post해 보세요. 5초 이내에 list에 comment가 나타나야 합니다. `addComment`는 성공 후 `fetchComments`를 호출하므로 POST가 완료되자마자 나타날 수도 있습니다.
+
+## 다음 단계
+
+- [Canton Coin과 Traffic](/appdev/modules/m4-canton-coin) -- CC와 traffic이 application에 미치는 영향
+- [Backend 개발](/appdev/modules/m4-backend-dev) -- frontend가 communication하는 backend
+- [cn-quickstart frontend source](https://github.com/digital-asset/cn-quickstart/tree/main/quickstart/frontend) -- 완전한 frontend implementation

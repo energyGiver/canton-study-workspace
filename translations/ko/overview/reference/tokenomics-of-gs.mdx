@@ -1,0 +1,117 @@
+---
+title: "Global Synchronizer의 Tokenomics"
+description: "Global Synchronizer를 유지하는 경제 모델: traffic fee, reward distribution, issuance, CC-USD conversion rate"
+source_id: "SRC-B246B6729B"
+source_path: "overview/reference/tokenomics-of-gs"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "f63409d3998d4031ecfe1806107662acdcf7fd69a322e4ff6510259e2b75cf9c"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/reference/tokenomics-of-gs.md)을 사용하세요.
+</Warning>
+
+Canton Coin(CC)은 Global Synchronizer의 경제 엔진입니다. Validator, Super Validator, application provider는 Network에 infrastructure와 activity를 제공하여 CC를 획득합니다. User는 synchronizer traffic을 구매하기 위해 CC를 사용합니다(CC를 burn합니다). 이에 따른 burn-mint equilibrium은 token의 가치를 실제 Network utility와 연결합니다.
+
+## Burn-Mint Equilibrium
+
+Canton Coin application은 Canton Coin의 conversion rate를 Network user에게 제공하는 intrinsic value 부근에서 안정화하는 것을 목표로 burn-mint equilibrium mechanism을 사용합니다.
+
+- **Fee burning** -- User는 synchronizer traffic을 구매할 때 USD로 표시되지만 Canton Coin을 burn하여 지불하는 fee를 냅니다. Burn된 coin은 circulation에서 영구적으로 제거됩니다.
+- **Minting rewards** -- Validator, Super Validator, application provider는 Network에 대한 기여(infrastructure operation, application service, usage)의 대가로 새 CC를 mint합니다.
+- **Dynamic equilibrium** -- 장기적으로 burn된 총 CC(actual Network utility 반영)는 mint된 CC(미리 정해진 maximum minting curve의 제한을 받음)와 대체로 균형을 이룹니다. Usage가 많으면 더 많은 coin이 burn되어 token conversion rate를 높이는 경향이 있습니다. Usage가 적으면 균형이 회복될 때까지 supply가 증가합니다.
+
+## Traffic Economics
+
+Global Synchronizer에 제출되는 모든 message는 traffic을 소비합니다. 전송 Validator에 비용이 부과되며 recipient에는 부과되지 않습니다.
+
+### Base-Rate Allocation (Free Tier)
+
+각 Validator는 `AmuletRules` contract의 두 parameter로 정의되는 무료 regenerative traffic allowance를 받습니다.
+
+- `burstAmount` -- fee 없이 한 burst window에서 Validator가 사용할 수 있는 최대 byte 수입니다.
+- `burstWindow` -- burst amount가 재생되는 time window입니다. 아무 activity 없이 전체 window가 지나면 무료 balance가 완전히 복구됩니다.
+
+Base-rate traffic이 항상 먼저 소비됩니다. 이것을 모두 소진한 뒤에만 extra(paid) traffic을 사용합니다.
+
+### Extra Traffic (Purchased by Burning CC)
+
+Validator는 현재 USD-to-CC conversion rate(USD/MB price)에 따라 CC를 burn하여 traffic credit balance를 늘립니다. 필요할 때 Validator operator(또는 third-party service provider)는 CC를 burn하고 traffic credit을 받습니다. Burn된 CC는 burn된 CC amount를 기록하는 `ValidatorRewardCoupon`을 생성하며, 이때 `user`는 구매 Party를 hosting하는 Validator operator입니다. Traffic purchase에는 `AppRewardCoupon`이 생성되지 않습니다.
+
+Validator의 traffic이 예기치 않게 소진되지 않도록 automatic top-up automation을 사용할 수 있습니다. `minTopupAmount` parameter는 각 purchase가 Super Validator의 processing cost를 분산할 만큼 충분히 크도록 보장합니다.
+
+Traffic accounting은 Validator별로 이루어지며 동일한 Validator가 hosting하는 모든 Party가 하나의 traffic balance를 공유합니다. Validator가 External Party를 hosting할 때는 그들을 대신해 traffic을 구매합니다. Scan API는 Validator가 External Party가 제출한 Transaction의 cost를 estimate하는 데 사용할 수 있는 traffic pricing parameter를 제공합니다.
+
+### Cost Factors
+
+주어진 message에 대해 Validator balance에서 실제로 차감되는 traffic은 다음 요소에 따라 달라집니다.
+
+- **Payload size** -- Sequenced message의 byte size입니다.
+- **Number of recipients** -- 각 recipient에는 `readVsWriteScalingFactor`(10,000분율로 지정)가 제어하는 delivery surcharge가 추가됩니다. 예를 들어 factor가 4이면 recipient 10명에게 보내는 1 MB message의 비용은 `1,000,000 * (1 + 10 * 0.0004) = 1,004,000` byte입니다.
+- **Extra traffic price** -- MB당 USD로 표시되는 `extraTrafficPrice`이며 적용 시점의 conversion rate에 따라 CC로 부과됩니다.
+
+이 모든 parameter는 `AmuletRules` contract에 있으며 Scan API를 통해 query할 수 있습니다.
+
+## Reward Distribution
+
+{/* Begin adapted block from splice/docs/src/background/tokenomics/overview_tokenomics.rst lines 59-91 */}
+
+Network activity는 **activity record**를 통해 추적됩니다. 각 record에는 해당 round에서 Party가 CC minting에서 차지할 share를 결정하는 weight가 있습니다. 다섯 가지 주요 contract template이 accounting을 수행합니다.
+
+- **`SvRewardCoupon`** -- Round마다 Super Validator별로 하나씩 생성됩니다. SV minting right는 SV infrastructure를 운영하거나 핵심 resource를 제공하는 대가로 tokenomics committee가 [CIP process](https://github.com/canton-foundation/cips/blob/main/cip-0000/cip-0000.md)를 통해 부여합니다.
+- **`ValidatorRewardCoupon`** -- CC가 burn(traffic purchase)되거나 `AmuletRules_Transfer`가 execute될 때마다 생성됩니다. Coupon의 weight는 Validator가 burn한 CC amount를 반영합니다.
+- **`ValidatorLivenessActivityRecord`** -- 과거에는 availability에 보상하기 위해 live Validator마다 round별로 하나씩 생성되었습니다. Validator liveness reward는 [CIP-0096](https://github.com/canton-foundation/cips/blob/main/cip-0096/cip-0096.md)에 따라 중단되었습니다. 이 CIP는 Validator별 liveness reward cap을 단계적으로 낮춰 2026-04-30부터 $0로 만들었습니다. 이제 Validator는 `ValidatorRewardCoupon` activity reward로만 수익을 얻습니다.
+- **`AppRewardCoupon`** -- Featured application의 Transaction이 성공하거나 `FeaturedAppActivityMarker`가 SV automation으로 convert될 때 생성됩니다. Featured application만 reward를 받습니다([CIP-0078](https://github.com/canton-foundation/cips/blob/main/cip-0078/cip-0078.md)에 따름).
+- **`FeaturedAppActivityMarker`** -- 경제적으로 의미 있는 event(asset transfer, token mint/burn)에 대해 business Transaction에서 생성됩니다. SV automation이 이를 `AppRewardCoupon` contract로 convert합니다.
+
+{/* End adapted block from overview_tokenomics.rst */}
+
+## Issuance Curve and Minting Schedule
+
+`AmuletRules` contract의 `IssuanceConfig`는 mint할 수 있는 최대 CC를 정의합니다. 주요 field는 다음과 같습니다.
+
+- `amuletToIssuePerYear` -- 새 CC의 연간 issuance ceiling입니다. Round별 issuance는 이 수치를 연간 round 수로 나누어 산출합니다(round는 기본적으로 10분마다 시작하므로 연간 약 52,560 round).
+- `validatorRewardPercentage` -- Validator activity reward(burn-proportional coupon)에 할당되는 round별 issuance의 비율입니다.
+- `appRewardPercentage` -- Application reward에 할당되는 비율입니다.
+- Validator tranche와 app tranche 이후 남은 부분은 각 SV의 weight에 비례하여 Super Validator reward로 분배됩니다.
+
+각 tranche 내에서 coupon별 issuance에는 cap(`validatorRewardCap`, `featuredAppRewardCap`, `unfeaturedAppRewardCap`, `validatorFaucetCap`)이 있습니다. 한 tranche의 총 coupon demand가 cap보다 적으면 surplus는 다음 tranche로 넘어갑니다. 예를 들어 claim되지 않은 unfeatured app reward는 featured app reward로 넘어갑니다. 모든 tranche를 거친 뒤에도 claim되지 않은 reward는 SV reward로 이동합니다. `validatorFaucetCap`(Validator liveness faucet)은 [CIP-0096](https://github.com/canton-foundation/cips/blob/main/cip-0096/cip-0096.md)에 따라 2026-04-30부터 $0이므로 더 이상 Validator income에 기여하지 않습니다.
+
+각 round의 issuance 중 `developmentFundPercentage`(기본값 5%)는 위 tranche들에 나머지를 분배하기 전에 [CIP-0082](https://github.com/canton-foundation/cips/blob/main/cip-0082/cip-0082.md)에 따른 development fund로 별도 배정됩니다.
+
+## Fee Schedules and Round Snapshots
+
+Fee parameter는 DSO가 on-ledger voting으로 govern하는 **`AmuletRules`** contract에 저장됩니다. 새 mining round가 열리면 현재 fee value와 conversion rate가 **`OpenMiningRound`** contract에 snapshot되므로 해당 round 내 모든 Transaction이 일관된 pricing을 사용합니다. Round가 각 phase를 진행하는 동안 **`IssuingMiningRound`** contract는 reward type별 activity weight당 산출된 mint amount를 기록합니다.
+
+[CIP-0078](https://github.com/canton-foundation/cips/blob/main/cip-0078/cip-0078.md)은 CC transfer와 lock에 대한 거의 모든 fee를 없앴습니다. Holding fee는 유지됩니다. Coin amount와 관계없이 별도 coin contract(UTXO)마다 시간 단위로 부과되는 fixed fee입니다. Holding fee는 작은 coin을 merge하여 on-ledger storage를 줄이도록 유도합니다. Transfer 도중이 아니라 `Amulet_Expire`를 통해 expired coin contract에만 부과됩니다.
+
+## CC-USD Conversion Rate
+
+{/* Begin adapted block from splice/docs/src/deployment/traffic.rst lines 121-125, splice/docs/src/sv_operator/sv_helm.rst lines 1123-1125 */}
+
+각 Super Validator는 적절하다고 판단하는 CC conversion rate를 publish합니다. 각 mining round에 사용되는 rate는 publish된 모든 SV rate의 **median**입니다. 이 median 기반 접근 방식은 한 SV가 일방적으로 price를 움직이는 것을 방지합니다.
+
+{/* End adapted block */}
+
+그 결과인 `amuletPrice`(CC당 USD)는 각 `OpenMiningRound` contract에 기록되며 Scan API 또는 Scan UI를 통해 query할 수 있습니다. USD로 표시된 모든 fee(traffic cost, reward cap)는 적용 시 이 rate에 따라 CC로 convert됩니다.
+
+## How Validators Earn
+
+Validator는 **activity reward**를 통해 CC를 획득합니다.
+
+- **Activity rewards** -- Validator의 user가 CC를 burn(traffic purchase 또는 transfer)하면 그 결과 생성된 `ValidatorRewardCoupon`을 통해 Validator는 burn된 amount에 비례하는 CC를 mint할 수 있습니다. 더 많은 Network usage를 유도하는 Validator가 더 많은 수익을 얻습니다.
+
+<Note>
+**Validator liveness reward는 중단되었습니다.** 과거에는 Validator가 Transaction validation에 참여할 수 있는 상태라는 이유만으로 매 round마다 `ValidatorLivenessActivityRecord`를 mint했으며, round별 USD-equivalent faucet amount를 cap으로 적용했습니다. [CIP-0096](https://github.com/canton-foundation/cips/blob/main/cip-0096/cip-0096.md)에 따라 이 cap은 단계적으로 **$0**까지 낮아졌고 2026-04-30부터 적용되었습니다. 따라서 liveness는 더 이상 CC income을 제공하지 않습니다. 이제 activity reward가 유일한 Validator minting mechanism입니다.
+</Note>
+
+External Party(Validator를 통하지 않고 자체 key로 sign하는 Party)를 hosting하는 Validator의 경우, Validator에 대한 **minting delegation** 또는 매 round `AmuletRules_Transfer`를 호출하는 custom automation을 통해 minting을 처리할 수 있습니다.
+
+## Further Reading
+
+- [Canton Coin white paper](https://www.digitalasset.com/hubfs/Canton%20Network%20Files/Documents%20(whitepapers%2c%20etc...)/Canton%20Coin_%20A%20Canton-Network-native%20payment%20application.pdf) -- burn-mint mechanism의 전체 technical specification
+- [Canton Network white paper](https://www.digitalasset.com/hubfs/Canton/Canton%20Network%20-%20White%20Paper.pdf) -- 더 광범위한 Network architecture와 design
+- [CIP repository](https://github.com/canton-foundation/cips) -- fee와 reward 변경을 포함한 governance proposal

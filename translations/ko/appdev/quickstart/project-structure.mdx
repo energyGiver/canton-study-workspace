@@ -1,0 +1,307 @@
+---
+title: "Project Structure"
+description: "Canton Network QuickStart project layout과 component architecture 이해"
+source_id: "SRC-5BBA886472"
+source_path: "appdev/quickstart/project-structure"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "6b9a5064c718419f43211f8b833c57e5891e80c8901b2b802e15d024e8c99ab3"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/quickstart/project-structure.md)을 사용하세요.
+</Warning>
+
+import DamlSdksToolsDevelopmentToolsLocalnetL197 from "/snippets/daml-docs/sdks-tools_development-tools_localnet_L197.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartConfigureProjectStructureOverviewBash182 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-configure-project-structure-overview-bash-182.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartConfigureProjectStructureOverviewBash356 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-configure-project-structure-overview-bash-356.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartConfigureProjectStructureOverviewBash367 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-configure-project-structure-overview-bash-367.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartConfigureProjectStructureOverviewBash377 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-configure-project-structure-overview-bash-377.mdx";
+
+{/* COPIED_START source="docs-website:docs/replicated/quickstart/3.4/sdk/quickstart/configure/project-structure-overview.rst" hash="80f42118" */}
+
+# Canton Network quickstart project structure
+
+## Overview
+
+CN Quickstart는 Canton Network application 구축을 위한 완전한 development environment를 제공합니다. Build tool(Gradle, Make), deployment infrastructure(Docker Compose), reference application을 결합하여 development를 가속합니다.
+
+Project는 자체 application에 필요한 scaffolding을 제공하면서 licensing application을 통해 Canton development pattern을 보여 줍니다.
+
+## Reference application
+
+Quickstart에는 네 Party로 구성된 licensing application이 포함됩니다.
+
+- **Application Provider** - License 판매
+- **Application User** - License 구매
+- **DSO Party** - Payment system 운영(CN의 Super Validator)
+- **Amulet** - Payment용 token system(기본값 Canton Coin)
+
+Provider와 User는 independent Party이며 separate Ledger state를 유지하기 위해 각각 자체 Validator Node가 필요합니다. Super Validator를 통해 coordinate합니다. Payment에는 Canton Wallet integration과 Splice dependency가 필요합니다.
+
+이 four-Party model이 project를 구성합니다. Splice container는 `docker/modules/localnet/conf/splice/`의 config(app-provider/, app-user/, sv/)로 세 Validator를 모두 실행합니다. Provider/User application module은 `backend/`와 `frontend/`, payment Contract는 `daml/`, Splice DAR은 `daml/dars/`에 있습니다.
+
+전체 workflow walkthrough는 [Running the Demo](/appdev/quickstart/running-the-demo) guide를 따라 진행하세요.
+
+### Development environment (Nix + Direnv)
+
+Repository는 JDK, Node.js, TypeScript를 포함한 일관된 cross-platform development dependency를 제공하기 위해 Nix와 Direnv를 사용합니다. Nix를 사용하지 않으려면 `quickstart/`에서 직접 작업할 수 있지만 dependency를 manually 관리해야 합니다. 추가 tooling 설정이 필요하면 [Quickstart prerequisites](/appdev/quickstart/prerequisites)를 검토하세요.
+
+**Key files:**
+
+- `.envrc` - Direnv를 통해 Nix environment activate
+- `nix/shell.nix` - Development dependency 정의
+- `flake.nix` / `flake.lock` - Reproducible build를 위해 repository root에서 dependency pin
+- `quickstart/` - Main project directory
+
+## Quickstart directory structure
+
+`quickstart/` file과 directory는 세 category 중 하나에 속합니다.
+
+```text
+Build Configuration
+- Makefile                  # Project orchestration
+- build.gradle.kts          # Root build configuration
+- buildSrc/                 # Custom Gradle plugins
+- gradle/                   # Gradle wrapper files
+- gradlew                   # Gradle wrapper (Unix)
+- gradlew.bat               # Gradle wrapper (Windows)
+- settings.gradle.kts       # Project structure definition
+
+Deployment Configuration
+- .env                      # Environment variables
+- compose.yaml              # Docker Compose configuration
+- config/                   # Service configurations
+- docker/                   # Docker image definitions
+
+Application Source
+- daml/                     # Smart contracts
+- backend/                  # Java backend services
+- frontend/                 # React frontend
+- common/                   # Shared API definitions
+```
+
+## Build system
+
+### Gradle
+
+Gradle은 Java backend와 Daml Contract를 build합니다. Backend는 Ledger API와 상호 작용하기 위해 DAR file에서 Transcode가 생성한 class를 사용합니다.
+
+**Custom Gradle plugins** (`buildSrc/src/main/kotlin/`):
+
+| Plugin                     | Purpose                                |
+|----------------------------|----------------------------------------|
+| `ConfigureProfilesTask.kt` | `.env.local` interactive generation |
+| `Dependencies.kt`          | `.env` version을 Gradle에 propagate   |
+| `UnpackTarGzTask.kt`       | Symlink support로 `.tgz` unpack    |
+| `VersionFiles.kt`          | `.env`와 `daml.yaml` file read     |
+
+### Make
+
+Make는 build tool과 Docker Compose를 위한 command-line interface를 제공합니다. 사용 가능한 Command를 보려면 `make help`를 실행하세요.
+
+**Common targets:**
+
+- `make setup` - Deployment profile 구성
+- `make build` - 모든 component build
+- `make start` - Application 시작
+- `make status` - 실행 중인 container 표시
+- `make stop` - Application 중지
+- `make capture-logs` - Container log capture
+
+`Makefile`은 executable Command와 development workflow documentation 역할을 모두 합니다.
+
+## Deployment configuration
+
+### Docker Compose
+
+Docker Compose는 laptop에서 Canton Network를 simulate하는 local development environment인 LocalNet을 orchestration합니다. Validator Node, Super Validator, Canton Coin Wallet, supporting service가 포함됩니다.
+
+**Key files:**
+
+- `compose.yaml` - Main Docker Compose configuration
+- `.env` - 모든 service의 environment variable
+- `config/` - Service-specific configuration file
+- `docker/` - Docker image build context
+
+### Port mapping
+
+LocalNet은 port number에 prefix-suffix pattern을 사용합니다.
+
+**Prefixes:**
+
+- `2xxx` - Application User Validator
+- `3xxx` - Application Provider Validator
+- `4xxx` - Super Validator
+
+**Common Suffixes:**
+
+- `x901` - Ledger API
+- `x902` - Admin API
+- `x903` - Validator API
+- `x975` - JSON API
+- `5432` - PostgreSQL
+
+**Examples**
+
+- Application User Ledger API: `2901`
+- Provider Validator API: `3903`
+- Application User JSON API: `2975`.
+
+### Port mapping security
+
+`LocalNet` port mapping은 `AdminAPI`와 `Postgres` port를 expose하므로 public Network에서는 security risk입니다. 그러나 local development/testing 중에는 이 port에 direct access할 수 있어 유용합니다. Non-local deployment용 configuration을 준비할 때 이 port를 expose하지 **마세요**. 적절한 Docker file에서 port를 제거할 수 있습니다.
+
+### Health checks
+
+각 Validator의 health check endpoint는 `docker/modules/localnet/docker/splice/health-check.sh`에 있습니다.
+
+<DamlSdksToolsDevelopmentToolsLocalnetL197 />
+
+Empty response는 healthy service를 의미합니다.
+
+Admin port는 `quickstart/docker/modules/localnet/compose.yaml`에 정의됩니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartConfigureProjectStructureOverviewBash182 />
+
+자세한 port usage와 authentication pattern은 [Using the JSON Ledger API](/appdev/quickstart/json-api)를 참조하세요.
+
+## Application structure
+
+Canton application에는 세 layer가 있습니다.
+
+1.  **User Interface** (frontend/) - React web application
+2.  **Local Business Logic** (backend/) - Java service, PQS query, integration
+3.  **Consensus Business Logic** (daml/) - Multi-Party agreement가 필요한 Smart Contract
+
+Quickstart는 backend가 모든 Ledger interaction을 처리하는 fully mediated architecture를 사용합니다. 다른 방법으로 frontend가 Command를 Ledger에 직접 제출하고 backend가 query를 처리하도록 지정하는 CQRS architecture를 사용할 수 있습니다.
+
+### Daml smart contracts
+
+Licensing application은 App Provider, User, DSO(payment용) 간 consensus가 필요한 Multi-Party workflow를 보여 줍니다.
+
+```text
+licensing/
+└── daml/
+    └── Licensing/
+        ├── AppInstall.daml     # User onboarding
+        ├── License.daml        # License management
+        └── Util.daml           # Helper functions
+```
+
+#### Core business flow
+
+Consensus layer는 다음 Daml Template을 통해 Multi-Party agreement를 처리합니다.
+
+**User Onboarding** (`AppInstall.daml`):
+
+- `AppInstallRequest` - User가 Propose/Accept pattern으로 설치 시작
+  - Choices: `AppInstallRequest_Accept`, `AppInstallRequest_Reject`, `AppInstallRequest_Cancel`
+- `AppInstall` - Provider와 User 간 active installation relationship
+  - Choice: `AppInstall_CreateLicense` - Provider가 User용 License 생성
+
+**License Management** (`License.daml`):
+
+- `License` - Expiration date가 있는 time-based access control
+  - Choice: `License_Renew` - `AppPaymentRequest`(Splice Wallet)와 `LicenseRenewalRequest` 생성
+  - Choice: `License_Expire` - Expired License archive
+- `LicenseRenewalRequest` - Canton Coin payment를 통한 License extension 처리
+
+#### Why consensus layer?
+
+이 operation은 여러 Party 간 agreement를 포함하므로 consensus가 필요하며 local backend service에는 적합하지 않습니다.
+
+1.  **User creates** `AppInstallRequest` → Provider가 확인하고 응답해야 함
+2.  **Provider exercises** `AppInstallRequest_Accept` → 두 Party가 `AppInstall` 생성에 합의해야 함
+3.  **Provider creates** `License` **contracts** → User가 term을 accept해야 함
+4.  **License renewal** → User, Provider, DSO payment system 전체에서 payment validation 필요
+
+### Backend services
+
+Backend는 서로 다른 두 path를 사용하여 모든 Ledger interaction을 mediate하는 Spring Boot application입니다.
+
+1.  **Queries** → Ledger state에 빠르게 read access하기 위한 PQS(Participant Query Store)
+2.  **Commands** → Choice exercise와 Contract 생성을 위한 Ledger API GRPC
+
+이 fully mediated architecture는 authentication과 Ledger access를 centralize하여 frontend를 단순하게 유지합니다.
+
+**Module structure** (`backend/src/main/java/com/digitalasset/quickstart/`):
+
+| Module        | Purpose                                  | Key Components                                                    |
+|---------------|------------------------------------------|-------------------------------------------------------------------|
+| `security/`   | OAuth2 authentication과 access control | Bearer token validation                                           |
+| `service/`    | OpenAPI endpoint implementation         | PQS query와 Ledger API Command 결합                     |
+| `ledger/`     | Ledger API GRPC client                   | `LedgerApi`가 Validator에 Command 제출                         |
+| `repository/` | Business-logic PQS query               | `DamlRepository`가 domain-specific query 제공                 |
+| `pqs/`        | Low-level PQS access                     | `Pqs`가 SQL 생성 및 PostgreSQL query                           |
+| `utility/`    | Codegen과 JSON utility               | `DamlCodeGen`이 DAR의 Transcode-generated Java class에 access |
+| `config/`     | Spring Boot configuration                | `@ConfigurationProperties` component                             |
+
+#### Backend architecture pattern
+
+Backend는 두 type의 HTTP endpoint를 제공합니다.
+
+- **GET** - Contract와 state query(PQS 사용)
+- **POST** - Contract의 Choice execute(Ledger API 사용, URL에 Contract ID 포함)
+
+Backend는 DAR file에서 Java class를 생성하는 codegen을 사용하여 type-safe Ledger interaction을 제공합니다. Daml Contract update 후 `make build`로 backend를 rebuild하여 이 class를 regenerate하세요.
+
+### Frontend application architecture
+
+Frontend는 TypeScript로 작성된 React application이며 build에 Vite, HTTP transport에 Axios를 사용합니다.
+
+Backend가 모든 Ledger interaction을 처리합니다. Frontend는 Canton 또는 Ledger API와 직접 통신하지 않습니다. 이 접근 방식은 다음과 같습니다.
+
+- Authentication과 access control을 한 곳에 centralize
+- Frontend가 non-Ledger data source를 쉽게 integrate하도록 지원
+- Frontend와 backend 간 data model(DTO)로 OpenAPI schema 사용
+- HTTP client: OpenAPI client generation을 사용하는 Axios
+
+일부 Canton application은 frontend가 Daml-generated TypeScript를 사용하여 Ledger API에 Command를 직접 제출하는 CQRS architecture를 사용합니다. 더 tightly coupled된 이 방식은 Daml-centric application에 적합하지만 frontend가 Party ID와 Contract ID 같은 Canton concept을 이해해야 합니다.
+
+### Common API definition
+
+`common/openapi.yaml`은 frontend와 backend 사이의 HTTP interface를 정의합니다. API는 다음을 사용합니다.
+
+- **GET** `/api/resource` - Contract와 state query(PQS 사용)
+- **POST** `/api/contracts/{contractId}/exercise` - Choice execute(Ledger API 사용)
+
+OpenAPI schema는 frontend용 TypeScript type을 생성하고 backend request를 validate합니다.
+
+## Configuration reference
+
+### Environment variables
+
+`.env` file은 version number, feature flag, default configuration을 포함합니다. Local override에는 git에서 track하지 않는 `.env.local`을 사용하세요.
+
+### Docker Compose modules
+
+LocalNet은 modular Docker Compose layer로 build됩니다.
+
+- Base LocalNet infrastructure(Splice 제공)
+- Authentication(Keycloak)
+- Observability(Grafana, Prometheus, Loki)
+- PQS(Participant Query Store)
+- Application service
+
+## Development workflow
+
+### Quick Start
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartConfigureProjectStructureOverviewBash356 />
+
+### Iterative development
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartConfigureProjectStructureOverviewBash367 />
+
+### Debugging and logs
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartConfigureProjectStructureOverviewBash377 />
+
+Log analysis technique은 [Debugging and troubleshooting with lnav](/appdev/quickstart/lnav)를 참조하세요.
+
+{/* COPIED_END */}
+
+{/* Mintlify preview rebuild marker. */}

@@ -1,0 +1,41 @@
+---
+title: "1.0.0"
+description: "Wallet SDK 1.0.0 release note"
+source_id: "SRC-54EC5DB1F4"
+source_path: "integrations/release-notes/wallet-sdk-releases/1-0-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "c0cb93306d13228d4d5ba066b3bc052ac374e1c1e0edd9f6dac46859d0af1653"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-sdk-releases/1-0-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-sdk" format="split-release" version="1.0.0" source="158b3ff4c316ba7a5d6c89a6099a5303b76d4f77" */}
+
+# 1.0.0
+
+**2026년 4월 17일 release**
+
+Wallet SDK v1은 application development를 위한 새로운 장기 API model입니다.
+v0에 additive patch를 적용한 것이 아니라 composability, multi-party flow, transport flexibility에 초점을 둔 더 명확하고 explicit한 model을 도입합니다.
+
+**v1으로 이동해야 하는 이유**
+
+- 기본적으로 stateless하고 더 안전함: v1은 global SDK/controller Party state를 제거하고 call 시점에 explicit `partyId`를 요구합니다. 이를 통해 thread safety를 개선하고 concurrent multi-party operation을 훨씬 쉽게 추론할 수 있습니다.
+- 더 명확한 Transaction lifecycle: Flow를 explicit `prepare -> sign -> execute` 단계로 model하여 observability를 개선하고 hidden behavior를 줄입니다.
+- 더 나은 API organization: v0 controller를 경계가 더 명확하고 찾기 쉬운 namespace(`ledger`, `party`, `token`, `amulet`, `user`, `asset`, `events`)로 대체합니다.
+- 더 유연한 integration model: v1은 static configuration과 provider-based initialization을 지원하여 browser, dApp, remote wallet, alternative transport setup과 더 쉽게 통합할 수 있습니다.
+- 개선된 extension model: Optional functionality를 `extend()`로 enable할 수 있어 base initialization을 작고 목적 지향적으로 유지합니다.
+
+이 release note는 모든 method-level change를 의도적으로 나열하지 않습니다.
+전체 migration detail과 example은 다음 migration guide를 사용하세요.
+
+- [Wallet SDK v1 Migration Guide](https://github.com/canton-network/wallet/blob/158b3ff4c316ba7a5d6c89a6099a5303b76d4f77/docs/wallet-integration-guide/src/wallet-sdk-v1-migration-guide/index.rst)
+- [v1 Ledger Migration](https://github.com/canton-network/wallet/blob/158b3ff4c316ba7a5d6c89a6099a5303b76d4f77/docs/wallet-integration-guide/src/wallet-sdk-v1-migration-guide/ledger.rst)
+- [v1 Token Migration](https://github.com/canton-network/wallet/blob/158b3ff4c316ba7a5d6c89a6099a5303b76d4f77/docs/wallet-integration-guide/src/wallet-sdk-v1-migration-guide/token.rst)
+- [v1 Party Migration](https://github.com/canton-network/wallet/blob/158b3ff4c316ba7a5d6c89a6099a5303b76d4f77/docs/wallet-integration-guide/src/wallet-sdk-v1-migration-guide/party.rst)
+- [v1 User Migration](https://github.com/canton-network/wallet/blob/158b3ff4c316ba7a5d6c89a6099a5303b76d4f77/docs/wallet-integration-guide/src/wallet-sdk-v1-migration-guide/user.rst)

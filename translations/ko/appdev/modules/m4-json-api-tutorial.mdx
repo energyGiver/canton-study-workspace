@@ -1,0 +1,523 @@
+---
+title: "Canton과 JSON Ledger API"
+description: "curl과 TypeScript를 사용해 Canton 및 JSON Ledger API 시작하기"
+source_id: "SRC-1D0424B8F8"
+source_path: "appdev/modules/m4-json-api-tutorial"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "43f53ceb9a5e20a96a041ea21d0112986f769a79ba8449abb02f3c846faccc15"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m4-json-api-tutorial.md)을 사용하세요.
+</Warning>
+
+import DamlSdksToolsCliToolsDpmL44 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L44.mdx";
+import ExternalDpmMainDpmRstCodeDocsSrcPublicDpmShell86 from "/snippets/external/dpm/main/dpm-rst-code-docs-src-public-dpm-shell-86.mdx";
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/sdk/tutorials/json-api/canton_and_the_json_ledger_api.rst" hash="20dc2f6c" */}
+
+## Canton 및 JSON Ledger API 시작하기
+이 tutorial에서는 command line에서 JSON Ledger API를 사용해 Canton Ledger와 interaction하는 방법을 보여 줍니다. `curl`과 선택적으로 `websocat`을 사용해 Ledger와 communication합니다.
+
+### 개요
+이 예시에서는 다음 방법을 보여 줍니다.
+
+- Canton configuration에서 JSON Ledger API 활성화
+- JSON Ledger API 및 기본 Bash tool인 `curl`을 사용해 contract 생성
+- `curl`을 사용해 Active Contract 나열
+- 기본 error handling 및 troubleshooting
+
+### 사전 요구 사항
+#### Tool
+project를 실행하기 전에 다음 항목이 설치되어 있는지 확인하세요.
+
+- Bash-compatible terminal, 예를 들어 macOS Terminal, Git Bash 등
+- **Dpm** — 다음 지침에 따라 설치
+
+
+- `canton` — installation 및 example이 포함된 Canton release, 자세한 내용은 Canton demo 확인
+- `curl` — command-line HTTP client: [https://github.com/curl/curl](https://github.com/curl/curl) (installation: [https://curl.se/download.html](https://curl.se/download.html))
+- 선택 사항인 `jq` — command-line JSON processor: [https://github.com/jqlang/jq](https://github.com/jqlang/jq) (installation: [https://jqlang.org/download/](https://jqlang.org/download/))
+
+#### Daml Model
+JSON Ledger API를 보여 주려면 example Daml model이 필요합니다.
+
+console에서 다음 Command를 실행합니다.
+
+```
+dpm new json-tests
+```
+
+`json-tests`라는 folder가 생성되어야 합니다. content를 확인하고 `daml/Main.daml`의 code를 살펴보세요.
+
+`Asset`이라는 template이 있는 Daml model이 포함되어야 합니다.
+
+```
+template Asset
+  with
+    issuer : Party
+    owner  : Party
+    name   : Text
+  where
+    ensure name /= ""
+    signatory issuer
+    observer owner
+    choice Give : AssetId
+      with
+        newOwner : Party
+      controller owner
+      do create this with
+        owner = newOwner
+```
+
+계속하기 전에 folder 안에서 다음 Command를 실행해 Daml model을 compile합니다.
+
+<DamlSdksToolsCliToolsDpmL44 />
+
+`.daml/dist/json-tests-0.0.1.dar`이라는 file이 생성되어야 합니다.
+
+### JSON Ledger API로 Canton 시작하기
+먼저 JSON Ledger API를 활성화하여 Canton sandbox를 실행할 수 있는지 확인합니다.
+
+생성된 `dar` file의 path를 제공하며 Canton sandbox를 시작합니다.
+
+```
+dpm sandbox --json-api-port 7575 --dar <path_to_json_tests_project>/.daml/dist/json-tests-0.0.1.dar
+```
+
+<Note>
+이 tutorial을 단순화하기 위해 security 관련 configuration을 사용하지 않습니다. 어떤 user로든 Command를 보낼 수 있습니다.
+</Note>
+
+Canton sandbox는 계속 실행한 상태로 새 Bash terminal을 여세요.
+
+#### 확인 - OpenAPI Download
+JSON Ledger API가 작동하는지 확인하려면 documentation endpoint를 사용할 수 있는지 확인합니다.
+
+새 Bash terminal에서 다음을 실행합니다.
+
+```
+curl localhost:7575/docs/openapi
+```
+
+다음으로 시작하는 긴 YAML document를 받아야 합니다.
+
+```
+openapi: 3.0.3
+info:
+  title: JSON Ledger API HTTP endpoints
+  version: 3.3.0
+paths:
+  /v2/commands/submit-and-wait:
+    post:
+```
+
+이 `openapi.yaml` document는 사용할 수 있는 endpoint의 개요를 제공하며 [https://editor-next.swagger.io](https://editor-next.swagger.io) 같은 tool에 paste할 수 있습니다.
+
+`Java`나 `TypeScript` 같은 언어에서 client stub을 생성하는 데도 사용할 수 있습니다.
+
+<Note>
+server 실행 여부를 확인하려면 `http://localhost:757/livez` endpoint를 사용할 수 있습니다. production environment에서 health check로 사용할 수 있습니다.
+</Note>
+
+#### Party 생성
+terminal에서 다음 Command를 실행합니다.
+
+```
+curl -d '{"partyIdHint":"Alice", "identityProviderId": ""}' -H "Content-Type: application/json" -X POST localhost:7575/v2/parties
+```
+
+다음과 비슷한 response가 반환되어야 합니다.
+
+```
+{"partyDetails":{"party":"Alice::122084768362d0ce21f1ffec870e55e365a292cdf8f54c5c38ad7775b9bdd462e141","isLocal":true,"localMetadata":{"resourceVersion":"0","annotations":{}},"identityProviderId":""}}
+```
+
+다음 step에서 사용할 Party ID를 기록하세요. 이 예시에서는 다음과 같습니다.
+
+`Alice::122084768362d0ce21f1ffec870e55e365a292cdf8f54c5c38ad7775b9bdd462e141` — 실제 환경에서는 다릅니다.
+
+### Contract 생성
+다음 content가 있는 `create.json` file을 생성하고 `\<partyId\>`를 앞에서 표시된 실제 Party ID로 바꿉니다.
+
+```
+{
+  "commands": [
+    {
+      "CreateCommand": {
+        "createArguments": {
+          "issuer": "<partyId>",
+          "owner": "<partyId>",
+          "name": "Example Asset Name"
+        },
+        "templateId": "#json-tests:Main:Asset"
+      }
+    }
+  ],
+  "userId": "ledger-api-user",
+  "commandId": "example-app-create-1234",
+  "actAs": [
+    "<partyId>"
+  ],
+  "readAs": [
+    "<partyId>"
+  ]
+}
+```
+
+이제 request를 submit합니다.
+
+```
+curl localhost:7575/v2/commands/submit-and-wait -H "Content-Type: application/json" -d@create.json
+```
+
+성공한 response는 다음과 같습니다.
+
+```
+{"updateId":"...","completionOffset":20}
+```
+
+ledger에 contract가 생성되었음을 확인합니다.
+
+### Ledger Query
+ledger에서 Active Contract를 query하려면 먼저 `acs.json`이라는 file을 생성합니다.
+
+```
+{
+  "eventFormat": {
+    "filtersByParty": {},
+    "filtersForAnyParty": {
+      "cumulative": [
+        {
+          "identifierFilter": {
+            "WildcardFilter": {
+              "value": {
+                "includeCreatedEventBlob": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    "verbose": false
+  },
+  "verbose": false,
+  "activeAtOffset": <offset>
+}
+```
+
+`\<offset\>`을 앞에서 받은 `completionOffset`으로 바꿉니다. 예를 들어 `20`을 사용합니다.
+
+query를 실행합니다.
+
+```
+curl localhost:7575/v2/state/active-contracts -H "Content-Type: application/json" -d@acs.json
+```
+
+contract information이 포함된 response를 받아야 합니다.
+
+가독성을 높이려면 output을 `jq`로 pipe합니다.
+
+```
+curl localhost:7575/v2/state/active-contracts -H "Content-Type: application/json" -d@acs.json | jq
+```
+
+다음과 같은 contract detail이 포함된 `createdEvent` section을 찾으세요.
+
+```
+"createdEvent": {
+      "offset": 20,
+      "nodeId": 0,
+      "contractId": "00572c50513ced94f9cddaf1e6d2d3f050ae35d7fea0affe06f65f4238e84136edca1112202d01e45b5cfafb61e3942e4610547689dbebfebd3ea7d10d57944401fc17e81b",
+      "templateId": "6fd1d46124d5ab0c958ce35e9bb370bb2835b2672a0d6fa039a3855c11b8801d:Main:Asset",
+      "contractKey": null,
+      "createArgument": {
+        "issuer": "Alice::122084768362d0ce21f1ffec870e55e365a292cdf8f54c5c38ad7775b9bdd462e141",
+        "owner": "Alice::122084768362d0ce21f1ffec870e55e365a292cdf8f54c5c38ad7775b9bdd462e141",
+        "name": "Example Asset Name"
+      },
+  ...
+}
+```
+
+### Troubleshooting
+curl 호출 중 문제가 발생하면 `-v` (verbose) mode를 활성화해 request 및 response detail을 확인해야 합니다. 예를 들면 다음과 같습니다.
+
+```bash
+curl -v -d '{"partyIdHint":"Alice", "identityProviderId": ""}' -H "Content-Type: application/json" -X POST localhost:7575/v2/parties
+```
+200이 아닌 HTTP response, 예를 들어 400, 404 등은 error를 나타냅니다. response body에 error detail이 포함됩니다.
+
+도움이 되지 않으면 Canton sandbox terminal 또는 `\<canton_installation\>/logs/canton.log` file의 log를 확인하세요.
+
+`localhost:7575/v2/state/active-contracts`를 query할 때 아무것도 반환되지 않으면 제공한 offset이 올바르며 `localhost:7575/v2/commands/submit-and-wait` Command의 `completionOffset`과 일치하는지 확인하세요. 다음을 실행해 current offset도 확인할 수 있습니다.
+
+```bash
+curl localhost:7575/v2/state/ledger-end
+```
+
+### 다음 단계
+#### Canton Example
+두 Party가 관여하는 더 advanced scenario는 Canton installation과 함께 제공되는 example을 살펴보세요. `\<canton_installation\>/examples/json-ledger-api\>`
+
+web browser에서 사용할 JSON Ledger API client 생성 방법을 보여 주는 `TypeScript` version도 있습니다.
+
+#### OpenAPI 및 AsyncAPI
+Canton JSON Ledger API의 OpenAPI 및 AsyncAPI specification에 관한 자세한 내용은 `references_json-api`를 참고하세요.
+
+#### Authentication 및 Security
+JSON Ledger API access를 위해 jwt token을 구성하고 사용하는 방법은 `json-api-access-tokens`를 참고하세요.
+
+#### Error Code
+JSON Ledger API가 반환하는 error code의 자세한 내용은 `json-error-codes`를 참고하세요.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/sdk/tutorials/json-api/canton_and_the_json_ledger_api_ts.rst" hash="2126f8f4" */}
+
+## Canton, JSON Ledger API, TypeScript 시작하기
+이 tutorial에서는 JSON Ledger API와 TypeScript를 사용해 Canton Ledger와 interaction하는 방법을 보여 줍니다.
+
+### 개요
+Canton distribution과 함께 제공되는 기존 example project를 사용하고 수정합니다.
+
+### 사전 요구 사항
+TypeScript 기초와 `npm`, `node.js` 같은 tool에 익숙해야 합니다.
+
+#### Tool
+시작하기 전에 다음 항목이 설치되어 있는지 확인하세요.
+
+- **Node.js 및 npm** — [https://nodejs.org/en/download/](https://nodejs.org/en/download/)에서 download합니다. 권장 version은 `18.20.x` 이상입니다.
+- **Dpm** — 다음 지침에 따라 설치
+
+
+- **Canton** — pre-built example이 포함되어 있습니다. 자세한 내용은 Canton demo를 참고하세요.
+
+#### Example TypeScript Project
+terminal을 열고 JSON Ledger API example folder로 이동합니다.
+
+```
+cd <canton_installation>/examples/09-json-ledger-api
+```
+
+Canton을 시작합니다.
+
+```
+./run.sh
+```
+
+Canton console이 준비되면 새 terminal을 열고 TypeScript example folder로 이동합니다.
+
+```
+cd <canton_installation>/examples/09-json-ledger-api/typescript
+```
+
+### Example 실행
+project dependency를 설치합니다.
+
+```
+npm install
+```
+
+warning이 표시될 수 있지만 지금은 무시할 수 있습니다.
+
+JSON Ledger API는 OpenAPI specification을 제공합니다. 이를 사용해 TypeScript client class인 stub을 생성할 수 있습니다.
+
+TypeScript client를 생성합니다.
+
+```
+npm run generate_api
+```
+
+`generated/api` folder에서 생성된 code를 확인하세요. API용 TypeScript class가 포함되어야 합니다.
+
+```
+less generated/api/ledger-api.d.ts
+```
+
+이 file에는 `/v2/commands/submit-and-wait`, `CreateCommand` 및 기타 많은 service와 model의 definition이 포함됩니다.
+
+다음으로 Daml model에서 TypeScript type을 생성합니다.
+
+```
+npm run generate_daml_bindings
+```
+
+`./generated` folder에 binding이 생성됩니다. 각 Daml module에는 자체 subfolder가 있습니다. 예: `generated/model-tests-1.0.0/lib/Iou`.
+
+이제 TypeScript code를 compile합니다.
+
+```
+npm run build
+```
+
+build가 성공하면 example을 실행합니다.
+
+```
+npm run scenario
+```
+
+다음과 비슷한 output이 표시되어야 합니다.
+
+```
+Alice creates contract
+Ledger offset: 23
+...
+Bob accepts transfer
+...
+End of scenario
+```
+
+### Code 주요 내용
+JSON Ledger API client는 `src/client.ts`에 구성되어 있습니다.
+
+``` typescript
+import type { paths } from "../generated/api/ledger-api";
+
+export const client = createClient<paths>({ baseUrl: "http://localhost:7575" });
+```
+
+`openapi-fetch` library를 사용해 API client를 생성합니다.
+
+#### Party Allocate
+`src/user.ts`에서 다음과 같이 Party를 allocate합니다.
+
+``` typescript
+const resp = await client.POST("/v2/parties", {
+    body: {
+        partyIdHint: user,
+        identityProviderId: "",
+    }
+});
+```
+
+<Note>
+`openapi-fetch`는 Indexed Access Types TypeScript feature를 사용해 type safety를 제공합니다. 위 예시는 untyped JavaScript처럼 보이지만 실제로는 type-safe합니다.
+</Note>
+
+#### Contract 생성
+`src/commands.ts`에서 다음과 같이 contract를 생성합니다.
+
+``` typescript
+export async function createContract(userParty: string): Promise<components["schemas"]["SubmitAndWaitResponse"]> {
+    const iou: Iou.Iou = {
+        issuer: userParty,
+        owner: userParty,
+        currency: "USD",
+        amount: "100",
+        observers: []
+    };
+
+    const command: components["schemas"]["CreateCommand"] = {
+        createArguments: iou,
+        templateId: Iou.Iou.templateId
+    };
+
+    const jsCommands = makeCommands(userParty, [{ CreateCommand: command }]);
+    const resp = await client.POST("/v2/commands/submit-and-wait", {
+        body: jsCommands
+    });
+
+    return valueOrError(resp);
+}
+```
+
+#### Contract Query
+`src/index.ts`에서 다음과 같이 contract를 query합니다.
+
+``` typescript
+const { data, error } = await client.POST("/v2/state/active-contracts", {
+    body: filter
+});
+
+if (data === undefined)
+    return Promise.reject(error);
+else {
+    const contracts: components["schemas"]["CreatedEvent"][] = data
+        .map((res) => res.contractEntry)
+        .filter((res) => "JsActiveContract" in res)
+        .map((res) => res.JsActiveContract.createdEvent);
+
+    return Promise.resolve(contracts);
+}
+```
+
+### Example 확장
+이 step에서는 `Iou` template에 새 field를 추가하고 이에 맞게 TypeScript code를 update합니다.
+
+1. `canton/examples/09-json-ledger-api/model`의 `Io.daml` file을 엽니다.
+2. 새 `comment` field를 포함하도록 `Iou` template을 수정합니다.
+
+```haskell
+template Iou
+  with
+    issuer : Party
+    owner : Party
+    currency : Text
+    amount : Decimal
+    observers : [Party]
+    comment : Optional Text -- added field
+  where
+    -- leave the rest of the template unchanged
+```
+
+\> `comment` field는 optional이므로 backwards-compatible change입니다.
+
+3. Canton server를 stop하고 (`Ctrl+C`) 다시 시작합니다.
+
+```
+./run.sh
+```
+
+4. TypeScript binding을 다시 build합니다.
+
+```bash
+npm run generate_daml_bindings
+```
+
+5. 새 field를 포함하도록 `src/commands.ts`의 `createContract` function을 update합니다.
+
+``` typescript
+export async function createContract(userParty: string): Promise<components["schemas"]["SubmitAndWaitResponse"]> {
+    const iou: Iou.Iou = {
+        issuer: userParty,
+        owner: userParty,
+        currency: "USD",
+        amount: "100",
+        observers: [],
+        comment: "This is a test comment" // new field
+    };
+    // leave the rest of the function unchanged
+```
+
+6. TypeScript code를 다시 build합니다.
+
+```
+npm run build
+```
+
+7. example을 실행합니다.
+
+```
+npm run scenario
+```
+
+아직 output에 새 `comment` field가 표시되지 않습니다. 이를 표시하려면 `src/index.ts`의 `showAcs` function call을 수정해 새 field를 포함합니다.
+
+``` typescript
+showAcs(contracts, ["owner", "amount", "currency", "comment"], c => [c.owner, c.amount, c.currency, c.comment]);
+```
+
+그런 다음 `npm run scenario`를 다시 실행합니다.
+
+## 관련 자료
+
+web browser에서 사용할 JSON Ledger API client 생성 방법을 보여 주는 TypeScript version도 있습니다.
+
+
+{/* COPIED_END */}

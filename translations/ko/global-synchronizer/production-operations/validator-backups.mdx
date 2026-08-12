@@ -1,0 +1,57 @@
+---
+title: "Validator Backup"
+description: "Validator Node backup procedure"
+source_id: "SRC-6F45F05F6D"
+source_path: "global-synchronizer/production-operations/validator-backups"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "fa56a6e5777bb7ee84b5526e7e220bb431126e9557a1422fdc79531a19cacaaf"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorBackupsBash36 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-backups-bash-36.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorBackupsBash67 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-backups-bash-67.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/validator-backups.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/validator_operator/validator_backups.rst" hash="51cdf21c" */}
+
+System의 모든 component는 crash-fault-tolerant하도록 설계되어 있지만 misconfiguration 또는 bug 등으로 인해 system이 즉시 복구할 수 없는 failure가 발생할 가능성은 항상 있습니다. 이 경우 backup 또는 아직 operational한 component의 dump에서 component나 전체 Validator Node를 restore해야 합니다.
+
+Node operator는 가장 폭넓은 disaster scenario로부터 Node를 보호하기 위해 Node Identity backup과 Postgres Instance Backup을 **모두** 수행해야 합니다.
+
+## Node Identity Backup
+
+Validator Node가 실행되고 onboarding되면 Node identity를 반드시 backup하세요. **이 information은 매우 sensitive하며 Participant의 private key를 포함한다는 점에 유의하세요.** 단, Validator가 [external KMS를 사용](/global-synchronizer/production-operations/validator-security)하도록 구성한 경우는 예외입니다. Secret Manager와 같은 안전한 위치에 저장하세요. 한편 이 information은 identity를 유지하고 Canton Coin holding 등에 접근하는 데 매우 중요하므로 cluster 외부에 backup해야 합니다.
+
+다음 endpoint를 통해 Node에서 identity를 fetch할 수 있습니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorBackupsBash36 />
+
+여기서 `\<token\>`은 OAuth provider에서 받은 Validator app 접근에 충분한 claim이 있는 OAuth2 Bearer Token입니다. Context는 여기의 Authentication section을 참조하세요.
+
+Docker Compose deployment를 사용하는 경우 `https://wallet.validator.YOUR_HOSTNAME`을 `http://wallet.localhost`로 바꿉니다. Authentication 없이 Docker Compose deployment를 실행하는 경우 `python get-token.py administrator`를 실행하여 utility Python script `get-token.py`로 `curl` Command용 token을 생성할 수 있습니다([pyjwt](https://pypi.org/project/PyJWT/) 필요).
+
+## Postgres instance backup
+
+Validator Node를 backup하려면 모든 Postgres instance를 최소 4시간마다 backup하는 것이 좋습니다. Backup 사이에는 엄격한 순서 requirement가 있습니다. **Validator app의 Postgres instance backup은 Participant backup보다 반드시 이른 시점에 수행해야 합니다.** Participant backup을 시작하기 전에 app instance backup이 완료되었는지 확인하세요.
+
+Cluster에서 자체 Postgres instance를 실행하는 경우 `pg_dump` 같은 tool을 사용하거나 underlying Persistent Volume snapshot을 생성하여 backup할 수 있습니다. 마찬가지로 Cloud-hosted Postgres를 사용하는 경우 `pg_dump` 같은 tool이나 Cloud provider가 제공하는 backup tool을 사용할 수 있습니다.
+
+Docker Compose deployment를 실행하는 경우 다음 Command로 Postgres database를 backup할 수 있습니다. 그러면 Participant용 dump file과 Validator app용 dump file, 총 두 개가 생성됩니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorBackupsBash67 />
+
+### Historical backup
+
+Participant [pruning](/global-synchronizer/deployment/validator-kubernetes)을 활성화했지만 향후 auditability 등을 위해 Participant data를 더 오래 보존하려면 backup 사이의 간격이 pruning window size를 넘지 않도록 historical backup을 보존해야 합니다.
+
+즉 두 historical backup 사이의 time difference가 Participant에 설정된 `retention`보다 작도록 backup을 보존해야 합니다.
+
+또한 [Logical Synchronizer upgrade](/global-synchronizer/production-operations/logical-synchronizer-upgrade) 전후에 걸쳐 backup을 유지해야 합니다.
+
+
+{/* COPIED_END */}

@@ -1,0 +1,67 @@
+---
+title: "SV Backup"
+description: "Super Validator Node backup procedure"
+source_id: "SRC-F8F1CBED3B"
+source_path: "global-synchronizer/production-operations/sv-backup"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "78c88129b8aae1bc989e177b8edf470592876d6792f2317d8a5e564400643d5b"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvBackupBash23 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-backup-bash-23.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/sv-backup.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/sv_operator/sv_backup.rst" hash="5601f74c" */}
+
+## Node Identity Backup
+
+SV Node가 실행되고 onboarding되면 SV Node identity를 반드시 backup하세요. **이 information은 매우 sensitive하며 Participant, Sequencer 및 Mediator의 private key를 포함한다는 점에 유의하세요.** Secret Manager와 같은 안전한 위치에 저장하세요. 한편 이 information은 identity를 유지하고 Canton Coin holding 등에 접근하는 데 매우 중요하므로 cluster 외부에 backup해야 합니다.
+
+다음 endpoint를 통해 Node에서 identity를 fetch할 수 있습니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvBackupBash23 />
+
+여기서 `\<token\>`은 OAuth provider에서 받은 OAuth2 Bearer Token입니다. Context는 여기의 Authentication section을 참조하세요.
+
+## Postgres Instance Backup
+
+### Backup 수행
+
+대부분의 backup은 독립적으로 수행할 수 있지만 다음 두 가지 엄격한 순서 requirement가 있습니다.
+
+1. App Postgres instance backup은 Participant backup보다 반드시 이른 시점에 수행해야 합니다. Participant backup을 시작하기 전에 app instance backup이 완료되었는지 확인하세요.
+2. CantonBFT(`cantonbft`) database backup은 Sequencer database backup보다 반드시 이른 시점에 수행해야 합니다. Sequencer backup을 시작하기 전에 CantonBFT backup이 완료되었는지 확인하세요.
+
+Cluster에서 자체 Postgres instance를 실행하는 경우 `pgdump` 같은 tool을 사용하거나 underlying Persistent Volume snapshot을 생성하여 backup할 수 있습니다. 마찬가지로 Cloud-hosted Postgres를 사용하는 경우 `pgdump` 같은 tool이나 Cloud provider가 제공하는 backup tool을 사용할 수 있습니다.
+
+Postgres instance를 최소 4시간마다 backup하세요.
+
+### Historical backup
+
+Genesis부터 gap이 없는 history를 보존하려면 historical backup이 필요합니다. 이 history는 audit 중에 사용할 수 있으며 더 일반적으로 current Synchronizer state의 correctness를 external observer에게 증명할 수 있습니다.
+
+Sequencer와 Participant에서 [pruning](/global-synchronizer/production-operations/sv-pruning)을 활성화하면 각 pruning window마다 historical backup을 유지해야 합니다. 즉 두 historical backup 사이의 time difference가 Sequencer와 Participant에 설정된 `retentionPeriod`보다 작도록 backup을 보존해야 합니다.
+
+Default로 SV의 Mediator와 Splice app에는 pruning이 활성화되어 있지 않습니다.
+
+또한 [Logical Synchronizer upgrade](/global-synchronizer/production-operations/logical-synchronizer-upgrade) 전후에 걸쳐 backup을 유지해야 합니다. 여기에는 모든 historical Sequencer backup과 다른 app backup이 포함됩니다.
+
+## CometBFT Backup
+
+Postgres instance 외에도 CometBFT가 사용하는 storage를 4시간마다 backup해야 합니다. CometBFT는 Postgres를 사용하지 않습니다. Underlying Persistent Volume snapshot을 생성하여 storage를 backup하는 것이 좋습니다.
+
+### Historical backup
+
+Genesis부터 gap이 없는 history를 보존하려면 historical backup이 필요합니다. 이 history는 audit 중에 사용할 수 있으며 더 일반적으로 current Synchronizer state의 correctness를 external observer에게 증명할 수 있습니다.
+
+CometBFT에는 default로 [pruning](/global-synchronizer/production-operations/sv-pruning)이 활성화되어 있습니다. Pruning window는 유지할 block 수로 정의합니다. 최소 30일 data를 유지하는 값으로 block 수를 설정하는 것을 목표로 합니다. 두 backup을 수행한 block height 차이가 구성된 유지 block 수보다 작도록 CometBFT historical backup을 유지해야 합니다. 2주마다 더 적극적으로 backup을 수행하고 보존하는 것이 좋습니다.
+
+또한 Logical Synchronizer upgrade 전후에 걸쳐 backup을 유지해야 합니다.
+
+
+{/* COPIED_END */}

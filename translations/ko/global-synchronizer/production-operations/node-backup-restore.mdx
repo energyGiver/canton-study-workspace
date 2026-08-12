@@ -1,0 +1,135 @@
+---
+title: "Canton Node Backup 및 Restore"
+description: "Disaster recovery를 위한 database replication을 포함하여 Canton Participant 및 Synchronizer Node를 backup하고 restore합니다."
+source_id: "SRC-13AC545A09"
+source_path: "global-synchronizer/production-operations/node-backup-restore"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "47980eb0a8be730f89fbf9650c577d6bb4d1c840a5c74d2675bc5fe195a567da"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/node-backup-restore.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/recover/backup-restore.rst" hash="c305fff6" */}
+
+# Backup 및 Restore
+
+Disaster 발생 시 data를 restore할 수 있도록 database를 자주 backup하는 것이 좋습니다.
+
+Restore할 때 Synchronizer backup이 Participant backup보다 최신이면 Participant는 Synchronizer에서 누락 data를 replay할 수 있습니다.
+
+<div className="todo">
+
+{/* Ability to recover from partial data loss on a synchronizer. */}
+
+</div>
+
+## Backup 순서
+
+Participant backup이 Sequencer backup보다 최신이면 ledger fork가 발생하므로 그렇지 않도록 하는 것이 중요합니다. 따라서 Participant, Mediator 및 Sequencer database를 순차적으로 backup하는 경우 다음 constraint가 적용됩니다.
+
+- Mediator와 Participant를 Sequencer보다 먼저 backup합니다. 그렇지 않으면 Sequencer에 다시 연결하지 못할 수 있습니다(`ForkHappened`). Mediator와 Participant 사이의 상대적 순서는 중요하지 않습니다.
+
+한 단계에서 전체 system backup을 수행하는 경우(예: cloud RDS 사용) backup 진행 중 어떤 component도 database에 write하지 않도록 합니다.
+
+Synchronizer를 backup에서 restore할 때 Participant가 Synchronizer보다 앞서 있으면 Participant는 Synchronizer 연결을 거부하며(`ForkHappened`) 다음 중 하나를 수행해야 합니다.
+
+- Participant state를 Synchronizer disaster 이전 backup으로 restore합니다.
+- 유실된 Synchronizer를 복구하기 위한 repair strategy로 새 Synchronizer를 rollout합니다.
+
+Participant Ledger API와 상호작용하는 application state는 Participant보다 먼저 backup해야 합니다. 그렇지 않으면 application state를 reset해야 합니다.
+
+## Restore 주의 사항
+
+Canton Node를 backup에서 restore할 때 backup 시점과 Node latest state 사이의 data가 유실되므로 다음 주의 사항이 적용됩니다.
+
+### 불완전한 Command Deduplication State
+
+Restore 후 Participant의 in-flight submission tracking은 backup 이후 Participant가 Sequencer에 보낸 내용과 동기화되지 않습니다. Application이 duplicate Command를 다시 제출하면 Participant가 deduplicate해야 하는 Command인데도 accept될 수 있습니다.
+
+다음 조건이 충족되면 tracking이 다시 동기화됩니다.
+
+> - Participant가 Sequencer의 모든 event를 처리했습니다.
+> - Sequencer의 어떤 queue에도 restore 이전 transfer/Transaction request의 submission request 중 다시 sequence될 수 있는 request가 없습니다.
+
+이러한 submission request의 max sequencing time은 ledger time에 Synchronizer의 ledger-time-record-time-tolerance를 더한 값입니다. Restore 전에 Participant가 중지된 시점보다 tolerance 이상 뒤의 Synchronizer timestamp를 관찰하면 충분합니다. 이러한 timestamp가 관찰되면 in-flight submission tracking이 다시 동기화되고 application은 완전한 Command deduplication guarantee와 함께 Command 제출을 재개할 수 있습니다.
+
+### Application State Reset
+
+Backup에서 restore한 후 Ledger API event stream은 backup과 restore 사이의 event stream과 다음과 같이 다를 수 있습니다.
+
+- Allocate된 ledger offset이 달라질 수 있습니다.
+- Completion stream의 rejection이 누락될 수 있습니다.
+
+Participant Node의 Ledger API client인 모든 application은 이러한 차이를 처리해야 합니다.
+
+- Stateless application은 영향을 받지 않습니다.
+- Stateful application은 가능하면 backup 시점 또는 이전 state로 reset하여 새 stream에 따라 update를 다시 처리할 수 있도록 해야 합니다. Reset할 수 없다면 application은 이미 처리한 변경을 건너뛰어야 합니다. 이를 위해 application은 Synchronizer별로 ingest한 모든 변경의 record time을 저장하고 해당 Synchronizer에서 record time이 더 낮은 Transaction을 건너뛸 수 있습니다.
+
+### Private Key
+
+현재 Node database에 저장된 cryptographic private key를 Node가 rotate해야 하는 scenario를 가정합니다. Backup을 수행하기 전에 key rotation이 system에 announce되었다면 restore 시 새 key를 사용할 수 없지만 system의 다른 모든 Node는 새 key가 사용되기를 기대합니다.
+
+이 상황을 방지하려면 다음 순서로 key rotation을 수행합니다.
+
+1.  새 private key를 생성하여 database에 저장합니다.
+2.  Database를 backup합니다.
+3.  Backup 완료 후 이전 key를 revoke합니다.
+
+Key가 KMS에 저장되면 Participant는 database에 key ID만 저장하므로 상황이 더 간단합니다. Participant를 backup에서 restore한 후 backup 이후 생성한 모든 key를 `keys.secret.register_kms_encryption_key` 또는 `keys.secret.register_kms_signing_key` Command로 등록해야 합니다.
+
+### Local configuration
+
+Backup에서 restore하면 Node local configuration이 backup 시점의 state로 reset됩니다. Local configuration에는 다음 항목이 포함됩니다.
+
+- Synchronizer connection configuration
+- User management
+- DAR upload
+- Repair
+- Party replication
+
+Restore 후 operator는 똑같은 configuration 변경을 다시 수행해야 합니다. 따라서 반복해야 할 변경이 없도록 각 configuration 변경 후 backup을 수행해야 합니다.
+
+## Postgres 예시
+
+Postgres를 사용하여 Participant Node 또는 Synchronizer data를 persist하는 경우 아래와 같이 Postgres utility Command `pg_dump`와 `pg_restore`를 사용하여 file에 backup하고 restore할 수 있습니다.
+
+Postgres database를 file에 backup합니다.
+
+```bash
+pg_dump -U <user> -h <host> -p <port> -w -F tar -f <fileName> <dbName>
+```
+
+File에서 Postgres database data를 restore합니다.
+
+```bash
+pg_restore -U <user> -h <host> -p <port> -w -d <dbName> <fileName>
+```
+
+위 접근 방식은 소규모 deployment에는 사용할 수 있지만 대규모 deployment에는 권장하지 않습니다. 대규모 deployment에는 incremental backup을 검토하고 아래 resource를 참조하는 것이 좋습니다.
+
+- PostgreSQL Documentation: Backup and Restore
+- PostgreSQL에서 incremental backup이 작동하는 방식
+
+# Disaster Recovery를 위한 Database Replication
+
+## Synchronous Replication
+
+Production에서는 최소한 Synchronizer가 offsite synchronous replication을 사용하도록 실행하여 Synchronizer state가 항상 Participant state보다 최신이 되도록 하는 것이 좋습니다. 그러나 backup restore와 유사한 주의 사항을 피하려면 Participant도 synchronous replication을 사용하거나 manual disaster recovery failure procedure의 일부로 해당 주의 사항을 해결해야 합니다.
+
+Database backup을 사용하면 마지막 backup 생성 시점까지 ledger를 복구할 수 있습니다. 그러나 backup 생성 후 accept된 Command는 disaster 발생 시 유실될 수 있습니다. 따라서 backup restore는 data loss로 이어질 가능성이 높습니다.
+
+이러한 data loss를 허용할 수 없다면 state를 다른 site로 replicate하는 replicated database에서 Canton을 실행해야 합니다. Disaster로 original site가 down되면 다른 site에서 replicated database state를 기반으로 Canton을 시작할 수 있습니다. Original site에 database writer가 남아 있지 않도록 하는 것이 매우 중요합니다. Canton에서 여러 writer와 그에 따른 data corruption을 방지하기 위해 사용하는 database mechanism은 site 간에는 작동하지 않기 때문입니다.
+
+Replicated database 설정과 failover 수행에 관한 자세한 지침은 database system documentation(예: PostgreSQL high availability documentation)을 참조하세요.
+
+**Replication을 synchronous로 구성할 것을 강력히 권장합니다.** 즉 database Transaction은 모든 database replica에 persist된 후에만 성공적으로 commit되었다고 report해야 합니다. PostgreSQL에서는 `synchronous_commit = on` setting에 해당합니다. 이 권장 사항을 따르지 않으면 database failover 후 data loss 또는 corrupt state가 발생할 수 있습니다. Synchronous replication을 활성화하면 primary database와 offsite database 사이의 Network latency에 따라 Canton performance가 영향을 받을 수 있습니다.
+
+PostgreSQL의 경우 Canton은 database replication configuration을 validate하고 misconfiguration이 detect되면 error로 실패하도록 노력합니다. 그러나 이 validation은 best-effort 방식이므로 잘못된 replication configuration을 detect하지 못할 수 있습니다. Oracle에서는 database configuration validation을 시도하지 않습니다. 전반적으로 Canton이 database configuration의 오류를 detect할 것이라고 의존해서는 안 됩니다.
+
+
+{/* COPIED_END */}

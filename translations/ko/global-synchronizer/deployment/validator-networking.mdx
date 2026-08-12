@@ -1,0 +1,28 @@
+---
+title: "Validator Ingress 및 Egress Requirement"
+description: "Validator Node의 Network ingress 및 egress requirement"
+source_id: "SRC-A5E959EDF2"
+source_path: "global-synchronizer/deployment/validator-networking"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "fdca2c775f07491e386cd2a030a872bd6578c9ec6fd89d1a8f157df987d3d448"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/deployment/validator-networking.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/validator_operator/validator_networking.rst" hash="59d9c925" */}
+
+## Ingress
+
+Validator에는 external ingress requirement가 없으며 다른 SV 또는 Validator를 whitelist할 필요가 없습니다.
+
+## Egress
+
+Validator는 모든 SV에 연결할 수 있어야 하므로 모든 SV IP에 대해 port 443 egress를 whitelist해야 합니다. Network 개요는 [Network diagram](/global-synchronizer/deployment/validator-kubernetes)을 참조하세요. Egress는 대개 default로 허용되므로 많은 경우 별도 action이 필요하지 않습니다.
+
+
+{/* COPIED_END */}

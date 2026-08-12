@@ -1,0 +1,153 @@
+---
+title: "BFT Orderer Architecture"
+description: "Canton Synchronizer를 위한 Byzantine fault-tolerant Orderer architecture"
+source_id: "SRC-C9F2EBE564"
+source_path: "global-synchronizer/extension-synchronizers/bft-orderer"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "88a4e4ae1aa085d3c79c85f9854942f537eef75c2ecc6f334f2f80d642d86bf9"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/extension-synchronizers/bft-orderer.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/explanations/bft_orderer_arch.rst" hash="0c2ba81d" */}
+
+# BFT Orderer
+
+BFT Orderer는 Byzantine-fault tolerant(BFT) total-order broadcast service를 제공합니다. Byzantine failure가 있어도 **safety**(consistency)와 **liveness**(eventual progress)를 보장합니다. 또한 모든 client가 동일한 message stream을 읽도록 보장합니다.
+
+BFT Orderer는 Canton ecosystem 내부에서 실행되며 Synchronizer의 주요 Sequencer backend option 중 하나입니다. 활성화되면 BFT Orderer는 같은 JVM의 Canton Sequencer Node 일부로 실행되고 message signature, message verification, key management 및 decentralized governance를 포함한 여러 기능을 Sequencer에 의존합니다.
+
+## Background
+
+<div id="bft-iss-algorithm">
+
+BFT Orderer는 최근 발표된 두 BFT consensus algorithm에서 영감을 받았습니다. 주된 영향은 Insanely Scalable State-Machine Replication(ISS)입니다. ISS는 unavailable replica가 있어도 scalability와 performance를 달성하는 parallel leader 기반 BFT replication protocol을 제시합니다. BFT Orderer의 core consensus subprotocol은 ISS에서 영감을 받았습니다.
+
+</div>
+
+<div id="bft-narwhal-algorithm">
+
+두 번째 영감은 data dissemination과 data ordering을 ordering process의 별도 두 phase로 분리하는 Narwhal protocol입니다. 이 decoupling을 통해 대부분의 ordering service에서 bottleneck이 되는 BFT consensus protocol은 이미 disseminate된 data reference만 ordering하므로 더 빠르고 효율적으로 작동합니다. BFT Orderer의 pre-consensus availability subprotocol은 Narwhal에서 영감을 받았습니다.
+
+</div>
+
+## Trust 및 Threat Model
+
+BFT Orderer는 다음 assumption에 의존합니다.
+
+- 전체 BFT Orderer Node 중 1/3 미만만 동시에 Byzantine failure를 보일 수 있습니다. Safety(consistency)를 보장하기 위해 대부분의 BFT ordering protocol에 필요한 표준적이고 필수적인 assumption입니다.
+- Attacker는 많은 Network bandwidth, memory 및 computation을 보유할 수 있지만 digital signature 및 cryptographic hash와 같은 표준 cryptographic mechanism을 우회할 만큼 충분한 resource는 없습니다.
+- 각 BFT Orderer Node와 연결된 Canton Sequencer Node는 shared fate model로 작동합니다. BFT Orderer Node가 compromise되면 연결된 Sequencer도 compromise된 것으로 간주해야 하며 그 반대도 같습니다. 이 assumption은 연결된 Sequencer가 제공하는 특정 기능에 BFT Orderer가 의존하기 때문에 중요합니다.
+- 신뢰할 수 있고 종종 offline 상태인 여러 system administrator를 사용하는 decentralized governance process가 BFT Orderer를 올바르게 관리하고 구성합니다.
+- 새 BFT Orderer Node onboarding 중 Node operator는 out-of-band로 통신하여 peer Sequencer Node에서 관련 onboarding state snapshot을 얻습니다. 현재 onboarding state content는 정확해야 합니다.
+- Underlying database storage system에 data corruption이 없습니다.
+
+## Architecture
+
+다음 dataflow diagram은 BFT Orderer API와 Network trust boundary를 보여줍니다. 그림을 단순화하기 위해 remote peer Node에는 local Node보다 적은 element가 있습니다. 실제로 모든 BFT Orderer Node는 동일합니다.
+
+<img src="/images/docs_website/bft-orderer-api-architecture.svg" id="bft-orderer-api-architecture" className="align-center" style={{width: "100.0%"}} alt="image" />
+
+## API
+
+BFT Orderer는 서로 다른 trust boundary에 걸쳐 여러 API를 제공합니다. 위 architecture diagram은 각 API의 scope와 location을 보여줍니다.
+
+### Peer-to-peer service(untrusted)
+
+BFT Orderer Node는 peer-to-peer connection을 사용해 서로 직접 통신하며, 이 connection이 collectively distributed ordering service를 구성합니다. 각 BFT Orderer Node는 다른 모든 peer에 unidirectional gRPC/HTTP2 stream을 설정합니다. 즉, 특정 Node pair에서 각 Node는 (i) server 역할을 하는 peer에 client로서 outgoing connection을 시작하고, (ii) client 역할을 하는 peer의 incoming connection을 server로서 수락합니다.
+
+Network transport security를 위해 gRPC connection은 Transport Layer Security(TLS)를 지원하여 point-to-point message authentication 및 integrity를 제공합니다. 일반적으로 peer-to-peer API에 대한 Network access는 다른 peer로 제한되며 public access가 허용되지 않습니다. Peer-to-peer Network security 및 configuration에 관한 자세한 내용은 Sequencer backend 페이지를 참조하세요.
+
+### Sequencer client(untrusted)
+
+BFT Orderer는 Sequencer의 backend ordering service이므로 BFT Orderer Node가 Sequencer client(Participant Node 및 Mediator)의 ordering request를 직접 받지는 않습니다. 그러나 BFT Orderer와 연결된 Sequencer는 이 request를 받습니다. Sequencer가 ordering request를 validate하고 authenticate한 뒤 아래 BlockOrderer API를 통해 같은 위치의 BFT Orderer에 request를 전달(write)하여 underlying distributed service로 ordering합니다. 궁극적으로 Sequencer client API는 BFT Orderer에 간접적인 영향만 주지만 request가 Sequencer 외부에서 시작되므로 여전히 untrusted API입니다.
+
+### BlockOrderer API(trusted)
+
+모든 Sequencer backend와 마찬가지로 BFT Orderer는 BlockOrderer API를 구현합니다. 이 API는 주로 같은 위치의 Sequencer가 ordering을 위해 backend에 request를 전송(write)하고, Synchronizer의 모든 Sequencer에서 ordering된 모든 Transaction을 포함하는 global Transaction stream을 subscribe(read)할 수 있게 합니다. Sequencer와 BFT Orderer는 하나의 JVM process에서 함께 실행되므로 이 BlockOrderer API는 trusted입니다.
+
+Centralized database와 같은 다른 Sequencer backend와 달리 BFT Orderer backend의 send(write) 기능은 비용과 복잡성이 훨씬 높은 편입니다. Centralized database는 들어오는 request에 수신 순서대로 sequence number를 할당하는 데 그치지만 BFT Orderer는 여러 concurrent Node에 걸쳐 multi-stage distributed agreement protocol을 실행합니다.
+
+### Topology 및 Crypto Provider(trusted)
+
+BFT Orderer가 Sequencer에 ordering을 제공하기 위해 BlockOrderer API를 구현하는 한편, Sequencer도 BFT Orderer에 중요한 기능을 제공하는 API를 구현합니다. 이 API는 Sequencer decentralized Topology management(governance)와 cryptographic operation(message signing 및 verification)을 BFT Orderer로 확장합니다. BFT Orderer는 Sequencer가 소유한 기능을 재사용하여 복잡한 feature 집합을 다시 구현할 필요를 없애고 같은 Topology Transaction으로 Sequencer와 해당 BFT Orderer를 동시에 관리할 수 있게 합니다.
+
+사용 측면에서 BFT Orderer는 모든 send 및 receive Network message에 대해 각각 message signing 및 verification request를 같은 위치의 Sequencer에 자주 제출합니다. Topology management의 경우 BFT Orderer는 epoch이라는 discrete work unit을 완료한 후 active Topology view를 update합니다. 각 epoch boundary에서 BFT Orderer는 ordering process를 재개하기 전에 Sequencer에서 latest active Topology를 가져옵니다.
+
+### Sequencer Snapshot Provider(trusted)
+
+새 Sequencer를 dynamic onboarding하려면 Sequencer가 Network에 성공적으로 참여하기 위한 startup state가 필요합니다. Startup state에는 새 Sequencer를 active 상태로 반영하는 recent Topology snapshot과 각 Sequencer client의 consistent event delivery를 유지하기 위한 timestamp가 포함됩니다. Onboarding 중 새 Sequencer는 먼저 trusted peer Sequencer와 out-of-band로 통신하여 onboarding state snapshot을 얻습니다. 그런 다음 가져온 snapshot으로 startup하고 성공적으로 bootstrap합니다.
+
+BFT Orderer도 active 상태일 때 startup state가 필요합니다. 특히 starting epoch number, starting block number 및 이전에 할당된 BFT timestamp와 같은 consensus protocol 전용 metadata가 필요합니다. 이 metadata를 통해 BFT Orderer는 state transfer를 올바르게 수행하고 최종적으로 distributed ordering protocol에 참여할 수 있습니다.
+
+Onboarding을 단순화하기 위해 Sequencer는 새 peer의 요청을 받을 때 BFT Orderer의 추가 startup state를 자체 onboarding state snapshot 안에 bundle합니다. 따라서 BFT Orderer를 사용하는 Sequencer는 기존 out-of-band communication을 재사용하여 필요한 모든 startup state를 단일 package로 얻을 수 있습니다.
+
+### Node Admin(trusted)
+
+대부분의 경우 Sequencer management는 BFT Orderer로 자동 확장됩니다. Sequencer 추가, 제거 또는 key rotation과 같은 모든 Sequencer 관련 Topology Command는 Sequencer와 연결된 BFT Orderer 모두에 적용됩니다.
+
+그러나 BFT Orderer는 peer에 직접 연결하고 통신하기도 합니다. Public key를 포함하는 Topology state 외에도 BFT Orderer가 peer에 연결하려면 IP address 및 port와 같은 구체적인 endpoint 정보가 필요합니다.
+
+따라서 Node administrator는 endpoint 정보를 BFT Orderer에서 별도로 직접 관리해야 합니다. BFT Orderer는 현재 등록된 peer endpoint를 추가, 제거 또는 나열할 수 있는 작은 gRPC admin service를 제공합니다. 새 BFT Orderer를 Network에 추가할 때 새 Node endpoint 정보를 모든 peer에 전달해야 하며, out-of-band 또는 lookup service를 사용할 수 있습니다. 그런 다음 각 Node administrator가 gRPC admin service를 사용해 이를 추가해야 합니다.
+
+## Transaction Lifecycle
+
+BFT Orderer는 별도 module로 분리된 네 가지 주요 subprotocol을 사용하여 distributed Node Network 전체에서 Transaction을 ordering합니다. 다음 diagram과 section에서는 각 module의 주요 책임과 ordering process에 대한 기여를 설명합니다.
+
+<img src="/images/docs_website/bft-orderer-pipeline.svg" id="bft-orderer-pipeline" className="align-center" style={{width: "100.0%"}} alt="image" />
+
+### Mempool
+
+Mempool module은 같은 위치의 Sequencer가 BlockOrderer API를 사용해 제출한 ordering request(Transaction)를 받습니다. Mempool은 이 ordering request를 memory queue에 저장합니다.
+
+- 공간이 *충분하면* mempool은 ordering request를 queue에 유지합니다.
+- 공간이 *부족하면* mempool은 Sequencer에 negative response를 반환하여 ordering request를 거부하고 효과적으로 backpressure를 적용합니다.
+
+다음 downstream module인 availability module이 새 ordering request를 요청하면 mempool queue에 다시 공간이 생깁니다. Availability가 요청하면 mempool은 pending ordering request를 batch로 묶고 resulting batch를 availability에 제공하여 data dissemination을 계속합니다.
+
+### Availability
+
+BFT Orderer는 scalability 개선을 위해 data dissemination과 data ordering을 별도의 두 phase로 분리하는 BFT consensus protocol인 Narwhal에서 영감을 받았습니다. BFT Orderer에서 availability module은 data dissemination을 구현합니다. 이 data를 ordering하기 *전에* correct BFT Orderer Node로 ordering request data를 disseminate합니다. 따라서 다음 downstream module인 consensus module의 data ordering은 전체 request data 대신 data reference를 사용할 수 있습니다. 이 전략은 consensus proposal message를 작고 peer에 전송하기 저렴하게 유지하여 BFT consensus protocol critical path에서 주요 communication overhead를 제거합니다.
+
+BFT consensus proposal에서 reference를 안전하게 사용하려면 Node는 ordering 완료 후 전체 request를 이미 보유하거나 가져올 수 있음을 보장해야 합니다. 그렇지 않으면 얻을 수 없는 request를 fetch하려다 무기한 차단될 수 있습니다. 예를 들어 adversarial BFT Orderer Node가 correct Node 어디에도 존재하지 않는 request의 reference를 propose하여 Network 전체 ordering progress를 차단하려 할 수 있습니다.
+
+BFT Orderer는 proof of availability(PoA)를 사용하여 ordering이 완료된 후에도 referenced request가 존재하고 retrieve될 수 있음을 보장합니다. Availability가 mempool에서 request batch를 가져오면 local database에 저장합니다. 이 originating Node의 availability module은 batch를 모든 peer availability module에 전달합니다. Valid batch를 받은 peer도 request를 local database에 저장하고 signed availability acknowledgement(ACK)를 originating Node에 반환합니다. Originating Node가 valid하고 distinct한 availability ACK를 *충분히* 수집하면 PoA를 생성합니다.
+
+허용 가능한 Byzantine failure가 **f**개인 Network에서는 수집된 availability ACK 중 최대 **f**개가 illegitimate할 수 있습니다. 다른 모든 ACK는 referenced request를 persist하고 serve하겠다고 약속하는 correct BFT Orderer Node에서 와야 합니다. 따라서 PoA에는 최소 **f+1**개의 distinct availability ACK가 있어야 필요한 Node에 request를 제공할 수 있는 peer가 목록에 하나 이상 있음을 보장합니다. 또는 최대 *f*개 Node가 availability ACK 제공을 거부할 수 있으므로 originating Node는 Network 전체 Node 수가 **N**일 때 최대 **N-f**개 ACK까지만 기다릴 수 있습니다. 후자의 경우 PoA 완료까지 더 오래 기다릴 수 있지만 request가 있을 때 더 많은 correct Node가 referenced request를 제공할 수 있습니다.
+
+Consensus module이 proposal을 요청하면 availability module은 완료된 PoA를 ordering block으로 bundle하고 downstream으로 전달합니다. 이 ordering block에 consensus가 추가한 metadata와 security measure를 더한 것이 BFT consensus protocol의 ordering 대상입니다.
+
+### Consensus
+
+Consensus module은 data ordering phase를 구현합니다. ISS에서 영감을 받아 concurrent leader-driven BFT consensus protocol을 제공합니다. Consensus module은 ordering을 *epoch*이라는 discrete work unit으로 나눕니다. Consensus는 block 수로 epoch length를 정의하며 모든 consensus module은 Network 전체 parameter를 사용하여 epoch length에 합의합니다.
+
+각 epoch 시작 시 모든 correct consensus module은 current Topology 및 eligible leader(BFT Orderer) Node 집합에 합의합니다. Concurrency를 달성하기 위해 consensus는 epoch의 block ordering 책임을 eligible leader 전체에 deterministic하게 할당합니다. 각 leader는 해당 epoch에서 자신이 담당한 block에 대해 independent BFT ordering protocol instance를 사용하여 parallel 방식으로 ordering합니다. BFT Orderer와 ISS는 *pre-prepare*, *prepare*, *commit*의 세 stage를 사용하는 표준 BFT agreement protocol인 Practical Byzantine Fault Tolerance(PBFT)를 사용합니다.
+
+Leader는 local availability module에 PoA 집합을 포함하는 ordering block을 요청하여 각 block ordering을 시작합니다. Leader는 ordering block이 포함된 pre-prepare message를 Network의 모든 peer consensus module에 broadcast합니다. Block의 valid pre-prepare를 받으면 leader와 follower를 포함한 모든 Node가 이를 acknowledge하는 prepare message를 보냅니다. Node가 leader의 valid pre-prepare와 Network의 2/3를 초과하는 valid prepare를 받으면 commit message를 보냅니다. 마지막으로 Node가 valid pre-prepare와 Node 2/3를 초과하는 valid commit message를 받으면 block을 ordered 상태로 간주하고 downstream output module에 전달합니다.
+
+Consensus module은 모든 ordered block을 output module에 전달한 후 다음 epoch를 위한 update된 Topology 및 eligible leader 집합이 포함된 feedback을 output module에서 기다립니다. 이 정보를 통해 consensus module은 모든 correct peer와 일치하거나 앞으로 일치하게 되는 방식으로 새 epoch를 올바르게 시작할 수 있습니다.
+
+### Output
+
+Output module은 upstream consensus module에서 ordered block을 받습니다. 그러나 같은 위치의 Sequencer에 block을 전달하기 전에 세 가지 추가 단계를 수행해야 합니다.
+
+첫째, ordered block에는 실제 request data가 아니라 PoA를 통한 request *reference*만 포함된다는 점을 기억하세요. Ordered block을 받으면 output module은 local availability module과 통신하여 각 PoA의 request와 연결된 data를 fetch합니다.
+
+- Request data가 이 BFT Orderer Node에 이미 local 저장되어 있으면 availability가 즉시 data를 output module에 반환합니다.
+- Request data가 local에 없으면 availability는 PoA에 ACK를 제공한 peer를 기준으로 peer에 연결하여 누락 data를 fetch합니다. Fetch 후 availability는 data를 local 저장하고 output module에 전달합니다.
+
+둘째, consensus는 여러 independent BFT agreement protocol instance를 parallel로 실행하므로 block이 순서와 다르게 output module에 도착할 수 있습니다. Output module은 queue를 사용해 잠재적인 reordering을 수정합니다. 효율성을 위해 이 queue는 availability module의 fetch가 concurrent 방식으로 이루어질 수 있도록 data를 fetch한 *후*의 ordered block을 보관합니다.
+
+셋째, output module은 모든 ordered block의 ordered request에 strictly-increasing BFT timestamp를 할당합니다. Consensus module은 block ordering에 사용된 consensus message timestamp를 기준으로 각 block의 *candidate* BFT timestamp를 계산합니다. 그러나 concurrent BFT agreement instance 때문에 consensus에서 final timestamp assignment를 수행할 수는 없습니다. 최종적으로 output module은 모든 ordered block을 다시 하나의 sequence로 결합합니다. 각 block candidate BFT timestamp를 input으로 사용하여 request에 timestamp를 deterministic하게 할당하고, strictly-increasing timestamp를 보장하기 위해 필요하면 value를 약간 미래로 이동합니다.
+
+Output module이 위 단계를 완료하면 BlockOrderer API를 사용해 block을 순서대로 같은 위치의 Sequencer에 stream합니다.
+
+마지막으로 각 epoch 끝에서 output module은 같은 위치의 Sequencer Topology manager로부터 해당 시점까지의 모든 Topology 변경을 반영한 update된 Topology를 가져옵니다. Output module은 이 Topology와 update된 eligible leader 집합을 consensus에 보내 다음 epoch를 올바르게 시작합니다.
+
+
+{/* COPIED_END */}

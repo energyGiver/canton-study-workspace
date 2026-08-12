@@ -1,0 +1,246 @@
+---
+title: "Pruning"
+description: "Canton pruning 작동 방식: retention, safe-to-prune marker, Participant와 Synchronizer 간 coordination"
+source_id: "SRC-38EECE9DA1"
+source_path: "overview/reference/pruning"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "bef6d1adcb9885639b15f6907da68fc422258e57573e6f1b2aec2d05fa8324c2"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/reference/pruning.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/overview/explanations/canton/pruning.rst" hash="44478d0d" */}
+
+# Pruning
+
+Synchronizer가 Command execution을 orchestration할 때 Sequencer, Mediator, Participant는 자신이 처리하는 data/change의 record를 persist합니다.
+
+- Participant의 stored data는 activated/deactivated Contract와 관련 Transaction 및 event를 나타냅니다.
+- Sequencer의 stored data는 처리한 message와 Participant subscription status 변경을 나타냅니다.
+- Mediator의 stored data는 Participant가 Mediator에 보낸 confirmation response를 바탕으로 Participant에 보낸 verdict를 나타냅니다.
+- 또한 모든 Node는 연결된 Synchronizer의 현재 및 과거 Topology data를 저장합니다.
+
+이 Node는 무기한 계속 작동하므로 축적되는 stored data, 달리 말하면 Ledger history가 계속 증가합니다.
+
+Node에 history를 영구적으로 축적하고 저장하는 것은 여러 이유로 문제가 됩니다.
+
+- 첫째, Node storage는 제한되어 있으므로 stored data가 계속 증가하면 결국 고갈됩니다.
+- 둘째, privacy 관련 regulation에 따라 요청 시 Personally Identifiable Information(PII)을 제거해야 할 수 있습니다. 예를 들어 유럽 General Data Protection Regulation(GDPR)을 준수하려면 Canton operator가 합리적인 retention period를 선언하고 이후 data가 delete되도록 해야 합니다. Health information의 또 다른 예로 Health Insurance Portability and Accountability Act(HIPAA)는 sensitive patient data 보호를 목표로 하며 data 보관 기간과 delete 시점을 결정합니다.
+
+Pruning은 history의 축적과 저장에 관한 이러한 문제를 해결합니다. 첫째, 전체 history를 저장하는 대신 Node는 history prefix를 잊고 history를 요약하는 state snapshot을 저장할 수 있습니다. 즉 pruning은 Participant, Sequencer, Mediator에서 오래되거나 stale하거나 불필요한 data를 제거하는 것을 의미합니다. Operation에 필요한 data는 delete하지 않습니다. 예를 들어 pruning은 active, 즉 archive되지 않은 Daml Contract를 절대 제거하지 않습니다. 둘째, Participant, Sequencer, Mediator operator는 자신과 customer의 필요 및 적용되는 regulatory framework requirement에 따라 pruning schedule을 설정하고 customize할 수 있습니다. Canton implementation이 부과하는 constraint 내에서 Node operator가 pruning 시점과 retain할 data를 결정합니다. Pruning 구성 방법은 Participant pruning how-to guide와 Sequencer/Mediator pruning how-to guide를 참조하세요.
+
+<Note>
+Pruning은 Node가 history prefix를 잊고 history를 요약하는 state snapshot을 대신 저장할 수 있음을 의미합니다.
+</Note>
+
+다음 section에서는 history와 state snapshot의 차이를 설명하고, Node가 필요한 data를 delete하지 않도록 pruning safeguard를 소개한 다음, history를 prune하기 전에 Node가 state snapshot에 합의하는 방법을 설명합니다.
+
+## History vs. State Snapshot
+
+*History*는 *특정 시점까지*의 모든 변경 list를 나타내고 *state snapshot*(줄여서 snapshot)은 *특정 시점의* 모든 변경 summary를 나타냅니다. History와 snapshot을 이해하기 위한 비유로 time t에 작동 중인 system에 Node를 bootstrap하려는 operator를 생각해 볼 수 있습니다. 예를 들어 새 Participant Node를 추가하여 일부 Party를 hosting하거나 기존 Participant를 backup에서 restore할 수 있습니다. Snapshot은 Participant가 join하는 time t에 system에서 operational 상태가 되는 데 필요한 모든 data를 나타내며, 여기에는 time t에 Participant에서 hosting되는 Party를 Stakeholder로 갖는 Active Contract 등이 포함됩니다. 반면 history는 system 시작부터 time t까지 Stakeholder Contract를 변경한 모든 event, 예를 들어 creation, archival, Reassignment를 나타냅니다. Operator는 time t의 snapshot에서 바로 bootstrap할 수 있습니다. 이것을 사용할 수 없다면 이전 time t-delta의 snapshot에서 bootstrap한 다음 timestamp t-delta와 t 사이의 history를 replay할 수 있습니다. 아래 figure는 Active Contract 관련 example에서 history와 snapshot의 차이를 보여 줍니다.
+
+<div id="history_v_snapshot">
+
+</div>
+
+<img src="/images/docs_website/pruning-history_v_snapshot.svg" className="align-center" style={{width: "80.0%"}} alt="image" />
+
+<Note>
+Participant는 historical data 일부를 Participant Query Store(PQS)\_라는 long-term store에 retain합니다. PQS는 Canton internal store와 별개인 store입니다. PQS는 정제된 history version을 저장하며 regulatory purpose 등 과거에 관한 query에 응답하는 역할을 합니다.
+</Note>
+
+<Note>
+Time t에 Node를 pruning하면 해당 Node에 저장된 time t까지의 history를 delete하지만 time t의 Node snapshot은 retain합니다. Node snapshot은 Participant, Synchronizer, Mediator라는 Node type에 따라 달라집니다. Node를 time t까지 prune하면 t보다 앞선 event를 serve할 수 없습니다.
+</Note>
+
+명확히 하기 위해 pruning timestamp와 application이 처리한 latest timestamp를 구분해야 합니다. Ledger end가 offset off_end이고 operator가 offset off_prune까지 prune하려는 Participant Node를 생각해 보겠습니다. off_prune은 snapshot의 time t를 정의합니다. t_end가 off_end에 대응한다고 가정합니다. Time t snapshot 관점에서 off_prune과 off_end 사이 변경은 "future"에 발생하며 time t snapshot은 이를 요약할 수 없습니다. 반면 off_end까지 처리한 application 관점에서 off_prune과 off_end 사이 변경은 이미 history 일부입니다. Time t 또는 offset off_prune에서 pruning해도 이러한 변경이 time t snapshot의 일부가 아니더라도 off_prune 이후 변경은 delete하지 않습니다.
+
+Time t의 Participant Node snapshot은 다음으로 구성됩니다.
+
+- Time t에 해당 Participant에서 hosting되는 Party를 Stakeholder로 갖는 Active Contract 집합입니다. 이 집합은 Participant Node가 Canton Transaction processing에 올바르게 참여하는 데 필수입니다. 예를 들어 Participant는 해당 Transaction을 reject하여 double spending을 방지합니다.
+- Time t의 in-flight Reassignment입니다. Contract의 Reassigning Participant는 Reassignment가 in-flight인 동안, 즉 Unassign 또는 Assign Command가 완료되지 않은 동안 Reassignment data를 retain해야 합니다. 그렇지 않으면 Participant가 Reassignment를 올바르게 approve 또는 reject할 수 없습니다. 자세한 내용은 Reassignment section을 참조하세요. 현재 Participant는 Reassignment data를 prune하지 않지만 향후 지원할 예정입니다.
+
+- Participant의 private key입니다. 현재 Participant는 time t에 valid한 Key만이 아니라 모든 key material을 필요로 합니다. Participant는 message에 sign하여 다른 Node로 보내는 message를 authenticate하는 데 이 Key를 사용합니다.
+- Time t까지 포함한 모든 과거 Topology snapshot입니다. Participant가 향후 request를 validate할 때, 예를 들어 Unassignment request의 target timestamp를 validate할 때 이를 serve해야 할 수 있으므로 과거 Topology snapshot이 필요합니다. Time t의 Topology snapshot은 어떤 Node(Mediator, Sequencer, Participant)가 있는지, 각 Synchronizer가 Participant에 어떤 restriction을 적용하는지(예: Participant가 hosting할 수 있는 최대 Party 수), 어떤 Participant가 어떤 Party를 hosting하는지 등을 알려 주므로 필요합니다. 따라서 Canton Transaction Protocol에 참여하는 모든 Node는 time t의 Transaction에 어떤 Participant가 관여하고 어떤 Key를 사용하는지 등을 압니다.
+- 경우에 따라 Command deduplication data입니다. 각 Participant는 해당 Participant를 통해 제출된 Command를 축적하고 이를 deduplication information으로 사용하여 Transaction을 여러 번 제출하지 않습니다. Participant는 t_end에서 끝나는 time window 동안 이 deduplication information을 retain합니다. t_end에서 끝나는 configured deduplication window가 t를 포함할 만큼 크면 time t snapshot은 `deduplication window - (t_end - t)` duration으로 t에서 끝나는 window의 deduplication data를 포함합니다. 그렇지 않으면 time t snapshot은 deduplication data를 포함하지 않습니다.
+
+Mediator snapshot은 다음으로 구성됩니다.
+
+- Time t의 Topology state입니다. Topology information을 통해 Mediator는 Transaction에 어떤 Participant가 관여하여 confirmation response를 보내거나 Transaction을 reject해야 하는지 알 수 있습니다.
+- 경우에 따라 deduplication information입니다(Participant Command deduplication data와 유사). Mediator가 최근 time window에 본 Transaction을 포함하며 동일 Transaction의 multiple execution을 방지하는 데 필요합니다.
+- Authentication에 필요한 time t에 valid한 Mediator private key입니다.
+
+Sequencer snapshot은 다음으로 구성됩니다.
+
+- Time t까지 포함한 모든 과거 Topology snapshot입니다. Participant가 submission request에 group address resolve 방법에 영향을 주는 Topology timestamp를 지정할 수 있으므로 Sequencer에는 과거 Topology snapshot이 필요합니다. 또한 Participant는 모든 과거 Topology Transaction을 포함해야 하는 onboarding Topology data를 Sequencer에서 download하므로 Sequencer는 모든 Topology Transaction의 ground truth 역할을 해야 합니다. Sequencer는 time t의 Synchronizer member(Participant, Sequencer, Mediator)를 파악하기 위해 time t의 Topology information이 필요합니다.
+
+- Synchronizer에 등록된 모든 member의 previous timestamp입니다. Sequencer는 event에 unique timestamp가 있고 member가 이 timestamp에서 global ordering을 derive하는 global total-order multicast를 제공합니다. 각 event와 함께 같은 member에 대한 이전 event timestamp를 저장함으로써 Sequencer는 각 member가 해당 member event stream의 gap을 탐지할 수 있게 합니다. Previous timestamp는 Participant auditing에 필수입니다. Participant가 Sequencer에서 받은 전체 message sequence를 공개했음을 auditor에게 증명할 수 있게 하기 때문입니다.
+
+- BFT Orderer 사용 시 ordering layer와 관련된 data item입니다. BFT Orderer는 Transaction을 ordered block sequence로 구성하며 다른 BFT Node의 catch-up/onboarding 및 최근 message를 놓친 Node가 stuck 상태에서 벗어나도록 block을 retransmit하기 위해 이 block을 retain해야 합니다. 참고로 external driver 기반 등 BFT Orderer 이외의 ordering layer에서는 pruning을 별도로 처리합니다.
+
+- Authentication에 필요한 time t에 valid한 Sequencer private key입니다.
+
+## Pruning Safeguards
+
+Pruning은 Node operation에 여전히 필요한 data를 delete하지 않도록 해야 합니다. Prune할 data를 결정할 때 operational continuity용 snapshot, crash recovery data, non-repudiation guarantee라는 세 가지를 고려합니다.
+
+### Snapshots for operational continuity
+
+올바르게 작동하려면 각 Node에 위에서 설명한 time t의 snapshot이 필요합니다. 따라서 다음을 적용합니다.
+
+**A participant**:
+
+- Active Contract는 절대 delete하지 않습니다.
+- Configurable [length]() `ledger-api.max-deduplication-duration`인 deduplication window에서 가장 최근에 관찰한 Transaction은 절대 delete하지 않습니다. 즉 pruning의 minimum retention period는 적어도 configured maximum deduplication period입니다.
+- In-flight Reassignment는 절대 delete하지 않습니다. 실제로 Participant는 아직 Reassignment data를 prune하지 않지만 향후 지원할 예정입니다.
+
+**A mediator**:
+
+- Configurable length를 가진 deduplication window의 data는 절대 delete하지 않습니다.
+
+**A sequencer**:
+
+- Member가 더 이상 필요하지 않음을 acknowledge하지 않는 한 member의 previous timestamp 같은 data를 절대 delete하지 않습니다. 그러나 unresponsive member에 대한 safeguard로 Sequencer operator가 data retention window를 지정하고 member acknowledgement 없이 prune할 수 있습니다. Member에게 더 오래된 data가 필요하면 recover할 수 없습니다. 자세한 내용은 Global Synchronizer [documentation]()과 Sequencer pruning how-to guide를 참조하세요.
+- BFT Orderer 사용 시 time으로 지정된 retention period 안의 ordering layer data는 절대 delete하지 않습니다. Retransmission을 위해 Sequencer는 몇 epoch 동안 ordering layer data를 보관해야 합니다. 다른 Sequencer의 catch-up을 돕기 위해 Network의 Node 중 하나라도 여전히 catch-up 지원이 필요한 동안 data를 보관해야 합니다. 그러나 unresponsive Node에 대한 safeguard로 Sequencer operator는 기본 30일인 data retention window가 지나면 prune합니다. Node에 더 오래된 data가 필요하면 Network를 떠난 뒤 새로 join해야 합니다. 또한 전체 system이 pruning retention period보다 오래 중단된 경우 Sequencer가 다시 시작할 때 모든 것을 prune하지 않아야 합니다. 이를 방지하기 위해 operator는 보관할 minimum block 수도 지정할 수 있습니다.
+
+**General**
+
+- Node는 아직 Topology state pruning을 구현하지 않습니다. Topology가 드물게 변경되는 system에서는 Topology state가 너무 빠르게 증가하지 않지만 Canton이 Topology state를 prune하지 않는 것은 system limitation입니다. Topology pruning은 향후 작업으로 계획되어 있습니다.
+
+### Crash recovery data
+
+Node는 crash recovery와 관련된 data를 delete하지 않습니다. 정확한 data는 Participant/Mediator/Sequencer processing pipeline에 따라 달라집니다.
+
+### Non-repudiation guarantees
+
+Participant는 time t의 shared Active Contract 집합에 관해 다른 Participant와 합의했다는 undeniable proof가 없으면 time t보다 오래된 history를 prune하지 않습니다. Participant는 다른 Participant와의 legal dispute에서 이러한 proof를 사용할 수 있습니다. 이를 위해 Participant는 특정 시점의 shared Active Contract에 대한 undeniable summary인 ACS(Active Contract Set) commitment를 exchange합니다. ACS commitment는 아래 non-repudiation section에서 자세히 설명합니다.
+
+Participant는 time t에 모든 counter-Participant로부터 일치하는 pairwise commitment message를 받은 경우에만 time t의 history를 prune합니다. 또한 pruning timestamp 이전 timestamp의 모든 commitment를 prune합니다.
+
+### Manual pruning
+
+Pruning schedule 대신 operator가 manually 관리해야 하는 data item도 있습니다.
+
+- Participant Node operator는 Participant가 vet한 Contract를 포함하는 DAR(Daml Archive Repository)와 Package store의 pruning을 manually 관리합니다. Long-running Participant가 있는 CI/CD model에서는 이 store가 상당히 커질 수 있습니다. Operator는 이 data가 더 이상 필요하지 않은 시점을 결정하고 console Command로 manually prune해야 합니다.
+- Node operator는 cryptographic material, 특히 private key pruning을 manually 관리합니다. Operator는 console Command로 Key를 manually delete할 수 있습니다.
+- Node operator는 Sequencer connection, domain alias, static domain parameter 같은 pruning configuration data를 manually 관리합니다. 하지만 configuration data는 일반적으로 작아야 합니다.
+
+## Non-repudiation
+
+<Note>
+Fork는 Network의 둘 이상의 Participant Node가 shared state에 대한 view에서 달라지는 상황입니다. Repair Service를 통한 Contract store 변경 시 misconfiguration, bug 또는 malicious behavior로 인해 fork가 발생할 수 있습니다.
+</Note>
+
+각 Participant Node operation을 보호하기 위해 Canton protocol은 Contract를 공유하는 두 Participant Node가 Contract state에 합의하도록 보장하는 fork-detection mechanism을 포함합니다. 이유는 두 가지입니다. 첫째, Participant Node가 shared state에 합의하고 honest하면 Transaction approve/reject 시 동일하게 행동해야 합니다. 예를 들어 Alice와 Bank가 Alice에게 Bank의 IOU가 있다고 합의하면 Alice는 지급에 IOU를 사용할 수 있습니다. 둘째, shared state에 합의하는 Participant Node는 history를 prune할 수 있습니다. State가 일치하기만 하면 Participant Node가 그 state에 도달한 방식은 그다지 중요하지 않습니다.
+
+그러나 legal 관점에서는 counter-Participant가 나중에 다른 주장을 할 수 있으므로 단순한 합의만으로 충분하지 않습니다. 따라서 Participant Node는 agreement proof를 원할 수 있습니다. 특정 Contract가 active였는지에 대한 합의 또는 불일치 evidence가 court에서 인정되어야 할 수도 있습니다. 따라서 third party에 대해서도 유효한 agreement proof, 즉 **non-repudiation**이 필요합니다.
+
+<Note>
+Commitment를 통해 Participant Node는 shared state에 대한 합의를 verify하여 history를 prune할 수 있습니다.
+</Note>
+
+Inactive 또는 malicious Participant가 commitment를 보내지 않는 것만으로 counter-Participant의 pruning을 block할 수 없어야 합니다. Canton은 특정 counter-Participant와의 non-repudiation을 포기하는 대가로 특정 counter-Participant의 commitment를 기다리지 않도록 Participant를 구성하게 하여 이를 보장합니다.
+
+Participant Node는 shared Contract state 합의 여부를 확인하여 fork를 탐지합니다. Active Contract를 공유하는 두 Participant Node는 주기적으로 이른바 **ACS (Active Contract Set) commitments**를 exchange합니다. Commitment는 특정 시점에 특정 counter-Participant와 공유하는 Participant Node Active Contract의 cryptographic summary입니다. Non-repudiation을 위해 각 Participant Node가 commitment에 sign합니다. 일치하는 commitment가 있는 두 Participant Node는 같은 shared ACS state를 가졌음을 부인할 수 없습니다. Commitment 생성과 exchange는 두 Participant Node가 연결되어 있고 Active Contract를 공유하는 Synchronizer마다 독립적으로 수행됩니다. 두 Participant Node 간 일치하는 commitment는 shared state에 합의한다는 proof입니다.
+
+<Note>
+Shared Active Contract가 없는 두 Participant Node는 commitment를 exchange하지 않습니다.
+</Note>
+
+Fork가 없다고 해서 Participant Node의 shared Transaction history가 동일하다는 뜻은 아닙니다. 현재 shared state, 즉 shared Active Contract가 동일하다는 뜻입니다. History가 아니라 현재 state에 대한 합의를 요구하는 이유는 Active Contract가 hosted Party의 business logic에 중요하기 때문입니다. Participant Node가 shared state에 합의하는 한 그 state에 도달한 방식은 부차적입니다.
+
+다음으로 commitment 생성 및 exchange process, Participant Node operator가 fork 원인을 inspect하고 resolve하는 방법, performance 최적화 방법을 자세히 설명합니다.
+
+### Commitment exchange
+
+Synchronizer에 연결된 Participant Node pair는 shared active, 즉 이전에 activate되고 아직 deactivate되지 않은 Contract에 대한 commitment를 exchange합니다. 각 Participant Node가 Contract가 active한 Synchronizer에서 Contract의 일부 Stakeholder를 hosting하면 둘 이상의 Participant Node가 Contract를 공유합니다. 각 Participant Node는 commitment timestamp의 Topology에 따라 자신이 아는 counter-Participant Node마다 주기적으로 commitment를 계산하고 전송합니다. Participant Node는 Synchronizer Sequencer를 통해 commitment를 exchange합니다. Participant Node가 local에서 계산한 commitment와 받은 commitment가 일치하면 counter-Participant와 합의한다는 것을 압니다. 두 Participant Node는 받은 signed commitment를 저장하며 나중에 non-repudiation cryptographic proof로 사용할 수 있습니다.
+
+Participant Node의 commitment exchange 빈도는 Synchronizer parameter이며 performance와 guarantee의 trade-off에 영향을 줍니다. 짧은 period는 적시에 fork를 탐지하지만 Participant Node computation overhead와 Synchronizer bandwidth overhead가 증가합니다. Synchronizer operator는 dynamic Synchronizer parameter에서 **reconciliation interval**이라는 duration으로 period length를 조정할 수 있습니다.
+
+<Note>
+실행 중인 Synchronizer에서 reconciliation interval을 조정할 수 있습니다. Period length 변경은 즉시 적용됩니다.
+</Note>
+
+### The format of a commitment
+
+의미 있는 합의를 위해 Participant Node는 같은 시점의 shared state에 대한 commitment를 생성해야 합니다. 각 Participant Node의 ACS state는 Sequencer에서 받은 event로만 evolve할 수 있으므로 commitment period에도 Sequencer time을 사용하는 것이 타당합니다. Participant Node는 Topology change, ACS change 등 Sequencer time timestamp가 있는 여러 event type을 받습니다. 이 모든 event는 Sequencer time에 대한 Participant Node knowledge를 advance하고 time이 period boundary를 넘으면 commitment 생성을 trigger합니다. Participant Node는 timestamp가 commitment period end 이하이고 period end 전에 deactivate되지 않은 ACS Contract activation을 commitment에 capture합니다.
+
+<Note>
+Participant Node가 관찰하는 Sequencer time advancement를 **tick**이라고 하며 ACS commitment processor를 *tick*한다고 표현합니다.
+</Note>
+
+일부 상황에서 honest Participant Node가 모든 period end에 commitment를 issue하지 않을 수 있습니다. Reconciliation interval은 Participant Node가 계산하고 exchange하는 commitment 수의 upper bound만 설정하며 commitment를 issue하려면 Participant Node가 tick을 확인해야 합니다. 많은 Party를 hosting하는 일부 Participant Node는 그에 상응하는 많은 Contract/Topology event에서 tick을 관찰하지만 다른 Participant Node는 그렇지 않을 수 있습니다. 예를 들어 period가 1분이고 Participant Node가 timestamp 10:20:03을 관찰하여 10:20 commitment를 issue한 다음 10:28:50을 관찰한다고 합시다. 10:28:50을 관찰할 때 10:21부터 10:28까지 commitment를 issue할 수 있지만 content가 같으므로 낭비입니다. 실제로 10:21과 10:28 사이 ACS가 변경되었다면 Participant Node는 time을 advance하는 ACS change를 확인하고 더 fine-grained한 commitment를 issue했을 것입니다. 따라서 각 commitment는 period end뿐 아니라 period start도 포함하며 interval이 cover하는 모든 period end의 state를 나타냅니다. Receiving Participant Node는 이를 해당 interval 안의 어느 period end에서든 자신의 state와 비교할 수 있습니다.
+
+<Note>
+각 commitment에는 ACS state를 요약하는 cryptographic hash와 period 및 sender metadata가 포함됩니다.
+</Note>
+
+일부 Participant Node가 모든 period end에 commitment를 issue하지 않아도 honest하고 정상 작동하는 Participant Node는 서로의 pruning을 block하지 않습니다. Participant Node A와 B가 Active Contract를 공유하고 A가 B보다 많은 tick을 본다고 가정합니다. Shared Contract activity는 적지만 Participant Node A가 activity가 많은 Contract의 Stakeholder인 추가 Party를 hosting하면 이런 일이 발생할 수 있습니다. A는 period boundary 이후 tick을 볼 때마다 B를 포함한 모든 counter-Participant의 commitment를 계산합니다. 따라서 A는 B가 A에 대해 계산하는 것보다 B에 대해 더 자주 commitment를 계산합니다. 중요한 점은 A가 B의 commitment를 보지 않으면 prune할 수 없으므로 B의 덜 빈번한 commitment가 A를 방해할 수 있다는 것입니다. 다행히 B는 A에게 받은 commitment 덕분에 tick을 관찰하고 어떤 이유로 느리지 않다면 적시에 commitment를 issue해야 합니다. B의 commitment는 A의 period end와 같거나 더 높은 period end를 가지므로 A는 B의 commitment를 받자마자 prune할 수 있습니다. 단 B가 그 period end를 이미 cover하는 다른 commitment를 그 사이에 issue한 경우는 제외합니다.
+
+Inactive Participant는 time passage를 확인하지 못하므로 commitment를 issue하지 않으며 active해질 때까지 history를 prune할 수 없습니다.
+
+### Hash generation
+
+Commitment 생성이 bottleneck이 되지 않도록 Participant Node는 ACS state를 효율적으로 요약해야 합니다. 비효율적이지만 단순한 접근 방식은 hash 대신 전체 shared ACS를 commitment 일부로 보내는 것입니다. Computation은 저렴하지만 ACS가 클 수 있어 Network bandwidth 비용이 지나치게 큽니다. Bandwidth에는 유리하지만 computation이 비효율적인 접근 방식은 각 Participant Node가 period end마다 ACS를 traverse하고 counter-Participant별로 shared Active Contract를 hash로 요약하는 것입니다. 이는 epoch end마다 Participant Node에 과부하를 줍니다.
+
+대신 각 Participant Node는 interval 중 ACS change가 발생할 때 이를 요약하고 Stakeholder group별 ACS running hash를 유지합니다. Stakeholder별 grouping은 각 ACS change가 한 번만 처리되도록 합니다. 구체적으로 ACS change마다 hash는 content를 authenticate하는 Contract ID와 해당 Contract의 정확한 activation/deactivation, 즉 creation, archival 또는 Synchronizer 간 Reassignment된 Contract의 Reassignment instance를 식별하는 Contract Reassignment counter를 추가하거나 제거합니다. Hash function은 Contract deactivation이 activation을 cancel한다는 의미에서 homomorphic하므로 running hash를 incrementally update할 수 있습니다.
+
+Period end의 final commitment computation은 다음과 같습니다. 각 counter-Participant에 대해 Participant Node는 counter-Participant와 공유하는 Stakeholder group의 비어 있지 않은 running hash를 모두 모아 homomorphic hash에 추가합니다. Commitment는 본질적으로 ACS change를 Stakeholder group hash로 hashing한 다음 Stakeholder group hash를 commitment hash로 hashing하는 two-level homomorphic hashing을 포함합니다. Two-level hashing을 사용하는 이유는 뒤에서 설명할 commitment update와 mismatch 조사 최적화를 가능하게 하기 때문입니다. 이후 Participant Node는 compression을 위해 cryptographic hash를 적용하여 homomorphic hash size를 크게 줄입니다.
+
+Commitment는 Participant Node가 sign하는 cryptographic hash이며 다음 property가 있습니다.
+
+- **Collision resistance**: Commitment는 hash이므로 서로 다른 ACS state를 가진 두 Participant Node가 같은 commitment를 계산할 가능성이 낮습니다.
+- **Preimage resistance**: Commitment가 주어져도 누구든, 특히 counter-Participant가 그 commitment에 맞는 ACS state를 만들기 어렵습니다.
+- **Second preimage resistance**: Commitment가 전송되고 암묵적으로 Participant Node가 state를 prune한 후 counter-Participant는 나중에 같은 commitment에 대응하는 다른 ACS state를 주장할 수 없습니다. Collision resistance는 second preimage resistance를 함축합니다.
+- **Efficient verification**: ACS state가 주어지면 누구나 state가 특정 commitment와 일치하는지 쉽게 확인할 수 있습니다. 특히 commitment originator는 특정 ACS state가 자신이 issue한 commitment와 관련해 valid한지 판단할 수 있습니다.
+- **Non-repudiation**: Commitment가 signed되어 있으므로 누구나 originator를 판단할 수 있고 originator는 해당 commitment를 issue했음을 부인할 수 없습니다.
+
+### Consequences of a fork
+
+Canton protocol은 honest Participant Node 간 합의를 보장하므로 mismatch는 misconfiguration 또는 bug로만 발생해야 합니다. 두 Participant Node의 commitment가 일치하지 않으면 Participant Node operator가 mismatch를 조사하고 verify하여 필요하면 Participant Node state를 수정해야 합니다.
+
+Period에서 두 Participant Node 간 mismatch가 발생했다면 Participant Node state 사이에 fork가 있습니다. Fork가 자동으로 resolve될 수 있으며 그렇지 않으면 Participant Node operator가 개입해야 합니다.
+
+이 개입을 위해 관련된 모든 Participant Node operator가 shared Active Contract를 살펴보고 mismatch 원인을 찾아야 합니다. Participant Node가 어떤 Contract로 인해 mismatch가 발생했는지 식별할 수 있는 mismatch inspection tooling을 제공합니다. 그러나 Participant Node operator가 out-of-band communication 등을 통해 올바른 end state를 결정하고 변경을 적용해야 하므로 tooling이 mismatch를 자동으로 resolve하지는 않습니다.
+
+Mismatch가 계속되는 동안 영향받은 Participant Node는 최초 mismatch 이전 data를 prune할 수 없습니다. 모든 counter-Participant Node와 일치하는 period가 생기면 모든 이전 period는 암묵적으로 prune하기에 안전합니다. State가 처음에는 mismatch를 보였어도 fork가 더 이상 존재하지 않기 때문입니다.
+
+### Optimizations
+
+Commitment를 위해 많은 hash를 계산하면 performance cost가 크고 commitment exchange는 Network bandwidth를 소비합니다. 따라서 필요한 computation과 bandwidth를 줄이기 위한 여러 optimization을 구현했습니다.
+
+첫째, Active Contract를 공유하지 않는 Participant Node는 commitment를 계산하거나 보내지 않으며 받을 것으로 기대하지도 않습니다. 하지만 한 Participant Node가 다르게 판단하면 commitment를 보내고, 다른 Participant Node는 `ACS_MISMATCH_NO_SHARED_CONTRACTS: Received a commitment where we have no shared contract with the sender` warning을 output합니다. 이어 Participant Node는 empty commitment로 응답하고 counter-Participant의 non-empty state를 기반으로 mismatch inspection을 trigger합니다. 이 optimization은 shared Active Contract가 없는 counter-Participant Node가 많은 Participant Node의 performance를 크게 개선합니다. 또한 Participant Node가 counter-Participant와 shared state가 empty라고 판단하면 counter-Participant도 state가 empty라는 데 합의했음을 확립하지 않고 prune할 수 있습니다.
+
+둘째, bandwidth 측면에서 Participant Node는 commitment를 주기적으로만 exchange하므로 period 내 Contract activity와 무관하게 소비 bandwidth가 제한됩니다. Activity가 없으면 period도 aggregate됩니다. 같은 commitment를 계속 보내는 대신 각 Participant Node는 period를 aggregate하고 activity를 확인한 시점에 한 번 commitment를 보냅니다. 하지만 Participant가 관련 없을 수도 있는 Synchronizer activity를 관찰하면 activity가 tick을 trigger하므로 aggregation이 발생하지 않으며, 이 경우 Participant Node가 timestamp만 다른 같은 commitment hash를 반복해서 exchange합니다. 또한 Synchronizer activity가 없어도 commitment exchange에는 lower bound가 있으며 기본값은 24시간마다입니다.
+
+또한 각 period end의 Network activity spike를 피하기 위해 각 Participant Node는 jittered delay를 두고 commitment를 보냅니다. Delay는 0부터 period length의 2/3 사이에서 uniform distribution으로 선택되는 random amount이므로 Sequencer가 commitment로 flooded되지 않습니다.
+
+Commitment는 guaranteed delivery 없이 best-effort로 전송되어 Network resource를 절약합니다. 즉 Participant Node가 counter-Participant의 commitment를 놓칠 수 있습니다. 그러나 각 commitment는 semantics상 stand-alone이므로 commitment 누락은 향후 incoming commitment의 usefulness에 영향을 주지 않습니다. Participant Node가 과거 일부 timestamp의 commitment를 놓쳐도 현재 state에 관해 counter-Participant와 합의하는 한 history를 prune할 수 있습니다. 즉 이전 fork 존재 여부를 알지 못해도 fork가 확실히 없는 timestamp까지 history를 prune할 수 있습니다.
+
+셋째, commitment computation에서 two-level homomorphic hash structure는 효율적인 commitment update를 지원합니다. Participant Node는 Stakeholder별 running hash를 incrementally update하고 각 period end에 Participant Node별로 grouping합니다. 따라서 commitment를 계속 recompute할 필요가 없으며 complexity는 activation/deactivation 수에 따라 linearly 증가합니다.
+
+또한 이 structure는 소수 Stakeholder group에 Contract change가 있고 다수는 unchanged인 경우 효율적인 update를 지원합니다. 이때 모든 Stakeholder hash를 grouping하여 Participant Node별로 다시 hashing하는 것은 Stakeholder group 수에 비례하므로 비효율적입니다. 대신 Stakeholder hash를 cache하고 commitment에서 변경된 것만 update합니다. Homomorphic hash property 덕분에 Participant Node는 commitment에서 cached Stakeholder cache를 subtract하고 새 Stakeholder hash를 add할 수 있으며 이는 Contract update가 있는 Stakeholder group 수에 비례합니다.
+
+Two-level homomorphic hash structure는 효율적인 mismatch inspection도 지원합니다. Mismatch를 inspect하는 Participant Node는 shared Contract ID 전체 집합을 필요로 하지 않습니다. Level별 matching을 수행하고 일치하는 Stakeholder commitment는 blinded 상태로 유지하며 일치하지 않는 Stakeholder hash의 shared Contract ID 집합만 요구할 수 있습니다.
+
+넷째, high load period에는 Transaction processing이 뒤처진 Participant Node가 commitment로 인한 overhead를 줄입니다. Observed Sequencer time이 일부 counter-Participant보다 뒤처지면 Participant Node가 lagging 상태이며 received commitment의 period에서 counter-Participant Sequencer time을 infer할 수 있습니다. Lagging Participant Node는 일부 period의 commitment 계산과 전송을 skip하는 catch-up mode를 자동 trigger합니다. Synchronizer operator는 Synchronizer configuration으로 catch-up behavior를 제어할 수 있습니다. Catch-up mode는 fork를 계속 탐지하면서 Participant Node가 Transaction throughput을 따라잡도록 합니다.
+
+다섯째, multi-hosted Party의 경우 Participant Node는 모든 counter-Participant 대신 threshold 수의 counter-Participant가 matching commitment를 보내기만 하면 됩니다. Transaction을 approve하여 Contract를 active한 것으로 판단하는 데에도 threshold 수의 counter-Participant만 필요하다는 점에서 자연스러운 optimization입니다. 각 multi-hosted Party가 matching commitment를 보내는 threshold 수 이상의 counter-Participant에서 hosting되는 한 일부 commitment가 outstanding이어도 pruning할 수 있습니다. 일부 Participant Node가 malicious/faulty할 수 있는 decentralized Party에 특히 중요합니다.
+
+### Limitations
+
+Design에서 performance와 functionality 사이의 특정 trade-off를 선택했습니다. Design limitation을 알면 bug, mismatch 또는 다른 문제를 조사하는 데 도움이 됩니다.
+
+첫째, commitment는 같은 Transaction에서 create되고 archive되는 transient Contract를 capture하지 않습니다. Deactivation이 activation을 cancel하므로 running commitment가 Contract ID를 capture하는 시점이 없습니다. 이는 commitment period에 Sequencer time을 사용하는 직접적인 결과입니다. Sequencer time granularity에서는 Contract가 active한 시점이 없으므로 commitment가 capture하지 않습니다.
+
+둘째, Participant Node가 commitment를 주기적으로만 exchange하므로 exchange 사이에 발생했다가 resolve되는 state fork를 탐지할 수 없습니다. 한 example은 ephemeral하지 않지만 같은 period 안에서 create되고 archive되는 short-lived Contract입니다. Contract ID가 running Stakeholder commitment에 일시적으로 나타나지만 deactivation이 activation을 cancel하여 period end에 ACS commitment를 계산하기 전에 Contract가 제거됩니다. Commitment만 보면 이 상황은 Contract가 전혀 존재하지 않았던 상황과 구분할 수 없습니다. 즉 period 중 short-lived fork는 탐지되지 않습니다. Catch-up mode에서는 이 우려가 더 큽니다.
+
+셋째, two-level homomorphic hash에는 단점이 있습니다. Participant Node가 shared state의 특정 Stakeholder group에 Active Contract가 없음을 증명하려면 모든 Stakeholder group hash를 open하여 어느 집합에도 해당 Stakeholder group의 Contract가 없음을 증명해야 합니다. 향후 이 limitation을 제거할 계획입니다.
+
+
+{/* COPIED_END */}

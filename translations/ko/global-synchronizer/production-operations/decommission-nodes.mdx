@@ -1,0 +1,84 @@
+---
+title: "Canton Node Decommission"
+description: "Canton Node 및 Synchronizer entity decommission procedure"
+source_id: "SRC-F82043BB68"
+source_path: "global-synchronizer/production-operations/decommission-nodes"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "0de12c4fb38dfd54963e4168f81444554ffbdc3e4f48e3929d89685da0970e62"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/decommission-nodes.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/decommission/index.rst" hash="c73974a9" */}
+
+# Canton Node 및 Synchronizer Entity Decommission
+
+이 guide는 Canton, 특히 Canton identity management concept와 Canton Console operation에 일반적으로 익숙하다고 가정합니다.
+
+새 Node는 언제든 onboarding할 수 있지만 **decommission된 Node 또는 entity는 사실상 폐기되며 Synchronizer에 다시 참여할 수 없습니다**. 따라서 **decommission은 되돌릴 수 없는 operation**입니다.
+
+또한 **decommission procedure는 현재 experimental 상태**입니다. 그럼에도 **decommission할 Node는 decommission 전에 backup할 것을 강력히 권장합니다**.
+
+## Participant Node Decommission
+
+### Prerequisite
+
+Participant를 unavailable 상태로 만들면(Synchronizer 연결 해제 또는 decommission) 다른 workflow가 차단되거나 다른 Party가 Contract의 Choice를 exercise하지 못할 수 있음에 유의하세요.
+
+예를 들어 다음 scenario를 살펴보겠습니다.
+
+- Party `bank`는 Participant `P1`에 host되고 Party `alice`는 Participant `P2`에 host됩니다.
+- `bank`가 signatory이고 `alice`가 observer인 Active Contract가 있습니다.
+- `P1`이 decommission됩니다.
+
+`bank`가 multi-hosted 상태가 아니면 `bank`가 confirm할 수 없으므로 `alice`가 Contract를 사용하려는 모든 시도가 실패합니다. Repair service로 purge하지 않는 한 Contract는 `P2`에서 영구적으로 active 상태로 남고 non-consuming Choice와 fetch만 commit할 수 있습니다.
+
+`alice`가 "단지" observer이더라도 `P2`를 decommission하는 경우 비슷한 사항이 적용됩니다. `alice`가 multi-hosted 상태가 아니면 repair service로 purge할 때까지 Contract가 `P1`에서 active 상태로 남고 non-consuming Choice와 fetch만 commit할 수 있습니다.
+
+또한 `P1`이 decommission되면 `P2`는 `P1`에서 ACS commitment를 더 이상 받지 못해 pruning이 방해될 수 있습니다. `P2`가 decommission되는 반대 상황에도 동일하게 적용됩니다.
+
+따라서 Participant를 올바르게 decommission하려면 다음 high-level 단계를 수행해야 합니다.
+
+1.  *Prerequisite 충족 확인*: Active Contract 및 이를 사용하는 workflow를 operating에 필요한 Party가 unavailable 상태가 되어 "stuck"되지 않도록 합니다.
+
+<Note>
+더 구체적으로 Contract action을 commit하려면 다음 조건을 충족해야 합니다.
+
+- "create" action에서는 모든 stakeholder가 active Participant에 host되어야 합니다.
+- Consuming "exercise" action에서는 모든 stakeholder, actor, Choice observer 및 Choice authorizer가 active Participant에 host되어야 합니다.
+
+"Informee" 정의는 ledger privacy model section에서 다룹니다.
+
+따라서 Participant decommission에 필요한 정확한 prerequisite는 Daml application design에 따라 달라지며 initial Daml design process에서 이를 고려하고 test해야 합니다.
+</Note>
+
+2.  *Decommission*: Topology state에서 Participant를 제거합니다.
+
+그 후 Participant를 폐기할 수 있습니다.
+
+### Prerequisite 충족 후 Participant decommission
+
+1.  Failed Command와 error를 방지하기 위해 application이 decommission할 Participant의 Ledger API에 Command를 보내지 않도록 중지합니다.
+2.  Connection 활성화 및 비활성화에 설명된 대로 decommission할 Participant를 모든 Synchronizer에서 disconnect합니다.
+
+<div className="todo">
+
+\#22917: Fix broken ref \#. Use the ref:sequencer.disable_member command to disable the participant being decommissioned in all sequencers and remove any sequencer data associated with it. \#. Use the ref:topology.participant_synchronizer_states.authorize command to remove the participant from the synchronizer topology via the sequencer manager.
+
+</div>
+
+다음 code snippet은 마지막 두 단계를 보여 줍니다.
+
+<div className="todo">
+
+\#22917: Fix broken literalinclude literalinclude:: CANTON/enterprise/app/src/test/scala/com/digitalasset/canton/integration/tests/offboarding/ParticipantOffboardingIntegrationTest.scala language: scala start-after: user-manual-entry-begin: OffboardParticipant end-before: user-manual-entry-end: OffboardParticipant dedent:
+
+</div>
+
+
+{/* COPIED_END */}

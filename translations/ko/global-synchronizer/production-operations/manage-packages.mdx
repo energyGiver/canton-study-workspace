@@ -1,0 +1,326 @@
+---
+title: "Daml Package 및 Archive 관리"
+description: "Participant Node에서 Daml package를 upload, vet 및 unvet합니다."
+source_id: "SRC-32F586F7D4"
+source_path: "global-synchronizer/production-operations/manage-packages"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "585a6e566e67418be2ebf1246837fcd1e2a35fe90e6945a1787ef87c206e045e"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages12 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/packages/packages-12.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages14 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/packages/packages-14.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages16 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/packages/packages-16.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages20 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/packages/packages-20.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages9 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/packages/packages-9.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages10 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/packages/packages-10.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages11 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/packages/packages-11.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages15 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/packages/packages-15.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/packages/packages-1.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/manage-packages.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/operate/packages/packages.rst" hash="60101ddf" */}
+
+# Daml Package 및 Archive 관리
+
+## 개요
+
+Package는 하나의 Daml project에 해당하는 compiled Daml code unit입니다. Package에는 compiled Daml-LF code가 들어 있습니다. 모든 package에는 고유한 `package-id`가 있습니다. Daml Archive(DAR) file은 main package와 main package가 depend하는 다른 모든 package로 구성됩니다. DAR에는 main package가 하나뿐이므로 main `package-id`로 DAR를 지칭할 수도 있습니다. App provider는 DAR collection 형태로 app을 배포합니다.
+
+## DAR 관리
+
+### DAR upload
+
+DAR를 upload하려면 dars.upload Console Command를 사용합니다.
+
+``` none
+@ participant2.dars.upload("dars/CantonExamples.dar", vetAllPackages = false)
+    res1: String = "69f6fc47c97947ec96f28e5a9c6cd368fd79d45e2e27298556073ef8809d5a2b"
+```
+
+App을 실행하는 모든 Participant Node는 app DAR가 공유되지 않으므로 이를 독립적으로 load해야 합니다.
+
+### DAR 목록 조회
+
+DAR 목록을 조회하려면 dars.list Console Command를 사용합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages1 />
+
+<Note>
+**canton-builtin-admin-workflow-ping** package는 Canton과 함께 제공되는 package입니다. 이 package에는 `participant.health.ping` Command가 사용하는 Daml template이 포함되어 있습니다.
+</Note>
+
+Package 목록을 filter하려면 `list` method에 criteria를 제공합니다. 예를 들어 **CantonExamples**라는 DAR의 description을 extract하려면 먼저 name으로 filter한 다음 `head`를 사용해 목록의 첫 element를 extract합니다.
+
+``` none
+@ val cantonExampleDar = participant2.dars.list(filterName = "CantonExamples").head
+    cantonExampleDar : DarDescription = DarDescription(
+      mainPackageId = "69f6fc47c97947ec96f28e5a9c6cd368fd79d45e2e27298556073ef8809d5a2b",
+      name = "CantonExamples",
+      version = "3.5.0",
+      description = "CantonExamples"
+    )
+```
+
+### DAR content 표시
+
+DAR content를 표시하려면 dars.get_contents Console Command를 사용합니다.
+
+``` none
+@ val darContent = participant2.dars.get_contents(cantonExampleDar.mainPackageId)
+    darContent : DarContents = DarContents(
+      main = 69f6fc47c979...,
+      name = CantonExamples,
+      version = 3.5.0,
+      description = CantonExamples,
+      packages = Seq(
+        6da1f43a10a1...,
+        6f8e6085f576...,
+    ..
+```
+
+Content에는 DAR의 name과 version, 그리고 dependency로 DAR에 포함된 package의 name과 version이 들어 있습니다.
+
+<Note>
+모든 DAR file에는 **daml-** prefix가 있는 Daml standard library package가 포함됩니다. 예를 들면 **daml-prim**입니다.
+</Note>
+
+## Package Vetting 관리
+
+Command submission 시 Transaction에 관여하는 모든 Participant Node는 동일한 결론에 도달하도록 Transaction 해석에 필요한 package를 보유해야 합니다. Package Vetting Topology information을 통해 Participant Node는 자신이 지원하는 package를 다른 Participant Node에 알립니다. DAR file을 Participant Node에 upload하면 연결된 모든 Synchronizer에 vetting information이 publish되어 다른 Participant Node가 사용할 수 있게 됩니다. Vetted package 목록을 조회하려면 `topology.vetted_packages.list` Console Command를 사용합니다.
+
+특정 package의 Synchronizer/Participant Node vetting state를 표시하려면 다음과 같이 결과를 filter합니다.
+
+``` none
+@ participant1.dars.upload("dars/CantonExamples.dar")
+    res5: String = "69f6fc47c97947ec96f28e5a9c6cd368fd79d45e2e27298556073ef8809d5a2b"
+```
+
+``` none
+@ participant2.dars.upload("dars/CantonExamples.dar")
+    res6: String = "69f6fc47c97947ec96f28e5a9c6cd368fd79d45e2e27298556073ef8809d5a2b"
+```
+
+``` none
+@ val mainPackageId = participant2.dars.list(filterName = "CantonExamples").head.mainPackageId
+    mainPackageId : String = "69f6fc47c97947ec96f28e5a9c6cd368fd79d45e2e27298556073ef8809d5a2b"
+```
+
+<div className="todo">
+
+\#25944: Provide pretty printed macro for filter/map operations below
+
+</div>
+
+``` none
+@ participant1.topology.vetted_packages.list().filter(_.item.packages.exists(_.packageId == mainPackageId)).map(r => (r.context.storeId, r.item.participantId))
+    res8: Seq[(TopologyStoreId, ParticipantId)] = Vector(
+      (Synchronizer(id = Right(value = da::1220a82692ab...::34-0)), PAR::participant1::12201ff69b1d...),
+      (Synchronizer(id = Right(value = da::1220a82692ab...::34-0)), PAR::participant2::1220a4d7463b...)
+    )
+```
+
+<Note>
+Output에서 `Authorized`라는 `store`는 Participant Node local store이며 Synchronizer store가 아닙니다.
+</Note>
+
+어떤 Synchronizer도 모든 Package Vetting requirement를 충족하지 못하면 Transaction submission이 실패하고 `FAILED_PRECONDITION/PACKAGE_SELECTION_FAILED` error message가 반환됩니다.
+
+### Main DAR package unvet
+
+Main DAR package 지원을 제거하려면 dars.vetting.disable Console Command를 사용합니다.
+
+``` none
+@ participant2.dars.vetting.disable(mainPackageId)
+```
+
+``` none
+@ participant1.topology.vetted_packages.list().filter(_.item.packages.exists(_.packageId == mainPackageId)).map(r => (r.context.storeId, r.item.participantId))
+    res10: Seq[(TopologyStoreId, ParticipantId)] = Vector(
+      (Synchronizer(id = Right(value = da::1220a82692ab...::34-0)), PAR::participant1::12201ff69b1d...)
+    )
+```
+
+<Warning>
+Active Contract가 참조하는 package는 unvet할 수 없습니다. 이를 시도하면 `FAILED_PRECONDITION/TOPOLOGY_PACKAGE_ID_IN_USE` error가 발생합니다.
+</Warning>
+
+Package vetting을 다시 활성화하려면 dars.vetting.enable Console Command를 사용합니다.
+
+## DAR validate
+
+DAR validation을 사용하여 DAR에 포함된 package가 특정 Synchronizer에서 이미 load되고 vet된 package와 compatible한지 확인합니다. 예를 들어 새 template이 동일한 package, module 및 template name을 가진 기존 template을 다시 정의하면 invalid합니다. 이 endpoint는 current vetting state와 DAR의 compatibility를 validate하므로 Synchronizer가 Participant에 연결되어 있어야 합니다.
+
+Default로 DAR는 upload 시 validate됩니다. DAR를 독립적으로 validate하려면 dars.validate Console Command를 사용합니다.
+
+``` none
+@ participant2.dars.validate("dars/CantonExamples.dar")
+    res11: String = "69f6fc47c97947ec96f28e5a9c6cd368fd79d45e2e27298556073ef8809d5a2b"
+```
+
+<Note>
+DAR file validation은 Participant Node를 변경하지 않으며 어떤 information도 persist되지 않습니다.
+</Note>
+
+## Package information 조회
+
+### Package 목록 조회
+
+Package를 직접 나열하려면 다음을 사용합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages9 />
+
+`list` method에 criteria를 전달하여 목록을 filter합니다. 예를 들어 **daml-prim**이라는 package의 description을 extract하려면 먼저 name으로 filter한 다음 `head`를 사용해 목록의 첫 element를 extract합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages10 />
+
+### Package content 표시
+
+Package를 검사하려면 packages.get_contents Console Command를 사용합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages11 />
+
+### Package를 참조하는 DAR 찾기
+
+Package를 참조하는 DAR를 찾으려면 packages.get_references Console Command를 사용합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages12 />
+
+## Package 및 DAR 제거
+
+<div className="danger">
+
+Package를 제거하면 다음을 비롯한 여러 issue가 발생할 수 있습니다.
+
+- Upgrade된 context에서 사용하더라도 해당 package를 대상으로 처음 생성한 Contract를 사용할 수 없습니다.
+- Verbose mode에서 archived Contract에 대한 Ledger API reporting을 수행할 수 없습니다. Historical Contract event를 report하는 데 해당 package가 여전히 필요하기 때문입니다.
+
+**따라서 package가 사용된 적이 없거나 package에 대한 모든 reference가 pruning되었다고 확신하지 않는 한 production environment에서 package 또는 DAR를 제거해서는 안 됩니다.**
+
+</div>
+
+### DAR 제거
+
+DAR 제거는 DAR와 연결된 main package만 제거하며 다른 package는 제거하지 않습니다.
+
+다음 조건에서만 DAR를 제거할 수 있습니다.
+
+- Package를 참조하는 Active Contract가 없습니다.
+- DAR package를 depend하는 다른 package가 없습니다.
+- DAR의 main package가 unvet 상태입니다.
+
+DAR package를 제거하려면 다음을 실행합니다.
+
+``` none
+@ val packagesBefore = participant1.packages.list().map(_.packageId).toSet
+    packagesBefore : Set[String] = HashSet(
+      "590736e6f7bc01492007ecb27f3fe75995c19fbd3d41b384aada69619fd4f76c",
+      "bde4bd30749e99603e5afa354706608601029e225d4983324d617825b634253a",
+      "b70db8369e1c461d5c70f1c86f526a29e9776c655e6ffc2560f95b05ccb8b946",
+      "f181cd661f7af3a60bdaae4b0285a2a67beb55d6910fc8431dbae21a5825ec0f",
+      "5aee9b21b8e9a4c4975b5f4c4198e6e6e8469df49e2010820e792f393db870f4",
+      "52854220dc199884704958df38befd5492d78384a032fd7558c38f00e3d778a2",
+      "c280cc3ef501d237efa7b1120ca3ad2d196e089ad596b666bed59a85f3c9a074",
+      "e5411f3d75f072b944bd88e652112a14a3d409c491fd9a51f5f6eede6d3a3348",
+      "9e70a8b3510d617f8a136213f33d6a903a10ca0eeec76bb06ba55d1ed9680f69",
+    ..
+```
+
+``` none
+@ val mainPackageId = participant1.dars.upload("dars/CantonExamples.dar")
+    mainPackageId : String = "69f6fc47c97947ec96f28e5a9c6cd368fd79d45e2e27298556073ef8809d5a2b"
+```
+
+``` none
+@ val content = participant1.dars.get_contents(mainPackageId)
+    content : DarContents = DarContents(
+      main = 69f6fc47c979...,
+      name = CantonExamples,
+      version = 3.5.0,
+      description = CantonExamples,
+      packages = Seq(
+        cae345b5500e...,
+        d095a2ccf6dd...,
+    ..
+```
+
+dars.remove Console Command를 사용하여 DAR를 제거합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages14 />
+
+DAR 제거는 DAR와 연결된 main package만 제거하며 다른 package는 제거하지 않습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages15 />
+
+DAR에 bundle된 개별 package를 제거하려면 아래 지침을 참조하세요.
+
+다음은 **daml-** prefix가 없고 다른 package에서 참조하지 않아 제거 candidate인 package를 보여 줍니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages16 />
+
+#### Package 강제 제거
+
+<div className="danger">
+
+Package 강제 제거는 위험한 operation입니다. 따라서 package가 사용되지 않고 package에 대한 모든 reference가 pruning되었다고 확신하지 않는 한 production environment에서 package를 강제로 제거하지 마세요.
+
+</div>
+
+Canton은 개별 package 제거도 지원하여 user가 system을 더 세밀하게 제어할 수 있게 합니다. Package를 제거하려면 다음 조건이 충족되는지 확인하세요.
+
+- Package가 사용되지 않습니다. 즉 해당 package에 대응하는 Active Contract가 없어야 합니다.
+- Package가 unvet 상태입니다. 즉 해당 package에 대응하는 active vetting Transaction이 없어야 합니다.
+- Participant administration에 package가 필요하지 않습니다. 예를 들어 **Ping** template이 포함된 package는 필요합니다.
+
+필요한 package를 제거하려 하면 `FAILED_PRECONDITION/PACKAGE_OR_DAR_REMOVAL_ERROR` error가 발생합니다.
+
+``` none
+@ val mySynchronizer = bootstrap.synchronizer(synchronizerName = "mysynchronizer", sequencers = Seq(sequencer1), mediators = Seq(mediator1), synchronizerOwners = Seq(sequencer1, mediator1), synchronizerThreshold = PositiveInt.one, staticSynchronizerParameters = StaticSynchronizerParameters.defaultsWithoutKMS(ProtocolVersion.latest))
+    mySynchronizer : PhysicalSynchronizerId = mysynchronizer::1220a82692ab...::34-0
+```
+
+``` none
+@ participant1.synchronizers.connect_local(sequencer1, "mysynchronizer")
+```
+
+``` none
+@ val mainPackageId = participant1.dars.upload("dars/CantonExamples.dar")
+    mainPackageId : String = "69f6fc47c97947ec96f28e5a9c6cd368fd79d45e2e27298556073ef8809d5a2b"
+```
+
+``` none
+@ participant1.packages.remove(mainPackageId)
+    ERROR com.digitalasset.canton.integration.EnvironmentDefinition$$anon$3:PackageDarManagementDocumentationIntegrationTest - Request failed for participant1.
+      GrpcRequestRefusedByServer: FAILED_PRECONDITION/PACKAGE_OR_DAR_REMOVAL_ERROR(9,bf89ccec): Package 69f6fc47c97947ec96f28e5a9c6cd368fd79d45e2e27298556073ef8809d5a2b is currently vetted and available to use.
+      Request: RemovePackage(69f6fc47c97947ec96f28e5a9c6cd368fd79d45e2e27298556073ef8809d5a2b,false)
+      DecodedCantonError(
+      code = 'PACKAGE_OR_DAR_REMOVAL_ERROR',
+      category = InvalidGivenCurrentSystemStateOther,
+      cause = "Package 69f6fc47c97947ec96f28e5a9c6cd368fd79d45e2e27298556073ef8809d5a2b is currently vetted and available to use.",
+      traceId = 'bf89ccec2c62366867a101695c5d970f',
+      context = Seq('participant=>participant1', 'test=>PackageDarManagementDocumentationIntegrationTest')
+    )
+      Command ParticipantAdministration$packages$.remove invoked from cmd10000011.sc:1
+```
+
+먼저 package를 unvet합니다.
+
+``` none
+@ import com.digitalasset.daml.lf.data.Ref.IdString.PackageId
+```
+
+``` none
+@ participant1.topology.vetted_packages.propose_delta(participant1.id, store = mySynchronizer, removes = Seq(PackageId.assertFromString(mainPackageId)))
+```
+
+그런 다음 package를 강제로 제거합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePackagesPackages20 />
+
+
+{/* COPIED_END */}

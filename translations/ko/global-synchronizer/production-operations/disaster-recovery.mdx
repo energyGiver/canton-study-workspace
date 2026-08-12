@@ -1,0 +1,85 @@
+---
+title: "Disaster Recovery"
+description: "Data corruption, SV re-onboarding 및 CometBFT layer loss 복구 procedure"
+source_id: "SRC-E6FA575DF7"
+source_path: "global-synchronizer/production-operations/disaster-recovery"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "d370f73a2302f98c7070e023c83a919df07399e3122407000d68b00d1d2421fc"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvRestoreBash102 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-restore-bash-102.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvRestoreBash74 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-restore-bash-74.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvRestoreBash57 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-restore-bash-57.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/disaster-recovery.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/sv_operator/sv_restore.rst" hash="9e120ae8" */}
+
+Disaster에서 복구하는 방법은 세 가지입니다.
+
+1.  Node 하나만 영향을 받고 전체 Network는 여전히 healthy 상태인 단순한 경우에는 일반적으로 [backup에서 restore](/global-synchronizer/production-operations/disaster-recovery)하는 것으로 충분합니다.
+2.  Full backup을 사용할 수 없지만 identity backup을 생성했다면 전용 Validator에서 SV balance를 [복구](/global-synchronizer/production-operations/disaster-recovery)할 수 있지만 SV는 별도 Node로 onboarding해야 합니다.
+
+## Data Corruption에서 restore
+
+System의 모든 component는 crash-fault-tolerant하도록 설계되어 있지만 misconfiguration 또는 bug 등으로 인해 system이 즉시 복구할 수 없는 failure가 발생할 가능성은 항상 있습니다. 이 경우 backup 또는 아직 operational한 component의 dump에서 component, 전체 SV Node 또는 Network 전체를 restore해야 합니다.
+
+### Backup에서 단일 component restore
+
+SV Node의 단일 component가 corrupt된 경우 Node 전체를 restore하지 않고 backup에서 복구할 수 있어야 합니다. 이 scenario는 production에 권장할 만큼 충분히 test되지 않았습니다. 또한 component 사이의 일부 dependency는 아직 여기에서 문서화되지 않았습니다.
+
+### Backup에서 전체 SV Node restore
+
+[sv_backups](/global-synchronizer/production-operations/sv-backup)의 지침에 따라 모든 component의 storage 및 DB backup을 수행했다고 가정하면 backup에서 전체 Node를 restore할 수 있습니다. Backup snapshot 집합이 consistent하려면 다음 두 ordering requirement를 충족해야 합니다.
+
+1. App database instance의 backup은 Participant backup보다 반드시 이른 시점에 수행해야 합니다.
+2. CantonBFT(`cantonbft`) database backup은 Sequencer backup보다 반드시 이른 시점에 수행해야 합니다.
+
+이처럼 consistent한 backup 집합을 사용할 수 있다고 가정하면 다음 단계로 Node를 restore할 수 있습니다.
+
+SV Node의 모든 component를 replica 0개로 scale down합니다. [Logical Synchronizer upgrade](/global-synchronizer/production-operations/logical-synchronizer-upgrade)를 이미 수행했다면 `-0`을 올바른 serial ID로 바꾸세요.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvRestoreBash57 />
+
+모든 component의 storage와 DB를 backup에서 restore합니다. 정확한 process는 component가 사용하는 storage와 DB에 따라 달라지며 여기에서는 설명하지 않습니다.
+
+모든 storage를 restore한 후 SV Node의 모든 component를 replica 1개로 다시 scale up합니다. Logical Synchronizer upgrade를 이미 수행했다면 `-0`을 올바른 serial ID로 바꾸세요.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvRestoreBash74 />
+
+모든 component가 다시 healthy 상태가 되면 peer SV에서 state를 따라잡기 시작하고 최종적으로 다시 정상 작동해야 합니다.
+
+## SV re-onboarding 및 Validator를 통한 Amulet 복구
+
+SV Node에 catastrophic failure가 발생한 경우 SV의 Participant key를 제어하는 standalone Validator Node를 deploy하여 SV 소유 Amulet을 복구할 수 있습니다. SV Node는 새 identity로 re-onboard할 수 있으며 Amulet을 Validator에서 새 SV Node로 transfer할 수 있습니다.
+
+Amulet을 복구하려면 SV Node identity backup이 필요합니다. Identity를 fetch하는 자세한 방법은 [Node Identity Backup](/global-synchronizer/production-operations/sv-backup) section을 참조하세요.
+
+Node Identity backup에서 `identities.participant` field content를 복사하여 별도의 JSON file로 저장합니다. 이 file은 Validator runbook의 identity bootstrap dump로 사용됩니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvRestoreBash102 />
+
+실패한 SV Node를 과반수 SV가 `OffboardMember` action에 대한 governance vote를 통해 offboard하면 SV의 Amulet을 복구하기 위한 standalone Validator Node를 deploy할 수 있습니다.
+
+Validator app과 Participant를 설치하려면 [helm-validator-install](/global-synchronizer/deployment/validator-kubernetes)에 설명된 단계를 반복합니다.
+
+이 과정에서 다음 사항에 유의하세요.
+
+- `validatorPartyHint`가 SV identity를 생성할 때 선택한 name으로 설정되도록 `splice-node/examples/sv-helm/standalone-validator-values.yaml` file을 수정합니다.
+- Backup의 identity로 Validator를 restore하려면 [Participant Identity Dump에서 restore](/global-synchronizer/production-operations/validator-disaster-recovery)의 안내를 따릅니다. 앞에서 준비한 별도 JSON file을 사용합니다.
+
+Validator가 실행되면 [helm-validator-auth0](/global-synchronizer/deployment/validator-kubernetes)에서 설정한 Validator user account를 사용하여 Validator wallet `https://wallet.validator.YOUR_HOSTNAME`에 login합니다. Wallet balance가 예상과 같은지 확인합니다. Original SV가 소유한 금액과 같아야 합니다.
+
+이제 [helm-sv-install](/global-synchronizer/deployment/kubernetes-deployment)의 단계에 따라 fresh SV Node를 deploy하고 onboarding할 수 있습니다. SV identity는 재사용하지만 그 외에는 clean slate에서 시작합니다.
+
+새 SV Node wallet에 login하고 새 Party ID를 복사합니다. Validator wallet로 전환하고 복사한 Party ID를 사용해 Amulet을 새 SV Node로 보내는 새 transfer offer를 생성합니다.
+
+새 SV Node wallet로 전환하고 해당 wallet에서 transfer offer를 accept한 다음 Amulet이 예상대로 도착했는지 확인합니다.
+
+
+{/* COPIED_END */}

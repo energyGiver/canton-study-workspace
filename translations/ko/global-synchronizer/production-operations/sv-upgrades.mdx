@@ -1,0 +1,32 @@
+---
+title: "SV Upgrade"
+description: "Super Validator Node minor upgrade procedure"
+source_id: "SRC-004A40A2B6"
+source_path: "global-synchronizer/production-operations/sv-upgrades"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "b7429d947386b8e9d1380e2d7bebf4d147479121f291c37126cdfd95c1a965e9"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/sv-upgrades.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/sv_operator/sv_upgrades.rst" hash="5405319d" */}
+
+Upgrade에는 두 가지 유형이 있습니다.
+
+Version upgrade(`0.A.X`에서 `0.B.Y`로 upgrade)와 protocol upgrade(actual version은 그대로이고 protocol만 upgrade)가 있습니다.
+
+Version upgrade는 각 Node에서 독립적으로 수행할 수 있으며 `helm upgrade`만 필요합니다. Upgrade의 일부로 변경해야 할 사항을 확인하도록 `release_notes`를 반드시 읽으세요.
+
+Protocol upgrade는 Logical Synchronizer upgrade를 통해 수행되며 Network downtime을 매우 제한하면서 protocol version을 upgrade할 수 있습니다.
+
+<Card title="Logical Synchronizer Upgrades" icon="shuffle" href="/global-synchronizer/production-operations/logical-synchronizer-upgrade">
+  Logical Synchronizer upgrade를 schedule하고 수행하는 operational flow를 검토합니다.
+</Card>
+
+
+{/* COPIED_END */}

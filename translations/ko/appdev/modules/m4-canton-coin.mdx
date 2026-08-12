@@ -1,0 +1,102 @@
+---
+title: "Canton Coin과 Traffic"
+description: "Canton Coin으로 Traffic Credit을 구매하는 방식과 application developer가 알아야 할 Transaction cost"
+source_id: "SRC-5F1C7177E8"
+source_path: "appdev/modules/m4-canton-coin"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "3de7d19a9228c42621196977dff9f20ed02dd403f2f6a48be59af6871530021c"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m4-canton-coin.md)을 사용하세요.
+</Warning>
+
+Global Synchronizer의 모든 Transaction에는 traffic cost가 발생합니다. Canton Coin (CC)은 Traffic Credit 구매에 사용하는 native currency입니다. application developer는 user의 Transaction이 중단 없이 처리되도록 이 관계를 이해해야 합니다.
+
+## Canton Coin
+
+Canton Coin은 Global Synchronizer의 native utility token입니다. decentralized Canton Synchronizer를 위한 open-source infrastructure layer인 [Splice](https://github.com/canton-network/splice)를 통해 구현됩니다.
+
+CC는 network에서 다음과 같은 주요 목적으로 사용됩니다.
+
+- **traffic 구매** -- CC를 Traffic Credit으로 변환하여 Validator가 Transaction을 submit할 수 있게 함
+- **Validator reward** -- Validator는 infrastructure 운영 및 Transaction 처리의 대가로 CC 획득
+- **application reward** -- Application Provider는 Canton Network에 가치를 더하는 application 사용량에 따라 CC 획득
+- **governance** -- Super Validator는 Synchronizer governance에 참여하기 위해 CC stake
+
+CC balance와 Transaction history는 network의 Scan service를 통해 public으로 공개됩니다. Canton의 private application contract data는 권한이 있는 Party에게만 보이지만 CC에는 이러한 privacy 특성이 없습니다.
+
+## Traffic: Transaction Fee 작동 방식
+
+Traffic은 Canton에서 Transaction fee를 가리키는 용어입니다. Transaction을 submit할 때 CC를 직접 지불하지 않습니다. 대신 Validator가 Traffic Credit 단위로 측정되는 **traffic budget**을 유지합니다. 각 Transaction은 size와 complexity에 따라 이 budget에서 credit을 차감합니다.
+
+두 단계 process는 다음과 같습니다.
+
+1. **top up** -- CC를 Traffic Credit으로 변환해 Validator의 traffic budget에 추가합니다
+2. **consume** -- Validator가 Transaction을 submit하면 budget에서 Traffic Credit이 차감됩니다
+
+Traffic Credit은 transfer할 수 없습니다. CC를 traffic으로 변환한 후에는 해당 credit을 그 Validator의 Transaction fee로만 사용할 수 있습니다.
+
+### Traffic Cost에 영향을 주는 요소
+
+주어진 Transaction의 traffic cost는 다음에 따라 달라집니다.
+
+- **Transaction size** -- contract data나 Party가 많아 payload가 클수록 더 많은 credit이 필요합니다
+- **network condition** -- network load에 따라 cost가 달라질 수 있습니다
+
+## Auto-Top-Up 기능
+
+Validator는 budget이 구성된 threshold 아래로 떨어질 때 Traffic Credit을 자동 구매하도록 **auto-top-up**을 활성화할 수 있습니다. auto-top-up이 활성 상태이면 Validator가 수동 개입 없이 CC를 Traffic Credit으로 변환합니다.
+
+이는 App Provider에게 권장되는 접근 방식입니다. auto-top-up이 없으면 traffic budget을 monitoring하고 소진 전에 top-up을 수동으로 trigger해야 합니다. budget이 소진되면 credit이 추가될 때까지 Validator의 Transaction이 실패합니다.
+
+<Note>
+auto-top-up을 사용하려면 Validator wallet에 충분한 CC가 있어야 합니다. wallet balance가 traffic 구매에 부족하면 auto-top-up을 진행할 수 없으며 Transaction이 실패하기 시작합니다.
+</Note>
+
+## App Provider의 Traffic 관리
+
+App Provider의 Validator는 application Party를 대신해 Transaction을 submit합니다. application이 생성하는 Transaction volume을 처리할 만큼 Validator에 충분한 Traffic Credit이 있는지 확인할 책임이 있습니다.
+
+실무적으로 다음을 고려하세요.
+
+- **traffic usage 추정** -- application이 하루에 생성하는 Transaction 수와 size를 파악합니다. DevNet 또는 TestNet에서 실제 traffic consumption을 측정하세요. External Party를 위해 Transaction을 준비할 때 해당 Transaction의 예상 traffic usage를 제공할 수 있습니다.
+- **auto-top-up 활성화** -- Validator가 Traffic Credit을 자동으로 보충하도록 구성합니다. traffic spike를 흡수할 만큼 threshold를 높게 설정하세요.
+- **wallet balance monitoring** -- auto-top-up은 wallet의 CC balance를 사용하므로 충분한 자금을 유지하세요.
+- **insufficient-traffic error 처리** -- traffic 부족으로 Transaction이 실패하면 backend는 조용히 retry하지 말고 명확한 error를 표시해야 합니다. 해결 방법은 Command retry가 아니라 traffic budget top-up입니다.
+
+## Canton Coin 획득
+
+CC 획득 방법은 environment에 따라 달라집니다.
+
+- **LocalNet** -- test CC가 자동으로 제공되므로 조치할 필요가 없습니다.
+- **DevNet** -- faucet인 tap을 사용해 무료 test CC를 받습니다. rate limit이 있으며 실제 가치는 없습니다.
+- **TestNet** -- DevNet과 같은 faucet mechanism을 사용합니다. test CC만 제공됩니다.
+- **MainNet** -- 지원되는 exchange에서 CC를 구매하거나 Validator operation을 통해 획득하거나 다른 Party의 direct transfer로 받습니다.
+
+## Application의 Wallet Integration
+
+application에서 license payment처럼 Party 간 CC payment를 처리한다면 Splice wallet system과 integrate합니다. cn-quickstart의 license renewal flow가 이를 보여 줍니다.
+
+1. [`License_Renew`](https://github.com/digital-asset/cn-quickstart/blob/main/quickstart/daml/licensing/daml/Licensing/License.daml) choice가 Splice `AllocationRequest` interface를 구현하는 `LicenseRenewalRequest` contract를 생성합니다
+2. Splice wallet이 allocation request를 감지하고 `AppPaymentRequest`를 생성한 다음 user에서 provider로 CC를 transfer합니다
+3. payment가 settle되면 provider가 [`LicenseRenewalRequest_CompleteRenewal`](https://github.com/digital-asset/cn-quickstart/blob/main/quickstart/daml/licensing/daml/Licensing/License.daml)을 exercise하여 갱신된 license를 생성합니다
+
+이 flow의 backend implementation은 [`LicenseApiImpl.java`](https://github.com/digital-asset/cn-quickstart/blob/main/quickstart/backend/src/main/java/com/digitalasset/quickstart/service/LicenseApiImpl.java)를 참고하세요.
+
+wallet은 CC transfer, balance lookup, payment confirmation을 처리합니다. Daml model은 wallet system이 이해하는 payment request contract를 정의합니다.
+
+## Traffic과 CC 요약
+
+- **Canton Coin (CC)**은 currency입니다. wallet에 보유하고 Party 간 transfer하며 traffic 구매에 사용합니다.
+- **Traffic Credit**은 Validator가 Transaction을 submit할 때 소비하는 항목입니다. wallet이 아니라 Validator의 traffic budget에 있습니다.
+- top-up을 통해 수동 또는 자동으로 CC를 Traffic Credit으로 변환합니다. 반대 방향은 불가능하며 Traffic Credit을 CC로 다시 변환할 수 없습니다.
+
+## 추가 자료
+
+- [Canton Coin 개요](/overview/understand/canton-coin) -- CC tokenomics, Validator reward, governance에 관한 자세한 배경
+- [Backend 개발](/appdev/modules/m4-backend-dev) -- insufficient-traffic failure를 포함한 Transaction error 처리
+- [cn-quickstart](https://github.com/digital-asset/cn-quickstart) -- Canton application wallet integration 작동 예시

@@ -88,6 +88,28 @@ def _copy_translations() -> int:
     return count
 
 
+def _translated_navigation_entries(
+    entries: list, translated_pages: set[str], seen_pages: set[str] | None = None
+) -> list:
+    if seen_pages is None:
+        seen_pages = set()
+    translated: list = []
+    for entry in entries:
+        if isinstance(entry, str):
+            if entry in translated_pages and entry not in seen_pages:
+                seen_pages.add(entry)
+                translated.append(f"ko/{entry}")
+            continue
+        if not isinstance(entry, dict):
+            continue
+        nested_pages = _translated_navigation_entries(
+            entry.get("pages", []), translated_pages, seen_pages
+        )
+        if nested_pages:
+            translated.append({**entry, "pages": nested_pages})
+    return translated
+
+
 def _extend_docs_config(translation_count: int) -> None:
     config_path = SITE_DIR / "docs.json"
     config = json.loads(config_path.read_text(encoding="utf-8"))
@@ -129,15 +151,22 @@ def _extend_docs_config(translation_count: int) -> None:
         for path in TRANSLATIONS_DIR.rglob("*.mdx")
     }
     korean_groups: list[dict] = []
+    seen_pages: set[str] = set()
     for product in products:
         for group in product.get("groups", []):
-            pages = [
-                f"ko/{page}"
-                for page in group.get("pages", [])
-                if isinstance(page, str) and page in translated_pages
-            ]
+            pages = _translated_navigation_entries(
+                group.get("pages", []), translated_pages, seen_pages
+            )
             if pages:
                 korean_groups.append({"group": group["group"], "pages": pages})
+    remaining_pages = sorted(translated_pages - seen_pages)
+    if remaining_pages:
+        korean_groups.append(
+            {
+                "group": "기타 공식 문서",
+                "pages": [f"ko/{page}" for page in remaining_pages],
+            }
+        )
     if korean_groups:
         products.append(
             {

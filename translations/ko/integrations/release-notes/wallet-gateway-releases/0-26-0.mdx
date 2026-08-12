@@ -1,0 +1,63 @@
+---
+title: "0.26.0 — 2026-04-13"
+description: "Wallet Gateway 0.26.0 release note"
+source_id: "SRC-941C24CAB6"
+source_path: "integrations/release-notes/wallet-gateway-releases/0-26-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "003cfa1b040aa6fc64393514b18595007e6615ec6747e26d18c2f15f5892a2e2"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-gateway-releases/0-26-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-gateway" format="split-release" version="0.26.0" source="@canton-network/wallet-gateway-remote@0.26.0" */}
+
+# 0.26.0 — 2026-04-13
+
+### 🚀 기능
+
+- CIP-0103 connected 및 isConnected 추가 ([#1609](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1609))
+- activity에 사용 가능한 경우 externalId 추가 ([#1588](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1588))
+
+### 🩹 수정 사항
+
+- Blockdaemon CAIP-2 ([#1611](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1611))
+- **wallet-gateway-remote:** key 기반 rate limit ([#1590](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1590))
+- error log object serialization ([#1597](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1597))
+- **core-wallet-store:** transaction 덮어쓰기 방지 ([#1592](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1592))
+- **wallet-gateway-remote:** networkIdP에 대해 sub 검증 ([#1589](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1589))
+- party allocation toast 복원 ([#1594](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1594))
+- Blockdaemon allocation error 수정 ([#1586](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1586))
+- signing용 transaction detail 제거 ([#1572](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1572))
+
+### 🧱 Dependency update
+
+- @canton-network/core-wallet-dapp-rpc-client를 0.32.0으로 update
+- @canton-network/core-wallet-user-rpc-client를 0.31.1로 update
+- @canton-network/core-wallet-store-inmemory를 0.31.1로 update
+- @canton-network/core-wallet-ui-components를 0.32.0으로 update
+- @canton-network/core-signing-blockdaemon을 0.27.1로 update
+- @canton-network/core-signing-participant를 0.30.1로 update
+- @canton-network/core-signing-fireblocks를 0.27.1로 update
+- @canton-network/core-signing-store-sql을 0.31.1로 update
+- @canton-network/core-signing-internal을 0.30.1로 update
+- @canton-network/core-wallet-store-sql을 0.30.1로 update
+- @canton-network/core-ledger-client를 0.35.1로 update
+- @canton-network/core-rpc-transport를 0.11.1로 update
+- @canton-network/core-tx-visualizer를 0.25.1로 update
+- @canton-network/core-wallet-store를 0.30.1로 update
+- @canton-network/core-signing-lib를 0.29.1로 update
+- @canton-network/core-wallet-auth를 0.26.1로 update
+- @canton-network/core-rpc-errors를 0.21.1로 update
+- @canton-network/core-types를 0.25.1로 update
+
+### ❤️ 감사의 말
+
+- Chien-An Lin
+- Marc Juchli @mjuchli-da
+- pawelstepien-da
+- Phillip Olesen @PHOL-DA

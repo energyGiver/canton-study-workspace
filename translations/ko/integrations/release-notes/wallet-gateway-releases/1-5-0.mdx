@@ -1,0 +1,64 @@
+---
+title: "1.5.0 — 2026-06-29"
+description: "Wallet Gateway 1.5.0 release note"
+source_id: "SRC-EA3135A61D"
+source_path: "integrations/release-notes/wallet-gateway-releases/1-5-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "d2ab8ad402d18904632fa651a5816f4c0af5b072d4faca4947ce43abb9cda2f6"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-gateway-releases/1-5-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-gateway" format="split-release" version="1.5.0" source="@canton-network/wallet-gateway-remote@1.5.0" */}
+
+# 1.5.0 — 2026-06-29
+
+### 🚀 Feature
+
+- Ledger API access를 위한 Service Account auth configuration 지원 ([#2045](https://github.com/canton-network/wallet/pull/2045))
+- `ApiKey` authorization header 허용 ([#2044](https://github.com/canton-network/wallet/pull/2044))
+- Frontend에서 API key management 지원 ([#2039](https://github.com/canton-network/wallet/pull/2039))
+- API key에 대한 backend 지원 추가 ([#2013](https://github.com/canton-network/wallet/pull/2013))
+
+### 🩹 Fix
+
+- Fireblocks의 Vault selection 수정 ([#2059](https://github.com/canton-network/wallet/pull/2059))
+- `prepareExecute` method에서 non-primary Wallet submission enable ([#2053](https://github.com/canton-network/wallet/pull/2053))
+- Publish되는 모든 package에 npm metadata(homepage, bugs) 추가 ([#2029](https://github.com/canton-network/wallet/pull/2029))
+- Transaction signing 및 execution 주변에 log 추가 ([#1995](https://github.com/canton-network/wallet/pull/1995))
+- JWT email을 `authcontext`와 Transaction service로 refactor ([#1945](https://github.com/canton-network/wallet/pull/1945))
+- Production build에서 test와 test helper 제외 ([#1942](https://github.com/canton-network/wallet/pull/1942))
+
+### 🧱 Dependency update
+
+- @canton-network/core-wallet-dapp-rpc-client를 1.7.0으로 update
+- @canton-network/core-wallet-user-rpc-client를 1.8.0으로 update
+- @canton-network/core-wallet-store-inmemory를 1.9.0으로 update
+- @canton-network/core-wallet-ui-components를 1.9.0으로 update
+- @canton-network/core-signing-blockdaemon을 1.7.0으로 update
+- @canton-network/core-signing-participant를 1.7.0으로 update
+- @canton-network/core-signing-fireblocks를 1.7.0으로 update
+- @canton-network/core-signing-store-sql을 1.8.0으로 update
+- @canton-network/core-signing-internal을 1.8.0으로 update
+- @canton-network/core-wallet-store-sql을 1.8.0으로 update
+- @canton-network/core-ledger-client를 1.7.0으로 update
+- @canton-network/core-rpc-transport를 1.7.0으로 update
+- @canton-network/core-tx-visualizer를 1.6.0으로 update
+- @canton-network/core-signing-dfns를 0.8.0으로 update
+- @canton-network/core-wallet-store를 1.8.0으로 update
+- @canton-network/core-signing-lib를 1.7.0으로 update
+- @canton-network/core-wallet-auth를 1.7.0으로 update
+- @canton-network/core-rpc-errors를 1.6.0으로 update
+- @canton-network/core-types를 1.7.0으로 update
+
+### ❤️ 감사
+
+- Alex Matson @alexmatson-da
+- Fayi @fayi-da
+- Marc Juchli @mjuchli-da
+- pawelstepien-da

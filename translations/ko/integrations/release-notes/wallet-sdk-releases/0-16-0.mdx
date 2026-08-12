@@ -1,0 +1,59 @@
+---
+title: "0.16.0"
+description: "Wallet SDK 0.16.0 release note"
+source_id: "SRC-EEE31A5AE4"
+source_path: "integrations/release-notes/wallet-sdk-releases/0-16-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "a52dfbf353a8008dc5adaed2b456a372c56e5090dc6d1c68c19e5a4a3c0e9174"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-sdk-releases/0-16-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-sdk" format="split-release" version="0.16.0" source="158b3ff4c316ba7a5d6c89a6099a5303b76d4f77" */}
+
+# 0.16.0
+
+**2025년 11월 4일 release**
+
+- Amulet rule 및 open mining round caching
+
+*Amulet rule은 대부분 static이고 open mining round는 10분 동안 유지되므로 이 response를 cache할 수 있습니다.*
+
+- multi-hosting용 observing Participant
+
+```javascript
+/**
+     * Generate topology transactions for an external party that can be signed and submitted in order to create a new external party.
+     *
+     * @param publicKey
+     * @param partyHint (optional) hint to use for the partyId, if not provided the publicKey will be used.
+     * @param confirmingThreshold (optional) parameter for multi-hosted parties (default is 1).
+     * @param confirmingParticipantUids (optional) list of participant UIDs that will host the party with confirming permissions.
+     * @param observingParticipantUids (optional) list of participant UIDs that will have Observation (read-only) permissions.
+     * @returns
+     */
+    async generateExternalParty(
+        publicKey: PublicKey,
+        partyHint?: string,
+        confirmingThreshold?: number,
+        confirmingParticipantUids?: string[],
+        //new field for observing participants
+        observingParticipantUids?: string[]
+    ): Promise<GenerateTransactionResponse> {
+```
+
+- Topology Transaction decode
+
+```javascript
+generateExternalPartyResponse!.topologyTransactions!.map((topologyTx) => {
+
+    const decodedTx = sdk.userLedger!.toDecodedTopologyTransaction(topologyTx)
+
+    logger.info(decodedTx)
+})
+```

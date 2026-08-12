@@ -1,0 +1,33 @@
+---
+title: "1.2.0"
+description: "Wallet SDK 1.2.0 release note"
+source_id: "SRC-4BBDFE3928"
+source_path: "integrations/release-notes/wallet-sdk-releases/1-2-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "118cd49aa9a760819982007f27e4de1cc88ca290724e03cd350692a1c0c42980"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-sdk-releases/1-2-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-sdk" format="split-release" version="1.2.0" source="158b3ff4c316ba7a5d6c89a6099a5303b76d4f77" */}
+
+# 1.2.0
+
+**2026년 5월 13일 release**
+
+- No-auth Validator/Ledger configuration 연결 허용
+
+*Initialization flow가 `/v2/authenticated-user`를 사용할 수 없는 setup을 처리하고, 가능한 경우 auth context에서 `userId`를 derive할 수 있습니다. 이를 통해 no-auth 및 transitional environment에서 더 원활하게 연결할 수 있습니다.*
+
+- Auth context가 없을 때 더 명확한 error behavior
+
+*SDK initialization 중 error handling을 개선하여 authentication context 누락 문제를 더 쉽게 진단하고 해결할 수 있습니다.*
+
+- Stress 상황의 merge UTXO precision 개선
+
+*누적 merge amount가 예상 decimal precision 안에 유지되도록 merge UTXO logic을 update하여 heavy/batch merge scenario의 reliability를 개선했습니다.*

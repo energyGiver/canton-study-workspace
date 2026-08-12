@@ -1,0 +1,58 @@
+---
+title: "0.15.0 — 2026-01-15"
+description: "Wallet Gateway 0.15.0 release note"
+source_id: "SRC-B95C974F04"
+source_path: "integrations/release-notes/wallet-gateway-releases/0-15-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "91f696de2a73e1b4a6103f9f0c60d85cb97cbe1a1bef0f8bf4168a1b36e94734"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-gateway-releases/0-15-0.md)을 사용하세요.
+</Warning>
+
+
+{/* GENERATED_RELEASE_NOTES target="wallet-gateway" format="split-release" version="0.15.0" source="@canton-network/wallet-gateway-remote@0.15.0" */}
+
+# 0.15.0 — 2026-01-15
+
+### 🚀 기능
+
+- **wallet-gateway-remote:** API rate limit을 설정 가능하게 변경 ([#1141](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1141))
+- wallet 생성 중 network 선택 필요성 제거 ([#1128](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1128), [#686](https://github.com/hyperledger-labs/splice-wallet-kernel/issues/686))
+- sync error 발생 시 비활성화된 wallet 저장 ([#1112](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1112))
+
+### 🩹 수정 사항
+
+- **core-signing-blockdaemon,wallet-gateway-remote:** Blockdaemon signing driver 활성화 ([#1137](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1137))
+
+### 🧱 Dependency update
+
+- @canton-network/core-wallet-dapp-rpc-client version update: 0.20.0
+- @canton-network/core-wallet-user-rpc-client version update: 0.20.0
+- @canton-network/core-wallet-store-inmemory version update: 0.21.0
+- @canton-network/core-wallet-ui-components version update: 0.20.0
+- @canton-network/core-signing-blockdaemon version update: 0.17.1
+- @canton-network/core-signing-participant version update: 0.20.0
+- @canton-network/core-signing-fireblocks version update: 0.18.1
+- @canton-network/core-signing-store-sql version update: 0.21.0
+- @canton-network/core-signing-internal version update: 0.20.0
+- @canton-network/core-wallet-store-sql version update: 0.20.0
+- @canton-network/core-ledger-client version update: 0.25.0
+- @canton-network/core-rpc-transport version update: 0.2.2
+- @canton-network/core-tx-visualizer version update: 0.17.1
+- @canton-network/core-wallet-store version update: 0.20.0
+- @canton-network/core-signing-lib version update: 0.20.1
+- @canton-network/core-wallet-auth version update: 0.17.1
+- @canton-network/core-rpc-errors version update: 0.13.1
+- @canton-network/core-types version update: 0.16.1
+
+### ❤️ 감사의 말
+
+- Alex Matson @alexmatson-da
+- Marc Juchli @mjuchli-da
+- pawelstepien-da
+- Phillip Olesen @PHOL-DA

@@ -1,0 +1,101 @@
+---
+title: "Observability"
+description: "Canton application용 logging, metric, dashboard 설정"
+source_id: "SRC-13F90F6E21"
+source_path: "appdev/modules/m4-observability"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "42ce193632edd10c60a82bd679b38e978ade8339ba50a67e690f085af59c4106"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m4-observability.md)을 사용하세요.
+</Warning>
+
+import DamlDocsAppdevModulesM4ObservabilityL16 from "/snippets/daml-docs/appdev_modules_m4-observability_L16.mdx";
+import DamlDocsAppdevModulesM4ObservabilityL64 from "/snippets/daml-docs/appdev_modules_m4-observability_L64.mdx";
+
+
+production에서 Canton application을 실행하려면 backend와 underlying Canton node가 수행하는 작업을 볼 수 있어야 합니다. 이 페이지에서는 application developer 관점에서 logging, metric, dashboard를 설명합니다.
+
+## Logging
+
+### Logback을 사용한 Structured Logging
+
+Canton node와 cn-quickstart는 모두 logging에 [Logback](https://logback.qos.ch/)을 사용합니다. default configuration은 사람이 읽을 수 있는 log를 console에 기록하지만 production에서는 structured JSON output으로 전환해야 합니다. JSON log는 ELK stack 또는 Grafana Loki 같은 log aggregation system으로 더 쉽게 ingest할 수 있습니다.
+
+JSON output을 위한 일반적인 `logback.xml` configuration은 다음과 같습니다.
+
+<DamlDocsAppdevModulesM4ObservabilityL16 />
+
+MDC (Mapped Diagnostic Context)에 `command-id`를 포함하면 backend log에서 하나의 Ledger API Command를 trace하고 이를 처리한 Canton node log와 correlate할 수 있습니다.
+
+### Log에 기록할 항목
+
+application log에서는 다음에 집중하세요.
+
+- **Command submission** -- 각 Ledger API 호출 전에 Command ID, template 또는 choice name, submitting Party 기록
+- **Command completion** -- 성공 또는 실패를 기록하며 실패 시 error code 포함
+- **PQS query performance** -- 정의한 threshold를 초과하는 느린 query에 SQL과 elapsed time 기록
+- **Authentication event** -- token validation failure 및 Party resolution 기록
+
+production에서 contract payload를 logging하지 마세요. Validator boundary 밖으로 나가서는 안 되는 private data가 포함될 수 있습니다.
+
+## Metric
+
+### Prometheus Endpoint
+
+Canton node는 Prometheus-compatible metric endpoint를 공개합니다. cn-quickstart를 local에서 실행하면 Validator metric을 기본적으로 `http://localhost:10013/metrics`에서 사용할 수 있습니다.
+
+application 관점에서 monitoring할 주요 metric은 다음과 같습니다.
+
+- `daml_commands_submissions_total` -- submit된 전체 Command를 success, failure status별로 구분
+- `daml_commands_completions_total` -- result status와 함께 완료된 Command
+- `daml_commands_delayed_submissions` -- backpressure로 지연된 Command
+- `daml_execution_total` -- Daml interpretation 횟수 및 duration
+- `canton_sequencer_client_submissions_sequencing_time` -- submission부터 sequencing까지의 시간으로 Synchronizer latency를 반영
+
+### Application-Level Metric
+
+cn-quickstart는 service method의 `@WithSpan` annotation을 통한 OpenTelemetry tracing을 포함합니다. 이러한 span을 OpenTelemetry-compatible backend인 Jaeger, Zipkin, Grafana Tempo로 export할 수 있습니다.
+
+backend의 custom metric에는 Spring Boot와 함께 제공되는 Micrometer 또는 OpenTelemetry metrics API를 사용하세요.
+
+<DamlDocsAppdevModulesM4ObservabilityL64 />
+
+## Dashboard
+
+### cn-quickstart와 Grafana
+
+cn-quickstart는 `ops/` directory에 미리 구성된 Grafana dashboard를 제공합니다. `make start`를 실행하면 `http://localhost:3000`에서 Grafana를 사용할 수 있습니다.
+
+제공되는 dashboard는 다음을 다룹니다.
+
+- **Ledger API 개요** -- Command submission rate, latency, error rate
+- **Canton node health** -- JVM memory, gRPC connection state, Sequencer connectivity
+- **PQS indexing** -- ledger head와 PQS projection offset 사이의 lag
+
+### 자체 Dashboard 구축
+
+application-specific metric을 추가한다면 Canton node metric과 backend metric을 결합한 Grafana dashboard를 만드세요. 다음 layout을 실용적인 출발점으로 사용할 수 있습니다.
+
+- **상단 row** -- Canton node Prometheus endpoint의 Command submission rate와 error rate
+- **중간 row** -- Spring Boot Actuator 또는 OpenTelemetry의 application REST endpoint latency
+- **하단 row** -- 주요 template의 PQS query latency와 Active Contract 수
+
+### Alerting
+
+application reliability에 영향을 주는 다음 condition에 alert를 설정하세요.
+
+- Command error rate가 threshold를 초과하는 경우, 예를 들어 submission의 5% 이상이 실패
+- PQS indexing lag가 몇 초를 초과해 query가 stale data를 반환하는 경우
+- traffic budget이 auto-top-up threshold 아래로 내려가 Transaction이 실패하기 시작할 경우
+- Validator의 JVM heap usage가 지속적으로 80%를 초과하는 경우
+
+## 추가 자료
+
+- [Backend 개발](/appdev/modules/m4-backend-dev) -- observability와 함께 사용하는 error handling pattern
+- [Canton Coin과 Traffic](/appdev/modules/m4-canton-coin) -- traffic budget monitoring
+- [cn-quickstart repository](https://github.com/digital-asset/cn-quickstart) -- 미리 구성된 observability stack

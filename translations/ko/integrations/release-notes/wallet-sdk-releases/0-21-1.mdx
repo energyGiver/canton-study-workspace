@@ -1,0 +1,25 @@
+---
+title: "0.21.1"
+description: "Wallet SDK 0.21.1 release note"
+source_id: "SRC-3904360A1D"
+source_path: "integrations/release-notes/wallet-sdk-releases/0-21-1"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "f95cf175585774d43a659af0a6d72287039e6025aa5af9409e7bd30ebf1be322"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-sdk-releases/0-21-1.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-sdk" format="split-release" version="0.21.1" source="158b3ff4c316ba7a5d6c89a6099a5303b76d4f77" */}
+
+# 0.21.1
+
+**2026년 2월 20일 release**
+
+- Loop mode에서 Active Contract fetch 수정
+
+*Loop mode(`continueUntilCompletion`)로 Active Contract를 fetch할 때 pagination을 올바르게 처리하지 않아 incomplete result를 반환하는 bug를 수정했습니다. 이제 모든 contract를 안정적으로 반환합니다.*

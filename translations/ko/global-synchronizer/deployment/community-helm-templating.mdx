@@ -1,0 +1,39 @@
+---
+title: "자동 Helm/Kubernetes Templating Tool(Community)"
+description: "Helm 및 Kubernetes deployment templating을 위한 community 제공 tool"
+source_id: "SRC-601D5B811E"
+source_path: "global-synchronizer/deployment/community-helm-templating"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "fdcc9d92490b39b8ea49d88eb05a7e2c38e3c910cb6216058f1746012470cc47"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/deployment/community-helm-templating.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/community/helm-kubernetes-templating-tool.rst" hash="b83e0f4d" */}
+
+<Warning>
+이 section에서는 community member가 공유한 solution을 소개합니다. Splice maintainer가 공식적으로 test하지 않았으므로 user가 information을 독립적으로 verify하는 것이 좋습니다. Accuracy와 completeness 개선을 위한 contribution은 언제든 환영합니다.
+</Warning>
+
+Kubernetes, Helm 및 Git으로 Validator와 Super Validator Node deployment를 관리하기는 어려울 수 있습니다. 특히 변화하는 configuration file 및 value와 여러 environment(DevNet, TestNet, MainNet)를 동기화할 때 더욱 그렇습니다. 잦은 version bump, 새 variable 및 hard migration 때문에 수많은 `values-*.yml` file을 수동으로 update해야 하는 경우가 많으며 error가 발생하기 쉽습니다. 이 manual process는 inconsistency, configuration 변경 누락 및 operational overhead 증가로 이어질 수 있습니다. 여기서 소개하는 solution은 Helm values와 environment별 configuration 관리를 자동화하고 단순화하도록 설계된 templating tool을 제공합니다. 이 tool은 공식 deployment guide와 함께 추가 automation 및 templating flexibility를 원하는 user를 위한 보조 resource입니다. 공식 지원 Kubernetes 기반 deployment에 관한 자세한 내용은 [Validator Node의 Kubernetes 기반 Deployment](/global-synchronizer/deployment/validator-kubernetes)와 [Super Validator Node의 Kubernetes 기반 Deployment](/global-synchronizer/deployment/kubernetes-deployment)를 참조하세요.
+
+Community discussion에서 이 solution을 공유한 Stéphane Loeuillet에게 감사드립니다. 자세한 내용과 향후 update는 [kaikodata/canton-tooling](https://github.com/kaikodata/canton-tooling/blob/master/kubernetes/README.md#canton-templating-script) repository를 참조하세요.
+
+## Solution의 주요 Feature
+
+- Source directory와 environment variable file에서 YAML configuration을 자동으로 template하며 file content와 filename 모두에서 placeholder를 substitute하여 manual edit와 update 누락 risk를 줄입니다.
+- DevNet, TestNet, MainNet multi-environment를 지원하며 Network 간 seamless deployment를 위해 서로 다른 chart version, migration ID, OIDC parameter 및 기타 environment별 value를 처리합니다.
+- Variable substitution으로 rename된 directory에 symlink를 생성하고 기존 symlink를 자동 정리하여 nesting을 방지하며 반복 실행 시 clean processing을 보장합니다.
+- String substitution용 debug logging(`\#` 포함 variable 지원), Chart.yaml dependency 기반 alias prefix 및 YAML reindentation, .gitignore 관리(output directory별 또는 repository root) CLI option을 제공합니다.
+- yamllint 같은 CI tool과 compatible한 "legal" YAML file을 consistent하게 output합니다.
+- 새 release로 모든 YAML file을 batch update하는 shell script를 제공하여 upgrade를 간소화하고 operational overhead를 줄입니다.
+- 모든 user에게 도움이 되도록 automation과 upstream example values file 개선에 중점을 두며 community contribution과 suggestion을 환영합니다.
+- Secret 및 ingress template로 확장할 계획이며 Kubernetes environment의 advanced deployment scenario와 향후 enhancement를 지원합니다(2025년 5월 기준 개발 중).
+
+
+{/* COPIED_END */}

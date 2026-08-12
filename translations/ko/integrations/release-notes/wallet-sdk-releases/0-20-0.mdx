@@ -1,0 +1,61 @@
+---
+title: "0.20.0"
+description: "Wallet SDK 0.20.0 release note"
+source_id: "SRC-53C54B53F6"
+source_path: "integrations/release-notes/wallet-sdk-releases/0-20-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "6c63136935dc5ff286f118bb603d453fbc11b15290f0110e5aad6aef11395605"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-sdk-releases/0-20-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-sdk" format="split-release" version="0.20.0" source="158b3ff4c316ba7a5d6c89a6099a5303b76d4f77" */}
+
+# 0.20.0
+
+**2026년 1월 16일 release**
+
+- WebSocket을 통한 Ledger update event subscribe
+
+*이제 persistent WebSocket connection을 열고 Interface 또는 Template ID로 filter한 Ledger update event의 real-time stream을 수신할 수 있습니다. Stream은 async generator로 expose되므로 `for await` loop와 자연스럽게 통합됩니다.*
+
+```javascript
+const stream = sdk.userLedger?.subscribeToUpdates({
+    partyId: sender!.partyId,
+    interfaceIds: [HOLDING_INTERFACE_ID],
+})
+
+for await (const update of stream!) {
+    logger.info(update, 'received ledger update')
+    if (done) break
+}
+```
+
+- WebSocket을 통한 Command completion subscribe
+
+*Update subscription과 마찬가지로 Command completion event를 subscribe할 수 있어 polling 대신 완료되거나 실패한 Command에 real time으로 반응할 수 있습니다.*
+
+```javascript
+const stream = sdk.userLedger?.subscribeToCompletions({
+    parties: [sender!.partyId],
+    beginOffset: 0,
+})
+
+for await (const completion of stream!) {
+    logger.info(completion, 'received completion event')
+    if (done) break
+}
+```
+
+- `listWallets`는 Local Party만 반환
+
+*이전에는 `listWallets`가 remote Validator에서 user에게 access가 부여된 Party를 반환할 수 있어 혼란스럽고 올바르지 않았습니다. 이제 method는 연결된 Participant에 local allocation된 Party만 반환합니다.*
+
+- Merge delegation을 위한 optional input UTXO
+
+*이전의 merge delegation setup은 UTXO를 explicit하게 제공해야 했습니다. 이제 input UTXO는 optional이며 제공하지 않으면 다른 operation과 마찬가지로 smart UTXO selection으로 fallback합니다.*

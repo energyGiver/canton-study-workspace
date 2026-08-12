@@ -1,0 +1,62 @@
+---
+title: "0.5.0"
+description: "Wallet SDK 0.5.0 release note"
+source_id: "SRC-17C29E96F9"
+source_path: "integrations/release-notes/wallet-sdk-releases/0-5-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "916a2c859774981f88655b53358ade3e74f2a61e01a360b0b972129107bd55a1"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-sdk-releases/0-5-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-sdk" format="split-release" version="0.5.0" source="158b3ff4c316ba7a5d6c89a6099a5303b76d4f77" */}
+
+# 0.5.0
+
+**2025년 9월 11일 release**
+
+- create transfer에 Memo field 추가
+
+```javascript
+const [transferCommand, disclosedContracts2] =
+    await sdk.tokenStandard!.createTransfer(
+        sender!.partyId,
+        receiver!.partyId,
+        '100',
+        {
+            instrumentId: 'Amulet',
+            instrumentAdmin: instrumentAdminPartyId,
+        },
+        'my-new-favorite-memo-field'
+    )
+```
+
+- 이제 ValidatorController 대신 ledgerController를 통해 pre-approval 생성을 지원합니다
+
+이전 방식:
+
+```javascript
+await sdk.validator?.externalPartyPreApprovalSetup(privateKey)
+```
+
+이제 대신 Ledger API를 사용합니다.
+
+```javascript
+const transferPreApprovalProposal =
+    sdk.userLedger?.createTransferPreapprovalCommand(
+        validatorOperatorParty, //this needs to be sourced from the validator
+        receiver?.partyId,
+        instrumentAdminPartyId
+    )
+
+await sdk.userLedger?.prepareSignAndExecuteTransaction(
+    [transferPreApprovalProposal],
+    keyPairReceiver.privateKey,
+    v4()
+)
+```

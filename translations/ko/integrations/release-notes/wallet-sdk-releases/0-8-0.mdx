@@ -1,0 +1,95 @@
+---
+title: "0.8.0"
+description: "Wallet SDK 0.8.0 release note"
+source_id: "SRC-C14A7F0E2B"
+source_path: "integrations/release-notes/wallet-sdk-releases/0-8-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "b2ca9ce63fcab0651440c953151d69f4855b133be04589030410fd61cbbe29af"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-sdk-releases/0-8-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-sdk" format="split-release" version="0.8.0" source="158b3ff4c316ba7a5d6c89a6099a5303b76d4f77" */}
+
+# 0.8.0
+
+**2025년 9월 24일 release**
+
+- **중요: Command prepare 및 execute flow가 단순해졌지만 code를 변환해야 합니다**
+
+```javascript
+// previous prepare and submit flow
+const [tapCommand, disclosedContracts] = await sdk.tokenStandard!.createTap(
+    sender!.partyId,
+    '2000000',
+    {
+        instrumentId: 'Amulet',
+        instrumentAdmin: instrumentAdminPartyId,
+    }
+)
+
+await sdk.userLedger?.prepareSignAndExecuteTransaction(
+    [{ ExerciseCommand: tapCommand }],
+    keyPairSender.privateKey,
+    v4(),
+    disclosedContracts
+)
+```
+
+새 flow에서는 array wrapping인 `[{ ExerciseCommand: tapCommand }]`을 더 이상 수행할 필요 없이 `tapCommand`를 직접 전달할 수 있습니다.
+
+```javascript
+// new prepare and submit flow
+const [tapCommand, disclosedContracts] = await sdk.tokenStandard!.createTap(
+    sender!.partyId,
+    '2000000',
+    {
+        instrumentId: 'Amulet',
+        instrumentAdmin: instrumentAdminPartyId,
+    }
+)
+
+await sdk.userLedger?.prepareSignAndExecuteTransaction(
+    tapCommand,
+    keyPairSender.privateKey,
+    v4(),
+    disclosedContracts
+)
+```
+
+모든 Transaction에 적용됩니다.
+
+- 2-step transfer의 withdrawal flow 지원
+
+이제 sender가 이전에 보낸 2-step transfer를 withdraw할 수 있습니다.
+
+```javascript
+// Alice withdraws the transfer
+const [withdrawTransferCommand, disclosedContracts] =
+    await sdk.tokenStandard!.exerciseTransferInstructionChoice(
+        transferCid!,
+        'Withdraw'
+    )
+```
+
+참고: receiver가 이미 `Accept` 또는 `Reject`를 수행했다면 작동하지 않습니다.
+
+- Transaction 수행 전 receiver의 transfer pre-approval 설정 여부 validation 허용
+
+```javascript
+//check if bob have set up transfer pre approval before sending
+const transferPreApprovalStatus =
+        await sdk.tokenStandard?.getTransferPreApprovalByParty(
+            receiver!.partyId,
+            'Amulet'
+        )
+    logger.info(transferPreApprovalStatus, '[BOB] transfer preapproval status')
+```
+
+- Splice 0.4.17을 대상으로 test 및 verify했습니다
+- Party onboarding의 endless loop bug를 수정했습니다

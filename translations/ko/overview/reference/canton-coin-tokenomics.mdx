@@ -1,0 +1,175 @@
+---
+title: "Canton Coin Tokenomics"
+description: "Canton Coin fee, minting round, activity record, burn-mint equilibrium에 대한 technical reference"
+source_id: "SRC-6472F63A2D"
+source_path: "overview/reference/canton-coin-tokenomics"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "e0ff7e87fbf258aaed9c052b68ea78dacda834b4a6a7823c762ceae9969b5bf6"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/reference/canton-coin-tokenomics.md)을 사용하세요.
+</Warning>
+
+Canton Coin(CC)은 Global Synchronizer의 native utility token입니다. [Splice](https://github.com/canton-network/splice) open-source infrastructure를 통해 구현되며 Daml contract level에서는 "Amulet"이라고 합니다. CC는 Network usage(traffic) 비용 지급, infrastructure operator와 application provider에 대한 보상, Super Validator 참여를 통한 Network governance라는 세 가지 기능을 수행합니다.
+
+Network에서 CC의 역할과 획득 방법에 관한 배경은 [Canton Coin and the Global Synchronizer](/overview/understand/canton-coin)를 참조하세요. [Canton Coin white paper](https://www.digitalasset.com/hubfs/Canton%20Network%20Files/Documents%20(whitepapers%2c%20etc...)/Canton%20Coin_%20A%20Canton-Network-native%20payment%20application.pdf)에서 전체 formal specification을 제공합니다.
+
+## Fee Structure
+
+CC에는 세 가지 fee type이 있습니다. [CIP-0078](https://github.com/canton-foundation/cips/blob/main/cip-0078/cip-0078.md)에 따라 transfer fee와 lock fee가 제거되어 traffic fee와 holding fee가 현재 사용하는 두 mechanism으로 남았습니다.
+
+### Traffic Fees
+
+Traffic Credit은 transfer할 수 없습니다. CC가 traffic으로 convert되면 Transaction 제출 비용에만 사용할 수 있습니다. Validator의 traffic budget이 소진되면 Transaction이 실패합니다. Auto-top-up automation을 사용할 수 있으며 사용을 권장합니다.
+
+<Note>
+Consuming Contract에 대한 contention으로 confirmation request가 실패해도 Traffic Credit은 소비됩니다. 예를 들어 두 transfer가 같은 coin contract를 consume하려 할 때가 이에 해당합니다.
+</Note>
+
+### Holding Fees
+
+{/* COPIED_START source="splice:docs/src/background/tokenomics/overview_tokenomics.rst" hash="4b0e1a6e" */}
+
+Canton Network tokenomics는 Network에 가치를 제공하는 action을 수행한 Party를 식별하는 *Activity Record*를 기반으로 합니다. Activity Record에는 이 Activity Record와 관련된 CC minting의 상대적 share인 *weight*가 있습니다.
+
+Activity Record 생성과 관련 Canton Coin(CC) minting은 서로 구분되는 두 단계입니다. 생성 및 minting 단계는 다섯 phase로 이루어진 *round*라는 cycle에서 수행됩니다. 첫 phase에는 해당 round의 모든 fee value가 Ledger에 기록됩니다(fee는 [Scan State API](/sdks-tools/api-reference/splice-scan-current-state-api)에서 얻을 수 있습니다). 두 번째 phase는 *activity recording*이며 Activity Record가 생성되는 시점입니다. 이 phase에서 생성된 record는 해당 round에 속합니다. 다음 phase에서는 Activity Record 종류별 [CC-issuance-per-activity-weight](https://github.com/canton-network/splice/blob/332e06a7ae9e13fde5bba0bf7dcb059aa36f979e/daml/splice-amulet/daml/Splice/Issuance.daml#L67)를 계산합니다. 이는 이 Activity Record type에 대해 mint할 수 있는 총 CC의 share입니다. 그 다음 *minting phase*에서 Activity Record owner는 minting weight에 비례하여 CC를 mint할 수 있습니다.
+
+여러 round가 동시에 active하며 각 round는 서로 다른 phase에 있습니다. Round는 10분마다 시작합니다. 이는 Super Validator가 향후 governance vote를 통해 변경할 수 있는 configuration parameter입니다. 자세한 내용은 CC whitepaper를 참조하세요.
+
+External Party와 Local Party의 Activity Record 생성에는 차이가 없지만 minting phase에서 사용하는 automation support에는 차이가 있습니다. Validator에 onboard된 Local Party의 경우 Validator application이 모든 Activity Record를 자동으로 mint하는 background automation을 실행합니다. External Party는 자신이 제어하는 key로 Transaction에 sign합니다. 따라서 Validator automation은 External Party를 위해 minting을 직접 수행할 수 없습니다. External Party에는 두 가지 선택지가 있습니다.
+
+1.  [minting delegation](/global-synchronizer/splice-fundamentals/rewards-minting)을 사용하여 reward collection을 Validator에 delegate하고 custom automation을 구축할 필요를 없앱니다.
+2.  모든 Activity Record를 input으로 사용하여 round마다 최소 한 번 AmuletRules_Transfer를 호출하는 custom automation을 개발합니다.
+
+{/* DIVERGENCE: corrected CIP-0073 title from "SV-Determined Parties" to "SV-Chosen Parties" to match the actual upstream CIP title; upstream splice source (docs/src/background/tokenomics/overview_tokenomics.rst, hash 4b0e1a6e) still has the incorrect title. See cf-docs issue #1049. */}
+
+[Weighted Validator Liveness Rewards for SV-Chosen Parties](https://github.com/canton-foundation/cips/blob/main/cip-0073/cip-0073.md)라는 승인된 CIP가 이 support 제공을 설명합니다.
+
+참고로 tokenomics에 중요한 몇 가지 흥미로운 template은 다음과 같습니다.
+
+- Fee schedule을 저장하는 AmuletRules
+- Round가 열릴 때의 price와 fee를 저장하는 OpenMiningRound
+- Activity weight당 mint amount를 저장하는 IssuingMiningRound
+
+## Types of Activity Records
+
+Network activity accounting에는 다섯 가지 주요 template이 관여합니다.
+
+- 두 template은 application과 관련됩니다.
+
+  > - FeaturedAppActivityMarker
+  > - AppRewardCoupon
+
+- 세 template은 application을 위한 infrastructure 제공과 관련됩니다.
+
+  > - ValidatorRewardCoupon
+  > - ValidatorLivenessActivityRecord
+  > - SvRewardCoupon
+
+마지막 네 개는 Activity Record이지만 `FeaturedAppActivityMarker`는 Activity Record로 간주되지 않습니다. 뒤에서 설명하듯 `FeaturedAppActivityMarker`는 Super Validator가 실행하는 automation을 통해 `AppRewardCoupon`으로 convert됩니다. Featured CC transfer와 `FeaturedAppActivityMarker``는 모두 동일한 reward를 생성합니다. ``FeaturedAppActivityMarker`\`은 app Activity Record를 생성하는 데 선호되는 방식입니다.
+
+`FeaturedAppActivityMarker`, `AppRewardCoupon`, `ValidatorRewardCoupon` contract는 application의 Transaction이 성공할 때 생성됩니다. 일반적으로 application은 해당 Daml code가 `FeaturedAppActivityMarker` contract를 직접 생성하거나 application provider의 Party를 feature하는 Daml model과 상호 작용할 때 reward를 받습니다. `ValidatorRewardCoupon`은 `AmuletRules_Transfer`를 호출할 때마다(예: Splice Wallet UI를 사용하는 CC Transfer) 또는 CC가 burn될 때 생성됩니다.
+
+Minting weight뿐 아니라 application의 reward는 *featured* 또는 *unfeatured*(default state) 지정 여부에 따라서도 달라집니다. CIP-0078 구현 이후에는 featured application만 reward를 받습니다. Featured application은 총 equivalent value가 약 US \$1인 minting weight를 받습니다(Super Validator가 향후 조정할 수 있음).
+
+## How to become a featured application
+
+Featured application이 되려면 application의 input인 *application provider's Party ID*가 필요합니다. 이 process는 [이 form](https://sync.global/featured-app-request/)을 작성하는 것으로 시작합니다. Request는 application을 review하고 응답하는 tokenomics committee로 전달됩니다. 이 [webpage](https://lists.sync.global/g/tokenomics/topics)는 tracking을 위한 tokenomics committee topic을 나열합니다. 다음은 [성공한 submission의 예](https://lists.sync.global/g/tokenomics/topic/new_featured_app_request/112787885)입니다. Testing 목적으로는 DevNet에서 application을 self-feature할 수 있습니다.
+
+일부 template에서는 activity attribution을 여러 beneficiary Party와 공유할 수 있습니다. 예를 들어 featured application reward는 각각 주어진 `weight`에 따라 application provider와 application user가 공유할 수 있습니다. 일반적인 pattern은 다음과 같습니다.
+
+- 각각 `weight`가 있는 beneficiary list를 제공합니다. Weight의 합은 `1.0`입니다.
+- 이후 processing은 beneficiary와 weight pair별로 별도 Contract를 생성하고 Contract의 `beneficiary`와 `weight` field를 그에 맞게 설정합니다.
+
+Beneficiary는 다음 section에서 더 자세히 설명합니다.
+
+[CIP-0078](https://github.com/canton-foundation/cips/blob/main/cip-0078/cip-0078.md)은 Canton Coin transfer와 lock에 대한 거의 모든 fee를 제거했으므로 unfeatured application은 더 이상 reward를 받지 않습니다. Holding fee는 유지되지만 coin을 transfer input으로 사용할 때 holding fee가 부과되지 않도록 behavior가 변경되었습니다.
+
+Holding fee는 coin amount와 관계없이 별도 coin contract(UTXO)마다 시간 단위로 부과되는 fixed fee입니다. Dust coin을 merge하거나 제거하도록 유도하여 Network storage usage를 줄이기 위한 CC merge를 촉진합니다. Holding fee는 coin transfer 시에는 부과되지 않고 expired coin contract에 `Amulet_Expire` Choice를 명시적으로 실행할 때만 부과됩니다. Coin contract(UTXO)에 누적된 holding fee가 coin value보다 커지면 Super Validator가 이를 expire할 수 있습니다. Coin contract value가 일정하게 유지되고 holding fee와 무관하므로 holding fee accounting이 단순해집니다.
+
+{/* COPIED_END */}
+
+Holding fee는 CC amount가 아닌 UTXO별로 부과되므로 작은 "dust" coin은 value 대비 fee가 더 빨리 누적됩니다. 누적 holding fee가 coin value를 초과하면 Super Validator가 Contract를 expire하여 Ledger에서 제거할 수 있습니다. 이 방식은 accounting을 단순하게 합니다. Coin contract의 face value는 일정하게 유지되며 누적 fee에 따라 감소하지 않습니다.
+
+### Transfer and Lock Fees (Post CIP-0078)
+
+[CIP-0078](https://github.com/canton-foundation/cips/blob/main/cip-0078/cip-0078.md)은 CC transfer와 lock에 대한 거의 모든 fee를 제거했습니다. Legacy Amulet transfer, CN Token Standard two-step transfer, one-step `TransferPreapproval` transfer 모두 fee가 부과되지 않습니다. 유일한 예외는 featured one-step transfer가 `TransferPreapproval` contract를 유지하는 provider Party를 위해 계속 `AppRewardCoupon`을 생성한다는 점입니다.
+
+## Burn-Mint Equilibrium
+
+따라서 CC supply는 fixed가 아니라 dynamic합니다. Maximum minting curve는 새 coin이 circulation에 진입할 수 있는 속도를 제한하고 traffic purchase의 burn event는 coin을 제거합니다.
+
+Minting reward는 세 category의 contributor에게 분배됩니다.
+
+- **Super Validators**는 Synchronizer node(Sequencer, Mediator, governance infrastructure)를 운영하여 minting right를 얻습니다.
+- **Application providers**는 featured application을 통해 Transaction을 지원할 때 reward를 받습니다.
+- **Validators**는 자신이 burn한 fee에 비례하여 minting right를 얻으며 Network는 이를 해당 node가 생성한 activity의 proxy로 취급합니다.
+
+과거에는 Validator가 activity와 무관하게 uptime에 대한 liveness bonus도 받았습니다. [CIP-0096](https://github.com/canton-foundation/cips/blob/main/cip-0096/cip-0096.md)은 이를 단계적으로 폐지하여 2026-04-30부터 Validator별 liveness reward의 cap을 $0로 설정했습니다.
+
+## Minting Rounds
+
+세 Daml template이 round lifecycle을 구동합니다.
+
+- **`AmuletRules`**는 fee schedule 저장
+- **`OpenMiningRound`**는 round가 열릴 때의 price와 fee 저장
+- **`IssuingMiningRound`**는 계산된 CC-issuance-per-activity-weight 저장
+
+### Minting for External Parties
+
+Local Party의 경우 Validator application이 모든 Activity Record를 자동으로 mint하는 background automation을 실행합니다. External Party는 자신이 제어하는 key로 Transaction에 sign하므로 Validator automation이 External Party를 대신해 직접 mint할 수 없습니다. External Party에는 두 가지 선택지가 있습니다.
+
+- **Minting delegation** -- Reward collection을 Validator에 delegate하여 custom automation을 피합니다.
+- **Custom automation** -- 모든 Activity Record를 input으로 사용하여 round마다 최소 한 번 `AmuletRules_Transfer`를 호출합니다.
+
+[CIP-0073 (Weighted Validator Liveness Rewards for SV-Chosen Parties)](https://github.com/canton-foundation/cips/blob/main/cip-0073/cip-0073.md)는 이 workflow에 대한 추가 support를 설명했으나, Validator liveness reward를 중단한 [CIP-0096](https://github.com/canton-foundation/cips/blob/main/cip-0096/cip-0096.md)으로 대체되었습니다.
+
+## Activity Records
+
+Activity Record attribution은 여러 beneficiary가 공유할 수 있습니다. 각 beneficiary는 `weight`(합계 1.0)를 받으며 system은 minting 중 beneficiary/weight pair별로 별도 Contract를 생성합니다.
+
+## Featured vs. Unfeatured Applications
+
+Application의 reward는 *featured* 또는 *unfeatured*(default) 지정 여부에 따라 달라집니다. CIP-0078 이후에는 featured application만 reward를 받습니다. Featured application은 qualifying activity마다 총 equivalent value가 약 $1 USD인 minting weight를 받습니다(Super Validator가 이 amount를 조정할 수 있음).
+
+`FeaturedAppActivityMarker`는 application Activity Record를 생성하는 데 선호되는 mechanism입니다. `TransferPreapproval`을 통한 featured one-step transfer도 provider Party를 위한 `AppRewardCoupon`을 생성합니다.
+
+Featured application이 되려면 [CF featured app request form](https://sync.global/featured-app-request/)을 통해 request를 제출하세요. Tokenomics committee가 submission을 review하며 진행 상황은 [tokenomics committee topics page](https://lists.sync.global/g/tokenomics/topics)에서 추적됩니다. DevNet에서는 testing을 위해 application을 self-feature할 수 있습니다.
+
+## UTXO Model and Dust Expiry
+
+CC Holding은 UTXO(unspent transaction output) model을 사용합니다. 각 coin은 Ledger에서 특정 face value를 가진 개별 `Amulet` Contract로 표현됩니다. Transfer는 input UTXO를 consume하고 Bitcoin의 Transaction model과 유사하게 새 output UTXO를 생성합니다. CC balance와 Transaction history는 Network의 Scan service를 통해 공개적으로 visible합니다.
+
+Transfer가 change(input이 전송 amount를 초과하는 부분)를 만들면 remainder에 대해 새 UTXO가 생성됩니다. 시간이 지나면 Wallet이 소액 UTXO를 많이 보유하게 될 수 있습니다.
+
+### Dust Expiry
+
+UTXO별 holding fee는 dust를 자연스럽게 정리하는 mechanism을 만듭니다. Coin face value와 관계없이 Contract별 fixed fee이므로 0.001 CC coin과 1000 CC coin에는 시간 단위로 같은 holding fee가 누적됩니다. 따라서 작은 coin이 더 빨리 비경제적이 됩니다.
+
+UTXO에 누적된 holding fee가 face value를 초과하면 Super Validator가 `Amulet_Expire` Choice를 exercise하여 Contract를 expire할 수 있습니다. 그러면 Contract가 Ledger에서 완전히 제거됩니다. User는 UTXO 수와 holding fee exposure를 줄이기 위해 작은 coin을 큰 coin으로 merge하도록 유도됩니다. 가능한 경우 Splice Wallet automation이 이 merge를 자동으로 처리합니다.
+
+## CN Token Standard (CIP-0056)
+
+[CIP-0056](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md)은 transfer, allocation, metadata query를 포함한 token operation용 Daml interface 집합인 Canton Network Token Standard를 정의합니다. Splice Wallet은 CC에 CIP-0056을 구현하며 CC를 programmatically 처리하는 application은 이 standard interface를 통해 상호 작용합니다.
+
+CIP-0056 기반 two-step transfer는 다음과 같이 작동합니다.
+
+1. Sender가 `TransferFactory_Transfer`를 exercise합니다. Registry가 `TransferInstruction` Contract를 생성하고 receiver가 accept할 때까지 fund를 hold합니다.
+2. Receiver가 `TransferInstruction_Accept`를 exercise하면 transfer가 완료되고 receiver를 위한 새 Holding이 생성됩니다.
+
+이 two-step flow는 sender-side automation에 의존하지 않으며 External Party에 적합합니다. CIP-0078 이후 이 operation에는 fee가 발생하지 않으며 Activity Record도 생성되지 않습니다.
+
+API 상세 정보는 [CIP-0056 text](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md)와 [token standard source code](https://github.com/canton-network/splice/tree/main/token-standard#readme)를 참조하세요.
+
+## Related Resources
+
+- [Canton Coin and the Global Synchronizer](/overview/understand/canton-coin) -- Conceptual overview와 CC 획득 방법
+- [CIP-0078 (CC Fee Removal)](https://github.com/canton-foundation/cips/blob/main/cip-0078/cip-0078.md) -- Transfer fee와 lock fee를 제거한 proposal
+- [CIP-0056 (CN Token Standard)](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md) -- Token operation을 위한 standard interface
+- [CIP-0073 (Weighted Validator Liveness Rewards)](https://github.com/canton-foundation/cips/blob/main/cip-0073/cip-0073.md) -- SV가 선택한 Party를 위한 liveness reward support이며 CIP-0096으로 대체됨
+- [CIP-0096 (Removing Liveness Rewards from Validator Rewards Pool)](https://github.com/canton-foundation/cips/blob/main/cip-0096/cip-0096.md) -- 2026-04-30부터 Validator liveness reward 중단
+- [Canton Coin white paper](https://www.digitalasset.com/hubfs/Canton%20Network%20Files/Documents%20(whitepapers%2c%20etc...)/Canton%20Coin_%20A%20Canton-Network-native%20payment%20application.pdf) -- 전체 formal specification

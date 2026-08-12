@@ -1,0 +1,138 @@
+---
+title: "0.7.0"
+description: "Wallet SDK 0.7.0 release note"
+source_id: "SRC-8DD561E977"
+source_path: "integrations/release-notes/wallet-sdk-releases/0-7-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "0ce51e754b3950fa966b18c4f856e9b76c151f6025c74970cb34c78e01e61a01"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-sdk-releases/0-7-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-sdk" format="split-release" version="0.7.0" source="158b3ff4c316ba7a5d6c89a6099a5303b76d4f77" */}
+
+# 0.7.0
+
+**2025년 9월 18일 release**
+
+- **중요: `connectTopology` 같은 method는 더 이상 Scan API를 사용하지 않으며 대신 Scan proxy를 사용합니다**
+- 여러 Validator를 대상으로 Party 생성 시 multi-hosting 지원이 추가되었습니다
+
+```javascript
+// setup config against multiple nodes to acquire signature
+const multiHostedParticipantEndpointConfig = [
+    {
+        adminApiUrl: '127.0.0.1:2902',
+        baseUrl: new URL('http://127.0.0.1:2975'),
+        accessToken: adminToken.accessToken,
+    },
+    {
+        adminApiUrl: '127.0.0.1:3902',
+        baseUrl: new URL('http://127.0.0.1:3975'),
+        accessToken: adminToken.accessToken,
+    },
+]
+
+const participantIdPromises = multiHostedParticipantEndpointConfig.map(
+    async (endpoint) => {
+        return await sdk.topology?.getParticipantId(endpoint)
+    }
+)
+const participantIds = await Promise.all(participantIdPromises)
+
+const participantPermissionMap = new Map<string, Enums_ParticipantPermission>()
+
+// decide on Permission for each participant
+participantIds.map((pId) =>
+    participantPermissionMap.set(pId!, Enums_ParticipantPermission.CONFIRMATION)
+)
+
+// setup multi-hosting for a party against
+await sdk.topology?.prepareSignAndSubmitMultiHostExternalParty(
+    multiHostedParticipantEndpointConfig,
+    multiHostedParty.privateKey,
+    synchronizerId,
+    participantPermissionMap,
+    'bob'
+)
+```
+
+- signed Transaction hash verify
+
+`executeSubmission` 및 `prepareSignAndExecuteTransaction`도 ledger로 전송하기 전에 hash를 validate하도록 확장했습니다.
+
+```javascript
+const hash = 'my-transaction-hash'
+const publicKey = 'my-public-key'
+const signature = 'my-signed-hash-with-private-key'
+const isValid = sdk.userLedger?.verifyTxHash(hash, publicKey, signature)
+```
+
+- Command completion 대기
+
+```javascript
+//it is recommended to fetch ledger offset before preparing your command
+const offsetLatest = (await sdk.userLedger?.ledgerEnd())?.offset ?? 0
+
+const transferCommandId =
+    // prepareSignAndExecuteTransaction & prepareSign now returns the commandId
+    await sdk.userLedger?.prepareSignAndExecuteTransaction(
+        [{ ExerciseCommand: transferCommand }],
+        keyPairSender.privateKey,
+        v4(),
+        disclosedContracts2
+    )
+
+//new command that scans the ledger to ensure the command have completed
+const completion = await sdk.userLedger?.waitForCompletion(
+    offsetLatest, //where to start from
+    5000, //optional timeout in ms
+    transferCommandId! //the command to look for
+)
+```
+
+- pending 2-step incoming transfer를 모두 빠르게 fetch하여 쉽게 accept 또는 reject하는 새 endpoint 추가
+
+```javascript
+const pendingInstructions = await sdk.tokenStandard?.fetchPendingTransferInstructionView()
+
+const [acceptTransferCommand, disclosedContracts3] =
+    await sdk.tokenStandard!.exerciseTransferInstructionChoice(
+        transferCid,
+        'Accept'
+    )
+```
+
+- create transfer용 optional expiry date
+
+```javascript
+const [transferCommand, disclosedContracts2] =
+    await sdk.tokenStandard!.createTransfer(
+        sender!.partyId,
+        receiver!.partyId,
+        '100',
+        {
+            instrumentId: 'Amulet',
+            instrumentAdmin: instrumentAdminPartyId,
+        },
+        utxos?.map((t) => t.contractId),
+        'memo-ref',
+        new Date(Date.now()+60*1000) // custom expiry of 1 hour
+        // default is 24 hours
+    )
+```
+
+- Update ID로 Transaction fetch
+
+```javascript
+// convenient new endpoint to get transaction based on update id
+// this will come out in same format as listHoldingTransactions
+sdk.tokenStandard?.getTransactionById('my-update-id')
+```
+
+- authController가 생성한 Access Token이 이제 Scan proxy 및 registry에 올바르게 전달됩니다

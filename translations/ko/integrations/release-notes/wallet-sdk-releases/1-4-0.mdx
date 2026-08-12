@@ -1,0 +1,104 @@
+---
+title: "1.4.0"
+description: "Wallet SDK 1.4.0 release note"
+source_id: "SRC-628C05EF9C"
+source_path: "integrations/release-notes/wallet-sdk-releases/1-4-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "c1dee8d4ff2b6d6d014ffd314732943f91f91ff9c60bee14f7f59354c8c882d9"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-sdk-releases/1-4-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-sdk" format="split-release" version="1.4.0" source="158b3ff4c316ba7a5d6c89a6099a5303b76d4f77" */}
+
+# 1.4.0
+
+**2026년 7월 8일 release**
+
+- Token 및 Amulet namespace의 optional `validatorUrl`
+
+*이제 Wallet SDK의 Token 및 Amulet namespace를 `validatorUrl` 없이 initialize할 수 있습니다.
+Amulet 및 Token 전용 operation에는 Ledger API와 Registry URL만 expose하면 됩니다.
+`validatorApi`를 이 namespace에 expose하려는 사용자는 optional parameter인 `validatorUrl`을 계속 제공할 수 있습니다.*
+
+```javascript
+import { SDK } from '@canton-network/wallet-sdk'
+
+const sdk = await SDK.create({
+    auth: {
+        method: 'self_signed',
+        issuer: 'unsafe-auth',
+        credentials: {
+            clientId: 'ledger-api-user',
+            clientSecret: 'unsafe',
+            audience: 'https://canton.network.global',
+            scope: '',
+        },
+    },
+    ledgerClientUrl: localNetStaticConfig.LOCALNET_APP_USER_LEDGER_URL,
+    token: {
+        registries: [
+            new URL('http://localhost:2000/api/validator/v0/scan-proxy'),
+        ],
+        auth: {
+        method: 'self_signed',
+        issuer: 'unsafe-auth',
+        credentials: {
+            clientId: 'ledger-api-user',
+            clientSecret: 'unsafe',
+            audience: 'https://canton.network.global',
+            scope: '',
+        },
+    },
+    },
+    amulet: {
+        scanApiUrl: 'http://scanapi:8080',
+        auth: {
+        method: 'self_signed',
+        issuer: 'unsafe-auth',
+        credentials: {
+            clientId: 'ledger-api-user',
+            clientSecret: 'unsafe',
+            audience: 'https://canton.network.global',
+            scope: '',
+        },
+    },
+        registryUrl: 'http://registry:8080',
+    },
+})
+```
+
+- Validator Party를 조회하는 function
+
+*Validator operator Party가 필요한 특정 function을 위해 Validator URL로 Party를 조회하는 method를 제공합니다.*
+
+```javascript
+import { getValidatorParty } from '@canton-network/wallet-sdk'
+
+const validatorParty = await getValidatorParty(
+    new URL('http://validatorurl'),
+    {
+    method: 'self_signed',
+    issuer: 'unsafe-auth',
+    credentials: {
+        clientId: 'ledger-api-user',
+        clientSecret: 'unsafe',
+        audience: 'https://canton.network.global',
+        scope: '',
+    }
+)
+```
+
+- Custom logger type export
+
+*`@canton-network/wallet-sdk`에서 `CustomLogAdapter`와 logger adapter type을 export합니다. 따라서 SDK 사용자는 internal path에서 import하지 않고 자체 logging implementation을 제공할 수 있습니다.*
+
+- Bug fix: Transfer 생성 시 instrument 기준으로 Holding filter
+
+*`sdk.token.transfer.create`에 `instrumentId`와 `instrumentAdmin`을 전달하면 SDK는 transfer를 생성하기 전에 instrument 기준으로 Holding을 filter합니다.
+이전에는 Party의 Holding에 둘 이상의 instrument가 있으면 workaround로 `inputUtxos`를 전달해야 했습니다.*

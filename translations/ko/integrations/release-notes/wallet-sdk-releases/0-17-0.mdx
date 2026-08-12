@@ -1,0 +1,72 @@
+---
+title: "0.17.0"
+description: "Wallet SDK 0.17.0 release note"
+source_id: "SRC-7164429048"
+source_path: "integrations/release-notes/wallet-sdk-releases/0-17-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "3a8f68ae336b04742379b4a78aa9b984da71aa8531257c160d624088a03625fe"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-sdk-releases/0-17-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-sdk" format="split-release" version="0.17.0" source="158b3ff4c316ba7a5d6c89a6099a5303b76d4f77" */}
+
+# 0.17.0
+
+**2025년 11월 14일 release**
+
+- Wallet SDK가 0.5.1 및 Canton 3.4.7을 지원하도록 update되었습니다
+
+*이전 version도 대부분 compatible하지만 External Party onboarding을 지원하지 않았던 초기 Canton 3.4.X version에 적용된 과거 safeguard로 인해 문제가 발생할 수 있습니다.*
+
+- wallet.localhost가 localhost로 변경되었습니다
+
+*최신 Splice version에서는 이제 `/etc/hosts`용 parameter를 추가할 필요 없이 example에서 localhost를 직접 사용할 수 있습니다.*
+
+- UTXO가 제공되지 않을 때 UTXO selection이 개선되었습니다
+
+*이전에는 transfer할 때 UTXO를 빈 array로 제공하면 SDK가 transfer 수행에 모든 UTXO를 자동 선택했습니다. 이로 인해 100개가 넘는 UTXO를 추가하거나 UTXO의 fund가 부족한 등 여러 문제가 발생했습니다. 이제 더 나은 error message와 함께 개선되었습니다.*
+
+- token metadata automation 개선
+
+*Token Standard controller에 `getInstrumentById`와 `listInstruments`라는 두 새 method가 추가되었습니다. 제공된 transferRegistryUrl을 사용해 original source에서 관련 data를 가져오므로 non-CC token integration이 더 원활해집니다. 마찬가지로 일부 경우에는 위 기능을 사용해 data를 가져올 수 있으므로 instrumentAdmin이 optional로 변경되었습니다.*
+
+- snippet test 개선
+
+*Wallet integration guide의 일부로 사용하는 test snippet은 이전에는 theoretical example로 간주되었습니다. 전체 suite가 upgrade되어 이제 각 snippet을 실행 중인 Validator를 대상으로 test해 완전하고 올바른지 확인했습니다. 이에 따라 일부 value도 example name에서 actual name으로 변경해야 했습니다.*
+
+- member traffic 구매
+
+*External Party를 사용해 특정 Validator의 traffic을 구매할 수 있는 새 method가 추가되었습니다.*
+
+```javascript
+
+const [buyTrafficCommand, buyTrafficDisclosedContracts] =
+    await sdk.tokenStandard!.buyMemberTraffic(
+        sender?.partyId!, // buying party
+        200000, // cc amount to purchase traffic for
+        participantId!, // receiving participants
+        [], // input utxos, if none is provided it will use smart utxo selection
+        0 // migrationID, beware that this will be 0 for localnet,devnet & testnet while mainnet will have 3
+    )
+
+await sdk.userLedger?.prepareSignExecuteAndWaitFor(
+    buyTrafficCommand,
+    keyPairSender.privateKey,
+    v4(),
+    buyTrafficDisclosedContracts
+)
+```
+
+- decodeTopologyTransaction을 static으로 변경
+
+*이전 version에서 도입한 toDecodedTopologyTransaction이 ledgerController의 static method로 이동했습니다. 주된 이유는 offline mode에서 사용할 수 있도록 하기 위함입니다.*
+
+- 읽기를 위한 개별 executeAs right 지원
+
+*executeAs도 read access를 부여하지만 filtering에는 포함되지 않았습니다. executeAsAnyParty에는 영향이 없습니다.*

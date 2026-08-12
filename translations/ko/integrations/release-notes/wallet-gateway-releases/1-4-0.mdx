@@ -1,0 +1,51 @@
+---
+title: "1.4.0 — 2026-05-28"
+description: "Wallet Gateway 1.4.0 release note"
+source_id: "SRC-51298BEF48"
+source_path: "integrations/release-notes/wallet-gateway-releases/1-4-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "a7fee439fe5eae33707ac00f81f8bb8ea54185a11bcd32d83882bbf013457a26"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-gateway-releases/1-4-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-gateway" format="split-release" version="1.4.0" source="@canton-network/wallet-gateway-remote@1.4.0" */}
+
+# 1.4.0 — 2026-05-28
+
+### 🚀 Feature
+
+- `listNetwork`에서 auth detail을 숨기고 server-side에서 self-signed token mint ([#1872](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1872))
+- WalletConnect를 통한 end-to-end `signMessage` 및 Sign-In-With-Canton ([#1718](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1718))
+
+### 🩹 Fix
+
+- Wallet Gateway frontend test ([#1900](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1900))
+- `JsCommands`를 `Commands`로 rename ([#1833](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1833))
+- 새 repository에 맞게 `package.json` 수정 ([#1821](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1821))
+- **wallet-gateway-remote:** Rate limit key에 `req.ip`를 직접 사용하지 않음 ([#1783](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1783))
+
+### 🧱 Dependency update
+
+- @canton-network/core-wallet-store-inmemory를 1.5.0으로 update
+- @canton-network/core-wallet-ui-components를 1.5.0으로 update
+- @canton-network/core-signing-blockdaemon을 1.3.3으로 update
+- @canton-network/core-signing-store-sql을 1.4.0으로 update
+- @canton-network/core-signing-internal을 1.4.0으로 update
+- @canton-network/core-wallet-store-sql을 1.4.0으로 update
+- @canton-network/core-wallet-store를 1.4.0으로 update
+
+### ❤️ 감사
+
+- Alex Matson @alexmatson-da
+- Fayi @fayi-da
+- Gancho Radkov
+- Marc Juchli @mjuchli-da
+- Pawel Stepien
+- pawelstepien-da
+- Phillip Olesen @PHOL-DA

@@ -1,0 +1,198 @@
+---
+title: 'USDCx 지원'
+description: 'Canton Network에서 USDCx를 지원하는 방법'
+source_id: "SRC-5E39404A6B"
+source_path: "integrations/wallets-and-exchanges/usdcx-support"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "b51a7a1b45c0453151419218ef2954a0d18243e73b3f3583db89554a19288651"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/wallets-and-exchanges/usdcx-support.md)을 사용하세요.
+</Warning>
+
+## 개요
+
+Circle과 Digital Asset은 Canton Network에서 USDC token을 개발하고 구현하기 위해 협력했습니다. 이 구현에서는 사용자가 L1 chain, 우선 Ethereum의 USDC를 Circle의 xReserve contract로 전송하면 Canton Network에 USDC token이 생성됩니다. 반대로 Canton Network의 USDC token에 대한 withdrawal request는 다른 chain에서 asset을 release합니다. USDC token이 Canton Network에 존재하는 동안에는 financial transaction에 사용할 수 있습니다.
+
+Canton Network의 USDC는 원래 L1 chain에서 Circle이 lock한 USDC를 나타냅니다. Canton Network의 이 token은 Canton Network Utilities service를 통해 정의된 Canton Network Standard Token([CIP-56](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md)) 형태입니다.
+
+Wallet provider와 exchange는 Canton Network에서 USDCx를 지원하는 세 가지 선택지가 있습니다.
+
+1.  USDCx transfer 및 hold: USDCx는 token standard([CIP-56](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md)) compliant asset이므로 token standard를 지원하는 wallet은 transfer와 holding을 기본으로 지원합니다.
+
+2.  xReserve deposit 및 withdrawal 지원: Wallet provider와 exchange가 xReserve deposit 및 withdrawal을 지원하려면 [xReserves UI](https://digital-asset.github.io/xreserve-deposits/)를 사용해 자신의 Party와 utility-bridge Daml model 사이를 연결하는 custom API integration이 필요합니다. 구현 지침은 아래 "xReserve Deposit 및 Withdrawal 지원" section에 있습니다.
+
+3.  Wallet에 xReserve UI(Ethereum) 통합: 완전한 end-to-end user experience를 제공하려면 2번 항목을 통합하는 것에 더해 wallet이 deposit을 위해 Ethereum과 직접 통합할 수 있습니다. 구현 예시로 [xReserves UI](https://digital-asset.github.io/xreserve-deposits/)와 [open source example script](https://github.com/digital-asset/xreserve-deposits)를 참고할 수 있습니다. 여기서는 Ethereum node에 제출해야 하는 두 Ethereum transaction을 보여줍니다.
+    - USDC spending allowance를 approve합니다.
+    - `depositToRemote`로 xReserve contract에 USDC를 deposit합니다.
+
+## xReserve Deposit 및 Withdrawal 지원
+
+필요한 DAR file은 여기에서 확인할 수 있습니다.
+
+Wallet이 xReserve를 완전히 지원하려면 세 가지 choice(API call)를 구현해야 합니다.
+
+### Onboarding
+
+Party가 xReserve를 사용하려면 먼저 아래 방식으로 bridge에 onboarding해야 합니다. API call 예시는 다음과 같습니다.
+
+```json
+{
+   "CreateCommand": {
+       "templateId": "#utility-bridge-v0:Utility.Bridge.V0.Agreement.User:BridgeUserAgreementRequest",
+       "createArguments": {
+           "crossChainRepresentative": "${ADMIN_PARTY_ID}",
+           "operator": "${UTILITY_OPERATOR_PARTY_ID}",
+           "bridgeOperator": "${BRIDGE_OPERATOR_PARTY_ID}",
+           "user": "${USER_PARTY_ID}",
+           "instrumentId": {
+               "admin": "${ADMIN_PARTY_ID}",
+               "id": "USDCx"
+           },
+           "preApproval": false
+       }
+   }
+}
+```
+
+### Mint
+
+사용자가 Ethereum에 USDC를 deposit하면 Canton Network에 `DepositAttestation`이 생성됩니다. Recipient Party가 해당 fund를 claim하려면 `DepositAttestation`에서 mint하는 choice를 호출해야 합니다.
+
+`\#utility-bridge-v0:Utility.Bridge.V0.Attestation.Deposit:DepositAttestation`
+
+API call 예시는 다음과 같습니다.
+
+```json
+{
+    "commands": [
+        {
+            "ExerciseCommand": {
+                "templateId": "#utility-bridge-v0:Utility.Bridge.V0.Agreement.User:BridgeUserAgreement",
+                "contractId": "${BRIDGE_USER_AGREEMENT_CONTRACT_ID}",
+                "choice": "BridgeUserAgreement_Mint",
+                "choiceArgument": {
+                    "depositAttestationCid": "${DEPOSIT_ATTESTATION_CID}",
+                    "factoryCid": "${FACTORY_CID}",
+                    "contextContractIds": "${CONTEXT_CONTRACT_IDS}"
+                }
+            }
+        }
+    ],
+    "disclosedContracts": "${DISCLOSED_CONTRACTS}",
+}
+```
+
+### Withdraw
+
+Canton Network에서 Ethereum으로 withdraw하려면 사용자가 Canton의 USDC를 burn하고 다음 항목을 지정해야 합니다.
+
+- Destination domain ID: 현재는 Ethereum만 지원하며 domain ID는 `0`입니다.
+- Amount: 최대 소수점 여섯 자리 정밀도의 Decimal입니다.
+- Destination recipient: Valid Ethereum address입니다.
+- Optional reference: 제공하지 않으면 빈 Text field입니다.
+
+또한 wallet은 다음 항목을 제공해야 합니다.
+
+- 사용 가능한 Holding contract ID
+- `requestId`로 사용할 UUID
+
+API call 예시는 다음과 같습니다.
+
+```json
+{
+    "commands": [
+        {
+            "ExerciseCommand": {
+                "templateId": "#utility-bridge-v0:Utility.Bridge.V0.Agreement.User:BridgeUserAgreement",
+                "contractId": "${BRIDGE_USER_AGREEMENT_CONTRACT_ID}",
+                "choice": "BridgeUserAgreement_Burn",
+                "choiceArgument": {
+                "amount": "${AMOUNT_IN_DECIMAL}",
+                "destinationDomain": "0",
+                "destinationRecipient": "${ETHEREUM_ADDRESS}",
+                    "holdingCids": "${HOLDING_CONTRACT_IDS}",
+                "requestId": "${UUID_REQUEST_ID}",
+                "reference": "",
+                "factoryCid": "${FACTORY_CID}",
+                    "contextContractIds": "${CONTEXT_CONTRACT_IDS}"
+                }
+            }
+        }
+    ],
+    "disclosedContracts": "${DISCLOSED_CONTRACTS}",
+}
+```
+
+### Contract ID 및 Disclosed Contract 추출
+
+Utilities backend는 Burn Mint Factory API endpoint를 제공합니다.
+
+Endpoint:
+
+> \${UTILITY_BACKEND_URL}/api/utilities/v0/registry/burn-mint-instruction/v0/burn-mint-factory
+
+Request body 예시는 다음과 같습니다.
+
+```json
+{
+    "instrumentId": {
+        "admin": "${ADMIN_PARTY_ID}",
+        "id": "USDCx"
+    },
+    "inputHoldingCids": "${HOLDING_CONTRACT_IDS_IF_WITHDRAWING}",
+    "outputs": [
+        {
+            "owner": "${ADMIN_PARTY_ID}",
+            "amount": "${AMOUNT_IN_DECIMAL}" // For minting, this is the amount to mint. For burning, this is the change amount.
+        }
+    ]
+}
+```
+
+------------------------------------------------------------------------
+
+Burn Mint factory endpoint를 호출하면 response에 mint와 withdrawal 모두에 필요한 contract ID와 disclosed contract가 포함됩니다.
+
+이 값은 자주 변경되지 않으므로 API call을 줄이기 위해 cache할 수 있습니다.
+
+Response에서 필요한 context와 contract를 추출하는 예시는 다음과 같습니다.
+
+``` typescript
+// Assume `response` is the parsed JSON from the API call
+const choiceContext = response.httpResponse.body.choiceContext;
+
+// Extract CONTEXT_CONTRACT_IDS
+const values = choiceContext.choiceContextData.values;
+const contextContractIds = {
+    instrumentConfigurationCid: values["utility.digitalasset.com/instrument-configuration"].value
+};
+
+// Extract FACTORY_CID
+const factoryCid = response.httpResponse.body.factoryId;
+
+// Extract DISCLOSED_CONTRACTS
+const disclosedContracts = choiceContext.disclosedContracts;
+```
+
+### MainNet Environment Variable
+
+| Variable                  | Value                                                                                                    |
+|---------------------------|----------------------------------------------------------------------------------------------------------|
+| UTILITY_BACKEND_URL       | [https://api.utilities.digitalasset.com](https://api.utilities.digitalasset.com)                                                                 |
+| ADMIN_PARTY_ID            | decentralized-usdc-interchain-rep::12208115f1e168dd7e792320be9c4ca720c751a02a3053c7606e1c1cd3dad9bf60ef  |
+| UTILITY_OPERATOR_PARTY_ID | auth0_007c6643538f2eadd3e573dd05b9::12205bcc106efa0eaa7f18dc491e5c6f5fb9b0cc68dc110ae66f4ed6467475d7c78e |
+| BRIDGE_OPERATOR_PARTY_ID  | Bridge-Operator::1220c8448890a70e65f6906bd48d797ee6551f094e9e6a53e329fd5b2b549334f13f                    |
+
+### TestNet Environment Variable
+
+| Variable                  | Value                                                                                                   |
+|---------------------------|---------------------------------------------------------------------------------------------------------|
+| UTILITY_BACKEND_URL       | [https://api.utilities.digitalasset-staging.com](https://api.utilities.digitalasset-staging.com)                                                        |
+| ADMIN_PARTY_ID            | decentralized-usdc-interchain-rep::122049e2af8a725bd19759320fc83c638e7718973eac189d8f201309c512d1ffec61 |
+| UTILITY_OPERATOR_PARTY_ID | DigitalAsset-UtilityOperator::12202679f2bbe57d8cba9ef3cee847ac8239df0877105ab1f01a77d47477fdce1204      |
+| BRIDGE_OPERATOR_PARTY_ID  | Bridge-Operator::12209d011ce250de439fefc35d16d1ab9d56fb99ccb24c18d798efb22352d533bcdb                   |

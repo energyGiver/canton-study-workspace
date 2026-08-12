@@ -1,0 +1,71 @@
+---
+title: "1.7.0 — 2026-08-06"
+description: "Wallet Gateway 1.7.0 release note"
+source_id: "SRC-98C392B36C"
+source_path: "integrations/release-notes/wallet-gateway-releases/1-7-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "3ea722519fc1fb873eb22a71090380e6aaed130ede7320426c3d08589d8e3364"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-gateway-releases/1-7-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-gateway" format="split-release" version="1.7.0" source="@canton-network/wallet-gateway-remote@1.7.0" */}
+
+# 1.7.0 — 2026-08-06
+
+### 🚀 기능
+
+- Wallet Gateway header에 Dapp API URL copy action 추가 ([#2240](https://github.com/canton-network/wallet/pull/2240))
+- multi-session 지원 추가 ([#2161](https://github.com/canton-network/wallet/pull/2161))
+
+### 🩹 수정 사항
+
+- **wallet-gateway-remote:** Ledger 없이 login 허용 ([#2198](https://github.com/canton-network/wallet/pull/2198))
+- access token용 encryption key ([#2193](https://github.com/canton-network/wallet/pull/2193))
+- transaction 목록에 pagination 추가 ([#2166](https://github.com/canton-network/wallet/pull/2166))
+- auth callback page UI 개선 ([#2150](https://github.com/canton-network/wallet/pull/2150))
+- path constant 추가 및 유효하지 않은 path 방어 ([#2139](https://github.com/canton-network/wallet/pull/2139))
+- 서명되지 않은 transaction 실행 거부 ([#2128](https://github.com/canton-network/wallet/pull/2128))
+- 모든 Wallet Gateway response에 security header 추가 ([#2140](https://github.com/canton-network/wallet/pull/2140))
+- DFNS transaction 실행 ([#2111](https://github.com/canton-network/wallet/pull/2111))
+- addSession에서 token이 network와 일치하는지 검증 ([#2096](https://github.com/canton-network/wallet/pull/2096))
+- **wallet-gateway-remote:** tsx watch에서 Vite timestamp file 무시 ([#2121](https://github.com/canton-network/wallet/pull/2121), [#2092](https://github.com/canton-network/wallet/issues/2092))
+
+### 🧱 Dependency update
+
+- @canton-network/core-wallet-dapp-rpc-client를 1.9.0으로 update
+- @canton-network/core-wallet-user-rpc-client를 1.10.0으로 update
+- @canton-network/core-wallet-store-inmemory를 1.11.0으로 update
+- @canton-network/core-wallet-ui-components를 1.11.0으로 update
+- @canton-network/core-signing-blockdaemon을 1.9.0으로 update
+- @canton-network/core-signing-participant를 1.9.0으로 update
+- @canton-network/core-signing-fireblocks를 1.9.0으로 update
+- @canton-network/core-signing-store-sql을 1.10.0으로 update
+- @canton-network/core-signing-internal을 1.10.0으로 update
+- @canton-network/core-wallet-store-sql을 1.10.0으로 update
+- @canton-network/core-ledger-client를 1.9.0으로 update
+- @canton-network/core-rpc-transport를 1.9.0으로 update
+- @canton-network/core-tx-visualizer를 1.8.0으로 update
+- @canton-network/core-signing-dfns를 0.10.0으로 update
+- @canton-network/core-wallet-store를 1.10.0으로 update
+- @canton-network/core-signing-lib를 1.9.0으로 update
+- @canton-network/core-wallet-auth를 1.9.0으로 update
+- @canton-network/core-rpc-errors를 1.8.0으로 update
+- @canton-network/core-types를 1.9.0으로 update
+
+### ❤️ 감사의 말
+
+- Alex Matson @alexmatson-da
+- Cursor @cursoragent
+- dhru7777
+- double-k-3033 @double-k-3033
+- DoubleK @double-k-3033
+- Marc Juchli @mjuchli-da
+- pawelstepien-da
+- rukmini-basu-da @rukmini-basu-da
+- yash @singhyash05

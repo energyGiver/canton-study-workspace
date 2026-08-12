@@ -1,0 +1,154 @@
+---
+title: "0.11.0"
+description: "Wallet SDK 0.11.0 release note"
+source_id: "SRC-5A1E01574B"
+source_path: "integrations/release-notes/wallet-sdk-releases/0-11-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "c2e3e80037991dd07bc77ac7d66634554c1d1c2e35564dcd6767c8468ea3d34d"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-sdk-releases/0-11-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-sdk" format="split-release" version="0.11.0" source="158b3ff4c316ba7a5d6c89a6099a5303b76d4f77" */}
+
+# 0.11.0
+
+**2025년 10월 10일 release**
+
+- Internal Party tap 지원 추가
+
+*이전에는 signing flow를 사용해 External Party만 tap할 수 있었지만 이제 Internal Party도 가능합니다. fund가 부족할 때 startup 직후 Validator Operator Party를 tap하는 데 유용합니다.*
+
+```javascript
+await sdk.tokenStandard?.createAndSubmitTapInternal(
+    validatorOperatorParty!,
+    '20000000',
+    {
+        instrumentId: 'Amulet',
+        instrumentAdmin: instrumentAdminPartyId,
+    }
+)
+```
+
+- DAR file 관리
+
+*adminLedgerController가 DAR을 upload하는 기능이 추가되었습니다. custom DAR flow testing에 유용합니다.*
+
+```javascript
+// check if a specific dar files exist
+const isDarUploaded = await sdk.userLedger?.isPackageUploaded(
+    MY_DAR_PACKAGE
+)
+
+//upload a dar
+await sdk.adminLedger?.uploadDar(MY_DAR_BYTES)
+```
+
+- Token Standard allocation 전체 지원
+
+```javascript
+// check pending allocation requests
+const pendingAllocationRequests = await sdk.tokenStandard?.fetchPendingAllocationRequestView()
+
+// create allocation command
+const specAlice = {
+    settlement: allocationRequestViewAlice.settlement,
+    transferLegId: legIdAlice,
+    transferLeg: legAlice,
+}
+
+const [allocateCmdAlice, allocateDisclosedAlice] =
+    await sdk.tokenStandard!.createAllocationInstruction(
+        specAlice,
+        legAlice.instrumentId.admin
+    )
+
+// venue can check the allocation
+const allocationsVenue = await sdk.tokenStandard!.fetchPendingAllocationView()
+```
+
+- 이제 TopologyController 대신 ledgerController에서 Party onboarding 가능
+
+*grpc admin access가 필요하지 않게 됩니다.*
+
+다음과 같이 교체할 수 있습니다.
+
+=================================================   ==============================================
+이전 Method                                        새 Method
+=================================================   ==============================================
+`sdk.topology?.prepareExternalPartyTopology`        `sdk.userLedger?.generateExternalParty`
+`sdk.topology?.submitExternalPartyTopology`         `sdk.userLedger?.allocateExternalParty`
+`sdk.topology?.prepareSignAndSubmitExternalParty`   `sdk.userLedger?.signAndAllocateExternalParty`
+=================================================   ==============================================
+
+multi-hosted configuration은 동일하지만 **호출하는 ledger**는 array에 포함하지 않아야 합니다.
+
+```javascript
+//previous example of multi hosting
+const multiHostedParticipantEndpointConfig = [
+    {
+        adminApiUrl: '127.0.0.1:2902', //this is the ledger we actual call to allocate
+        baseUrl: new URL('http://127.0.0.1:2975'),
+        accessToken: adminToken.accessToken,
+    },
+    {
+        adminApiUrl: '127.0.0.1:3902',
+        baseUrl: new URL('http://127.0.0.1:3975'),
+        accessToken: adminToken.accessToken,
+    },
+]
+
+//new example of multi hosting
+const multiHostedParticipantEndpointConfig = [
+    {
+        //admin url is not needed anymore
+        url: new URL('http://127.0.0.1:3975'),
+        accessToken: adminToken.accessToken,
+    },
+]
+```
+
+backwards compatibility를 위해 이전 endpoint도 계속 제공됩니다.
+
+- User 생성 및 right 관리
+
+*이제 Wallet SDK를 통해 새 user를 생성하고 right를 관리할 수 있습니다. master user 설정에 유용할 수 있습니다.*
+
+```javascript
+//create new user for alice
+const aliceUser = await sdk.adminLedger!.createUser(
+    'alice-user',
+    aliceInternal
+)
+
+// grant alice CanReadAsAnyParty and CanExecuteAsAnyParty rights
+await sdk.adminLedger!.grantMasterUserRights(aliceUser.id, true, true)
+```
+
+- ListWallets가 이제 partyDetails 대신 Party ID list를 반환합니다
+- ListWallets가 이제 user에게 access 권한이 있는 Party를 올바르게 반환합니다. CanReadAsAnyParty도 포함됩니다
+- Party onboarding 최대 timeout이 20초에서 1분으로 늘어났습니다
+- Party onboarding이 이제 모든 Party 대신 특정 Party를 query하여 performance가 향상되었습니다
+- Party onboarding이 이제 idempotent behavior를 가집니다
+- 모든 controller에서 Wallet SDK default value가 `localLedgerDefault`에서 `localNetledgerDefault`로 변경되었습니다
+
+```javascript
+//previous instantiation (still preferred)
+const sdk = new WalletSDKImpl().configure({
+    logger: logger,
+    authFactory: localNetAuthDefault,
+    ledgerFactory: localNetLedgerDefault,
+    topologyFactory: localNetTopologyDefault,
+    tokenStandardFactory: localNetTokenStandardDefault,
+})
+
+//new version (does the same)
+const sdk = new WalletSDKImpl().configure({
+    logger: logger
+})
+```

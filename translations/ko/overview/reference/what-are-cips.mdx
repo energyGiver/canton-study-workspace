@@ -1,0 +1,188 @@
+---
+title: "CIP Reference"
+description: "Canton Improvement Proposal(CIP)의 formal structure, lifecycle, governance mechanism"
+source_id: "SRC-83AAC6BD2C"
+source_path: "overview/reference/what-are-cips"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "54b961480e202aaeccf80605e94cb44e690a4990768ebda7dcc5de9c18b48a38"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/reference/what-are-cips.md)을 사용하세요.
+</Warning>
+
+Canton Improvement Proposal(CIP)은 Canton Network의 standard, protocol change, governance procedure, guideline을 설명하는 formal design document입니다. Community가 Network 변경을 propose하고 ratify하는 주요 mechanism입니다.
+
+CIP process는 Ethereum EIP와 Python PEP 같은 확립된 improvement proposal framework를 model로 하며 [CIP-0000](https://github.com/canton-foundation/cips/blob/main/cip-0000/cip-0000.md)에 formal하게 정의됩니다. 모든 CIP는 Canton Foundation이 관리하는 [public GitHub repository](https://github.com/canton-foundation/cips)에 보관됩니다.
+
+CIP와 그 중요성에 관한 입문 개요는 [CIP 소개](/overview/understand/cips-introduction)를 참고하세요.
+
+## CIP 유형
+
+각 CIP는 다섯 category 중 하나에 속합니다.
+
+- **Standards Track** — Global Synchronizer implementation에 영향을 주는 기술 specification과 protocol change입니다. Final status에 도달하기 전에 design document와 reference implementation이 필요합니다.
+- **Governance** — On-chain voting process를 포함해 Super Validator right, voting weight, foundational governance rule을 정의하거나 수정하는 proposal입니다.
+- **Tokenomics** — Reward structure, Canton Coin fee, Synchronizer Traffic pricing 변경입니다.
+- **Process** — Workflow, tooling 또는 CIP process 자체에 관한 meta-CIP 조정입니다. 일반적으로 community consensus가 적용됩니다.
+- **Informational** — 일반 design guideline 또는 recommendation입니다. Adoption이 필요하지 않으며 binding effect가 없습니다.
+
+## CIP Lifecycle
+
+CIP는 정의된 stage를 거칩니다.
+
+- **Draft** — Author가 proposal을 개발하고 `cip-discuss` mailing list에서 feedback을 수집합니다. 이 단계에는 아직 official number가 없습니다.
+- **Proposed** — Author가 Super Validator sponsor와 endorser를 확보하면 sponsoring Super Validator가 formal consideration을 위해 `cip-vote` mailing list로 CIP를 보냅니다. 이때 CIP editor가 official number를 assign합니다.
+- **Approved** — CIP가 10-day voting window 동안 Super Validator rights holder의 3분의 2 majority vote를 얻습니다.
+- **Active** — On-chain implementation이 필요 없는 approved CIP, 예를 들어 Process나 Informational CIP는 approval 즉시 효력이 발생합니다.
+- **Final** — On-chain adoption이 필요한 approved CIP, 일반적으로 Standards Track, Governance, Tokenomics CIP는 Super Validator의 3분의 2가 on-chain change를 구현하면 Final이 됩니다.
+
+CIP는 정상 진행 밖의 세 terminal state에도 도달할 수 있습니다. Author가 proposal을 철회한 **Withdrawn**, 향후 consideration을 위해 연기한 **Deferred**, 3분의 2 vote threshold를 달성하지 못한 **Rejected**입니다. 이후 proposal로 supersede된 CIP는 **Replaced**로 표시됩니다. 예를 들어 CIP-0073은 CIP-0096으로 대체되었습니다.
+
+## Numbering Convention
+
+Author는 CIP number를 직접 assign하지 않습니다. Draft phase에는 `CIP-johndoe-token-lockup` 같은 descriptive alias를 사용합니다. Proposal이 editorial review를 통과하면 CIP editor가 official sequential number를 assign합니다. Number는 CIP-0000, CIP-0056, CIP-0103처럼 zero-padding된 네 자리 format을 사용합니다. Numbering은 strictly sequential하며 type이나 category information을 encode하지 않습니다. CIP type은 number가 아니라 preamble metadata로 판단합니다.
+
+## CIP를 제안할 수 있는 사람
+
+Public의 누구나 CIP를 작성할 수 있습니다. [lists.sync.global](https://lists.sync.global/)의 `cip-discuss` mailing list에 참여해 discussion을 시작합니다. 실제 CIP author에는 Super Validator operator, Application Developer, ecosystem contributor가 포함됩니다.
+
+모든 change에 CIP가 필요한 것은 아닙니다. 특정 software project의 작은 enhancement는 해당 project의 development workflow를 따릅니다. Validator 간 interoperability에 영향을 주거나 governance rule을 수정하거나 tokenomics parameter를 변경하거나 여러 Party가 구현해야 하는 Network-wide standard를 확립하는 change에는 CIP가 필요합니다. 확실하지 않다면 `cip-discuss` list에서 discussion을 시작하세요. Community와 editor가 formal CIP 필요 여부를 안내합니다.
+
+Discussion에서 formal vote로 진행하려면 한 Super Validator가 CIP를 sponsor하고 두 번째 Super Validator가 endorse해야 합니다. Author가 Super Validator를 대표한다면 endorser 한 곳만 필요합니다. 이후 Sponsoring SV가 Author를 대신해 CIP를 `cip-vote` mailing list로 보냅니다.
+
+## Review와 Approval
+
+CIP editor가 review process를 관리합니다. 기술 soundness 확인, mailing list의 community discussion 여부 확인, format compliance validation, official CIP number와 category assign이 책임에 포함됩니다. Editor는 독립적으로 editorial correction을 할 수 있지만 CIP approval 여부를 결정하지 않습니다. 그 결정은 Super Validator vote에 속합니다. 현재 editorial team은 [CIP-0000](https://github.com/canton-foundation/cips/blob/main/cip-0000/cip-0000.md)에 나열되어 있습니다.
+
+CIP가 vote로 넘어가기 전에 `cip-discuss` mailing list에서 최소 discussion period가 적용됩니다.
+
+- Standards Track: 3개월
+- Governance와 Tokenomics: 각 1개월
+- Process: 1개월
+- Informational: 2주
+
+이 minimum은 impact에 비례해 proposal이 충분한 scrutiny를 받도록 합니다. Protocol behavior를 변경하는 Standards Track CIP는 Informational guideline보다 긴 discussion이 필요합니다.
+
+Discussion period가 끝나고 CIP가 Super Validator sponsor와 endorser를 확보하면 Sponsoring SV가 CIP를 `cip-vote` list로 보내고 GitHub Team Voting으로 voting을 진행합니다. Voting window는 10일이며 approval에는 Super Validator rights holder의 3분의 2 majority가 찬성해야 합니다.
+
+## On-Chain Governance와의 Relationship
+
+On-chain change가 필요한 proposal에서는 vote process의 CIP approval이 final step이 아닙니다. CIP가 approve되면 Super Validator가 [SV governance reference](/overview/reference/sv-governance-reference)에 설명된 동일한 BFT voting mechanism인 on-chain governance action을 통해 adopt해야 합니다. CIP는 Super Validator의 3분의 2가 change를 on-chain에 구현한 후에만 Final status에 도달합니다.
+
+이 two-phase structure는 design consensus(off-chain CIP vote)와 operational commitment(on-chain adoption)를 분리하여 approved proposal이 authoritative해지기 전에 실제로 deploy되도록 보장합니다. On-chain implementation result는 Canton Coin Scan API를 통해 볼 수 있으므로 Super Validator 전체의 adoption을 확인하여 특정 CIP가 Final status에 도달했는지 verify할 수 있습니다.
+
+## CIP Document Structure
+
+CIP는 reviewer가 proposal을 효율적으로 evaluate하고 implementer가 필요한 information을 찾을 수 있도록 consistent format을 따릅니다. 모든 CIP에 다음 section이 있어야 합니다.
+
+- **Preamble** — CIP number, title, author, status, type, date, license 등 metadata header
+- **Abstract** — Problem과 proposed solution을 약 200 words로 요약
+- **Specification** — Super Validator가 compliance를 verify할 수 있을 만큼 precise한 기술 또는 governance change detail
+- **Motivation** — Current state가 부족한 이유와 proposal이 다루는 내용
+- **Rationale** — Design decision, 고려한 tradeoff, reject한 alternative
+- **Backwards Compatibility** — Breaking change와 migration path, 해당되는 경우
+- **Reference Implementation** — Standards Track CIP가 Final status에 도달하기 전에 필요
+- **Copyright** — Approved license에 따른 licensing term
+
+CIP repository에는 시작점으로 사용할 template가 있습니다. CIP 작성과 submission의 단계별 process는 아래 [CIP 제안 방법](#how-to-propose-a-cip)을 참고하세요.
+
+## 주요 CIP
+
+다음 CIP는 process가 다루는 topic 범위를 보여 줍니다.
+
+**[CIP-0056: Canton Network Token Standard](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md)**(Standards Track, Final) — Canton Network Token operation을 위한 여섯 standardized API를 정의하며 metadata, Holding, peer-to-peer transfer, Delivery-versus-Payment settlement를 다룹니다. Canton Coin은 모든 standard API를 구현합니다. CIP-0056은 ERC-20의 아이디어를 활용하지만 Canton UTXO model과 privacy architecture에 맞게 조정되었습니다. Canton Network에 token을 구축한다면 구현해야 하는 standard입니다.
+
+**[CIP-0078: Canton Coin Fee Removal](https://github.com/canton-foundation/cips/blob/main/cip-0078/cip-0078.md)**(Tokenomics, Final) — Canton Coin transfer의 Transaction fee를 제거합니다. 경제성이 없는 dust coin 축적을 방지하기 위해 coin expiration에는 Holding fee가 유지됩니다. 이 change는 이전에 fee-funding logic이 필요했던 developer workflow를 단순화합니다. MainNet burn의 약 95%가 transfer fee가 아니라 Traffic purchase에서 이미 발생했기 때문에 가능했습니다.
+
+**[CIP-0073: Weighted Validator Liveness Rewards](https://github.com/canton-foundation/cips/blob/main/cip-0073/cip-0073.md)**(Tokenomics, Replaced by CIP-0096) — Validator liveness reward를 모든 Party로 확장하고 governance-adjustable reward weight multiplier를 도입했습니다. 이후 reward model을 refine한 CIP-0096으로 supersede되었습니다.
+
+**[CIP-0103: dApp Standard](https://github.com/canton-foundation/cips/blob/main/cip-0103/cip-0103.md)**(Standards Track, Approved) — Network connectivity와 key management를 application logic에서 decouple하는 vendor-neutral dApp API를 지정합니다. Standard는 synchronous와 asynchronous operation model을 모두 지원하여 어떤 dApp도 어떤 wallet implementation과든 작동할 수 있게 합니다.
+
+## Resource
+
+- [GitHub CIP repository](https://github.com/canton-foundation/cips) — 모든 CIP document와 canonical CIP-0000 process definition
+- [CIP-0000: CIP Process](https://github.com/canton-foundation/cips/blob/main/cip-0000/cip-0000.md) — Editorial team, voting rule, format requirement를 포함한 authoritative CIP process specification
+- [CF mailing list](https://lists.sync.global/) — CIP discussion과 voting이 이루어지는 `cip-discuss`와 `cip-vote` list
+- [SV governance reference](/overview/reference/sv-governance-reference) — Approval 후 CIP가 연결되는 on-chain governance mechanism
+
+## CIP 제안 방법
+
+누구나 CIP를 작성할 수 있습니다. Proposal이 accepted Canton Network standard 일부가 되기 전에 여러 stage를 거칩니다.
+
+1. **Draft** -- Author가 proposal을 작성하고 community review를 위해 제출
+2. **Discussion** -- Community가 review, debate, change 제안
+3. **Review** -- Feedback에 따라 proposal을 refine하고 formal review
+4. **Acceptance** -- Super Validator가 on-chain governance를 통해 proposal에 vote
+5. **Implementation** -- Accepted change를 build하고 deploy
+
+모든 CIP가 acceptance에 도달하는 것은 아닙니다. Author가 withdraw하거나 향후 consideration을 위해 defer하거나 Super Validator vote로 reject할 수 있습니다.
+
+### CIP 작성
+
+CIP는 [GitHub CIP repository](https://github.com/canton-foundation/cips)에 pull request로 제출합니다. 각 CIP는 자체 directory에 존재합니다. 예: `cip-0056/cip-0056.md`.
+
+CIP document에는 다음 section이 있어야 합니다.
+
+- **Preamble** -- CIP number, title, author, status, type, creation date
+- **Abstract** -- Proposal을 설명하는 짧은 description, 200 words 이하
+- **Motivation** -- Change가 필요한 이유, 해결하는 problem, benefit을 받는 주체
+- **Specification** -- Implementer가 작업할 수 있을 만큼 명확한 proposed change의 precise technical detail
+- **Rationale** -- 고려하고 reject한 alternative를 포함해 specification을 그렇게 설계한 이유
+- **Backwards compatibility** -- 기존 deployment, contract, integration에 change가 미치는 영향
+- **Reference implementation** -- 해당되는 경우 working implementation link 또는 description
+- **Security considerations** -- Proposal의 security implication
+
+Specification section이 가장 중요합니다. 두 독립 team이 이를 구현하여 compatible result에 도달할 수 있을 만큼 unambiguous하고 complete해야 합니다.
+
+### CIP 유형
+
+CIP는 일반적으로 다음 category 중 하나에 속합니다.
+
+- **Standards track** -- Interoperability에 영향을 주는 Network protocol, Daml package, API 또는 기타 specification 변경
+- **Process** -- CIP process 자체 또는 governance procedure 변경
+- **Informational** -- Governance vote가 필요하지 않은 guideline, recommendation 또는 design rationale
+
+### Discussion Phase
+
+Pull request 제출 후 proposal이 community discussion에 들어갑니다. 다음을 통해 이루어집니다.
+
+- GitHub pull request comment
+- [CIP discussion mailing list](https://lists.sync.global/g/cip-discuss)의 thread
+- 관련 Slack channel(#gsf-global-synchronizer-appdev, #gsf-outreach)의 conversation
+
+Author는 feedback을 예상하고 proposal을 revise할 준비를 해야 합니다. 흔한 feedback에는 더 precise한 specification language 요청, backwards compatibility 질문, 추가 security analysis 제안이 있습니다.
+
+Discussion period에는 fixed duration이 없습니다. Author와 community가 proposal이 well-specified되고 open question을 해결했다는 rough consensus에 도달하면 formal review 준비가 된 것입니다.
+
+### Formal Review와 Acceptance
+
+CIP가 mature한 것으로 판단되면 formal review로 이동합니다. 이 단계에서 다음이 진행됩니다.
+
+1. Repository에서 CIP를 "Review" status로 표시합니다.
+2. Super Validator가 자체 operational/business requirement를 기준으로 proposal을 evaluate합니다.
+3. SV Web UI를 통해 governance vote를 시작합니다. Acceptance에는 Super Validator rights holder의 3분의 2 majority 찬성이 필요합니다.
+
+Vote가 통과하면 CIP status가 "Accepted"로 update되고 implementation을 진행할 수 있습니다. Vote가 실패하면 Author가 proposal을 revise하고 resubmit하거나 withdraw할 수 있습니다.
+
+### Acceptance 후
+
+Accepted CIP는 Canton Network standard 일부가 됩니다. Implementation에는 다음이 포함될 수 있습니다.
+
+- Splice codebase([github.com/canton-network/splice](https://github.com/canton-network/splice)) 변경
+- Canton 또는 Daml SDK component update
+- Super Validator set 전체에서 coordination된 configuration change
+- Standard upgrade process를 통해 deploy되는 새 Daml package
+
+CIP repository가 각 accepted proposal의 implementation status를 추적합니다.
+
+### 효과적인 Proposal을 위한 Tip
+
+- [기존 CIP](https://github.com/canton-foundation/cips)와 discussion archive를 먼저 검색하여 idea가 이미 propose되거나 다뤄졌는지 확인하세요.
+- Community와 일찍 대화하세요. Full CIP를 작성하기 전에 discussion channel에서 idea를 공유하면 시간을 절약하고 proposal을 개선할 수 있습니다.
+- Specification section을 구체적으로 작성하세요. Vague language는 discussion을 늘리고 delay를 일으킵니다.
+- 완전히 backward-compatible하다고 생각하더라도 backwards compatibility를 명시적으로 다루세요. Reviewer가 질문할 것입니다.
+- CIP와 함께 reference implementation을 작성하는 방안을 고려하세요. Working code가 있는 proposal은 대체로 review가 더 빠릅니다.

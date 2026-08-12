@@ -1,0 +1,33 @@
+---
+title: "1.2.1"
+description: "Wallet SDK 1.2.1 release note"
+source_id: "SRC-8E865E32C9"
+source_path: "integrations/release-notes/wallet-sdk-releases/1-2-1"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "7c7fdcef0e79edb5c5d720cabc2b33cc70fef3163661cc1e59e80564016e84b1"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-sdk-releases/1-2-1.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-sdk" format="split-release" version="1.2.1" source="158b3ff4c316ba7a5d6c89a6099a5303b76d4f77" */}
+
+# 1.2.1
+
+**2026년 5월 13일 release**
+
+- Wallet SDK type inference 수정
+
+*Optional `extend` option과 SDK initialization 주변의 typing issue를 수정하여 TypeScript inference를 개선하고 consumer project의 false-positive type error를 줄였습니다.*
+
+- 알 수 없는 Canton version과의 compatibility 개선
+
+*새롭거나 알 수 없는 Canton version이 감지되면 SDK stack이 즉시 실패하는 대신 warning을 표시하고 compatible client version으로 fallback합니다. Warning을 알리면서도 forward compatibility를 더 원활하게 제공합니다.*
+
+- Unauthenticated connection error handling 강화
+
+*Unauthenticated connection detection의 사소한 exception handling edge case를 수정하여 오해를 부르는 failure를 방지했습니다.*

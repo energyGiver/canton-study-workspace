@@ -1,0 +1,129 @@
+---
+title: "SDK와 API"
+description: "Canton SDK, code generation, Ledger API, JSON API, PQS, Wallet SDK 개요"
+source_id: "SRC-C0EE46CF6B"
+source_path: "appdev/modules/m4-sdks-apis"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "3aad9492dd2c71e80ea188bddad811c44b404af30baee427d8ec04e4b1fd7a7a"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m4-sdks-apis.md)을 사용하세요.
+</Warning>
+
+import DamlDocsAppdevModulesM4SdksApisL31 from "/snippets/daml-docs/appdev_modules_m4-sdks-apis_L31.mdx";
+import DamlDocsAppdevModulesM4SdksApisL39 from "/snippets/daml-docs/appdev_modules_m4-sdks-apis_L39.mdx";
+
+
+Canton은 ledger를 대상으로 application을 구축하는 데 필요한 tool과 API 집합을 제공합니다. 이 페이지에서는 각 component의 역할과 사용 시점을 설명합니다.
+
+## Daml SDK
+
+Daml SDK에는 Canton application 개발에 필요한 compiler, code generator, sandbox, 지원 tool이 함께 포함됩니다. 주요 entry point는 `dpm` command-line tool입니다.
+
+`dpm`의 핵심 기능은 다음과 같습니다.
+
+- `dpm build` -- Daml source code를 Daml Archive인 DAR file로 compile
+- `dpm codegen-java` -- compiled DAR에서 Java binding 생성
+- `dpm codegen-js` -- compiled DAR에서 TypeScript/JavaScript binding 생성
+- `dpm sandbox` -- testing용 local Canton sandbox node 시작
+- `dpm test` -- Daml Script test 실행
+- `dpm new` -- template에서 새 project scaffolding
+
+`dpm`에는 `--help` option을 추가해 살펴볼 수 있는 추가 기능이 있습니다. 예를 들어 `dpm inspect-dar --help` 또는 `dpm test --help`를 사용할 수 있습니다.
+
+SDK에는 syntax highlighting, type checking, error diagnostics를 제공하는 Daml Studio VS Code extension도 포함됩니다.
+
+## Code Generation
+
+code generation은 Daml model에서 type-safe client binding을 생성합니다. raw gRPC message나 JSON payload를 수동으로 구성하는 대신 template과 choice를 반영하는 생성된 class를 사용합니다.
+
+### Java Binding
+
+<DamlDocsAppdevModulesM4SdksApisL31 />
+
+생성된 Java class는 gRPC Ledger API client와 integrate됩니다. 각 Daml template은 contract 생성 및 choice exercise method를 가진 Java class가 됩니다. cn-quickstart backend는 codegen 기능을 통해 이러한 binding을 사용합니다.
+
+### TypeScript Binding
+
+<DamlDocsAppdevModulesM4SdksApisL39 />
+
+생성된 TypeScript type은 Node.js backend 또는 Ledger API에 직접 Command를 submit하는 frontend에서 사용할 수 있습니다. cn-quickstart와 같은 fully mediated architecture에서는 frontend가 backend의 REST API를 사용하므로 이러한 binding이 직접 필요하지 않습니다.
+
+### Community Binding
+
+공식적으로 유지 관리되는 binding 외에 community가 유지 관리하는 Python, Rust, Go, C# 및 기타 Ledger API client는 [Community Bindings](/sdks-tools/language-bindings/community)를 참고하세요.
+
+## Ledger API (gRPC)
+
+Ledger API는 Command submit과 Transaction 읽기를 위한 주요 interface입니다. Validator의 Participant Node가 공개하는 gRPC 또는 JSON API transport를 통해 access할 수 있습니다.
+
+Ledger API는 다음을 제공합니다.
+
+- **Command submission** -- contract 생성 및 choice exercise입니다. Command는 ledger에서 행동하는 Party로 submit되며 Validator가 Synchronizer를 통해 처리합니다.
+- **Transaction stream** -- 한 명 이상의 Party에 대해 committed Transaction stream을 구독합니다. backend는 이러한 event를 처리해 state를 최신으로 유지합니다.
+- **Active Contract Set** -- Party에게 보이는 현재 Active Contract를 query합니다.
+- **Package management** -- Validator에 DAR file을 upload합니다.
+- **User 및 Party management** -- Validator에서 Party를 생성하고 관리합니다.
+
+Ledger API는 production environment에서 TLS와 token 기반 authentication을 사용합니다. LocalNet에서는 Keycloak을 통해 authentication을 구성하거나 더 빠른 실험을 위해 완전히 비활성화할 수 있습니다.
+
+## JSON API
+
+Canton 3.x에서 JSON API는 Validator에 integrate되어 있습니다. Ledger API에 HTTP/JSON interface를 제공합니다. architecture상 JSON API LAPI endpoint는 모든 호출을 변환해 gRPC LAPI endpoint를 통과하도록 합니다.
+
+다음 경우 JSON API를 사용하세요.
+
+- gRPC client 없이 더 단순한 HTTP integration이 필요한 경우
+- prototype을 만들며 `curl`로 Command를 test하려는 경우
+- 사용하는 언어나 platform의 gRPC support가 제한적인 경우
+
+JSON API는 HTTP endpoint와 JSON payload를 통해 Ledger API와 동일한 operation인 Command submission, Active Contract, Transaction stream을 지원합니다. cn-quickstart에서 JSON API는 각 Validator의 port `x975`에서 사용할 수 있습니다. 예를 들어 App User Validator는 `2975`를 사용합니다.
+
+매우 높은 throughput이 필요한 production backend에는 JSON translation layer의 serialization overhead를 피하는 gRPC Ledger API가 더 적합합니다.
+
+## Participant Query Store (PQS)
+
+PQS는 Validator의 Transaction stream을 구독하고 contract data를 PostgreSQL database로 project하는 service입니다. backend는 standard SQL로 이 database를 query합니다.
+
+다음이 필요한 경우 PQS가 적합합니다.
+
+- 여러 contract에 걸친 filtered query, 예를 들어 "이번 달에 만료되는 모든 license"
+- aggregation 및 reporting
+- full-text search 또는 복잡한 join
+- Ledger API에 load를 주지 않는 read path
+
+PQS는 PostgreSQL table을 ledger와 synchronize된 상태로 유지합니다. ledger에서 contract가 생성되고 archive되면 PQS가 해당 row를 update합니다. SQL query는 작은 propagation delay를 제외하면 항상 현재 ledger state를 반영합니다.
+
+cn-quickstart project에서 backend의 `repository/` 및 `pqs/` module은 contract data를 위해 PQS table을 query하는 방법을 보여 줍니다.
+
+## Wallet SDK
+
+Wallet SDK는 payment 또는 traffic management를 처리해야 하는 application을 위해 Canton Coin (CC) wallet과의 integration을 제공합니다. wallet integration을 통해 application은 다음 작업을 수행할 수 있습니다.
+
+- Party 간 CC transfer 시작
+- license renewal 같은 application workflow에 연결된 payment request 생성
+- wallet balance 확인
+
+cn-quickstart의 licensing application은 license renewal payment에 wallet integration을 사용합니다. `LicenseRenewalRequest` contract는 wallet system이 payment로 감지하고 처리하는 Splice `AllocationRequest` interface를 구현합니다.
+
+CC와 traffic 작동 방식은 [Canton Coin과 Traffic](/appdev/modules/m4-canton-coin)을 참고하세요.
+
+## 작동하는 예시
+
+[cn-quickstart](https://github.com/digital-asset/cn-quickstart) repository는 이러한 모든 component가 함께 작동하는 모습을 보여 줍니다.
+
+- `dpm build`로 compile하는 `daml/`의 Daml contract
+- 생성된 binding과 PQS를 사용하는 `backend/`의 Java backend
+- backend의 REST API를 사용하는 `frontend/`의 React frontend
+- Docker Compose를 통해 Validator, PQS, JSON API, wallet service를 실행하는 LocalNet
+
+repository를 clone하고 `cd quickstart && make setup && make build && make start`를 실행해 전체 stack의 작동을 확인하세요.
+
+## 다음 단계
+
+- [Backend 개발](/appdev/modules/m4-backend-dev) -- Java backend에서 Ledger API와 PQS를 사용하는 pattern
+- [Frontend 개발](/appdev/modules/m4-frontend-dev) -- backend API를 사용하는 React frontend 구축

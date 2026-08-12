@@ -1,0 +1,28 @@
+---
+title: "Validator Upgrade"
+description: "Validator Node minor upgrade procedure"
+source_id: "SRC-108DB02B24"
+source_path: "global-synchronizer/production-operations/validator-upgrades"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "00d42e6b1c1b86f729902f06905264b33b71043e1ddc509a8d29858db59d2d1d"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/validator-upgrades.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/validator_operator/validator_upgrades.rst" hash="1951360a" */}
+
+Upgrade에는 두 가지 유형이 있습니다.
+
+Version upgrade(`0.A.X`에서 `0.B.Y`로 upgrade)와 protocol upgrade(actual version은 그대로이고 protocol만 upgrade되며 별도 action은 필요 없음)가 있습니다.
+
+Version upgrade는 각 Node에서 독립적으로 수행할 수 있으며 Docker Compose file upgrade 또는 Kubernetes deployment의 `helm upgrade`만 필요합니다. Version upgrade를 위해 Postgres database를 삭제하거나 uninstall해서는 안 되며 migration ID 또는 secret을 변경해서도 안 됩니다. Upgrade의 일부로 변경해야 할 사항을 확인하도록 `release_notes`를 반드시 읽으세요.
+
+Docker Compose에서는 Docker Compose file과 start.sh script를 포함한 전체 bundle을 update하고 `IMAGE_TAG`를 조정해야 합니다. 이전 Docker Compose file이 새 version과 incompatible할 수 있으므로 `IMAGE_TAG`만 update하는 것으로는 충분하지 않습니다.
+
+
+{/* COPIED_END */}

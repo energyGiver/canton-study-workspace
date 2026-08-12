@@ -1,0 +1,92 @@
+---
+title: "0.19.0"
+description: "Wallet SDK 0.19.0 release note"
+source_id: "SRC-5D1B848B33"
+source_path: "integrations/release-notes/wallet-sdk-releases/0-19-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "cf675900b94827c55ce743a3eaf701eeb9effd71e793175159097d8df016b24c"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-sdk-releases/0-19-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-sdk" format="split-release" version="0.19.0" source="158b3ff4c316ba7a5d6c89a6099a5303b76d4f77" */}
+
+# 0.19.0
+
+**2025년 12월 29일 release**
+
+- **중요: LedgerController constructor가 named parameter 방식으로 변경됨**
+
+*`LedgerController` constructor가 positional parameter에서 named parameter object로 refactor됐습니다. `LedgerController`를 직접 construct하면 breaking change입니다. 새 signature는 wallet gateway 같은 intermediary를 통해 request를 routing할 때 유용한 optional custom `fetch` implementation도 받습니다.*
+
+```javascript
+// previous constructor
+const ledger = new LedgerController(
+    userId,
+    new URL('http://127.0.0.1:5001'),
+    token
+)
+
+// new constructor with named params
+const ledger = new LedgerController({
+    userId,
+    baseUrl: new URL('http://127.0.0.1:5001'),
+    token,
+    // optional: provide a custom fetch to route requests through a proxy
+    fetch: myCustomFetch,
+})
+```
+
+- Update ID로 생성된 Contract 조회
+
+*Ledger controller에 새 `getCreatedContractByUpdateId` method가 추가됐습니다. Transaction을 submit한 뒤 반환된 `updateId`를 사용해 해당 Transaction에서 생성된 Contract를 lookup할 수 있습니다. Template 또는 Interface ID를 제공해 result를 좁힐 수도 있습니다.*
+
+```javascript
+const result = await sdk.userLedger?.prepareSignExecuteAndWaitFor(
+    transferCommand,
+    keyPairSender.privateKey,
+    v4(),
+    disclosedContracts
+)
+
+const transferCid = (
+    await sdk.userLedger!.getCreatedContractByUpdateId(
+        result!.updateId,
+        {
+            interfaceIds: [TRANSFER_INSTRUCTION_INTERFACE_ID],
+        }
+    )
+).contractId!
+```
+
+- 통합 `createTransferInstruction` choice helper
+
+*Transfer Instruction의 Accept, Reject, Withdraw logic을 하나의 `createTransferInstruction` method로 통합해 어떤 특정 choice인지 신경 쓰지 않고 choice를 exercise할 때 boilerplate를 줄입니다.*
+
+```javascript
+const [command, disclosedContracts] =
+    await sdk.tokenStandard!.createTransferInstruction(
+        transferCid,
+        'Accept' // or 'Reject' or 'Withdraw'
+    )
+
+await sdk.userLedger?.prepareSignExecuteAndWaitFor(
+    command,
+    keyPairSender.privateKey,
+    v4(),
+    disclosedContracts
+)
+```
+
+- Ledger client의 browser 지원
+
+*이제 browser environment에서 `@canton-network/core-ledger-client` package를 직접 import하고 사용할 수 있습니다. Main bundle에서 Node.js 전용 module을 제거해 browser 기반 dApp과 portfolio UI가 추가 bundler workaround 없이 Ledger utility를 활용할 수 있습니다.*
+
+- Decimal precision 처리 수정
+
+*크거나 fractional한 CC amount를 다룰 때 floating-point precision error를 방지하도록 `decimal.js`로 decimal arithmetic을 처리합니다.*

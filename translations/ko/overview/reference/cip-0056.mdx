@@ -1,0 +1,183 @@
+---
+title: "CIP-0056: Canton Network Token Standard"
+description: "Canton Network의 Token Holding, transfer, allocation을 위한 standard Daml interface인 CIP-0056 reference"
+source_id: "SRC-E7DF982D7C"
+source_path: "overview/reference/cip-0056"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "00eef048a5908c7e559b2f5e93f5b3e2b7948f4d53cf83cfc484dd109cd33f0a"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/reference/cip-0056.md)을 사용하세요.
+</Warning>
+
+[CIP-0056](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md)은 Canton Network Token Standard를 정의합니다. Wallet과 application이 registry 전체의 tokenized asset과 일관된 방식으로 상호 작용하게 하는 Daml interface와 off-ledger API 집합입니다. CIP-0056을 구현하는 registry는 어떤 compliant wallet로도 서비스할 수 있으며 어떤 application이든 registry-specific code에 의존하지 않고 transfer와 settlement를 orchestration할 수 있습니다.
+
+Splice Wallet은 underlying Daml Template을 `Amulet`이라고 하는 Canton Coin(CC)에 CIP-0056을 구현합니다. Canton Network의 다른 asset registry도 자체 instrument에 동일한 interface를 구현할 수 있습니다.
+
+<Note>
+CIP-0056은 External Signing workflow를 지원하기 위해 Transaction preparation과 submission 사이 24-hour window를 목표로 합니다. 현재 CC implementation은 10-minute window만 지원합니다. 2026년 3월 승인된 [CIP-0107](https://github.com/canton-foundation/cips/blob/main/cip-0107/cip-0107.md)은 이 limitation을 해결하며 구현되면 CC가 완전히 compliant해집니다.
+</Note>
+
+<Note>
+2026년 6월 승인된 [CIP-0112](https://github.com/canton-foundation/cips/blob/main/cip-0112/cip-0112.md)는 privacy, performance, traditional accounting을 개선하여 CIP-0056을 확장하는 Canton Network Token Standard V2를 정의합니다. CIP-0056은 현재 deployed standard로 유지됩니다.
+</Note>
+
+## CIP-0056이 Standardize하는 것
+
+Standard는 세 category의 functionality를 다룹니다.
+
+- **Portfolio view** -- 여러 registry에 걸친 Party의 current Holding, Transaction history, instrument metadata 표시
+- **Direct peer-to-peer(FOP) transfer** -- Single-step 또는 two-step offer/accept flow로 한 Party에서 다른 Party로 asset 이동
+- **Delivery-versus-payment(DvP) settlement** -- Multi-leg settlement가 atomically execute될 수 있도록 asset을 allocation에 lock
+
+여섯 on-ledger Daml API와 그에 대응하는 off-ledger(HTTP) Registry API가 이러한 capability를 지원합니다.
+
+- **Token Metadata** -- Instrument symbol, name, total supply, Registry UI URL
+- **Holding** -- Portfolio view와 Transaction history
+- **Transfer Instruction** -- Direct FOP transfer
+- **Allocation** -- DvP용 asset reservation
+- **Allocation Request** -- Standardized app-to-wallet allocation request
+- **Allocation Instruction** -- Standardized wallet-to-registry allocation creation
+
+## Core Interface
+
+### Token Metadata
+
+Token Metadata API를 통해 Wallet은 Registry internal data model을 알지 못해도 instrument description information을 retrieve할 수 있습니다. Registry는 instrument display name, symbol, total supply, Registry UI URL 같은 metadata를 expose합니다. Wallet은 Registry off-ledger HTTP endpoint를 통해 query합니다.
+
+### Holding
+
+{/* COPIED_START: splice/token-standard/splice-api-token-holding-v1/daml/Splice/Api/Token/HoldingV1.daml */}
+`Holding` interface는 하나의 Token Holding, 즉 Party portfolio의 한 entry를 나타냅니다. View는 다음을 expose합니다.
+
+- `owner` -- Holding을 소유한 Party
+- `instrumentId` -- `admin` Party(Registry)와 `id` text string을 결합한 globally unique identifier
+- `amount` -- `Decimal`로 나타낸 Holding size
+- `lock` -- Holder Party, expiry time, human-readable context string을 가진 optional `Lock`
+- `meta` -- Kubernetes annotation convention을 따르는 key-value metadata
+{/* COPIED_END */}
+
+각 `Holding` contract는 ledger의 개별 UTXO입니다. Ledger API active-contracts endpoint에서 `Holding` interface ID, 예: `#splice-api-token-holding-v1:Splice.Api.Token.HoldingV1:Holding`로 filtering하여 Holding을 query합니다.
+
+### TransferFactory와 TransferInstruction
+
+`TransferFactory`는 Registry가 유지하는 non-consuming factory contract입니다. Wallet은 Registry off-ledger API에서 이를 fetch하고 `TransferFactory_Transfer` Choice를 exercise하여 transfer를 시작합니다. Choice는 Sender, Receiver, amount, instrument, input Holding, deadline(`executeBefore`)을 지정하는 `Transfer` record를 받습니다.
+
+Registry implementation에 따라 result는 다음 중 하나입니다.
+
+- **Completed** -- Transfer가 즉시 settle되고 Receiver의 새 Holding이 반환됨
+- **Pending** -- 추가 action이 필요한 `TransferInstruction` contract 생성
+- **Failed** -- Transfer를 완료하지 못하고 fee를 제외한 input Holding이 Sender에 반환됨
+
+`TransferInstruction`이 생성되면 in-progress transfer state를 추적합니다. Receiver는 `TransferInstruction_Accept` 또는 `TransferInstruction_Reject`를 exercise할 수 있고 Sender는 `TransferInstruction_Withdraw`를 exercise할 수 있습니다. Registry는 `TransferInstruction_Update`를 통해 internal workflow step을 advance할 수 있습니다.
+
+### Allocation과 AllocationFactory
+
+Allocation은 multi-leg settlement(DvP)를 지원합니다. `Allocation` contract는 locked Holding이 뒷받침하는 특정 settlement leg의 asset reservation을 나타냅니다.
+
+{/* COPIED_START: splice/token-standard/splice-api-token-allocation-v1/daml/Splice/Api/Token/AllocationV1.daml */}
+`AllocationView`는 다음을 포함합니다.
+
+- `allocation` -- Settlement info, transfer leg ID, transfer leg 자체(Sender, Receiver, amount, instrument)를 reference하는 `AllocationSpecification`
+- `holdingCids` -- 이 Allocation을 뒷받침하는 Holding
+- `meta` -- Extensibility metadata
+{/* COPIED_END */}
+
+Registry에서 `AllocationFactory`를 fetch하고 `AllocationFactory_Allocate`를 exercise하여 Allocation을 생성합니다. Allocation contract discovery와 interaction에는 [Token Standard API](/overview/reference/splice-wallet-reference#wallet-api-endpoints)를 사용하세요. Settlement `executor` Party는 Sender와 Receiver와 함께 Allocation을 jointly control합니다. 세 Choice가 lifecycle을 governance합니다.
+
+- `Allocation_ExecuteTransfer` -- Allocated asset transfer 실행(settlement step)
+- `Allocation_Cancel` -- Sender, Receiver, Executor가 공동 control하여 Allocation 조기 release
+- `Allocation_Withdraw` -- `allocateBefore` deadline 전에 Sender가 asset reclaim
+
+`AllocationInstruction` interface는 `TransferInstruction`이 multi-step transfer를 추적하는 것과 비슷하게 multi-step allocation creation을 추적합니다.
+
+### Allocation Request
+
+`AllocationRequest` interface는 application이 Wallet에 asset allocation을 요청하는 방식을 standardize합니다. App이 settlement detail과 transfer leg를 지정하는 Allocation Request를 생성하면 User Wallet이 적절한 `AllocationFactory` Choice를 exercise하여 fund합니다. 이를 통해 App settlement logic을 Wallet Holding management에서 decouple합니다.
+
+## Transfer Model
+
+### One-Step Transfer
+
+One-step transfer는 단일 Daml Transaction 안에서 완료됩니다. `TransferFactory_Transfer`를 exercise하고 Registry가 즉시 settle할 수 있으면 result는 Receiver의 새 Holding이 포함된 `TransferInstructionResult_Completed`입니다.
+
+Canton Coin의 one-step transfer는 Receiver가 `TransferPreapproval` contract를 설정한 경우 작동합니다. Preapproval은 transfer별 consent 없이 모든 Sender의 incoming CC를 accept한다는 Receiver agreement를 나타냅니다. 각 preapproval에는 `receiver` Party와 `provider` Party가 있습니다. Provider는 preapproval lifetime에 비례하는 fee를 지불하고 이를 사용하는 incoming transfer에서 app reward를 받습니다. Preapproval은 expire되어 주기적으로 renew해야 하며 Provider가 Validator operator이면 Validator App이 이를 자동 처리합니다.
+
+Splice Wallet과 Token Standard Registry API는 기존 preapproval을 detect하고 자동으로 이를 통해 transfer를 route합니다. 다른 Registry는 자체 one-step transfer mechanism을 구현하거나 항상 two-step flow를 요구할 수 있습니다.
+
+### Two-Step Transfer
+
+Receiver에 preapproval이 없거나 Registry가 추가 authorization을 요구하면 transfer는 두 단계를 거칩니다.
+
+1. **Instruct** -- Sender가 `TransferFactory_Transfer`를 exercise합니다. Registry가 `TransferPendingReceiverAcceptance` status의 `TransferInstruction` contract를 생성합니다. Sender input Holding은 consume되고 fund는 Registry가 보유합니다.
+2. **Accept** -- Receiver가 pending instruction에서 `TransferInstruction_Accept`를 exercise합니다. Registry가 transfer를 완료하고 Receiver의 Holding을 생성합니다.
+
+Receiver는 instruction을 reject하여(`TransferInstruction_Reject`) fund를 Sender에게 반환할 수도 있습니다. Sender는 acceptance 전에 withdraw할 수 있습니다(`TransferInstruction_Withdraw`). 두 path 모두 Wallet이 Transaction history를 parse하여 특정 instruction의 성공/실패 여부를 판단할 수 있도록 설계되었습니다.
+
+Two-step transfer는 최초 instruction 이후 Sender-side automation이 필요하지 않으므로 직접 control하는 key로 Transaction에 signing하는 External Party에 적합합니다. [CIP-0078](https://github.com/canton-foundation/cips/blob/main/cip-0078/cip-0078.md) 이후 two-step CC transfer에는 fee가 없습니다.
+
+### Allocation을 사용하는 DvP Settlement
+
+Settlement가 서로 다른 instrument나 Registry의 여러 leg를 포함하면 각 Sender가 독립적으로 asset을 allocate합니다.
+
+1. Application이 `executor` Party, deadline(`allocateBefore`), settlement deadline(`settleBefore`)이 포함된 settlement specification을 생성합니다.
+2. 각 Sender Wallet이 `AllocationFactory_Allocate`를 exercise하여 자신의 transfer leg에 해당하는 `Allocation` contract에 Holding을 lock합니다.
+3. 모든 leg가 allocate되면 Executor가 각 Allocation의 `Allocation_ExecuteTransfer`를 exercise하여 settlement를 atomically 완료합니다.
+
+Sender가 deadline 전에 allocate하지 못하면 Executor가 나머지 Allocation을 cancel할 수 있습니다. Sender도 `allocateBefore` time 전에 Allocation을 withdraw하여 Holding을 reclaim할 수 있습니다.
+
+## UTXO Management
+
+Canton은 `Holding` interface를 구현하는 모든 active contract가 UTXO인 UTXO model을 사용합니다. Active `Holding` contract는 Validator Node에서 storage와 compute cost를 발생시키므로 Wallet Provider는 User별 UTXO 수를 적게 유지하고 transfer input으로 small-amount `Holding` UTXO를 우선 선택해야 합니다.
+
+낮은 UTXO count가 중요한 이유와 User onboarding 중 `MergeDelegation` contract를 설정하여 Wallet이 User를 대신해 small UTXO를 자동 merge하게 하는 방법 등 전체 지침은 [Holding UTXO Management](/appdev/deep-dives/token-standard#holding-utxo-management)를 참고하세요.
+
+## Registry와 Discovery
+
+각 Token Instrument는 ownership record를 유지하고 on-ledger Daml interface와 off-ledger HTTP API를 모두 expose하는 application인 Registry가 administer합니다. Registry `admin` Party는 모든 `InstrumentId`와 모든 factory contract view에 나타납니다.
+
+Factory Choice를 execute하려면 먼저 Registry off-ledger API를 query하여 다음을 얻습니다.
+
+- `factoryId`(Factory Contract ID)
+- `disclosedContracts`(Exercise 성공에 필요)
+- `choiceContextData`(Choice argument의 `context`로 전달)
+
+현재 특정 instrument의 Registry URL은 Wallet 자체에서 유지합니다. [Canton Name Service](/overview/reference/canton-name-service)에 기반한 generic discovery mechanism이 계획되어 있습니다. Registry URL을 CNS entry metadata에 저장하고 Scan API로 retrieve하는 방식입니다.
+
+Off-ledger API에는 authentication이 필요하지 않습니다. 대신 security model은 Contract ID의 unguessability와 Canton need-to-know data distribution에 의존합니다. Contract를 볼 권한이 있는 Party만 이를 받습니다.
+
+## Metadata Convention
+
+모든 CIP-0056 interface에는 extensibility를 위한 key-value text map인 `Metadata` field가 있습니다. Key는 Kubernetes annotation convention을 따르며 key를 정의하는 organization의 DNS name prefix를 붙여야 합니다. 예를 들어 Splice implementation은 `splice.lfdecentralizedtrust.org/` prefix key를 사용합니다.
+
+Transaction parsing에 사용하는 standard metadata key는 다음과 같습니다.
+
+- `splice.lfdecentralizedtrust.org/tx-kind` -- Operation type(예: `transfer`, `merge-split`, `burn`, `mint`, `unlock`, `expire-dust`)
+- `splice.lfdecentralizedtrust.org/sender` -- Sending Party
+- `splice.lfdecentralizedtrust.org/reason` -- Operation의 human-readable reason
+- `splice.lfdecentralizedtrust.org/burned` -- Burn된 Holding amount
+
+`ExtraArgs` type은 대부분의 Choice에 전달되는 두 structure를 bundle합니다. Registry off-ledger API의 opaque data인 `ChoiceContext`와 caller-provided annotation인 `Metadata`입니다. Choice context는 Registry internal data를 on-ledger execution으로 전달하며 metadata는 caller와 Registry가 추가 semantics에 agree할 수 있게 합니다.
+
+## Wallet Integration
+
+[Wallet SDK](https://github.com/canton-network/wallet-gateway/tree/main/sdk/wallet-sdk)는 이 integration pattern을 Wallet Developer용 reusable library로 package합니다. Wallet을 처음부터 구축한다면 다섯 integration pattern은 다음과 같습니다.
+
+- Token Standard interface를 구현하는 contract 읽기(active-contracts endpoint를 통해)
+- Token Standard contract가 포함된 Transaction history 읽기와 parsing
+- Factory Choice 실행(Registry에서 Factory를 fetch한 뒤 Ledger API에 submit)
+- 기존 contract에서 non-factory Choice 실행(예: Transfer Instruction accept)
+- Custom Daml code에서 Token Standard Choice 호출(bulk operation, merge, app-specific workflow용)
+
+[Token Standard CLI](https://github.com/canton-network/splice/tree/main/token-standard#cli)는 각 pattern을 executable code로 보여 주며 testing tool과 reference implementation 역할을 모두 합니다.
+
+## 추가 자료
+
+- [전체 CIP-0056 text](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md)
+- [Token Standard source code](https://github.com/canton-network/splice/tree/main/token-standard)
+- [Wallet SDK](https://github.com/canton-network/wallet-gateway/tree/main/sdk/wallet-sdk)
+- [Canton Coin Tokenomics](/overview/reference/canton-coin-tokenomics) -- CC에 특화된 fee structure와 UTXO dust expiration

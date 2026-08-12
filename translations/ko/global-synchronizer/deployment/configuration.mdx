@@ -1,0 +1,67 @@
+---
+title: "Custom Configuration"
+description: "Canton Network Validator Node의 주요 configuration parameter"
+source_id: "SRC-0E86AFFBBC"
+source_path: "global-synchronizer/deployment/configuration"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "8292c6e41b65a264147fe444848282c79d8192f560544928896de349db38760d"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalSpliceMainSpliceRstCodeDocsSrcDeploymentConfigurationNone51 from "/snippets/internal/splice/main/splice-rst-code-docs-src-deployment-configuration-none-51.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcDeploymentConfigurationYaml70 from "/snippets/internal/splice/main/splice-rst-code-docs-src-deployment-configuration-yaml-70.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/deployment/configuration.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/deployment/configuration.rst" hash="22d3b95a" */}
+
+모든 app에는 scenario에 따라 tuning이 필요할 수 있는 확장 configuration option 집합이 있습니다. 이 configuration은 [HOCON](https://github.com/lightbend/config/blob/main/HOCON.md) format을 accept합니다.
+
+## Ad-hoc configuration 추가
+
+모든 app은 environment variable을 통해 extra configuration을 accept합니다. App에 전달되는 environment variable 중 `ADDITIONAL_CONFIG`로 시작하는 모든 variable이 처리되며 app startup 시 configuration이 적용됩니다.
+
+<Note>
+Environment variable 예시: ADDITIONAL_CONFIG_EXAMPLE="canton.example.key=value"
+</Note>
+
+각 app의 전체 configuration은 Scala code에서 확인할 수 있습니다. Configuration key는 Scala code의 camel case와 달리 kebab case입니다.
+
+- [ValidatorAppConfig.scala](https://github.com/canton-network/splice/blob/main/apps/validator/src/main/scala/org/lfdecentralizedtrust/splice/validator/config/ValidatorAppConfig.scala#L141)
+- [SvAppConfig.scala](https://github.com/canton-network/splice/blob/main/apps/sv/src/main/scala/org/lfdecentralizedtrust/splice/sv/config/SvAppConfig.scala#L199)
+- [ScanAppConfig.scala](https://github.com/canton-network/splice/blob/main/apps/scan/src/main/scala/org/lfdecentralizedtrust/splice/scan/config/ScanAppConfig.scala#L28)
+
+또한 Participant 및 다른 Synchronizer component도 독립적으로 구성할 수 있습니다. 이러한 configuration에 관한 자세한 내용은 [Canton documentation](/global-synchronizer/reference/canton-configuration-guide)을 참조하세요.
+
+<Note>
+Canton documentation의 example은 구성되는 Node의 root configuration key가 다를 수 있습니다. Splice Participant/Mediator/Sequencer는 각각 항상 `canton.participants.participant {`/`canton.mediators.mediator {`/`canton.sequencers.sequencer {` 아래에 구성됩니다.
+</Note>
+
+<div className="todo">
+
+point to the release that these docs are built from; or inline the source code or Scaladoc to avoid confusion
+
+</div>
+
+## Custom bootstrap script
+
+Canton과 Splice 모두 initialization 중 bootstrap script를 지원합니다. 일반적으로 Validator app이 Node initialization을 처리하므로 필요하지 않지만 일부 scenario에서는 유용할 수 있습니다. 이를 사용하려면 `OVERRIDE_BOOTSTRAP_SCRIPT` environment variable을 bootstrap script content로 설정해야 합니다. Script는 `main` function으로 감싸야 합니다. 예:
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcDeploymentConfigurationNone51 />
+
+아래 설명과 같이 `additionalEnvVars`를 통해 이 environment variable을 설정할 수 있습니다.
+
+이 설정은 container image에 포함된 모든 bootstrap script를 overwrite한다는 점에 유의하세요. 따라서 여기에 custom functionality를 추가했다면 overwrite 내용에도 이를 replicate해야 합니다.
+
+### Helm chart 지원
+
+Helm chart는 value `additionalEnvVars`를 통해 구성할 수 있으며, 이 value는 app에 environment variable로 전달됩니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcDeploymentConfigurationYaml70 />
+
+
+{/* COPIED_END */}

@@ -11,12 +11,12 @@ Snapshot date: 2026-08-12
 | Documentation area | Translated | Canonical pages | Coverage |
 |---|---:|---:|---:|
 | Root API Reference | 1 | 1 | 100.0% |
-| Overview | 36 | 47 | 76.6% |
-| App Development | 23 | 145 | 15.9% |
-| Global Synchronizer | 21 | 106 | 19.8% |
-| Integrations | 26 | 140 | 18.6% |
+| Overview | 46 | 47 | 97.9% |
+| App Development | 37 | 145 | 25.5% |
+| Global Synchronizer | 47 | 106 | 44.3% |
+| Integrations | 120 | 140 | 85.7% |
 | Reference corpus | 0 | 365 | 0.0% |
-| **Total** | **107** | **804** | **13.3%** |
+| **Total** | **251** | **804** | **31.2%** |
 
 Run `python3 -m portal validate` to obtain the live totals. Update this checkpoint in the same commit as each translation batch.
 

@@ -1,0 +1,171 @@
+---
+title: "Featured App Activity Marker"
+description: "app activity를 기록하고 reward를 받기 위한 FeaturedAppActivityMarker contract 생성 방법"
+source_id: "SRC-F482544F35"
+source_path: "appdev/modules/m4-featured-app-activity-marker"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "f0ba154a2051c816ccb05020d5fddd4003b8ffd68b561b7049c5f3455256ce13"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m4-featured-app-activity-marker.md)을 사용하세요.
+</Warning>
+
+application이 Canton Network에서 실행될 때 경제적으로 의미 있는 event를 **app activity**로 기록할 수 있습니다. 권장 mechanism은 `FeaturedAppActivityMarker` contract입니다. SV (Super Validator) automation은 이러한 marker를 application의 Canton Coin (CC) reward로 전환되는 `AppRewardCoupon` contract로 변환합니다.
+
+## FeaturedAppActivityMarker란?
+
+{/* COPIED_START source="splice:docs/src/background/tokenomics/feat_app_act_marker_tokenomics.rst" hash="f4ed8911" */}
+
+
+
+{/* COPIED_END */}
+
+`FeaturedAppActivityMarker`는 application의 특정 activity event를 기록합니다. real-world asset lock, token mint, license renewal처럼 경제적으로 관련된 일이 발생했다는 사실을 network에 알립니다.
+
+[CIP-0078](https://github.com/canton-foundation/cips/blob/main/cip-0078/cip-0078.md) 이후에는 **featured** app만 reward를 받습니다. featured되지 않은 app도 marker를 생성할 수 있지만 reward coupon은 생성되지 않습니다.
+
+## Marker 생성 시점
+
+{/* COPIED_START source="splice:docs/src/background/tokenomics/feat_app_act_marker_tokenomics.rst" hash="f4ed8911" */}
+
+
+
+{/* COPIED_END */}
+
+위 기본 사항 외에 payment 또는 trade settlement와 license renewal 또는 issuance도 적절한 marker의 예입니다. user-facing economic value를 나타내지 않는 cache refresh, health check, internal bookkeeping 같은 routine housekeeping operation에는 marker를 생성하지 마세요.
+
+## Marker 생성 방법
+
+`FeaturedAppActivityMarker` contract는 [CIP-0047](https://github.com/canton-foundation/cips/blob/main/cip-0047/cip-0047.md)에 정의되어 있습니다. Daml code는 경제적으로 의미 있는 action을 수행하는 Transaction의 일부로 marker를 생성합니다.
+
+{/* COPIED_START source="splice:docs/src/background/tokenomics/feat_app_act_marker_tokenomics.rst" hash="f4ed8911" */}
+
+
+
+{/* COPIED_END */}
+
+marker contract에는 application, activity type, event metadata를 식별하는 field가 포함됩니다. 정확한 contract interface와 required field는 [CIP-0047](https://github.com/canton-foundation/cips/blob/main/cip-0047/cip-0047.md)을 참고하세요.
+
+{/* COPIED_START source="splice:docs/src/background/tokenomics/feat_app_act_marker_tokenomics.rst" hash="f4ed8911" */}
+
+featured application activity marker인 [FeaturedAppActivityMarker](/sdks-tools/api-reference/splice-daml/splice-amulet/splice-amulet#type-splice-amulet-featuredappactivitymarker-16451)는 가치를 더하지만 CC Transfer는 포함하지 않는 Transaction을 위해 생성할 수 있습니다. 예를 들어 stable coin transfer 또는 trade settlement가 있습니다. [CIP 47](https://github.com/canton-foundation/cips/blob/main/cip-0047/cip-0047.md)은 다음과 같이 설명합니다.
+
+> Featured Application Provider는 asset transfer 또는 이에 상응하며 Application Provider가 가능하게 한 Transaction에 대해서만 featured application activity marker를 생성해야 합니다. 자세한 fair usage policy와 enforcement는 Canton Foundation (CF)의 Tokenomics Committee가 정합니다.
+
+일반적으로 다음과 같은 경제적으로 중요한 event마다 `FeaturedAppActivityMarker`를 생성하도록 안내합니다.
+
+- Real World Asset (RWA) lock 또는 unlock
+- RWA transfer
+- token mint 또는 burn
+
+하지만 intermediate step이나 propose step에는 생성해서는 안 됩니다.
+
+`FeaturedAppActivityMarker`는 Super Validator가 실행하는 automation에 의해 즉시 AppRewardCoupon으로 변환됩니다. AppRewardCoupon은 DSO를 `signatory`로, `provider` field를 Observer로 하여 생성됩니다. 기본적으로 `provider`는 minting step에서 CC를 mint할 수 있습니다. `featured` field는 FeaturedAppRight contract에 따라 featured application reward eligibility를 나타내도록 `true`로 설정됩니다.
+
+하나의 Transaction tree에 여러 `FeaturedAppActivityMarker`가 있을 수 있으며 total reward가 증가합니다. 하지만 trading venue와 transfer된 asset의 모든 registry가 featured app reward를 받는 settlement Transaction 같은 composed Transaction에서만 허용됩니다. 각 항목을 별도로 생성하는 sub-transaction이 있다면 하나의 Canton Transaction tree에 ValidatorRewardCoupon, AppRewardCoupon, FeaturedAppActivityMarker가 함께 포함될 수도 있습니다.
+
+featured되지 않은 app은 `FeaturedAppActivityMarker`를 accrue할 수 없습니다.
+
+### Featured Application Activity Marker 생성하기
+
+application이 `FeaturedAppActivityMarker`를 생성하기 위한 사전 요구 사항은 두 가지입니다. 첫째는 [types_of_activity_records](/overview/reference/canton-coin-tokenomics) section에서 설명한 approved featured application이 되는 것입니다. 둘째는 application code를 update하는 것입니다.
+
+> 1\. `Splice.Api.FeaturedAppRightV1`용 FeaturedAppRight interface definition의 fully qualified package-id를 찾습니다. ID는 `7804375fe5e4c6d5afe067bd314c42fe0b7d005a1300019c73154dd939da4dda:Splice.Api.FeaturedAppRightV1:FeaturedAppRight`입니다. `daml damlc inspect-dar` Command를 사용해 찾을 수 있습니다.
+>
+> 2\. 이 ID를 사용해 ledger를 query하여 FeaturedAppRight interface를 구현하는 contract를 Daml ledger에서 retrieve합니다. 아래 `curl` 예시는 이 접근 방식을 보여 줍니다.
+>
+> ```bash
+> curl "http://$lapiParticipant/v2/state/active-contracts" \
+> "$jwtToken" "application/json" \
+>    --data-raw '{
+>    "filter": {
+>    "filtersByParty": {
+>          "'$holderPartyId'": {
+>          "cumulative":
+>          [
+>             {
+>                "identifierFilter": {
+>                "InterfaceFilter": {
+>                   "value": {
+>                      "interfaceId": "'7804375fe5e4c6d5afe067bd314c42fe0b7d005a1300019c73154dd939da4dda:Splice.Api.FeaturedAppRightV1:FeaturedAppRight'",
+>                      "includeInterfaceView": true,
+>                      "includeCreatedEventBlob": false
+>                   }
+>                }
+>                }
+>             }
+>          ]}
+>    }
+>    },
+>    "verbose": false,
+>    "activeAtOffset":"'$latestOffset'"
+> }'
+> ```text
+>
+> 3\. application의 Daml code는 `splice-api-featured-app-v1.dar`에 의존해야 하며 featured되어야 하는 choice에 `ContractId FeaturedAppRight` type의 argument를 받아야 합니다. 그러면 해당 choice body가 다음 step에서 `FeaturedAppRight_CreateActivityMarker`를 호출할 수 있습니다.
+>
+> 3\. application의 Daml code에서 `FeaturedAppRight` interface를 사용해 `FeaturedAppRight_CreateActivityMarker` choice를 exercise합니다. `templateId`를 위의 fully qualified interface ID로 설정합니다.
+>
+> 4\. testing example은 [여기](https://github.com/canton-network/splice/blob/a32995a0df2d447b9e76d81b770a06c296295ab5/daml/splice-dso-governance-test/daml/Splice/Scripts/TestFeaturedAppActivityMarkers.daml#L4)의 example DamlScript test를 검토하세요.
+
+하나의 `provider`에 대해 `FeaturedAppActivityMarker` activity record 하나를 생성하고 `beneficiary`가 `provider`인 단일하고 단순한 RWA Transaction을 살펴보겠습니다.
+
+> 1\. business Transaction에서 FeaturedAppActivityMarker contract가 생성됩니다. `provider`는 Featured Application Provider의 Party로 설정합니다. `beneficiary`는 AppRewardCoupon과 달리 반드시 설정해야 하며 해당 activity에 대해 CC mint eligibility를 가져야 하는 Party로 지정합니다. FeaturedAppActivityMarker의 `provider` field는 FeaturedAppRight_CreateActivityMarker interface choice를 호출하여 설정합니다.
+>
+> 2. `ValidatorRewardCoupon`은 생성되지 않습니다.
+
+`FeaturedAppActivityMarker`의 activity attribution을 공유할 수 있습니다. `FeaturedAppRight_CreateActivityMarker` choice는 AppRewardBeneficiary contract list를 받습니다. 그러면 각 `beneficiary`에 대해 `weight` field가 적절히 설정된 `FeaturedAppActivityMarker`가 생성됩니다.
+
+{/* COPIED_END */}
+
+### cn-quickstart의 Marker
+
+[cn-quickstart](https://github.com/digital-asset/cn-quickstart)에서 license renewal flow는 license가 갱신될 때 `FeaturedAppActivityMarker`를 생성합니다. marker는 renewal을 수행하는 Daml choice 안에서 생성되므로 같은 Transaction의 일부이며 atomically 기록됩니다.
+
+## App을 Featured로 지정하기
+
+marker에서 reward를 받으려면 application이 network에서 **featured** 상태여야 합니다.
+
+### DevNet에서
+
+testing을 위해 DevNet에서 application을 self-feature할 수 있습니다. formal review process를 거치지 않고 marker가 올바르게 생성되고 SV automation이 reward coupon으로 변환하는지 확인할 수 있습니다.
+
+### TestNet과 MainNet에서
+
+TestNet과 MainNet에서는 다음 process를 따릅니다.
+
+1. **application 제출** -- CF (Canton Foundation) form을 통해 제출합니다. application, 기록하는 activity type, 이것이 genuine economic value를 나타내는 이유를 설명합니다.
+2. **Tokenomics Committee review** -- CF Tokenomics Committee가 제출 내용을 평가합니다. 기록한 activity가 실제 economic value를 반영하는지와 marker 생성이 적절한지 평가합니다.
+3. **approval 및 featuring** -- 승인되면 application이 featured app list에 추가됩니다. 그때부터 marker가 reward coupon을 생성합니다.
+
+## Reward Mechanism
+
+reward calculation은 network의 다른 featured app과 비교한 application의 activity marker 수와 type에 따라 달라집니다. 정확한 formula는 CF가 정의한 tokenomics rule의 적용을 받습니다.
+
+핵심 사항은 다음과 같습니다.
+
+- reward는 App Provider Party에 CC로 지급됩니다
+- genuine economic event를 나타내는 activity marker가 많을수록 일반적으로 reward가 많아집니다
+- reward pool은 모든 featured app이 공유하므로 상대적 activity에 따라 share가 달라집니다
+- non-economic event에 marker를 생성해 system을 조작하면 featured status를 잃을 위험이 있습니다
+
+## Local에서 Marker Test하기
+
+cn-quickstart를 통한 LocalNet에서는 marker를 coupon으로 변환하는 SV automation이 local Splice infrastructure의 일부입니다. 다음을 수행할 수 있습니다.
+
+1. marker를 생성하는 application action trigger
+2. Active `FeaturedAppActivityMarker` contract를 PQS로 query하여 생성 여부 확인
+3. SV automation cycle을 기다린 다음 `AppRewardCoupon` contract를 query하여 변환 확인
+
+이 local testing loop를 사용하면 DevNet에 deploy하기 전에 marker creation logic을 validate할 수 있습니다.
+
+## 추가 자료
+
+- [Canton Coin과 Traffic](/appdev/modules/m4-canton-coin) -- CC reward와 traffic 및 Transaction cost의 관계
+- [CIP-0047](https://github.com/canton-foundation/cips/blob/main/cip-0047/cip-0047.md) -- FeaturedAppActivityMarker specification
+- [CIP-0078](https://github.com/canton-foundation/cips/blob/main/cip-0078/cip-0078.md) -- reward를 featured app으로 제한한 변경
+- [Deployment Progression](/appdev/modules/m5-deployment-progression) -- LocalNet에서 DevNet 및 MainNet으로 이동

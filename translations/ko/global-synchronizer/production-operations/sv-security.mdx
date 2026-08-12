@@ -1,0 +1,104 @@
+---
+title: "SV Security"
+sidebarTitle: "SV Security"
+description: "Super Validator Node의 security hardening, KMS configuration 및 추가 DAR 안내"
+source_id: "SRC-DE2FC2EE92"
+source_path: "global-synchronizer/production-operations/sv-security"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "da758987f4798bc27796b062ffa404259918d6381f5ae736931d199b53da0edb"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import SvExtraDarsNotice from "/snippets/external/splice/main/common/sv-extra-dars-notice.mdx";
+import KmsConfigGeneral from "/snippets/external/splice/main/common/kms-config-general.mdx";
+import KmsConfigGcp from "/snippets/external/splice/main/common/kms-config-gcp.mdx";
+import KmsConfigAws from "/snippets/external/splice/main/common/kms-config-aws.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvSecurityBash110 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-security-bash-110.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvSecurityJson94 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-security-json-94.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvSecurityBash73 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-security-bash-73.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/sv-security.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/sv_operator/sv_security.rst" hash="ae70b7be" */}
+
+{/* TODO: "Third-party Daml apps" section is empty in the upstream splice:docs/src/sv_operator/sv_security.rst source. Content gap — fill in or remove when upstream provides. */}
+
+<SvExtraDarsNotice />
+
+## External KMS를 사용한 Participant key 관리
+
+<KmsParticipantsContext />
+
+아래에서는 external KMS에서 Participant key를 관리하도록 SV를 구성하는 방법을 설명합니다. 이 guide는 SV deployment에 [sv-helm](/global-synchronizer/deployment/kubernetes-deployment)을 따른다고 가정합니다.
+
+SV deployment에 속하는 Sequencer와 Mediator의 KMS-based operation에 대한 공식 지원은 향후 release에 계획되어 있습니다.
+
+### 기존 SV를 Participant key용 external KMS 사용 방식으로 migration
+
+기존 Participant를 "non-KMS-based" operation에서 "KMS-based" operation으로 migration하거나 한 KMS provider에서 다른 provider로 migration하는 것은 지원되지 않습니다. 주된 이유는 Participant의 root namespace key를 rotate할 수 없고, 잠재적으로 안전하지 않은 위치에서 KMS로 import하면 KMS 사용으로 얻는 security benefit이 줄어들기 때문입니다. 또한 일부 KMS provider는 기존 key import를 전혀 지원하지 않으며 KMS 자체에서 생성한 key만 관리할 수 있습니다.
+
+Reward 손실 risk를 최소화하면서 SV Participant key에 KMS를 사용하도록 전환하는 한 가지 접근 방식은 다음과 같습니다.
+
+1.  원하는 KMS configuration으로 fresh SV를 처음부터 설정합니다. 이 guide의 나머지 부분을 참조하세요. 다른 SV operator와 조율하여 weight 0으로 onboarding합니다.
+2.  다른 SV operator와 조율하여 SV weight를 새 SV로 이동하고 이전 SV의 weight를 0으로 설정합니다.
+3.  이전 SV에서 Validator 또는 새 KMS-enabled SV로 관련 asset을 모두 transfer합니다.
+4.  다른 SV operator와 조율하여 이전 SV를 offboard합니다.
+5.  이전 SV를 retire합니다.
+
+### External KMS를 사용하는 fresh SV 구성
+
+[Participant Helm chart configuration 변경](/global-synchronizer/production-operations/sv-security)뿐 아니라 default setup과 비교하여 [CometBFT governance key 관리 방식도 변경](/global-synchronizer/production-operations/sv-security)해야 합니다.
+
+#### CometBFT governance key의 external 관리
+
+Default로 CometBFT governance key는 key 생성 및 저장에 Participant를 사용하는 SV app에서 transparently 관리합니다. 이를 구현하는 구체적인 방식은 KMS-enabled Participant에서 지원되지 않습니다. 따라서 external KMS로 Participant key를 관리하려는 SV operator는 SV의 CometBFT governance key를 externally 관리해야 합니다.
+
+여기에는 다음 단계가 포함됩니다.
+
+1.  새 CometBFT governance key를 생성합니다.
+2.  Externally 생성한 key를 사용하도록 SV app을 구성합니다.
+
+##### CometBFT governance key 생성
+
+다음 shell Command를 사용하여 요구 format의 keypair를 생성합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvSecurityBash73 />
+
+이 Command는 다음과 유사한 output을 생성해야 합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvSecurityJson94 />
+
+이 output을 file에 저장합니다. 예: `cometbft-governance-keys.json`.
+
+##### Externally 생성한 CometBFT governance key를 사용하도록 SV app 구성
+
+Externally 생성한 CometBFT governance key를 `splice-app-sv-cometbft-governance-key`라는 k8s secret에 저장하여 SV app에 inject합니다.
+
+SV deployment가 `sv` namespace에 있다고 가정하고 다음 Command를 사용하여 [위에서](/global-synchronizer/production-operations/sv-security) 생성한 JSON file에서 secret을 생성합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvSecurityBash110 />
+
+SV app이 자체적으로 fresh key를 생성하는 대신 externally 관리되는 CometBFT governance key를 사용하도록 하려면 `splice-sv-node` Helm chart에서 `cometBFT.externalGovernanceKey` 값을 `true`로 설정합니다. `splice-node/examples/sv-helm/sv-values.yaml`의 해당 line에서 comment를 제거할 수 있습니다.
+
+#### External KMS를 사용하도록 Participant 구성
+
+위에서 설명한 [SV app deployment 변경](/global-synchronizer/production-operations/sv-security) 외에는 external KMS를 사용하도록 SV Participant를 설정하는 방식이 [KMS를 사용하는 Validator Participant 설정](/global-synchronizer/production-operations/validator-security)과 동일합니다. 선택한 KMS provider에 따라 `splice-participant` Helm chart의 configuration을 변경해야 합니다.
+
+<KmsConfigGeneral />
+
+KMS를 올바르게 사용하려면 **fresh** Participant를 deploy해야 하며, 이는 나머지 SV component도 새로 설정해야 함을 의미합니다(위 내용 참조).
+
+##### Google Cloud KMS
+
+<KmsConfigGcp />
+
+##### Amazon Web Services KMS
+
+<KmsConfigAws />
+
+
+{/* COPIED_END */}

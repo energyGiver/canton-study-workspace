@@ -1,0 +1,45 @@
+---
+title: "0.15.0"
+description: "Wallet SDK 0.15.0 release note"
+source_id: "SRC-6E757F4084"
+source_path: "integrations/release-notes/wallet-sdk-releases/0-15-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "5aa12caa61d2a4ddbea67781c4ec4dea9c308b6ce4bff7ac0523408a914f304d"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-sdk-releases/0-15-0.md)을 사용하세요.
+</Warning>
+
+{/* GENERATED_RELEASE_NOTES target="wallet-sdk" format="split-release" version="0.15.0" source="158b3ff4c316ba7a5d6c89a6099a5303b76d4f77" */}
+
+# 0.15.0
+
+**2025년 10월 29일 release**
+
+    CommonJS compatibility로 인해 특정 경우에는 module type을 명시적으로 선언해야 합니다. `ERROR: Top-level await is currently not supported with the "cjs" output format`과 같은 error가 표시되고 ESM을 사용하려는 경우 package.json에 `"type": "module"`을 설정해야 합니다.
+
+- inflight transmission 처리
+
+*`REQUEST_ALREADY_IN_FLIGHT` 및 `SUBMISSION_ALREADY_IN_FLIGHT`를 위한 특별 처리 case가 도입되었습니다. 이제 이러한 경우 SDK가 inflight submission을 retrieve하고 `..AndWait` function에서 이를 tracking합니다.*
+
+- cjs module 지원
+
+*이제 SDK에 사용할 수 있는 cjs release가 있습니다.*
+
+- readAs 및 actAs right 처리 개선
+
+*readAs 및 actAs 처리가 더 완전해지도록 upgrade했으며 특히 listWallets function에도 적용했습니다.*
+
+- ACS client-side caching
+
+*ACS query는 비용이 많이 드는 Ledger API operation입니다. 대안으로 ACS를 한 번 memory로 fetch한 후 새 event를 subscribe합니다. 특히 read operation이 많은 경우 ledger load를 크게 줄일 수 있습니다.*
+
+- Access Token caching
+
+*이전에는 request할 때마다 AuthController에서 새 token을 retrieve했습니다. `unsafe` token에는 큰 문제가 아니지만 여전히 불필요했습니다. 이제 token을 memory에 보관하고 재사용하며 expiry 시에만 새 token을 request합니다.*
+
+*이 변경을 적용하려면 token usage를 `AccessTokenProvider`를 사용하도록 변경해야 합니다. 모든 example이 이에 맞게 update되었습니다.*

@@ -1,0 +1,177 @@
+---
+title: "Synchronizer Monitoring"
+description: "Sequencer 및 Mediator health monitoring, Mediator state 검사 및 Synchronizer 문제 해결"
+source_id: "SRC-1F327ED038"
+source_path: "global-synchronizer/extension-synchronizers/synchronizer-monitoring"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "32157b1b9bd03761a5a58d46a9926bfcb23ab7e9f244e187f76cbbd02f1fa581"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosObserveSequencerHealth0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/observe/sequencer_health-0.mdx";
+import CantonSdksToolsCliToolsCantonConsoleL257 from "/snippets/canton-docs/sdks-tools_cli-tools_canton-console_L257.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosObserveMediatorHealth0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/observe/mediator_health-0.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosObserveMediatorHealth3 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/observe/mediator_health-3.mdx";
+import CantonGlobalSynchronizerCantonConsoleEssentialCommandsL25 from "/snippets/canton-docs/global-synchronizer_canton-console_essential-commands_L25.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosObserveSequencerHealth4 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/observe/sequencer_health-4.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosObserveSequencerHealth5 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/observe/sequencer_health-5.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosObserveMediatorInspection0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/observe/mediator_inspection-0.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/extension-synchronizers/synchronizer-monitoring.md)을 사용하세요.
+</Warning>
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/howtos/observe/sequencer_health.rst" hash="a98d81e5" */}
+
+# Sequencer Node Health 확인 및 Monitoring
+
+이 페이지에서는 Sequencer Node의 current status를 검사하고 이해하는 방법과 health check를 사용해 지속적으로 monitoring하는 방법을 설명합니다.
+
+Node status 확인 및 health monitoring에 관한 generic guide도 참조하세요.
+
+## Interactive 방식으로 Node Status 확인
+
+Canton Console을 사용하여 실행 중인 Sequencer Node state를 interactive 방식으로 검사하고 정보를 얻을 수 있습니다. 관심 있는 `sequencer` reference를 대상으로 다음 Command를 실행합니다.
+
+<CantonGlobalSynchronizerCantonConsoleEssentialCommandsL25 />
+
+Synchronizer에 연결된 적이 없는 Sequencer Node의 output은 다음과 같습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosObserveSequencerHealth0 />
+
+Healthy state의 Sequencer Node는 다음과 유사한 status를 report해야 합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosObserveSequencerHealth4 />
+
+Component status에는 Sequencer Node 자체의 `sequencer`와 `db-storage`가 포함됩니다. 후자가 `Ok()`가 아니면 database storage backend 또는 해당 backend connectivity에 문제가 있음을 나타냅니다.
+
+Status에는 Sequencer Node에 연결된 Synchronizer member도 표시됩니다. 이 member는 Sequencer Node에 대한 active subscription을 보유합니다. Synchronizer에 새 submission을 전송하고 ordered Transaction을 읽을 수 있습니다.
+
+## BFT Orderer Peer Network Status
+
+BFT(Byzantine Fault Tolerance) Sequencer Node의 경우 BFT peer network 내 다른 peer에 대한 connection status를 검사할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosObserveSequencerHealth5 />
+
+## Health Check Endpoint
+
+External tool로 Sequencer Node health를 monitoring하려면 Canton Node health check endpoint를 사용합니다.
+
+Endpoint 활성화는 Node status 확인 및 health monitoring에 관한 generic guide에서 설명합니다.
+
+Sequencer Node는 `readiness`(traffic을 수락함) 및 `liveness`(restart가 필요하지 않음) health check endpoint pair를 제공합니다. 각각 load balancing 및 Kubernetes와 같은 tool을 통한 orchestration에 사용합니다.
+
+`readiness` endpoint는 `sequencer` health(BFT Orderer 포함)에 해당하고 `liveness` endpoint는 위 status Command output의 `db-storage` component health에 해당합니다. 즉, database connection의 fatal failure가 발생하면 Sequencer Node가 restart됩니다.
+
+## Liveness Watchdog
+
+Sequencer Node가 unhealthy 상태가 되면 자동으로 exit하도록 구성할 수 있습니다. 다음 configuration은 Sequencer Node health를 `check-interval`초마다 확인하고 `liveness`가 Node를 unhealthy 상태로 report한 후 `kill-delay`초가 지나면 process를 종료하는 internal watchdog service를 활성화합니다.
+
+``` none
+watchdog {
+  enabled = true
+  check-interval = 15s
+  kill-delay = 30s
+}
+```
+
+Sequencer Node configuration file의 `canton.sequencers.sequencer.parameters` 아래에 위 내용을 배치합니다.
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/howtos/observe/mediator_health.rst" hash="b326386d" */}
+
+# Mediator Node Health 확인 및 Monitoring
+
+이 페이지에서는 Mediator Node의 current status를 검사하고 이해하는 방법과 health check를 사용해 지속적으로 monitoring하는 방법을 설명합니다.
+
+Node status 확인 및 health monitoring에 관한 generic guide도 참조하세요.
+
+## Interactive 방식으로 Node Status 확인
+
+Canton Console을 사용하여 실행 중인 Mediator Node state를 interactive 방식으로 검사하고 정보를 얻을 수 있습니다. 관심 있는 `mediator` reference를 대상으로 다음 Command를 실행합니다.
+
+<CantonSdksToolsCliToolsCantonConsoleL257 />
+
+Synchronizer에 연결된 적이 없는 Mediator Node의 output은 다음과 같습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosObserveMediatorHealth0 />
+
+Healthy state의 Mediator Node는 다음과 유사한 status를 report해야 합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosObserveMediatorHealth3 />
+
+Component status에는 database storage backend의 `db-storage`와 `sequencer-client`가 포함됩니다. 후자가 `Ok()`가 아니면 Synchronizer connectivity에 문제가 있음을 나타냅니다.
+
+Status에는 Mediator Node의 `Active: true` 또는 `Active: false`도 표시됩니다. High Availability(HA) configuration에서는 이 Mediator Node가 active HA replica인지 여부를 나타냅니다.
+
+## Health Check Endpoint
+
+External tool로 Mediator Node health를 monitoring하려면 Canton Node health check endpoint를 사용합니다.
+
+Endpoint 활성화는 Node status 확인 및 health monitoring에 관한 generic guide에서 설명합니다.
+
+Mediator Node는 `readiness`(traffic을 수락함) 및 `liveness`(restart가 필요하지 않음) health check endpoint pair를 제공합니다. 각각 load balancing 및 Kubernetes와 같은 tool을 통한 orchestration에 사용합니다.
+
+`readiness` endpoint는 Mediator storage backend health에 해당하고 `liveness` endpoint는 위 status Command output의 `sequencer-client` component health에 해당합니다. 즉, Mediator Node의 Sequencer connection에 fatal failure가 발생하면 Mediator Node를 restart해야 합니다.
+
+## Liveness Watchdog
+
+Mediator Node가 unhealthy 상태가 되면 자동으로 exit하도록 구성할 수 있습니다. 다음 configuration은 Mediator Node health를 `check-interval`초마다 확인하고 `liveness`가 Node를 unhealthy 상태로 report한 후 `kill-delay`초가 지나면 process를 종료하는 internal watchdog service를 활성화합니다.
+
+``` none
+watchdog {
+  enabled = true
+  check-interval = 15s
+  kill-delay = 30s
+}
+```
+
+Mediator Node configuration file의 `canton.mediators.mediator.parameters` 아래에 위 내용을 배치합니다.
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/howtos/observe/mediator_inspection.rst" hash="aeb9c019" */}
+
+# Mediator 검사
+
+Mediator 검사는 finalized Transaction과 연결된 metadata인 verdict에 access하여 Synchronizer에서 완료된 Transaction에 관한 insight를 제공합니다. 이 페이지에서는 admin Console에서 verdict를 얻는 방법을 설명합니다.
+
+## Mediator에서 Verdict 얻기
+
+`verdicts` admin Command를 사용하여 verdict를 검사합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosObserveMediatorInspection0 />
+
+Command에는 exclusive starting record time과 나열할 최대 verdict 수가 필요합니다. 처음부터 모든 verdict를 얻으려면 `CantonTimestamp.MinValue`를 사용할 수 있습니다.
+
+Output은 verdict 목록입니다.
+각 verdict에는 result(accepted, rejected, unspecified), submitting Participant, submitting Party, finalization time, 해당 confirmation request의 record time 및 Transaction view metadata 등이 포함됩니다.
+
+{/* TODO: Link the Admin API Protobuf reference docs once available. https://github.com/DACH-NY/canton/issues/26126 */}
+
+동일한 verdict data가 Scan에도 기록됩니다. Field별 설명은 Scan bulk data API reference의 [Events](/sdks-tools/api-reference/splice-scan-bulk-data-api#events)를 참조하세요.
+
+관련 concept은 [Mediator 개요](/overview/learn/global-synchronizer-architecture#mediators)를 참조하세요.
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/howtos/troubleshoot/index.rst" hash="4de0512c" */}
+
+# Synchronizer Troubleshooting
+
+Participant Node를 포함한 모든 Canton Network Node에 적용되는 일반 troubleshooting guideline은 [Troubleshooting Methodology](/global-synchronizer/troubleshooting-guide/troubleshooting-methodology)를 참조하세요.
+
+## 새로 Onboarding된 Sequencer에서 Sequencer Subscription 실패
+
+새로 onboarding된 Sequencer는 onboarding 중 생성된 "onboarding snapshot"보다 최신인 event만 제공합니다.
+또한 일부 event는 Sequencer onboarding 전에 시작된 Transaction에 속할 수 있지만, Sequencer는 그러한 event를 signing할 수 없어 "tombstone"으로 대체합니다.
+Participant 또는 Mediator가 새로 onboarding된 Sequencer에 너무 빨리 연결하여 subscription이 tombstone을 만나면 Sequencer subscription이 `InvalidCounter` 또는 `SEQUENCER_TOMBSTONE_ENCOUNTERED`를 명시하는 `FAILED_PRECONDITION` error와 함께 abort됩니다.
+이 경우 Participant 또는 Mediator는 sequenced event history가 더 긴 다른 Sequencer에 연결한 후 새로 onboarding된 Sequencer로 전환해야 합니다.
+
+Canton Participant Node 동작에 관한 자세한 내용은 [Participant Node Architecture](/overview/reference/participant-overview)를 참조하세요.
+
+{/* COPIED_END */}

@@ -1,0 +1,416 @@
+---
+title: "Debugging with lnav"
+description: "lnav를 사용하여 Canton Quickstart log를 interactive하게 inspect"
+source_id: "SRC-46481E5536"
+source_path: "appdev/quickstart/lnav"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "e62917b11fd992f88ddbda5b0dc94063f6fe9592f50873660f532e163a03ae94"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/quickstart/lnav.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/quickstart/3.4/sdk/quickstart/operate/lnav-in-cn.rst" hash="ec23657b" */}
+
+# Debugging and troubleshooting with lnav
+
+<div className="contents" depth="2" local="" backlinks="top">
+
+Contents
+
+</div>
+
+## Jumping In
+
+`lnav`는 log file을 view, search, filter, analyze하는 데 도움이 되는 log file viewer/navigation tool입니다. 이 section에서는 LocalNet을 사용하는 CN application development에서 `lnav`를 빠르게 시작합니다. Screenshot과 instruction은 `lnav version 0.13.1`을 사용하여 작성되었습니다.
+
+### lnav download & documentation
+
+[lnav download page](https://lnav.org/downloads)에서 OS용 `lnav`를 download하세요.
+
+`which lnav`로 machine의 `lnav` location을 확인할 수 있습니다. `lnav --version`으로 `lnav` version을 표시합니다.
+
+![lnav version](/images/docs_website/lnav-version.png)
+
+lnav에 익숙하지 않다면 [docs](https://docs.lnav.org/)를 읽으세요.
+
+### Install Canton lnav format
+
+Canton Network에는 Canton log를 view하고 analyze하는 데 도움이 되는 custom `lnav` configuration이 있습니다. Configuration은 JSON으로 정의되며 open source [Splice repository](https://github.com/canton-network/splice)에 있습니다. CN application을 `lnav`로 debugging할 때 schema를 읽어 사용 가능한 value와 log construction을 이해할 수 있습니다.
+
+<img src="/images/docs_website/lnav-hyperledger-labs.png" style={{width: "60.0%"}} alt="Splice lnav format" />
+
+`splice/canton/canton-json.lnav.json`
+
+Configuration을 download하고 `lnav` 사용을 위해 설치합니다.
+
+    curl -L https://raw.githubusercontent.com/canton-network/splice/main/canton/canton-json.lnav.json -o /tmp/canton-json.lnav.json && lnav -i /tmp/canton-json.lnav.json
+
+이제 `lnav`로 CN log를 navigate할 준비가 되었습니다.
+
+## Capture Quickstart logs
+
+모든 Quickstart container의 log를 capture하려면 `quickstart/` directory에서 `make capture-logs`를 실행합니다. `capture-logs`를 실행하는 terminal을 background에서 작동하게 둡니다. 그런 다음 별도 terminal에서 `make start`를 실행하여 container를 시작합니다.
+
+<img src="/images/docs_website/lnav-make-capture-logs.png" style={{width: "25.0%"}} alt="Capture logs" />
+
+Terminal 1에서 `make capture-logs`를 시작합니다.
+
+## Find the logs
+
+Container는 initialization부터 실행 중에 `logs/` directory에 log를 생성합니다. `ls logs`를 실행하여 사용 가능한 log를 확인합니다.
+
+<img src="/images/docs_website/lnav-ls-logs.png" style={{width: "55.0%"}} alt="List logs" />
+
+## Canton logs
+
+“c-log”로 발음하는 `clog`는 위에서 설명한 custom Canton log formatting을 따르는 Canton log입니다. `clogs`는 일반적으로 Canton/Splice 같은 long-running service에 사용되는 반면 standard log file은 보통 initialization script와 utility를 나타냅니다.
+
+`quickstart/` directory에서 `lnav logs/*.clog`를 실행하여 live `clogs`를 확인합니다. 언제든 “q”를 누르거나 “:quit”을 입력하여 종료합니다.
+
+Clog는 Canton, Splice, backend service에서 나오는 live log stream을 보여 줍니다.
+
+## Navigating events
+
+Terminal의 `quickstart/` directory에서 `make create-app-install-request`를 실행하여 trace할 business event를 생성합니다.
+
+`lnav`로 돌아갑니다. 이 guide를 진행하는 동안 필요에 따라 “=”를 눌러 stream을 pause/unpause합니다.
+
+### Search for an event
+
+`/AppInstallRequest`를 입력하여 “AppInstallRequest” search를 생성합니다.
+
+![lnav app install request event](/images/docs_website/lnav-app-install-request-event.png)
+
+“n”과 “shift + N”으로 “AppInstallRequest”를 포함한 entry 사이를 이동합니다. “\>”와 “\<”로 긴 entry를 horizontal scroll합니다.
+
+Recent entry로 이동해야 하면 “shift + G”를 누릅니다. Unpause 상태라면 live stream이 resume됩니다.
+
+### Filter an event
+
+관심 event에 집중하려면 `:filter-in AppInstallRequest`로 “filter-in” search를 만듭니다.
+
+Log stream 안의 match를 highlight하는 search와 달리 `:filter-in`은 요청한 information을 포함하는 log entry만 표시합니다.
+
+![lnav filter-in app install request](/images/docs_website/lnav-filter-in-app-install-request.png)
+
+### Clear filter-in results
+
+`:reset-session`으로 live stream에 돌아갑니다. Blank log로 돌아오면 `q`로 종료하고 `lnav logs/*.clog`로 `lnav`에 다시 들어갑니다.
+
+### Generate events for analysis
+
+Quickstart application에서 complete business operation을 수행하여 log analysis용 traceable event를 생성합니다.
+
+### Quick workflow summary
+
+1.  `localhost:3000`에서 `app-provider`로 login
+2.  Install request accept
+3.  License 생성
+4.  License renewal request issue
+5.  `app-user`로 login하고 Canton Wallet에서 payment 수행
+6.  Renewal payment accept 및 allocate
+7.  `app-provider`로 app에 돌아가 renewal 완료
+
+Screenshot이 있는 자세한 step-by-step instruction은 [Running the Demo](/appdev/quickstart/running-the-demo)를 참조하세요.
+
+## Search by Trace ID
+
+Log에는 analysis용 OpenTelemetry [trace](https://opentelemetry.io/docs/concepts/signals/traces/) identifier(trace-id)가 포함됩니다. Trace ID는 서로 다른 container의 log에 기록되므로 유용합니다. Trace ID는 모든 service에 걸친 하나의 operation을 추적하는 데 도움이 됩니다. 자주 사용할 핵심 log analysis technique입니다.
+
+### Find a Trace ID
+
+`:filter-in listLicenses`로 filtering하여 Trace ID를 찾습니다. Trace ID는 parentheses 안의 character string입니다.
+
+![trace id filtering](/images/docs_website/lnav-filter-in-listlicenses.png)
+
+Entry의 Trace ID를 선택하여 copy합니다.
+
+예: “835a02159672310b58c2b106b482654d”
+
+<Warning>
+여러분의 Trace ID는 unique합니다. 이 example을 copy하면 result가 0개입니다.
+</Warning>
+
+### Filter by Trace ID
+
+이 특정 Trace ID와 관련된 log만 보도록 filter합니다.
+
+    :reset-session
+    :filter-in 835a02159672310b58c2b106b482654d
+
+이제 이 request를 처리한 모든 container의 log entry를 확인할 수 있습니다.
+
+![lnav trace id](/images/docs_website/lnav-trace-id.png)
+
+다른 방법으로 filtering하지 않고 Trace ID를 search할 수 있습니다.
+
+    :reset-session
+    /0f23f6d54af3176a6d4c904ed66e8702
+
+다른 log를 숨기지 않고 모든 occurrence를 highlight합니다.
+
+Filter(`:filter-in`) - 하나의 operation에만 집중하려는 경우. Search(`/`) - 주변 log의 context를 보려는 경우.
+
+## Power Use of lnav
+
+"Jumping In"과 "Capture Quickstart logs" section에서 `lnav`를 소개했습니다. 이 section에서는 development 중 Canton Network application monitoring을 위한 더 강력한 feature를 소개합니다.
+
+`lnav`를 workflow에 integrate하세요.
+
+- **Development**: Feature 구축 중 application behavior를 monitor하고 Daml Contract/workflow가 예상대로 execute되는지 verify하며 issue를 일찍 포착하고 diagnose합니다.
+- **Debugging**: Canton, Splice, backend service 간 operation flow를 trace하고 Trace ID로 실패한 operation의 전체 lifecycle을 이해하며 관련 없는 event noise 없이 특정 issue를 isolate하도록 log를 filter합니다.
+- **Troubleshooting**: Error/warning을 빠르게 찾고 특정 operation, Contract ID, Party identifier를 search하며 예상 밖 behavior에 이르는 event sequence를 analyze합니다.
+
+Robust Canton Network application을 구축하려면 log를 효과적으로 읽고 analyze하는 능력이 중요합니다. Application complexity가 증가함에 따라 `lnav`는 system behavior를 이해하고 bottleneck을 식별하며 issue를 효율적으로 해결하는 귀중한 tool이 됩니다.
+
+## Further exploration of lnav clogs
+
+이 guide의 나머지 부분은 `lnav`에 더 익숙해지기 위한 것입니다. `lnav` 안에서 다음 Command를 연습하세요.
+
+Keyboard의 “g”를 눌러 log top으로 이동합니다. “Shift + g”는 log end로 이동하여 stream을 다시 시작합니다.
+
+“=”로 stream을 pause/unpause합니다.
+
+Left cursor key를 사용하여 log entry의 file origin point를 확인합니다.
+
+![lnav file origin](/images/docs_website/lnav-view-log-origination.png)
+
+Right cursor key를 사용하여 log entry를 확인합니다.
+
+![lnav log entry](/images/docs_website/lnav-view-log-entry.png)
+
+“shift + right”와 “shift + left”를 사용하면 view가 더 작은 increment로 이동합니다.
+
+“x”를 사용하여 date 뒤 square bracket 안의 information을 expand/collapse합니다.
+
+![expand collapse lnav metadata](/images/docs_website/lnav-collapse-expand-metadata.png)
+
+“CTRL + x”는 cursor line 이동을 위한 cursor mode를 toggle합니다.
+
+## Mark and copy lines
+
+- “m”으로 line을 mark합니다.
+- “c”로 line을 mark하고 clipboard에 entry를 copy합니다.
+- “m”과 “c”로 관심 log entry를 쉽게 공유할 수 있습니다.
+- “Shift + J”는 subsequent line을 copy합니다.
+- “Shift + K”는 subsequent line mark를 해제합니다.
+- “u”와 “Shift + U”로 marked line 사이를 이동합니다.
+- “Shift + C”는 모든 marked line을 clear합니다.
+
+## Find errors, warnings, and trace IDs
+
+- “e”와 “Shift + E”로 error 사이를 이동합니다.
+- “w”와 “Shift + W”로 warning message 사이를 이동합니다.
+- “o”와 “Shift + O”로 traceId(opId) 사이를 이동합니다.
+
+## Time
+
+“Shift + T”는 selected item이 time center인 time mark를 toggle합니다. Digit이 작을수록 log가 event에 가깝고 number가 클수록 event에서 멉니다. Time은 second로 구분됩니다.
+
+![lnav time toggle](/images/docs_website/lnav-time-toggle.png)
+
+## Command mode
+
+Canton Network developer에게 Command mode는 log navigation, filtering, analysis를 정밀하게 제어합니다. 이는 distributed Canton operation debugging 시 Trace ID isolate, service component filtering, time window 축소에 필수적인 기능입니다. 이 section에서는 가장 흔히 사용하는 Command 몇 가지를 설명합니다.
+
+Colon key “:”를 누르고 원하는 Command를 입력하여 Command mode로 들어갑니다.
+
+Command history를 scroll하려면 “:” 뒤에 up arrow를 누릅니다.
+
+사용 가능한 일부 Command는 아래 Appendix section에 나옵니다. 전체 [commands](https://docs.lnav.org/en/latest/commands.html) list는 `lnav` documentation을 읽으세요.
+
+### Help
+
+Command의 자세한 documentation은 `:help` 또는 “?”를 사용합니다. “q” 또는 “?”로 help를 종료합니다.
+
+## Prune logs
+
+가끔 log를 prune해야 할 수 있습니다. 다음으로 모든 log를 prune하고 새 logs subdirectory로 시작할 수 있습니다.
+
+    docker rm -f $(docker ps -qa); docker system prune -f; docker volume prune -f; rm -r logs; mkdir logs
+
+이 Command 실행 후 operation을 resume하려면 `make start`를 실행해야 합니다.
+
+![lnav prune logs](/images/docs_website/lnav-prune-logs.png)
+
+## Troubleshooting
+
+`lnav`가 crash하면 capture logs script도 강제 종료되고 `logs/` directory의 모든 file이 delete될 수 있습니다.
+
+![lnav troubleshooting](/images/docs_website/lnav-troubleshooting.png)
+
+`logs/`와 `*.clogs` file을 rebuild하려면 `quickstart/` directory에서 `make stop && make clean-all`을 실행한 다음 `make start`를 실행해야 합니다.
+
+## Appendix
+
+### Correlation mechanisms
+
+Canton Network는 log entry search, sort, analyze에 사용할 수 있는 여러 correlation/filtering mechanism을 사용합니다.
+
+- `level` - Log level (TRACE, DEBUG, INFO, WARN, ERROR)
+- `logger_name` - Component identifier
+- `message` - Log message content
+- `trace-id`: OpenTelemetry trace identifier
+- `span-id`: OpenTelemetry span identifier
+- `span-parent-id`: Trace hierarchy에서 span 연결
+- `span-name`: Operation name
+- `@timestamp` - Timestamp
+
+각 correlation mechanism을 더 잘 이해하기 위해 example을 살펴보겠습니다.
+
+    2025-10-09T22:03:41.702-0500 [⋮] DEBUG - ⋮ (---) - ⋮
+
+- Timestamp: `2025-10-09T22:03:41.702-0500`
+- Thread_name을 포함한 collapsed metadata: `[⋮]`
+- Log level: `DEBUG`
+- Separator: `-`
+- 더 많은 collapsed content: `⋮`
+- Active trace 없음(distributed tracking의 일부가 아님): `(---)`
+
+{/* */}
+
+    2025-10-09T22:22:08.976-0500 [⋮] DEBUG - ⋮ (846ff12a35f6e8b61171039527934709-SvOffboardingSequencerTrigger--6aaa9f37e9ae78c4) - ⋮
+
+- Trace ID: `846ff12a35f6e8b61171039527934709`
+- Span name: `SvOffboardingSequencerTrigger`
+- Span ID: `6aaa9f37e9ae78c4`
+
+{/* */}
+
+    2025-10-09T22:22:08.978-0500 [⋮] DEBUG - ⋮ (2a2f0baca0ce4452d713a30d9a5bcb7d---) - Request com.digitalasset.canton.topology.admin.v30.TopologyManagerReadService/ListSequencerSynchronizerState by /172.18.0.22:43954: received a message
+
+- Trace ID: `2a2f0baca0ce4452d713a30d9a5bcb7d`
+- Log message: `Request com.digitalasset.canton.topology.admin.v30.TopologyManagerReadService/ListSequencerSynchronizerState by /172.18.0.22:43954: received a message`
+- Hyphen 세 개 `---`는 span-name(세 hyphen 중 첫 번째 뒤에 위치)과 span-id(마지막 두 hyphen 뒤에 위치)가 없음을 나타냅니다.
+- Trace-id, span-name, span-id format은 이전 example을 참조하세요.
+
+### Advanced filtering
+
+#### Common Field Reference
+
+다음 structured field는 Canton Network log에 있으며 `lnav` filter expression에서 log entry search, sort, analyze에 사용할 수 있습니다.
+
+#### Filter by Severity
+
+    :filter-in level = 'ERROR'
+    :filter-out level = 'DEBUG'
+
+#### Filter by Component
+
+    :filter-in logger_name =~ '.*sequencer.*'
+    :filter-in logger_name =~ '.*participant1.*'
+
+#### Filter by Trace
+
+    :filter-in trace-id = '2a2f0baca0ce4452d713a30d9a5bcb7d'
+    :filter-in span-name =~ '.*Transfer.*'
+
+#### Filter by Time Range
+
+    :filter-in @timestamp >= '2024-01-01 10:00:00'
+    :filter-in @timestamp < '2024-01-01 11:00:00'
+
+#### Filter by Content
+
+    :filter-out message =~ 'health.*check'
+    :filter-in message =~ 'license'
+
+### Hide lines
+
+다음 Command를 사용하여 특정 pattern과 일치하는 line을 숨길 수 있습니다.
+
+- `:hide-lines-before`는 주어진 date 이전 line을 숨깁니다.
+- `:hide-lines-after`는 주어진 date 이후 line을 숨깁니다.
+- `:hide-fields`는 각 line의 특정 field를 숨깁니다.
+
+`logger_name`, `thread_name`, `ipaddress`, `@timestamp`, `stack_trace`, `span-parent-id`, `trace-id`, `@version`, `level`을 포함한 field type을 숨길 수 있습니다. 한 번에 둘 이상의 field type을 숨길 수 있습니다.
+
+예를 들어 `thread_name`과 `level`을 숨기려면 다음을 사용합니다.
+
+`:hide-fields thread_name level`
+
+#### Hide lines before
+
+    ​​# Hide logs before a specific time
+    ``:hide-lines-before 2025-10-10 14:30:00``
+
+    # Hide logs before the last hour
+    ``:hide-lines-before -1h``
+
+    # Hide logs before a specific line number
+    ``:hide-lines-before 1000``
+
+#### Hide lines after
+
+    # Hide logs after a specific time
+    :hide-lines-after 2025-10-10 16:00:00
+
+    # Hide logs after a specific duration from start
+    :hide-lines-after +2h
+
+    # Hide logs after line 5000
+    :hide-lines-after 5000
+
+#### Show lines
+
+- `:show-lines-before`는 이전에 특정 time, duration, line number 앞에서 숨긴 line을 표시합니다.
+- `:show-lines-after`는 이전에 특정 time, duration, line number 뒤에서 숨긴 line을 표시합니다.
+
+### Gathering logs contents into a directory
+
+Operating system에 따라 `quickstart/`에서 다음 Command 중 하나를 사용하여 logs directory content를 single folder에 모읍니다.
+
+`tar -czf my-cn-logs.tar.gz logs/`
+
+`zip -r my-cn-logs.zip logs/`
+
+### Common lnav shortcuts
+
+`lnav` shortcut은 [`lnav` hotkey reference page](https://docs.lnav.org/en/latest/hotkeys.html)에서 찾을 수 있습니다.
+
+#### Navigation
+
+- j/k 또는 ↓/↑ - 한 line 아래/위로 이동
+- J/K - Subsequent entry select/deselect
+- Space/b - Page down/up
+- g/G - File top/bottom으로 이동
+- n/N - Next/previous search result
+
+#### Search & Filter
+
+- / - Forward search
+- ? - Help menu
+- f - Filter expression 설정
+- F - Filter clear
+- t - Error/warning만 표시
+- T - Error filter clear
+
+#### Time Navigation
+
+- 7/8 - Hour top으로 이동
+- Shift+T - Time view toggle
+
+#### Display
+
+- v - Log view 전환
+- Tab - File과 text filter menu 순환
+- i - Informational message show/hide
+- p - Pretty-print mode toggle
+
+#### Bookmarks
+
+- m - Bookmark 설정
+- u/U - Next/previous bookmark
+
+#### Other
+
+- q - Quit
+- ? - Help(모든 shortcut 표시)
+
+
+{/* COPIED_END */}
