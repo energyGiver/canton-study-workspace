@@ -1,0 +1,36 @@
+---
+title: "ContractId"
+description: "이 class는 Java codegen에서 생성되는 모든 concrete ContractId의 superclass로 사용됩니다. `Foo.ContractId fooCid = new Foo.ContractId("test");`, `Bar.ContractId barCid = new Bar.ContractId("test");`, `ContractId<Foo> genericFooCid = new ContractId<>("test");`, `ContractId<Foo> genericBarCid = new ContractId<>("test");`에서 concrete type의 equality는 해당 concrete type을 반영합니다. Type erasure로 인해 `ContractId<Foo>`와 `ContractId<Bar>`는 구분할 수 없습니다."
+source_id: "SRC-EBBBDA9094"
+source_path: "reference/java/com-daml-ledger-javaapi-data-codegen/contractid"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "7ba6b41d1728759718fbdbeba471096f16c11e74fec12fdcff591d1316ab9a83"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/reference/java/com-daml-ledger-javaapi-data-codegen/contractid.md)을 사용하세요.
+</Warning>
+
+## ContractId
+
+Upstream documentation: [열기](<https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractId.html>)
+
+**Signature**
+
+```text
+public class ContractId<T> extends Object implements Exercises<ExerciseCommand>
+```
+
+**Member**
+
+| Documentation | Member | 도입 | Deprecated | Removed |
+| --- | --- | --- | --- | --- |
+| [열기](<https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractId.html#%3Cinit%3E%28java.lang.String%29>) | `ContractId(String)` | `3.4.8` | - | - |
+| [열기](<https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractId.html#contractId>) | `contractId` | `3.4.8` | - | - |
+| [열기](<https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractId.html#equals%28java.lang.Object%29>) | `equals(Object)` | `3.4.8` | - | - |
+| [열기](<https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractId.html#hashCode%28%29>) | `hashCode()` | `3.4.8` | - | - |
+| [열기](<https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractId.html#makeExerciseCmd%28com.daml.ledger.javaapi.data.codegen.Choice,A%29>) | `makeExerciseCmd(Choice<?, ? super A, R>, A)` | `3.4.8` | - | - |
+| [열기](<https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractId.html#toString%28%29>) | `toString()` | `3.4.8` | - | - |
+| [열기](<https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractId.html#toValue%28%29>) | `toValue()` | `3.4.8` | - | - |

@@ -1,0 +1,33 @@
+---
+title: "ContractCompanion"
+description: "개별 Contract가 아니라 Template 전체와 연결된 metadata 및 utility입니다. Application code에서 instantiate하거나 subclass하지 말고, 생성된 Template subclass의 COMPANION field를 참조하세요. 여기의 모든 protected member는 INTERNAL API의 일부로 간주됩니다. 각 instance는 Template의 key type 정의 여부에 따라 ContractCompanion.WithKey 또는 ContractCompanion.WithoutKey입니다. ContractCompanion.WithKey는 Contract key 사용을 위한 추가 utility를 정의합니다."
+source_id: "SRC-34FB1199B5"
+source_path: "reference/java/com-daml-ledger-javaapi-data-codegen/contractcompanion"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "4cfa787d66a6557dc1ab7552e4955d4611e56466095c49d2c3d5afb27c4dfa8c"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/reference/java/com-daml-ledger-javaapi-data-codegen/contractcompanion.md)을 사용하세요.
+</Warning>
+
+## ContractCompanion
+
+Upstream documentation: [열기](<https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractCompanion.html>)
+
+**Signature**
+
+```text
+public abstract class ContractCompanion<Ct,Id,Data> extends ContractTypeCompanion<Ct,Id,Data,Data>
+```
+
+**Member**
+
+| Documentation | Member | 도입 | Deprecated | Removed |
+| --- | --- | --- | --- | --- |
+| [열기](<https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractCompanion.html#fromJson>) | `fromJson` | `3.4.8` | - | - |
+| [열기](<https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractCompanion.html#fromJson%28java.lang.String%29>) | `fromJson(String)` | `3.4.8` | - | - |
+| [열기](<https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractCompanion.html#getValueDecoder%28%29>) | `getValueDecoder()` | `3.5.9` | - | - |
+| [열기](<https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ContractCompanion.html#valueDecoder%28com.daml.ledger.javaapi.data.codegen.ContractCompanion%29>) | `valueDecoder(ContractCompanion<?, ? extends ContractId<Data>, Data>)` | `3.4.8` | - | - |

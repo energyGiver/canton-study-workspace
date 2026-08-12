@@ -1,0 +1,31 @@
+---
+title: "ValueDecoder"
+description: "Value로 표현된 Daml value의 encoded form을 Data로 표현된 codegen-decoded form으로 변환합니다. Template, record 또는 variant의 각 codegen class는 ValueDecoder를 생성하는 `valueDecoder` method를 포함합니다. Type parameter가 있는 경우 `Bar<Baz, Long>`, `Bar<List<Baz>, Map<Long, String>>`처럼 해당 type argument용 ValueDecoder에 대응하는 argument를 받습니다. UnknownTrailingFieldPolicy를 사용하여 unknown trailing field를 error로 처리하거나 ignore할 수 있습니다."
+source_id: "SRC-24BEAAE702"
+source_path: "reference/java/com-daml-ledger-javaapi-data-codegen/valuedecoder"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "1cf81926438d45b0f6fdbb6dcb7a1e9bd4a03e9511e40384cf7183984538cd67"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/reference/java/com-daml-ledger-javaapi-data-codegen/valuedecoder.md)을 사용하세요.
+</Warning>
+
+## ValueDecoder
+
+Upstream documentation: [열기](<https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ValueDecoder.html>)
+
+**Signature**
+
+```text
+@FunctionalInterface public interface ValueDecoder<Data>
+```
+
+**Member**
+
+| Documentation | Member | 도입 | Deprecated | Removed |
+| --- | --- | --- | --- | --- |
+| [열기](<https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ValueDecoder.html#decode%28com.daml.ledger.javaapi.data.Value%29>) | `decode(Value)` | `3.4.8` | - | - |
+| [열기](<https://javadoc.io/doc/com.daml/bindings-java/3.5.9/com/daml/ledger/javaapi/data/codegen/ValueDecoder.html#decode%28com.daml.ledger.javaapi.data.Value,com.daml.ledger.javaapi.data.codegen.UnknownTrailingFieldPolicy%29>) | `decode(Value, UnknownTrailingFieldPolicy)` | `3.5.9` | - | - |

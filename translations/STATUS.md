@@ -15,8 +15,8 @@ Snapshot date: 2026-08-12
 | App Development | 51 | 145 | 35.2% |
 | Global Synchronizer | 52 | 106 | 49.1% |
 | Integrations | 140 | 140 | 100.0% |
-| Reference corpus | 0 | 365 | 0.0% |
-| **Total** | **290** | **804** | **36.1%** |
+| Reference corpus | 249 | 365 | 68.2% |
+| **Total** | **539** | **804** | **67.0%** |
 
 Run `python3 -m portal validate` to obtain the live totals. Update this checkpoint in the same commit as each translation batch.
 
