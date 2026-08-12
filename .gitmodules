@@ -1,0 +1,3 @@
+[submodule "upstream/cf-docs"]
+	path = upstream/cf-docs
+	url = https://github.com/canton-network/cf-docs.git

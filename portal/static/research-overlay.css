@@ -1,0 +1,8 @@
+:root {
+  --research-primary: #734be2;
+  --research-border: color-mix(in srgb, var(--research-primary) 24%, transparent);
+}
+
+[data-research-workspace="ready"] #research-workspace-view {
+  min-height: 12rem;
+}

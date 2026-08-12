@@ -15,6 +15,17 @@ The knowledge base is useful only under three conditions: conclusions remain tra
 5. Use `corpus/manifest.jsonl` to resolve a source ID to its exact URL, local file, headings, retrieval time, and checksum.
 6. Use [the local research portal development design](development/local-research-portal.md) for the official-document mirror, Korean translation, research workflow, and storage architecture.
 
+## Local portal quick start
+
+```bash
+git submodule update --init --recursive
+python3 -m portal build
+cd .generated/site
+npx mintlify@4.2.595 dev
+```
+
+The generated site is intentionally ignored. Official files remain read-only in `upstream/cf-docs`, while the build composes local research features under `.generated/site`.
+
 ## Repository layout
 
 | Path | Purpose |
@@ -28,6 +39,8 @@ The knowledge base is useful only under three conditions: conclusions remain tra
 | `glossary/` | Curated terminology with ambiguity notes |
 | `scripts/` | Reproducible official-document collector; it does not inspect Canton source code |
 | `development/` | Development designs for the local documentation and research portal |
+| `portal/` | Local site composer, research API, and browser overlay |
+| `upstream/cf-docs/` | Pinned read-only official documentation submodule |
 
 ## Evidence model
 
