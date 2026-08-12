@@ -26,25 +26,6 @@ python3 -m portal dev
 python3 -m portal dev --api-port 8788 --docs-port 3001
 ```
 
-### `preview ready`까지 시간이 걸리는 이유
-
-`python3 -m portal dev`는 단순 web server 실행이 아니라 다음 작업을 순서대로 수행합니다.
-
-1. 804개 공식 page와 모든 번역의 source ID, SHA-256, MDX 구조, code block 및 metadata를 검증합니다. 오류가 있으면 preview를 시작하지 않습니다.
-2. 기존 `.generated/site/`를 지우고 pinned `upstream/cf-docs/docs-main/` 전체를 새로 복사합니다.
-3. 번역 page, 필요한 image, Research page, ENG/KOR navigation, overlay JavaScript/CSS와 Mermaid fallback marker를 합성합니다.
-4. Local Research API를 background thread로 시작하고 SQLite migration을 적용한 뒤 official English, 번역, 공개된 research note를 FTS5 full-text search index로 다시 만듭니다.
-5. API indexing과 함께 `npx`가 고정된 Mintlify CLI를 준비하고 모든 MDX, route, navigation과 asset을 local preview로 compile합니다.
-
-따라서 첫 실행, upstream/번역 page가 많을 때, Node package cache가 없을 때 시간이 더 걸립니다. 다음 로그는 오류가 아니라 각 단계의 완료 신호입니다.
-
-```text
-Research API listening on http://127.0.0.1:8787 with 1584 indexed documents
-✓ preview ready
-```
-
-`1584 indexed documents`는 당시 실행 시점의 English 공식 page, 존재하는 번역 page와 공개된 research note를 합친 검색 row 수입니다. 번역이나 research note가 추가되면 숫자도 증가합니다. `preview ready`가 출력된 후에 `http://localhost:3000`을 여는 것이 안전합니다.
-
 개별 단계만 실행할 수도 있습니다.
 
 ```bash
@@ -54,7 +35,7 @@ python3 -m portal index       # local search index만 재생성
 python3 -m portal validate    # shared artifact를 변경하지 않고 검증
 ```
 
-## 공식 문서에 추가된 기능
+## 공식 Canton 문서에 Workspace가 별도로 추가한 기능
 
 | 기능 | 사용 방법 | 저장 위치 |
 | --- | --- | --- |
@@ -197,3 +178,22 @@ This repository does not inspect Canton source repositories, execute tests, depl
 ## Completion standard
 
 This snapshot establishes the research structure, full official corpus, dependency maps, topic mechanisms, classified claim ledger, curated glossary, use-case explanations, and an engineering backlog. It is a baseline knowledge base, not a claim that every one of the 804 pages has been exhaustively interpreted. Future refreshes must diff the corpus first, then revisit claims affected by changed sources.
+
+## `preview ready`까지 시간이 걸리는 이유
+
+`python3 -m portal dev`는 단순 web server 실행이 아니라 다음 작업을 순서대로 수행합니다.
+
+1. 804개 공식 page와 모든 번역의 source ID, SHA-256, MDX 구조, code block 및 metadata를 검증합니다. 오류가 있으면 preview를 시작하지 않습니다.
+2. 기존 `.generated/site/`를 지우고 pinned `upstream/cf-docs/docs-main/` 전체를 새로 복사합니다.
+3. 번역 page, 필요한 image, Research page, ENG/KOR navigation, overlay JavaScript/CSS와 Mermaid fallback marker를 합성합니다.
+4. Local Research API를 background thread로 시작하고 SQLite migration을 적용한 뒤 official English, 번역, 공개된 research note를 FTS5 full-text search index로 다시 만듭니다.
+5. API indexing과 함께 `npx`가 고정된 Mintlify CLI를 준비하고 모든 MDX, route, navigation과 asset을 local preview로 compile합니다.
+
+따라서 첫 실행, upstream/번역 page가 많을 때, Node package cache가 없을 때 시간이 더 걸립니다. 다음 로그는 오류가 아니라 각 단계의 완료 신호입니다.
+
+```text
+Research API listening on http://127.0.0.1:8787 with 1584 indexed documents
+✓ preview ready
+```
+
+`1584 indexed documents`는 당시 실행 시점의 English 공식 page, 존재하는 번역 page와 공개된 research note를 합친 검색 row 수입니다. 번역이나 research note가 추가되면 숫자도 증가합니다. `preview ready`가 출력된 후에 `http://localhost:3000`을 여는 것이 안전합니다.
