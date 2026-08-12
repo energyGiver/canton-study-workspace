@@ -1,0 +1,139 @@
+---
+title: "DA.Action"
+description: "Daml module DA.Action의 reference documentation"
+source_id: "SRC-2FFA9A60CE"
+source_path: "appdev/reference/daml-standard-library/da-action"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "1de2bd40fb751804e8fcfa1a122f58881567a526796b077ec9897685c6e58a71"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-action.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-action-7169"></span>
+
+# DA.Action
+
+Action
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Functions
+
+<span id="function-da-action-when-35467"></span>
+
+### `when`
+
+`when` : [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `f` => [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265) -> `f` () -> `f` ()
+
+`Action` expression을 조건에 따라 실행합니다. 예:
+```
+  when final (archive contractId)
+```
+Boolean 값 `final`이 `True`이면 contract `contractId`를 archive하고, 그렇지 않으면 아무 작업도 하지 않습니다.
+
+이 function에는 short-circuiting semantics가 있습니다. 즉 두 argument가 모두 있고 첫 번째 argument가 `False`로 평가되면 두 번째 argument는 전혀 평가되지 않습니다.
+
+<span id="function-da-action-unless-8539"></span>
+
+### `unless`
+
+`unless` : [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `f` => [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265) -> `f` () -> `f` ()
+
+`when`의 반대입니다.
+
+이 function에는 short-circuiting semantics가 있습니다. 즉 두 argument가 모두 있고 첫 번째 argument가 `True`로 평가되면 두 번째 argument는 전혀 평가되지 않습니다.
+
+<span id="function-da-action-foldra-2803"></span>
+
+### `foldrA`
+
+`foldrA` : [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) `m` => (`a` -> `b` -> `m` `b`) -> `b` -> [`a`] -> `m` `b`
+
+`foldrA`는 결과가 action에 encapsulate된다는 점을 제외하면 `foldr`과 유사합니다. `foldrA`는 list argument를 오른쪽에서 왼쪽으로 처리합니다.
+
+<span id="function-da-action-foldr1a-55935"></span>
+
+### `foldr1A`
+
+`foldr1A` : [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) `m` => (`a` -> `a` -> `m` `a`) -> [`a`] -> `m` `a`
+
+`foldr1A`는 `foldrA`와 비슷하지만 empty list argument가 제공되면 error를 발생시킵니다.
+
+<span id="function-da-action-foldla-78897"></span>
+
+### `foldlA`
+
+`foldlA` : [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) `m` => (`b` -> `a` -> `m` `b`) -> `b` -> [`a`] -> `m` `b`
+
+`foldlA`는 결과가 action에 encapsulate된다는 점을 제외하면 `foldl`과 유사합니다. `foldlA`는 list argument를 왼쪽에서 오른쪽으로 처리합니다.
+
+<span id="function-da-action-foldl1a-65193"></span>
+
+### `foldl1A`
+
+`foldl1A` : [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) `m` => (`a` -> `a` -> `m` `a`) -> [`a`] -> `m` `a`
+
+`foldl1A`는 `foldlA`와 비슷하지만 empty list argument가 제공되면 error를 발생시킵니다.
+
+<span id="function-da-action-filtera-13011"></span>
+
+### `filterA`
+
+`filterA` : [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `m` => (`a` -> `m` [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> [`a`] -> `m` [`a`]
+
+applicative function을 사용해 list를 filtering하며 predicate가 성립하는 element만 유지합니다. 예를 들어 Iou contract ID collection에서 GBP만 찾을 수 있습니다.
+
+```
+filterA (fmap (\iou -> iou.currency == "GBP") . fetch) iouCids
+```
+
+<span id="function-da-action-replicatea-98867"></span>
+
+### `replicateA`
+
+`replicateA` : [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `m` => [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> `m` `a` -> `m` [`a`]
+
+`replicateA n act`는 action을 `n`번 수행하고 결과를 모읍니다.
+
+<span id="function-da-action-replicatea-83733"></span>
+
+### `replicateA_`
+
+`replicateA_` : [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `m` => [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> `m` `a` -> `m` ()
+
+`replicateA`와 같지만 결과를 버립니다.
+
+<span id="function-da-action-gteqgt-60955"></span>
+
+### `>=>`
+
+`>=>` : [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) `m` => (`a` -> `m` `b`) -> (`b` -> `m` `c`) -> `a` -> `m` `c`
+
+Kleisli arrow를 왼쪽에서 오른쪽으로 composition합니다.
+
+<span id="function-da-action-lteqlt-31871"></span>
+
+### `<=<`
+
+`<=<` : [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) `m` => (`b` -> `m` `c`) -> (`a` -> `m` `b`) -> `a` -> `m` `c`
+
+Kleisli arrow를 오른쪽에서 왼쪽으로 composition합니다. @('>=>')@의 argument 순서를 바꾼 형태입니다.

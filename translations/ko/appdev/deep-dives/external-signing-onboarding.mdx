@@ -1,0 +1,299 @@
+---
+title: "External Signing: Party Onboarding"
+description: "Ledger API를 사용하여 External Signing용 External Party를 onboarding합니다."
+source_id: "SRC-C49B9B7FF3"
+source_path: "appdev/deep-dives/external-signing-onboarding"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "cbf2f2a9898a16c2c5c6927fff693e554af50afdb48a78825b2f5b948b5f359d"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/deep-dives/external-signing-onboarding.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.4/sdk/tutorials/app-dev/external_signing_onboarding_lapi.rst" hash="51422925" */}
+
+# External Party Onboarding
+
+이 tutorial에서는 Ledger API를 사용하여 **External Party**를 onboarding하는 방법을 보여줍니다.
+
+## 사전 요구 사항
+
+이 tutorial은 Canton artifact에 example로 포함된 script를 사용합니다. 이 script는 OpenSSL을 사용하여 file system에 key를 생성하므로 production 용도로는 안전하지 않습니다.
+
+Canton artifact를 얻으려면 시작하기 section을 참조하세요. Artifact directory에서 다음 command로 Canton을 시작합니다.
+
+```
+./bin/canton -c examples/08-interactive-submission/interactive-submission.conf --bootstrap examples/08-interactive-submission/bootstrap.canton
+```
+
+## Script 실행
+
+이 tutorial의 단계는 `external_party_onboarding.sh` script에 포함되어 있으며, 이 script는 artifact의 `examples/08-interactive-submission` directory에 있습니다. Script가 수행하는 단계는 다음과 같습니다.
+
+- OpenSSL로 External Party용 private key를 생성합니다.
+- 사용 가능한 synchronizer-id를 확인합니다.
+- 새 External Party를 정의하는 Topology Transaction 집합을 생성합니다.
+- Topology Transaction에 서명합니다.
+- 서명된 Topology Transaction을 Ledger API에 upload합니다.
+
+Script가 실행 중인 Canton instance의 port configuration을 포함하는 `canton_ports.json` file을 찾을 수 있도록 Canton을 시작한 같은 directory에서 script를 실행해야 합니다. 또는 command line argument `-p1 <host>:<port>`를 사용하여 Ledger API hostname과 port를 전달해 script를 호출합니다.
+
+시작하면 다음이 표시됩니다.
+
+```
+./examples/08-interactive-submission/external_party_onboarding.sh
+Fetching localhost:7374/v2/state/connected-synchronizers
+Detected synchronizer-id "da::1220682ef8618b4425e8b1c5d7104260d5340eb4140509e99050a6bc9c5e8898d7b4"
+Requesting generate topology transactions
+Signing hash EiAfdSBLNQswwxUq9LyAYqHj8C5FzeZNLVvUJSgyrtORWg== for MyParty::1220ad82d8863893d65f10e2275a2f7b7af5c26cca97a761cb7cdc77d68e1ba20dc5 using ED25519
+Submitting onboarding transaction to participant1
+Onboarded party "MyParty::1220ad82d8863893d65f10e2275a2f7b7af5c26cca97a761cb7cdc77d68e1ba20dc5"
+```
+
+Script는 몇 가지 command line argument를 지원하며 code를 검사하여 확인할 수 있습니다.
+
+## Script 상세 정보
+
+먼저 script는 `v2/connected-synchronizers` endpoint를 사용하여 사용 가능한 synchronizer-id를 확인하며 정확히 하나가 있다고 가정합니다. Party를 host해야 하는 각 synchronizer-id에서 Party allocation을 반복해야 합니다.
+
+```bash
+SYNCHRONIZER_ID=$(curl -f -s -L ${PARTICIPANT1}/v2/state/connected-synchronizers | jq .connectedSynchronizers.[0].synchronizerId)
+```
+
+다음으로 OpenSSL을 사용하여 External Party용 private Ed25519 key를 생성합니다. 다른 key type도 지원합니다. 그런 다음 public key를 DER format으로 추출하고 binary DER format을 base64로 변환합니다.
+
+```bash
+# Generate an ed25519 private key and extract its public key
+openssl genpkey -algorithm ed25519 -outform DER -out $PRIVATE_KEY_FILE
+# Extract the public key from the private key
+openssl pkey -in private_key.der -pubout -outform DER -out public_key.der 2> /dev/null
+# Convert public key to base64
+PUBLIC_KEY_BASE64=$(base64 -w 0 -i public_key.der)
+```
+
+Script는 편의 endpoint `/v2/parties/external/generate-topology`를 사용하여 External Party onboarding에 필요한 Topology Transaction을 생성합니다. Node를 신뢰할 수 있다면 문제가 없습니다. 다른 scenario에서는 Transaction을 직접 build하거나 hash 재계산을 포함해 서명 전에 검사해야 합니다.
+
+```bash
+# Create the JSON payload to generate the onboarding transaction
+# Note: otherConfirmingParticipantUids is optional but can be used to add other participants
+# as confirming nodes. confirmationThreshold allows to configure the number of required confirmations.
+# If not set, all confirming nodes must confirm.
+GENERATE=$(cat << EOF
+{
+  "synchronizer" : $SYNCHRONIZER_ID,
+  "partyHint" : "$PARTY_NAME",
+  "publicKey" : {
+    "format" : "CRYPTO_KEY_FORMAT_DER_X509_SUBJECT_PUBLIC_KEY_INFO",
+    "keyData": "$PUBLIC_KEY_BASE64",
+    "keySpec" : "SIGNING_KEY_SPEC_EC_CURVE25519"
+  },
+  "otherConfirmingParticipantUids" : [$OTHER_PARTICIPANT_UIDS]
+}
+EOF
+)
+
+# Submit it to the JSON API
+ONBOARDING_TX=$(curl -f -s -d "$GENERATE" -H "Content-Type: application/json" \
+  -X POST ${PARTICIPANT1}/v2/parties/external/generate-topology)
+```
+
+편의 endpoint는 새 Party의 계산된 Party ID 및 public key fingerprint와 함께 생성된 Topology Transaction을 반환합니다. 또한 전체 Transaction 집합에 대한 commitment인 multi-hash도 반환합니다.
+
+```bash
+PARTY_ID=$(echo $ONBOARDING_TX | jq -r .partyId)
+TRANSACTIONS=$(echo $ONBOARDING_TX | jq '.topologyTransactions | map({ transaction : .})')
+PUBLIC_KEY_FINGERPRINT=$(echo $ONBOARDING_TX | jq -r .publicKeyFingerprint)
+MULTI_HASH=$(echo -n $ONBOARDING_TX | jq -r .multiHash)
+```
+
+이 hash는 새 Party의 private key로 서명해야 합니다. Script는 OpenSSL로 hash에 서명하고 signature를 base64로 변환합니다.
+
+```bash
+echo "Signing hash ${MULTI_HASH} for ${PARTY_ID} using ED25519"
+echo -n $MULTI_HASH | base64 --decode > hash_binary.bin
+openssl pkeyutl -sign -inkey $PRIVATE_KEY_FILE -rawin -in hash_binary.bin -out signature.bin -keyform DER
+SIGNATURE=$(base64 -w 0 < signature.bin)
+```
+
+Script는 signature와 이전 단계의 data를 사용하여 Topology Transaction 및 signature를 Ledger API에 제출하고 새 External Party onboarding을 완료합니다.
+
+```bash
+ALLOCATE=$(cat << EOF
+{
+  "synchronizer" : $SYNCHRONIZER_ID,
+  "onboardingTransactions": $TRANSACTIONS,
+  "multiHashSignatures": [{
+     "format" : "SIGNATURE_FORMAT_CONCAT",
+     "signature": "$SIGNATURE",
+     "signedBy" : "$PUBLIC_KEY_FINGERPRINT",
+     "signingAlgorithmSpec" : "SIGNING_ALGORITHM_SPEC_ED25519"
+  }]
+}
+EOF
+)
+
+RESULT=$(curl -f -s -d "$ALLOCATE" -H "Content-Type: application/json" \
+  -X POST ${PARTICIPANT1}/v2/parties/external/allocate)
+```
+
+Transaction은 하나씩 서명하거나 script와 같이 하나의 hash로 묶어 서명할 수 있습니다.
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.4/sdk/tutorials/app-dev/external_signing_onboarding_multihosted.rst" hash="83333f88" */}
+
+# Multi-Hosted External Party Onboarding
+
+이 tutorial에서는 Ledger API를 사용하여 여러 Validator가 host하는 **External Party**를 onboarding하는 방법을 보여줍니다. External Party onboarding tutorial의 간단한 확장입니다.
+
+## 사전 요구 사항
+
+External Party onboarding tutorial을 완료했고 Canton example instance가 계속 실행 중인지 확인하세요.
+
+## Script 실행
+
+이전 tutorial에서 사용한 example script는 multi-hosted External Party onboarding도 지원합니다. `--multi-hosted` command line argument로 호출하면 기본적으로 두 node에 onboarding합니다.
+
+```
+./examples/08-interactive-submission/external_party_onboarding.sh --multi-hosted
+```
+
+## Script 상세 정보
+
+`--multi-hosted` flag는 다음을 통해 두 번째 Participant ID를 `generate-topology` request로 전달합니다.
+
+```
+`"otherConfirmingParticipantUids" : [$OTHER_PARTICIPANT_ID]`
+```
+
+Field를 사용하면 생성된 Topology Transaction이 hosting relationship에 추가 Participant ID를 포함합니다. `observingParticipantUids`, `confirmationThreshold` 등의 다른 field도 사용할 수 있습니다. 구성하지 않으면 Confirmation Threshold가 Confirming Node 수로 설정됩니다.
+
+그런 다음 생성된 Topology Transaction을 두 번째 Participant의 Ledger API에 upload하기만 하면 됩니다.
+
+```bash
+ALLOCATE=$(cat << EOF
+{
+  "synchronizer" : $SYNCHRONIZER_ID,
+  "onboardingTransactions": $TRANSACTIONS,
+  "multiHashSignatures": [{
+     "format" : "SIGNATURE_FORMAT_CONCAT",
+     "signature": "$SIGNATURE",
+     "signedBy" : "$PUBLIC_KEY_FINGERPRINT",
+     "signingAlgorithmSpec" : "SIGNING_ALGORITHM_SPEC_ED25519"
+  }]
+}
+EOF
+)
+
+RESULT=$(curl -f -s -d "$ALLOCATE" -H "Content-Type: application/json" \
+  -X POST ${PARTICIPANT1}/v2/parties/external/allocate)
+```
+
+같은 Synchronizer에 두 Participant가 연결되어 있다면 Canton Console에서 이를 시험할 수 있습니다. 다음 example에서는 participant1로 Internal Party의 hosting proposal을 생성합니다. 그러면 외부에서 Topology Transaction signature를 생성할 필요가 없습니다. Proposal approval은 participant2를 사용하여 수행합니다.
+
+먼저 participant1을 사용하여 hosting proposal을 생성합니다.
+
+``` none
+@ participant1.topology.party_to_participant_mappings.propose(
+        com.digitalasset.canton.topology.PartyId.tryCreate("Alice", participant1.id.uid.namespace),
+        newParticipants = Seq(
+            (participant1.id, ParticipantPermission.Confirmation),
+            (participant2.id, ParticipantPermission.Confirmation),
+        ),
+    )
+    res1: SignedTopologyTransaction[TopologyChangeOp, PartyToParticipant] = SignedTopologyTransaction(
+      TopologyTransaction(
+        PartyToParticipant(
+          Alice::12201ff69b1d...,
+          PositiveNumeric(1),
+          Vector(
+            HostingParticipant(PAR::participant1::12201ff69b1d..., Confirmation, false),
+            HostingParticipant(PAR::participant2::1220a4d7463b..., Confirmation, false)
+          ),
+          None
+        ),
+        serial = 1,
+        operation = Replace,
+        hash = SHA-256:483ecaff7581...
+      ),
+      signatures = 12201ff69b1d...,
+      proposal
+    )
+```
+
+그런 다음 participant2에서 proposal을 나열합니다. 새 proposal이 곧 나타나야 합니다.
+
+``` none
+@ participant2.topology.party_to_participant_mappings.list_hosting_proposals(sequencer1.synchronizer_id, participant2.id)
+    res2: Seq[com.digitalasset.canton.admin.api.client.data.topology.ListMultiHostingProposal] = Vector(
+      ListMultiHostingProposal(
+        txHash = SHA-256:483ecaff7581...,
+        party = Alice::12201ff69b1d...,
+        permission = Confirmation$,
+        others = PAR::participant1::12201ff69b1d... -> Confirmation$,
+        threshold = 1
+      )
+    )
+```
+
+두 번째 Participant의 signature를 기다리는 pending proposal이 표시됩니다. Proposal은 이전 command output에서 얻을 수 있는 Transaction hash `txHash`로 식별됩니다.
+
+``` none
+@ val txHash = participant2.topology.party_to_participant_mappings.list_hosting_proposals(sequencer1.synchronizer_id, participant2.id).head.txHash
+    txHash : TopologyTransaction.TxHash = TxHash(hash = SHA-256:483ecaff7581...)
+```
+
+Console command topology.transactions.authorize를 사용하여 proposal을 authorize합니다.
+
+``` none
+@ participant2.topology.transactions.authorize(sequencer1.synchronizer_id, txHash)
+    res4: SignedTopologyTransaction[TopologyChangeOp, TopologyMapping] = SignedTopologyTransaction(
+      TopologyTransaction(
+        PartyToParticipant(
+          Alice::12201ff69b1d...,
+          PositiveNumeric(1),
+          Vector(
+            HostingParticipant(PAR::participant1::12201ff69b1d..., Confirmation, false),
+            HostingParticipant(PAR::participant2::1220a4d7463b..., Confirmation, false)
+          ),
+          None
+        ),
+        serial = 1,
+        operation = Replace,
+        hash = SHA-256:483ecaff7581...
+      ),
+      signatures = Seq(12201ff69b1d..., 1220a4d7463b...),
+      proposal
+    )
+```
+
+그러면 participant2 signature가 proposal에 추가됩니다. 이제 proposal에 필요한 모든 signature가 있으므로 두 node가 모두 Party를 host하는 것으로 표시됩니다.
+
+``` none
+@ participant1.parties.hosted("Alice")
+    res5: Seq[ListPartiesResult] = Vector(
+      ListPartiesResult(
+        party = Alice::12201ff69b1d...,
+        participants = Vector(
+          ParticipantSynchronizers(
+            participant = PAR::participant1::12201ff69b1d...,
+            synchronizers = Vector(
+              SynchronizerPermission(synchronizerId = local::122032922613..., permission = Confirmation)
+            )
+          ),
+          ParticipantSynchronizers(
+            participant = PAR::participant2::1220a4d7463b...,
+            synchronizers = Vector(
+              SynchronizerPermission(synchronizerId = local::122032922613..., permission = Confirmation)
+            )
+          )
+        )
+      )
+    )
+```
+
+{/* COPIED_END */}

@@ -1,0 +1,179 @@
+---
+title: "첫 번째 Upgrade 작성"
+description: "Backward-compatible 변경 사항이 있는 v2 Daml package를 생성하는 단계별 tutorial"
+source_id: "SRC-BC8D343856"
+source_path: "appdev/modules/m6-writing-first-upgrade"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "8eda9cbe739ed4d246bb5d6dc896aba6232295060cfb03932a1242a7ac4e2fe0"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m6-writing-first-upgrade.md)을 사용하세요.
+</Warning>
+
+import DamlAppdevModulesM6WritingFirstUpgradeL159 from "/snippets/daml-docs/appdev_modules_m6-writing-first-upgrade_L159.mdx";
+import DamlAppdevModulesM6WritingFirstUpgradeL37 from "/snippets/daml-docs/appdev_modules_m6-writing-first-upgrade_L37.mdx";
+import DamlAppdevModulesM6WritingFirstUpgradeL91 from "/snippets/daml-docs/appdev_modules_m6-writing-first-upgrade_L91.mdx";
+
+
+이 tutorial에서는 Daml package의 v2 version을 생성하는 과정을 안내합니다. 간단한 template로 시작하여 optional field와 새 choice를 추가한 다음 upgrade가 compile되고 기존 contract가 새 code에서 작동하는지 verify합니다.
+
+## 사전 요구 사항
+
+- Daml SDK가 포함된 정상 작동하는 `dpm` installation
+- Daml template 및 choice에 대한 이해([Module 3](/appdev/modules/m3-contract-templates))
+- Text editor 또는 Daml Studio
+
+## 1단계: v1 Package 생성
+
+새 project의 scaffold를 생성하는 것부터 시작합니다. `dpm new` command는 directory structure와 `daml.yaml` file을 생성합니다.
+
+```bash
+dpm new com-example-licensing
+```
+
+이 tutorial에서는 모든 내용을 명시적으로 보여주기 위해 directory structure를 직접 설정합니다.
+
+```bash
+mkdir -p daml/v1/daml
+```
+
+`daml/v1/daml.yaml`을 생성합니다.
+
+```yaml
+# daml/v1/daml.yaml
+sdk-version: 3.4.9
+name: com-example-licensing
+version: 1.0.0
+source: daml
+dependencies:
+  - daml-prim
+  - daml-stdlib
+```
+
+`daml/v1/daml/Main.daml`을 생성합니다.
+
+<DamlAppdevModulesM6WritingFirstUpgradeL37 />
+
+Build하고 verify합니다.
+
+```bash
+cd daml/v1
+dpm build
+```
+
+<Note>
+SDK는 `dpm new upgrade-demo --template upgrades-example`로 생성할 수 있는 built-in upgrade example template도 제공합니다. 자세한 내용은 [example source](https://github.com/digital-asset/daml/tree/main/sdk/docs/source/sdk/sdlc-howtos/smart-contracts/upgrade/example)를 참조하세요.
+</Note>
+
+## 2단계: v2 Package 생성
+
+Package를 `cp -r v1 v2`로 복사하고 version을 높입니다. Daml이 upgrade임을 인식하려면 package 이름은 동일하게 유지해야 합니다.
+
+```yaml
+# daml/v2/daml.yaml
+sdk-version: 3.4.9
+name: com-example-licensing
+version: 2.0.0
+source: daml
+dependencies:
+  - daml-prim
+  - daml-stdlib
+upgrades: ../v1/.daml/dist/com-example-licensing-1.0.0.dar
+```
+
+`upgrades` field는 v1 DAR를 가리킵니다. 이 설정을 통해 `dpm build`가 v2가 v1과 호환되는 upgrade인지 validate합니다.
+
+이제 backward-compatible 변경을 적용합니다. Record에 `Optional` field를 추가하고 template에 새 choice를 추가합니다.
+
+<DamlAppdevModulesM6WritingFirstUpgradeL91 />
+
+변경 사항은 SCU compatibility rule을 따릅니다.
+- `expiryDate`는 `Optional` field이며 v1 contract에 암묵적인 `None` default가 적용됩니다.
+- `Renew`는 새 choice입니다. v1에는 없으므로 backward-compatibility issue가 없습니다.
+
+## 3단계: Compatibility 검증
+
+v2 package를 build합니다.
+
+```bash
+cd daml/v2
+dpm build
+```
+
+Build가 성공하면 compiler가 v2가 v1의 유효한 upgrade임을 verify한 것입니다. `upgrades` field는 `daml.yaml`에 있으며 이 검사를 trigger합니다. 이 field가 없으면 `dpm build`는 v2를 독립적으로 compile하며 cross-version validation을 수행하지 않습니다. Compiler는 field 제거 금지, type 변경 금지, 새 field는 `Optional`이어야 함 등의 모든 SCU rule을 검사합니다.
+
+Breaking change를 도입했다면 compiler가 위반한 rule을 알리는 error를 report합니다.
+
+## 4단계: 근사한 Cross-Version 동작 Test
+
+Upgrade path를 verify하려면 v2 package에 test script를 추가합니다. 먼저 `daml-script` dependency를 `daml/v2/daml.yaml`에 추가합니다.
+
+```yaml
+# daml/v2/daml.yaml
+sdk-version: 3.4.9
+name: com-example-licensing
+version: 2.0.0
+source: daml
+dependencies:
+  - daml-prim
+  - daml-stdlib
+  - daml-script
+upgrades: ../v1/.daml/dist/com-example-licensing-1.0.0.dar
+```
+
+그런 다음 v1 contract를 `expiryDate = None`으로 simulate하고 새 v2 `Renew` choice를 exercise하는 test script를 만듭니다.
+
+<DamlAppdevModulesM6WritingFirstUpgradeL159 />
+
+v2 package directory에서 test를 실행합니다.
+
+```bash
+cd daml/v2
+dpm test
+```
+
+<Note>
+이 test는 단일 package version 안에서 실행되므로 cross-version 동작을 완전히 재현하지 않고 근사합니다. v1과 v2 DAR가 모두 upload된 실제 ledger에서는 runtime이 실제 v1 contract와 v2 code 사이의 version resolution을 처리합니다. 실제 cross-version scenario를 test하는 전략은 [Upgrade Testing](/appdev/modules/m6-testing-upgrades)을 참조하세요.
+</Note>
+
+## 5단계: 두 Version 배포
+
+실제 deployment에서는 두 DAR file이 모두 Validator에 upload되어 있을 수 있습니다. 순서가 중요합니다. v1이 아직 upload되지 않았다면 먼저 upload하고 그다음 v2를 upload합니다. 새 Validator의 경우 v2가 v1과 SCU-compatible하다면 v2만 upload하면 됩니다.
+
+```bash
+# Upload v1 (if not already on the ledger)
+curl -X POST "http://localhost:7575/v2/packages" \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary @daml/v1/.daml/dist/com-example-licensing-1.0.0.dar
+
+# Upload v2
+curl -X POST "http://localhost:7575/v2/packages" \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary @daml/v2/.daml/dist/com-example-licensing-2.0.0.dar
+```
+
+v2가 upload되고 모든 stakeholder의 Validator에서 vetting되면 기존 v1 contract에서 새 choice를 사용할 수 있습니다.
+
+## 내부 작동 방식
+
+Validator가 v2 DAR를 받으면 다음이 이루어집니다.
+
+1. Automatic vetting이 활성화되어 있으면 Validator Node가 v1과 함께 새 package를 vetting합니다. 그렇지 않으면 수동으로 vetting해야 합니다.
+2. 두 package는 모두 active 상태로 유지되며 v1 contract는 영향을 받지 않습니다.
+3. V2 code가 v1 contract를 fetch하면 runtime이 `Optional` field를 `None`으로 채웁니다.
+4. V1 code가 `Optional` field가 `None`인 v2 contract를 fetch하면 field를 무시하고 fetch가 성공합니다.
+5. V1 code가 `Optional` field에 `None`이 아닌 값이 있는 v2 contract를 fetch하면 data loss를 방지하기 위해 fetch가 실패합니다.
+
+이 설계는 mixed-version operation의 안전을 보장합니다. Data가 조용히 손실되지 않으며 incompatible interaction은 state를 corrupt하는 대신 명시적으로 실패합니다.
+
+서로 다른 version을 runtime에서 resolve하는 방법은 [Package Selection](/appdev/modules/m6-package-selection)을 참조하세요.
+
+## 다음 단계
+
+- [Upgrade Compatibility](/appdev/modules/m6-upgrade-compatibility): 허용되는 변경과 허용되지 않는 변경의 전체 reference
+- [Upgrade Testing](/appdev/modules/m6-testing-upgrades): 포괄적인 upgrade testing 전략
+- [Upgrade 배포](/appdev/modules/m6-deployment): 여러 environment에 upgrade rollout

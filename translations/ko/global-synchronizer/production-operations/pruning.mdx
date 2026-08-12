@@ -1,0 +1,171 @@
+---
+title: "Pruning"
+description: "Global Synchronizer node의 sequencer 및 CometBFT pruning configuration"
+source_id: "SRC-2F6E09F38B"
+source_path: "global-synchronizer/production-operations/pruning"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "0e1277a774de40e155e1f40390b36c98a90480275f99f0b2fe6f0c0d0d867a2d"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/pruning.md)을 사용하세요.
+</Warning>
+
+이 페이지에서는 participant node의 Canton 측 pruning과 automatic pruning configuration을 설명합니다.
+
+Sequencer 및 CometBFT layer의 Super Validator pruning은 [SV Pruning](/global-synchronizer/production-operations/sv-pruning)을 참조하세요.
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/operate/pruning/pruning.rst" hash="0d1554c2" */}
+
+## Participant node pruning
+
+Pruning은 database storage 크기를 제한하는 데 도움이 됩니다. Participant Node pruning은 archived contract와 오래된 transaction을 선택적으로 제거하는 것을 의미합니다. 사용 편의성과 제어 중 원하는 기준에 따라 다음 두 option 중 하나를 선택하세요.
+
+1.  Automatic pruning은 정기 schedule 및 retention period에 따라 Participant Node가 pruning을 수행하도록 지시합니다.
+2.  Manual pruning은 pruning할 ledger offset을 명시적으로 제어합니다. 또한 database backup 및 defragmentation 같은 operational procedure와 pruning을 통합할 수 있습니다.
+
+Pruning을 수행하기 전에 backup을 마련하고 Participant Node를 pruning할 때마다 backup이 생성되는지 확인하세요. 자세한 내용은 backup 및 restore를 참조하세요.
+
+### Automatic pruning 활성화
+
+다음 항목으로 구성된 pruning schedule을 지정하여 automatic pruning을 활성화합니다.
+
+- 정기적인 pruning 시작 시간을 지정하는 cron expression
+- Cron expression의 시작 시간을 기준으로 pruning 종료 시간을 지정하는 maximum duration
+- 현재 시간을 기준으로 어디까지 pruning할지 지정하는 retention period
+- Internal store만 pruning할지, 아니면 기본 동작대로 Ledger API에 표시되는 archived contract와 update도 함께 pruning할지 나타내는 선택적 표시
+
+예를 들어 매주 토요일 오전 8시부터 오후 4시까지, 모두 UTC 기준으로 pruning을 실행하려면 다음을 사용합니다.
+
+``` none
+participant.pruning.set_participant_schedule(
+  cron = "0 0 8 ? * SAT",
+  maxDuration = 8.hours,
+  retention = 90.days,
+  pruneInternallyOnly = false,
+)
+```
+
+공통 database를 공유하도록 high availability로 구성된 Participant Node에서는 pruning schedule을 수정하는 method를 active Participant Node replica에서 호출해야 합니다.
+
+다른 automatic pruning method는 automatic pruning reference를 참조하세요.
+
+### Manual pruning 수행
+
+Participant Node를 manual pruning하면 pruning을 database maintenance operation과 결합할 수 있지만, ledger를 pruning할 명시적인 ledger offset을 식별해야 합니다.
+
+1.  Pruning할 시간을 지정하여 ledger를 pruning할 numeric ledger offset을 식별합니다.
+
+    ``` none
+    val offsetToPruneUpTo = participant.pruning.find_safe_offset(timeToPruneUpTo.toInstant)
+    ```
+
+    지정된 시간에 대응하는 offset이 없으면 `find_safe_offset` method는 `None`을 반환합니다.
+
+2.  Participant Node에서 manual pruning을 호출합니다.
+
+    거의 모든 경우에 가장 많은 storage를 확보하는 포괄적인 `prune` method를 선택하세요. 다만 이 method는 Ledger API를 통해 표시되는 ledger 범위도 줄입니다.
+
+    ``` none
+    // The prune() method prunes more comprehensively and should be used in most cases.
+    participant.pruning.prune(offsetToPruneUpTo)
+    ```
+
+    경우에 따라 `prune` method와 함께 `prune_internally` method를 사용할 수 있습니다. 일반적으로 `prune` method를 호출한 뒤 더 큰 offset으로 `prune_internally` method를 호출합니다. 예를 들어 Ledger API history는 3개월 동안 유지하면서 internal store는 1개월 전까지 pruning할 수 있습니다.
+
+    ``` none
+    // The prune() method prunes more comprehensively and should be used in most cases.
+    participant.pruning.prune_internally(offsetToPruneUpTo, None)
+    ```
+
+    High availability로 구성되어 공통 database를 공유하는 Participant Node에서는 active Participant Node replica에서 pruning method를 호출해야 합니다.
+
+여러 차례의 method call로 조금씩 pruning할 수 있도록 ledger offset을 충분히 작은 단위로 반복해서 늘리지 않으면 `prune` 및 `prune_internally` method가 멈춘 것처럼 보일 수 있습니다. 또한 이러한 manual method에는 high-availability failover 후 다른 node에서 재개하는 built-in mechanism이 없습니다.
+
+### Database defragmentation
+
+Pruning 후 database를 defragment하세요. Pruning은 database에서 data를 삭제하여 공간을 확보하지만 table 크기를 조정하지는 않습니다. Pruning으로 확보된 공간을 최적으로 회수하는 방법은 PostgreSQL의 `VACUUM` 및 `VACUUM FULL` 문서를 참조하세요.
+
+### Pruning 진행 상황 monitoring
+
+Pruning state를 monitoring하여 pruning schedule이 ledger growth를 따라갈 수 있는지, 그리고 아래의 pruning limitation 중 하나로 automatic pruning이 멈추지 않았는지 확인합니다.
+
+"가장 오래된 pruning되지 않은" event의 age를 시간 단위로 나타내는 `daml_pruning_max_event_age` metric을 monitoring하세요. `max-event-age` metric은 pruning schedule의 `retention` 값에 interval 길이를 더한 값을 초과해서는 안 됩니다. 예를 들어 schedule의 retention이 30일이고 cron이 weekly pruning을 지정한다면 `max-event-age`는 37일 미만으로 유지되어야 합니다. 어떤 node에서든 `max-event-age` metric이 이 upper limit을 초과하면 pruning window 사이의 interval을 줄이거나 pruning schedule의 `maximum duration` setting을 늘려 pruning에 더 많은 시간을 할당하세요.
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/reference/automatic_pruning.rst" hash="2079eddb" */}
+
+### Automatic pruning reference
+
+Pruning schedule을 설정, 수정 및 조회하는 데 다음 function을 사용할 수 있습니다.
+
+``` none
+// Set a pruning schedule with a duration and a retention period.
+pruning.set_schedule("0 0 8 ? * SAT", 8.hours, 90.days)
+
+// Retrieve the current pruning schedule returning `None` if no schedule is set.
+val pruningSchedule = pruning.get_schedule()
+
+// Set individual fields to modify the existing pruning schedule.
+pruning.set_cron("0 /5 * * * ?")
+pruning.set_retention(30.days)
+pruning.set_max_duration(2.hours)
+
+// Clear the pruning schedule disabling automatic pruning on a specific node.
+pruning.clear_schedule()
+```
+
+Pruning schedule을 사용자 지정하려면 cron specification을 참조하세요. 몇 가지 예는 다음과 같습니다.
+
+``` none
+// Prune every evening at 8pm GMT for two hours
+set_schedule("0 0 20 * * ?", 2.hours, retention)
+
+// Prune every 5 minutes for one minute
+set_schedule("0 /5 * * * ?", 1.minute, retention)
+
+// Prune for one specific day
+set_schedule("0 0 0 31 12 ? 2025", 1.day, retention)
+```
+
+Maximum duration이 신뢰할 수 있는 pruning window 종료 시간을 지정하도록 하려면 앞의 예와 같이 cron expression의 선행 field가 wildcard(`\*`)가 아니어야 합니다. Hour field가 고정되어 있다면 minute 및 second field도 고정되어야 합니다.
+
+#### Schedule format
+
+Cron expression은 공백으로 구분된 7개 field로 구성됩니다.
+
+| Field            | Type 및 유효한 값\*                                                                                             |
+|------------------|---------------------------------------------------------------------------------------------------------------------|
+| seconds          | `0`에서 `59`까지의 숫자                                                                                             |
+| minutes          | `0`에서 `59`까지의 숫자                                                                                             |
+| hours            | `0`에서 `23`까지의 숫자                                                                                             |
+| day of the month | `1`에서 `31`까지의 숫자                                                                                             |
+| month            | `0`에서 `11`까지의 숫자(`0` = January) **또는** month name의 처음 세 글자(`JAN`, `FEB`, `MAR` 등) |
+| day of the week  | `1`에서 `7`까지의 숫자(`1` = Sunday) **또는** day name의 처음 세 글자(`SUN`, `MON`, `TUE` 등)     |
+| year (optional)  | `1900`에서 `2099`까지의 숫자                                                                                        |
+
+*\*"from .. to .."로 지정된 range에는 양쪽 endpoint가 모두 포함됩니다.*
+
+Day-of-the-month 값이 위의 정의에 따라 유효하더라도 특정 month에는 실제 날짜가 존재하지 않을 수 있습니다. 예를 들어 11월 31일은 존재하지 않습니다. 매월 31일에 pruning하도록 예약하면 31일보다 짧은 month는 모두 건너뜁니다.
+
+#### 고급 schedule formatting
+
+- 값의 **list 및 range**를 구성할 수 있습니다. 예를 들어 day of the week에는 Monday부터 Friday까지를 나타내는 `MON-FRI` 같은 range나 Tuesday와 Friday만 나타내는 `TUE,FRI`를 사용할 수 있습니다. `MON,WED-FRI`처럼 둘을 조합하여 "Monday, 그리고 Wednesday부터 Friday"를 나타낼 수도 있습니다.
+- **Asterisk**(`*`)를 "가능한 모든 값"을 의미하는 wildcard로 사용합니다.
+- **Question mark**(`?`)를 day-of-the-month 및 day-of-the-week field에서 "모든 값"을 의미하는 wildcard로 사용합니다. 예를 들어 "매주 Monday 정오"를 지정하려면 어떤 day of the month도 유효함을 나타내는 `?` 문자를 사용하여 `0 0 12 ? * MON`으로 지정합니다.
+- Numeric value에 **increment**를 적용하려면 slash(`/`)를 사용합니다. 예를 들어 hours field의 `1/2`는 오전 1시부터 두 시간마다, 즉 오전 1시, 3시, 5시 등을 의미합니다.
+
+유효한 schedule의 예는 다음과 같습니다.
+
+- `0 30 * * * *` 매시 30분
+- `0 5/15 12,18-20 * * *` 정오 및 오후 6시부터 8시까지, 매시 5분부터 15분 간격
+- `0 5/15 12,18-20 ? * MON,THU` 위와 같지만 Monday와 Thursday에만 실행
+- `0 0 22 1 * ?` 매월 1일 오후 10시
+
+Cron expression에 대한 자세한 내용은 [Apache Log4j API 문서](https://logging.apache.org/log4j/2.x/javadoc/log4j-core/org/apache/logging/log4j/core/util/CronExpression.html)를 참조하세요.
+
+{/* COPIED_END */}

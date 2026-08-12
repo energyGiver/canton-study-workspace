@@ -1,0 +1,216 @@
+---
+title: "Runbook"
+description: "일반적인 validator incident에 대응하는 단계별 operational runbook"
+source_id: "SRC-4B78B34E03"
+source_path: "global-synchronizer/troubleshooting-guide/runbooks"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "b18f3eb2f84dc42a68934ab023a987b917f0a8177ec52d205a0bce7a9af27e96"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_RUNBOOKS_0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-troubleshooting-guide-runbooks-0.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/troubleshooting-guide/runbooks.md)을 사용하세요.
+</Warning>
+
+Runbook은 알려진 incident 유형에 대한 구조화된 대응 절차를 제공합니다. 각 runbook은 detect, assess, act, verify, document라는 동일한 단계를 따릅니다.
+
+## Incident 대응 Template
+
+전용 runbook이 없는 incident에는 이 template을 사용하세요.
+
+1. **Detect** -- 증상을 식별합니다. 문제는 어떻게 발견되었습니까? Alert, user report 또는 routine check를 확인합니다.
+2. **Assess** -- 범위와 심각도를 판단합니다. Validator가 offline입니까? Transaction이 실패합니까? Data가 위험에 처했습니까?
+3. **Act** -- 적절한 수정 조치를 실행합니다. 아래의 관련 runbook 또는 [troubleshooting 방법론](/global-synchronizer/troubleshooting-guide/troubleshooting-methodology)을 따릅니다.
+4. **Verify** -- 수정 결과를 확인합니다. Health endpoint를 확인하고 test transaction을 제출하며 반복되는 error가 있는지 log를 검토합니다.
+5. **Document** -- 발생한 일, 원인, 수행한 조치, 후속 조치를 기록합니다.
+
+---
+
+## Runbook: Validator Offline
+
+**Detection:** Health endpoint가 200이 아닌 값을 반환하거나 monitoring alert가 발생하거나 validator가 public network status에서 사라집니다.
+
+**Assessment:**
+
+```bash
+# Check pod/container status
+kubectl get pods -n validator
+# or
+docker ps --filter "name=validator"
+```
+
+**Action:**
+
+- Pod가 `CrashLoopBackOff` 상태라면 root cause를 확인하기 위해 log를 점검합니다.
+  ```bash
+  kubectl logs -n validator deployment/validator-app --previous
+  ```
+- Pod가 scheduling되지 않았다면 resource quota 문제 또는 node availability를 확인합니다.
+  ```bash
+  kubectl describe pod -n validator -l app=validator-app
+  ```
+- Container가 code 137로 종료되었다면 OOM-kill된 것입니다. Memory limit을 늘립니다.
+- Container가 code 1로 종료되었다면 configuration 또는 startup error가 있는지 log를 확인합니다.
+
+**Verification:**
+
+```bash
+curl -s http://localhost/api/validator/readyz
+```
+
+Endpoint가 HTTP 200을 반환해야 합니다.
+
+---
+
+## Runbook: Traffic 소진
+
+**Detection:** Transaction이 `PARTICIPANT_TRAFFIC_BELOW_LIMIT`와 함께 실패하거나 validator가 `unresponsiveParties` 목록에 포함된 상태에서 `MEDIATOR_SAYS_TX_TIMED_OUT`과 함께 실패합니다.
+
+**Assessment:**
+
+<CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_RUNBOOKS_0 />
+
+
+`availableTraffic`이 0이거나 traffic limit이 소진되었다면 transaction이 정상적으로 진행되기 전에 traffic을 구매하거나 auto-top-up을 활성화해야 합니다.
+
+**Action:**
+
+1. 즉시 traffic을 구매합니다.
+   ```bash
+   curl -X POST "http://localhost/api/validator/v0/wallet/buy-traffic-requests" \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "receiving_validator_party_id": "<validator-party-id>",
+       "domain_id": "<synchronizer-id>",
+       "traffic_amount": 100000,
+       "tracking_id": "<unique-tracking-id>",
+       "expires_at": <expiry-unix-timestamp-micros>
+     }'
+   ```
+   이 작업은 request만 생성합니다. `/v0/wallet/buy-traffic-requests/{tracking_id}/status` endpoint로 상태를 확인하세요. 전체 request/response schema는 [Traffic 구매](/sdks-tools/api-reference/splice-validator-api#buying-traffic)를 참조하세요.
+2. 재발을 방지하도록 auto-top-up을 활성화합니다.
+   ```yaml
+   # In validator-values.yaml
+   topup:
+     enabled: true
+     targetThroughput: 100000
+     minTopupInterval: 10m
+   ```
+3. Validator에 traffic 구매 비용을 충당할 충분한 Canton Coin balance가 있는지 확인합니다.
+
+**Verification:** Test transaction을 제출하고 성공하는지 확인합니다.
+
+---
+
+## Runbook: Database Disk Full
+
+**Detection:** `No space left on device`가 포함된 PostgreSQL error 또는 monitoring의 disk usage alert가 발생합니다.
+
+**Assessment:**
+
+```bash
+# Check disk usage
+kubectl exec -n validator statefulset/postgres -- df -h /var/lib/postgresql/data
+```
+
+**Action:**
+
+1. **즉각적인 공간 확보** -- database가 완전히 가득 찬 경우 PostgreSQL이 다시 write를 받아들이기 전에 PVC를 확장하거나 공간을 확보해야 할 수 있습니다.
+   ```bash
+   # Resize PVC (if your StorageClass supports it)
+   kubectl edit pvc postgres-data -n validator
+   # Change spec.resources.requests.storage to a larger value
+   ```
+2. **Pruning 활성화 또는 수정:**
+   ```yaml
+   participantPruningSchedule:
+     cron: "0 */10 * * * ?"
+     maxDuration: 60m
+     retention: 90d
+   ```
+3. Pruning이 row를 삭제한 뒤 공간을 회수하도록 PostgreSQL에서 **수동 VACUUM을 실행**합니다.
+   ```sql
+   VACUUM FULL;
+   ```
+   참고: `VACUUM FULL`은 table을 lock하며 vacuum 대상 table과 거의 같은 크기의 여유 공간이 필요합니다. Maintenance window에 실행하도록 예약하세요.
+
+**Verification:** Disk usage가 감소했으며 validator가 transaction을 정상적으로 처리하는지 확인합니다.
+
+---
+
+## Runbook: 실패한 Upgrade Rollback
+
+**Detection:** `helm upgrade` 후 validator가 crash loop 상태이거나 `UnrecoverableError` message를 생성합니다.
+
+**Assessment:**
+
+```bash
+# Check the current release state
+helm history validator -n validator
+
+# Check pod logs for the specific error
+kubectl logs -n validator deployment/validator-app --tail=200
+```
+
+**Action:**
+
+1. 반복해서 restart하지 **마세요**. State corruption을 악화시킬 수 있습니다.
+2. 이전에 작동하던 Helm release로 rollback합니다.
+   ```bash
+   helm rollback validator <previous-revision> -n validator
+   ```
+3. Rollback에 synchronizer migration(Type 3 upgrade)이 포함된다면 database name도 이전 값으로 되돌려야 할 수 있습니다.
+   ```yaml
+   persistence:
+     databaseName: participant_3  # Previous migration ID
+   ```
+4. Rollback이 이전 container image를 복원했는지 확인합니다.
+   ```bash
+   kubectl -n validator get deploy validator-app \
+     -o "jsonpath={.spec.template.spec.containers[0].image}"
+   ```
+5. 안정화되면 다시 시도하기 전에 upgrade 실패를 조사합니다. 일반적인 원인은 누락된 migration configuration, 잘못된 database name 또는 호환되지 않는 values file입니다.
+
+**Verification:** Health endpoint가 200을 반환하며 validator가 transaction을 처리합니다.
+
+---
+
+## Runbook: CometBFT Consensus 정지
+
+**Detection:** 이는 CometBFT node를 실행하는 Super Validator(SV) operator에게 적용됩니다. Block height 증가가 멈추거나 CometBFT status endpoint에 새 block이 표시되지 않습니다.
+
+**Assessment:**
+
+```bash
+# Check CometBFT status
+curl -s http://localhost:26657/status | jq '.result.sync_info'
+```
+
+`latest_block_height`가 몇 분 동안 변경되지 않고 `catching_up`이 `false`라면 consensus가 정지한 것입니다.
+
+**Action:**
+
+1. 연결된 peer 수를 확인합니다.
+   ```bash
+   curl -s http://localhost:26657/net_info | jq '.result.n_peers'
+   ```
+   Peer 수가 consensus에 필요한 임계값, 즉 validator의 2/3 미만으로 떨어지면 block을 생성할 수 없습니다.
+
+2. Validator signing 문제를 확인합니다.
+   ```bash
+   curl -s http://localhost:26657/dump_consensus_state | jq '.result.round_state.votes'
+   ```
+
+3. 자체 CometBFT node가 signing하지 않는 node라면 restart합니다.
+   ```bash
+   kubectl rollout restart deployment/cometbft -n validator
+   ```
+
+4. 정지가 network 전체에서 발생했다면, 즉 여러 SV node가 signing하지 않는다면 `#validator-operations` Slack channel을 통해 다른 SV operator와 조율합니다.
+
+**Verification:** Block height가 증가하고 block 간격이 정상적인 수준, 일반적으로 몇 초로 돌아왔는지 확인합니다.

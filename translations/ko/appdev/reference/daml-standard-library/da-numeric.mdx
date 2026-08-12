@@ -1,0 +1,150 @@
+---
+title: "DA.Numeric"
+description: "Daml module DA.Numeric의 reference documentation"
+source_id: "SRC-2F0AEE45CA"
+source_path: "appdev/reference/daml-standard-library/da-numeric"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "28e0cdecde9687d74c0985a1221deb2e06f3843f8737af84ac55ddfe9c8f5e8e"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-numeric.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-numeric-17471"></span>
+
+# DA.Numeric
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-da-numeric-roundingmode-53864"></span>
+
+### `data RoundingMode`
+
+Rounding mode입니다.
+
+Constructor:
+
+<span id="constr-da-numeric-roundingup-99831"></span>
+- `RoundingUp`
+
+0에서 멀어지는 방향으로 rounding합니다.
+<span id="constr-da-numeric-roundingdown-63242"></span>
+- `RoundingDown`
+
+0을 향하는 방향으로 rounding합니다.
+<span id="constr-da-numeric-roundingceiling-67218"></span>
+- `RoundingCeiling`
+
+양의 무한대를 향하는 방향으로 rounding합니다.
+<span id="constr-da-numeric-roundingfloor-71675"></span>
+- `RoundingFloor`
+
+음의 무한대를 향하는 방향으로 rounding합니다.
+<span id="constr-da-numeric-roundinghalfup-22532"></span>
+- `RoundingHalfUp`
+
+가장 가까운 이웃 값으로 rounding하되, 두 이웃 값의 거리가 같으면 0에서 멀어지는 방향으로 rounding합니다.
+<span id="constr-da-numeric-roundinghalfdown-91305"></span>
+- `RoundingHalfDown`
+
+가장 가까운 이웃 값으로 rounding하되, 두 이웃 값의 거리가 같으면 0을 향하는 방향으로 rounding합니다.
+<span id="constr-da-numeric-roundinghalfeven-70729"></span>
+- `RoundingHalfEven`
+
+가장 가까운 이웃 값으로 rounding하되, 두 이웃 값의 거리가 같으면 짝수인 이웃 값으로 rounding합니다.
+<span id="constr-da-numeric-roundingunnecessary-42017"></span>
+- `RoundingUnnecessary`
+
+rounding하지 않습니다. 대상 scale에서 rounding 없이 결과를 표현할 수 없으면 error를 발생시킵니다.
+
+## Functions
+
+<span id="function-da-numeric-mul-81896"></span>
+
+### `mul`
+
+`mul` : [`NumericScale`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-numericscale-83720) `n3` => [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n1` -> [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n2` -> [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n3`
+
+두 numeric을 곱합니다. 모든 numeric scale이 같아야 하는 `(*)`와 달리 두 입력과 출력의 scale이 서로 다를 수 있습니다. overflow 시 error를 발생시키고, 그렇지 않으면 선택한 scale로 rounding합니다.
+
+<span id="function-da-numeric-div-56407"></span>
+
+### `div`
+
+`div` : [`NumericScale`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-numericscale-83720) `n3` => [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n1` -> [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n2` -> [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n3`
+
+두 numeric을 나눕니다. 모든 numeric scale이 같아야 하는 `(/)`와 달리 두 입력과 출력의 scale이 서로 다를 수 있습니다. overflow 시 error를 발생시키고, 그렇지 않으면 선택한 scale로 rounding합니다.
+
+<span id="function-da-numeric-cast-54256"></span>
+
+### `cast`
+
+`cast` : [`NumericScale`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-numericscale-83720) `n2` => [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n1` -> [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n2`
+
+Numeric을 cast합니다. overflow 또는 정밀도 손실이 발생하면 error를 발생시킵니다.
+
+<span id="function-da-numeric-castandround-59941"></span>
+
+### `castAndRound`
+
+`castAndRound` : [`NumericScale`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-numericscale-83720) `n2` => [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n1` -> [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n2`
+
+Numeric을 cast합니다. overflow 시 error를 발생시키고, 그렇지 않으면 선택한 scale로 rounding합니다.
+
+<span id="function-da-numeric-shift-13796"></span>
+
+### `shift`
+
+`shift` : [`NumericScale`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-numericscale-83720) `n2` => [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n1` -> [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n2`
+
+numeric 값에 10^(n1 - n2)를 곱해 소수점을 왼쪽 또는 오른쪽으로 옮깁니다. overflow나 underflow가 발생하지 않습니다.
+
+<span id="function-da-numeric-pi-88702"></span>
+
+### `pi`
+
+`pi` : [`NumericScale`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-numericscale-83720) `n` => [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n`
+
+원주율 pi입니다.
+
+<span id="function-da-numeric-epsilon-3092"></span>
+
+### `epsilon`
+
+`epsilon` : [`NumericScale`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-numericscale-83720) `n` => [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n`
+
+scale `n`의 numeric으로 표현할 수 있는 0보다 큰 최솟값입니다.
+
+<span id="function-da-numeric-roundnumeric-41344"></span>
+
+### `roundNumeric`
+
+`roundNumeric` : [`NumericScale`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-numericscale-83720) `n` => [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`RoundingMode`](#type-da-numeric-roundingmode-53864) -> [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n` -> [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n`
+
+`Numeric` 숫자를 rounding합니다. `round n r a`의 값은 `a`를 rounding mode `r`에 따라 소수점 이하 `n`자리, 즉 scale `n`으로 rounding한 값입니다.
+
+`n`자리 이하의 소수로 정확히 표현할 수 없는 숫자에 `RoundingUnnecessary` mode를 사용하면 실패합니다.
+
+## Orphan Typeclass Instances
+
+- instance [`NumericScale`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-numericscale-83720) `n` => [`Bounded`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-bounded-34379) ([`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n`)

@@ -1,0 +1,63 @@
+---
+title: "Network Scalability"
+description: "Canton Network node의 확장 특성과 조정 지침"
+source_id: "SRC-9F7CAF9D4E"
+source_path: "global-synchronizer/production-operations/scalability"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "820655bcbf23d61e23af6f65ade27e75d7537a537d5893d7e13928b201253f08"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalSpliceMainSpliceRstCodeDocsSrcScalabilityScalabilityNone117 from "/snippets/internal/splice/main/splice-rst-code-docs-src-scalability-scalability-none-117.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/scalability.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/scalability/scalability.rst" hash="f6c365e2" */}
+
+## Validator당 Party 수
+
+기반 Canton participant는 node당 최대 100만 개의 party를 지원하지만, 현재 validator app의 제한으로 인해 validator app이 관여할 때는 최대 200개의 party만 지원됩니다. 200개 party 제한은 향후 해제될 예정이며, 그렇게 되면 이러한 workaround가 더 이상 필요하지 않을 것입니다.
+
+구체적으로 200개 party 제한은 다음에 적용됩니다.
+
+1.  External signing을 사용하지 않으며 validator API를 통해 onboarding된 party, 또는 `WalletAppInstall` contract가 별도로 생성된 다른 모든 party.
+2.  External signing을 사용하며 onboarding contract가 `/v0/admin/external-party/setup-proposal`을 통해 설정되었거나, `validator` party가 validator operator party로 설정된 `ValidatorRight` contract가 수동으로 생성된 party.
+
+다음에는 적용되지 않습니다.
+
+1.  External signing을 사용하지 않으며 Ledger API 또는 Canton admin API를 통해 생성되고 validator API를 통해 onboarding되지 않았거나 연결된 `WalletAppInstall` contract가 없는 party.
+2.  External signing을 사용하며 `validator` party가 validator operator party로 설정된 대응하는 `ValidatorRight`가 없는 party. `/v0/admin/external-party/setup-proposal`은 이러한 `ValidatorRight` contract를 설정하므로 이 API를 사용하지 않아야 합니다. Preapproval 설정에 `ExternalPartySetupProposal` contract를 직접 사용할 수 있지만, `validator` party는 validator operator party와 다른 party로 설정해야 합니다. 또한 preapproval이 만료될 때 갱신하기 위한 자체 automation을 작성해야 합니다. 자세한 내용은 [문서](/appdev/modules/m7-canton-coin-preapprovals)를 참조하세요.
+
+### 제한 우회
+
+제한을 우회하는 기본 권장 방법은 [external signing용 Canton API](/appdev/deep-dives/external-signing)나 validator API의 `/v0/admin/external-party/topology/{generate,submit}`을 통해 external party를 직접 설정하되, `/v0/admin/external-party/setup-proposal` 아래의 endpoint는 사용하지 않는 것입니다.
+
+Preapproval이 필요하지 않다면 이것으로 충분합니다.
+
+Preapproval을 생성해야 한다면 `validator` party가 validator operator로 설정된 `ValidatorRight` contract를 생성하지 않도록 해야 합니다. 가장 좋은 방법은 `#splice-wallet:Splice.Wallet.TransferPreapproval:TransferPreapprovalProposal`을 사용하여 external party와 validator operator 모두의 authorization을 수집하는 것입니다. 이 방식은 `TransferPreapproval`을 생성하지만 `ValidatorRight` contract는 생성하지 않습니다. 결과 `TransferPreapproval`의 `provider`가 validator operator party인 한, validator의 transfer preapproval renewal automation은 계속 작동합니다. 다른 party로 설정하면 자체 renewal automation을 구축해야 합니다.
+
+### 제한 우회의 영향
+
+Validator 제한을 우회하면 validator app은 해당 party의 contract를 처리하지 않습니다. 특히 해당 party에 대한 reward minting automation이 실행되지 않습니다. 여기에는 `ValidatorRight` contract에 의존하기 때문에 해당 party에 대해 생성된 `ValidatorRewardCoupon` activity record를 validator operator가 mint할 수 없다는 점도 포함됩니다. Reward minting이 필요하다면 다음 두 가지 선택지가 있습니다.
+
+1.  [Minting delegation](/global-synchronizer/splice-fundamentals/rewards-minting)을 사용하여 reward collection을 validator에 위임합니다.
+2.  자체 minting automation을 구축합니다.
+
+또한 이 party에는 transfer 시작 등을 위해 `/v0/admin/external-party/` 아래의 validator endpoint를 사용할 수 없습니다. 대신 Ledger API를 통해 [token standard](/appdev/deep-dives/token-standard)를 사용하여 external party와 상호작용하세요.
+
+## Topology Batching
+
+기본적으로 topology batching은 비활성화되어 있으므로 각각의 topology transaction은 별도의 message로 synchronizer에 제출됩니다. 이는 너무 큰 batch가 free traffic limit을 초과하여 node가 traffic을 구매할 수 있는 단계까지 도달하지 못하게 만들 수 있고, 기존 node에서 새 node용 traffic을 구매하는 것만이 유일한 선택지가 되는 bootstrapping 상황에 특히 필요합니다.
+
+그러나 bootstrapping이 완료된 뒤, 즉 validator readiness probe가 ready를 보고하고 reward가 수집되는 것을 확인한 뒤에는 batch size를 늘려 node가 제출할 수 있는 topology transaction의 throughput을 높이는 것이 유용할 수 있습니다. 이는 특히 여러 end user party를 호스팅하는 wallet의 node에 유용합니다.
+
+이를 위해 다음 [environment variable](/global-synchronizer/deployment/configuration)을 participant configuration에 추가하세요. Batch size를 실험할 수 있지만 너무 큰 batch는 문제를 일으킬 수 있으므로 20을 초과하는 batch size는 권장하지 않습니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcScalabilityScalabilityNone117 />
+
+
+{/* COPIED_END */}

@@ -1,0 +1,205 @@
+---
+title: "DA.Time"
+description: "Daml module DA.Time의 reference documentation"
+source_id: "SRC-410BAF3A61"
+source_path: "appdev/reference/daml-standard-library/da-time"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "e5ae7f87196ecc8e5673cddaad7d7f0e0c510a3dc77a4adfc3401f53446a18a4"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-time.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-time-32716"></span>
+
+# DA.Time
+
+이 module은 Time 값을 조작하는 function 집합을 제공합니다.
+
+`Time` type은 UTC의 특정 datetime을 표현합니다. 예: `time (date 2007 Apr 5) 14 30 05`.
+
+Time의 범위는 0001-01-01T00:00:00.000000Z에서 9999-12-31T23:59:59.999999Z까지입니다.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-da-time-types-reltime-23082"></span>
+
+### `data RelTime`
+
+`RelTime` type은 time offset, 즉 relative time을 설명합니다.
+
+Instance:
+
+- instance `Serializable` [`RelTime`](#type-da-time-types-reltime-23082)
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`RelTime`](#type-da-time-types-reltime-23082)
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`RelTime`](#type-da-time-types-reltime-23082)
+- instance [`Bounded`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-bounded-34379) [`RelTime`](#type-da-time-types-reltime-23082)
+- instance [`Additive`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-additive-25881) [`RelTime`](#type-da-time-types-reltime-23082)
+- instance [`Signed`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-signed-2671) [`RelTime`](#type-da-time-types-reltime-23082)
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`RelTime`](#type-da-time-types-reltime-23082)
+
+## Functions
+
+<span id="function-da-internal-time-time-34667"></span>
+
+### `time`
+
+`time` : [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886)
+
+`time d h m s`는 주어진 UTC date `d`와 시, 분, 초로 주어진 UTC time을 UTC timestamp (`Time`)로 변환합니다. leap second는 처리하지 않습니다.
+
+<span id="function-da-time-addreltime-70617"></span>
+
+### `addRelTime`
+
+`addRelTime` : [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`RelTime`](#type-da-time-types-reltime-23082) -> [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886)
+
+주어진 time offset으로 `Time`을 조정합니다.
+
+<span id="function-da-time-subtime-47226"></span>
+
+### `subTime`
+
+`subTime` : [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`RelTime`](#type-da-time-types-reltime-23082)
+
+주어진 두 instant 사이의 time offset을 반환합니다.
+
+<span id="function-da-time-wholedays-91725"></span>
+
+### `wholeDays`
+
+`wholeDays` : [`RelTime`](#type-da-time-types-reltime-23082) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+time offset의 전체 일수를 반환합니다. 시간의 소수 부분은 0을 향해 rounding됩니다.
+
+<span id="function-da-time-days-58759"></span>
+
+### `days`
+
+`days` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`RelTime`](#type-da-time-types-reltime-23082)
+
+relative time의 일수입니다.
+
+<span id="function-da-time-hours-54068"></span>
+
+### `hours`
+
+`hours` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`RelTime`](#type-da-time-types-reltime-23082)
+
+relative time의 시간 수입니다.
+
+<span id="function-da-time-minutes-72520"></span>
+
+### `minutes`
+
+`minutes` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`RelTime`](#type-da-time-types-reltime-23082)
+
+relative time의 분 수입니다.
+
+<span id="function-da-time-seconds-68512"></span>
+
+### `seconds`
+
+`seconds` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`RelTime`](#type-da-time-types-reltime-23082)
+
+relative time의 초 수입니다.
+
+<span id="function-da-time-milliseconds-28552"></span>
+
+### `milliseconds`
+
+`milliseconds` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`RelTime`](#type-da-time-types-reltime-23082)
+
+relative time의 millisecond 수입니다.
+
+<span id="function-da-time-microseconds-56941"></span>
+
+### `microseconds`
+
+`microseconds` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`RelTime`](#type-da-time-types-reltime-23082)
+
+relative time의 microsecond 수입니다.
+
+<span id="function-da-time-convertreltimetomicroseconds-23127"></span>
+
+### `convertRelTimeToMicroseconds`
+
+`convertRelTimeToMicroseconds` : [`RelTime`](#type-da-time-types-reltime-23082) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+RelTime을 microsecond로 변환합니다. internal microsecond 대신 더 high-level의 function을 사용하세요.
+
+<span id="function-da-time-convertmicrosecondstoreltime-73643"></span>
+
+### `convertMicrosecondsToRelTime`
+
+`convertMicrosecondsToRelTime` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`RelTime`](#type-da-time-types-reltime-23082)
+
+microsecond를 RelTime으로 변환합니다. internal microsecond 대신 더 high-level의 function을 사용하세요.
+
+<span id="function-da-time-isledgertimelt-78120"></span>
+
+### `isLedgerTimeLT`
+
+`isLedgerTimeLT` : [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+transaction의 ledger time이 주어진 time보다 작을 때에만 True입니다.
+
+<span id="function-da-time-isledgertimele-50101"></span>
+
+### `isLedgerTimeLE`
+
+`isLedgerTimeLE` : [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+transaction의 ledger time이 주어진 time보다 작거나 같을 때에만 True입니다.
+
+<span id="function-da-time-isledgertimegt-6233"></span>
+
+### `isLedgerTimeGT`
+
+`isLedgerTimeGT` : [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+transaction의 ledger time이 주어진 time보다 클 때에만 True입니다.
+
+<span id="function-da-time-isledgertimege-95212"></span>
+
+### `isLedgerTimeGE`
+
+`isLedgerTimeGE` : [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+transaction의 ledger time이 주어진 time보다 크거나 같을 때에만 True입니다.
+
+## Orphan Typeclass Instances
+
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`RelTime`](#type-da-time-types-reltime-23082)
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`RelTime`](#type-da-time-types-reltime-23082)
+
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`RelTime`](#type-da-time-types-reltime-23082)
+
+- instance [`Additive`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-additive-25881) [`RelTime`](#type-da-time-types-reltime-23082)
+
+- instance [`Signed`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-signed-2671) [`RelTime`](#type-da-time-types-reltime-23082)
+
+- instance [`Bounded`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-bounded-34379) [`RelTime`](#type-da-time-types-reltime-23082)
+
+- instance [`Bounded`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-bounded-34379) [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886)

@@ -1,0 +1,117 @@
+---
+title: "지원되는 Cryptographic Scheme"
+description: "Canton에서 지원되는 cryptographic scheme과 key format 참조"
+source_id: "SRC-6D25379A98"
+source_path: "global-synchronizer/reference/crypto-schemes"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "9de2d5e432603233afd75a1a603050b69036998b869e97268bc65e311ff8feaf"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/reference/crypto-schemes.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/reference/crypto_schemes.rst" hash="5c5ef57f" */}
+
+## 지원되는 Cryptographic Scheme 및 Format
+
+Canton에서는 signing, symmetric encryption, asymmetric encryption의 cryptographic primitive를 사용하며 다음 cryptographic scheme과 format을 지원합니다. Asymmetric signing 및 encryption의 각 scheme은 key specification과 algorithm specification으로 나뉩니다.
+
+<Warning>
+  다음 표의 KMS scheme은 AWS와 GCP를 사용하는 내부 KMS implementation에만 유효합니다. Driver를 통해 다른 KMS를 사용하는 경우 해당 KMS의 문서를 참조하세요. JCE에서 지원하는 scheme만 사용할 수 있다는 점에 유의하세요.
+</Warning>
+
+<Note>
+**다음 표의 범례:**
+
+- **S** = 지원됨
+- **P¹** = 부분 지원됨 — signature verification만 지원하며 private key를 사용한 signing은 지원하지 않음
+- **P²** = 부분 지원됨 — encryption만 지원하며 private key를 사용한 decryption은 지원하지 않음
+- 괄호 안의 값(**\[\<scheme\>\]**)은 Canton에서 사용할 configuration string을 나타냄
+</Note>
+
+**지원되는 Asymmetric Encryption 및 Signing Key Specification**
+
+| Key Spec | JCE | AWS/GCP KMS | 용도 |
+| --- | --- | --- | --- |
+| EC-Curve25519 `[ec-curve-25519]` | S | P¹ | Signing |
+| EC-P256 `[ec-p-256]` | S | S | Signing, Encryption |
+| EC-P384 `[ec-p-384]` | S | S | Signing |
+| EC-Secp256k1 `[ec-secp-256k-1]` | S | S | Signing |
+| RSA-2048 `[rsa-2048]` | S | S | Encryption |
+
+**지원되는 Signing Algorithm Specification**
+
+| Algorithm | JCE | AWS/GCP KMS | 지원되는 Key Spec |
+| --- | --- | --- | --- |
+| Ed25519 `[ed-25519]` | S | P¹ | EC-Curve25519 |
+| EC-DSA-SHA256 `[ec-dsa-sha-256]` | S | S | EC-P256, EC-Secp256k1 |
+| EC-DSA-SHA384 `[ec-dsa-sha-384]` | S | S | EC-P384 |
+
+**지원되는 Asymmetric Encryption Algorithm Specification**
+
+| Algorithm | JCE | AWS/GCP KMS | 지원되는 Key Spec |
+| --- | --- | --- | --- |
+| ECIES-HMAC-SHA256-AES128-CBC `[ecies-hkdf-hmac-sha-256-aes-128-cbc]` | S | P² | EC-P256 |
+| RSA-OAEP-SHA256 `[rsa-oaep-sha-256]` | S | S | RSA-2048 |
+
+| **Crypto provider**                     | JCE 기본 Scheme                    | AWS/GCP KMS 기본 Scheme   |
+|-----------------------------------------|---------------------------------------|------------------------------|
+| Signing key specification               | EC-Curve25519                         | EC-P256                      |
+| Signing algorithm specification         | Ed25519                               | EC-DSA-SHA256                |
+| Asymmetric encryption key specification | EC-P256                               | RSA-2048                     |
+| Asymmetric encryption algorithm         | ECIES with HMAC-SHA256 and AES128-CBC | RSA with OAEP and SHA-256    |
+| Symmetric encryption scheme[^1]         | AES128-GCM                            | JCE와 동일                  |
+| Hash Algorithm[^2]                      | SHA-256                               | JCE와 동일                  |
+| PBKDF[^3]                               | Argon2id                              | JCE와 동일                  |
+
+기본 Cryptographic Scheme
+
+**Key Management Service(KMS)의 external key configuration**
+
+| Provider | SIGNING | ENCRYPTION |
+| --- | --- | --- |
+| AWS | **Key Purpose:** `SIGN_VERIFY`<br/>**Key Algorithms:** `ECC_NIST_P256` 또는 `ECC_NIST_P384` | **Key Purpose:** `ENCRYPT_DECRYPT`<br/>**Key Algorithm:** `RSA_2048` |
+| GCP | **Key Purpose:** `ASYMMETRIC_SIGN`<br/>**Key Algorithms:** `EC_SIGN_P256_SHA256` 또는 `EC_SIGN_P384_SHA384` | **Key Purpose:** `ASYMMETRIC_DECRYPT`<br/>**Key Algorithm:** `RSA_DECRYPT_OAEP_2048_SHA256` |
+| Driver | 하나 이상의 JCE key signing scheme과 호환되어야 함 | 하나 이상의 JCE key encryption scheme과 호환되어야 함 |
+
+| **Key Type**      | Format (Config)                               | Format (gRPC / Protobuf)                                                          |
+|-------------------|-----------------------------------------------|-----------------------------------------------------------------------------------|
+| Public Key        | `der-x-509-spki` | `CRYPTO_KEY_FORMAT_DER_X509_SUBJECT_PUBLIC_KEY_INFO` |
+| Private Key       | `der-pkcs-8-pki` | `CRYPTO_KEY_FORMAT_DER_PKCS8_PRIVATE_KEY_INFO`       |
+| Symmetric Key[^4] | `raw`            | `CRYPTO_KEY_FORMAT_RAW`                              |
+
+Key Type별 지원되는 Cryptographic Key Format
+
+**지원되는 Format으로 Key를 Export하는 Command 및 Flag**
+
+| Key Type | 지원되는 Format | OpenSSL | AWS KMS | GCP KMS | Java.security | Python (cryptography) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Public Key | DER SPKI (X.509 SubjectPublicKeyInfo) | `-outform DER` | key의 기본값은 DER SPKI | key의 기본값은 DER SPKI | key의 기본값은 DER SPKI | `public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)` |
+| Private Key | DER PKCS#8 PrivateKeyInfo | `-outform DER` | n/a | n/a | key의 기본값은 DER PKCS#8 | `private_bytes(Encoding.DER, PrivateFormat.PKCS8)` |
+| Symmetric Key | raw bytes | n/a | n/a | n/a | key의 기본값은 raw bytes | key의 기본값은 raw bytes |
+
+| **Signing Algorithm Specification** | Signature Format (Config)             | Signature Format (gRPC / Protobuf)                     |
+|--------------------------------------|---------------------------------------|--------------------------------------------------------|
+| Ed25519                              | `concat` | `SIGNATURE_FORMAT_CONCAT` |
+| EC-DSA-SHA256                        | `der`    | `SIGNATURE_FORMAT_DER`    |
+| EC-DSA-SHA384                        | `der`    | `SIGNATURE_FORMAT_DER`    |
+
+Signing Algorithm Specification별 지원되는 Cryptographic Signature Format
+
+<Note>
+Canton에서 현재 지원되는 signature format은 OpenSSL, Java 또는 Python(`cryptography` package)으로 signature를 생성할 때 사용되는 기본 signature format과 일치합니다.
+</Note>
+
+[^1]: 기본이자 유일하게 지원되는 scheme이며 configuration으로 변경할 수 없습니다.
+
+[^2]: 기본이자 유일하게 지원되는 hash algorithm이며 configuration으로 변경할 수 없습니다.
+
+[^3]: 기본이자 유일하게 지원되는 PBKDF이며 configuration으로 변경할 수 없습니다.
+
+[^4]: Symmetric key는 내부적으로만 사용됩니다. Node operator는 symmetric key를 조작하지 않으며 이 항목은 참조용으로만 제공됩니다. Node operator가 상호작용할 것으로 예상되는 유일한 key format은 `X.509` public key입니다.
+
+{/* COPIED_END */}

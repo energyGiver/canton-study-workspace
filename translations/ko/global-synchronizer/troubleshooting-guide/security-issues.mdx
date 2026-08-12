@@ -1,0 +1,264 @@
+---
+title: "Security 문제"
+description: "Certificate 문제, JWT validation 실패 및 key management error troubleshooting"
+source_id: "SRC-135628F628"
+source_path: "global-synchronizer/troubleshooting-guide/security-issues"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "c95ad12d0cba0e4225cf72f1d288c0f7254d9b0d2199062a33c467418b7474c5"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_SECURITY_ISSUES_0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-troubleshooting-guide-security-issues-0.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/troubleshooting-guide/security-issues.md)을 사용하세요.
+</Warning>
+
+Security 관련 failure는 일반적으로 validator의 시작을 막거나 synchronizer 및 API에 대한 authentication을 차단합니다. Error는 알아보기 어려운 경우가 많지만 몇 가지 명확한 category로 나뉩니다.
+
+## Certificate 문제
+
+### Certificate 만료
+
+Validator가 Ledger API, admin API 또는 ingress에 사용하는 TLS certificate는 정해진 날짜에 만료됩니다. 만료되면 연결이 즉시 실패합니다.
+
+**증상:**
+
+```
+javax.net.ssl.SSLHandshakeException: PKIX path validation failed:
+java.security.cert.CertPathValidatorException: validity check failed
+```
+
+**만료일 확인:**
+
+```bash
+# Check a PEM file
+openssl x509 -in /path/to/cert.pem -noout -enddate
+
+# Check a running server
+openssl s_client -connect your-validator:443 2>/dev/null | openssl x509 -noout -dates
+```
+
+**해결:** CA 또는 certificate manager(Let's Encrypt, AWS ACM 등)를 통해 certificate를 갱신합니다. Certificate file을 교체한 뒤 이를 사용하는 service를 restart합니다. Kubernetes ingress controller에서는 Secret이 update되면 restart가 자동으로 이루어지는 경우가 많습니다.
+
+### Kubernetes에서 Certificate 갱신
+
+cert-manager를 사용하는 경우 Certificate resource에 갱신 failure가 표시되는지 확인합니다.
+
+```bash
+kubectl describe certificate validator-tls -n validator
+```
+
+`The certificate request has failed` 또는 `Order is in state errored` 같은 event를 찾습니다. 일반적인 원인은 DNS challenge 실패(DNS propagation 확인), HTTP challenge 실패(ingress routing 확인), issuer credential 만료입니다.
+
+### 불완전한 CA Chain
+
+일부 위치에서는 client가 validator에 연결할 수 있지만 다른 위치에서는 연결할 수 없다면 server가 불완전한 certificate chain을 제시하고 있을 수 있습니다. 다음과 같이 확인합니다.
+
+```bash
+openssl s_client -connect your-validator:443 -servername your-validator 2>&1 | grep "verify return"
+```
+
+`verify return:0`이 표시되면 chain이 끊어진 것입니다. Intermediate CA certificate를 leaf에서 root 순서로 server certificate file에 연결하세요.
+
+## JWT Validation 실패
+
+JWT token은 API client(application, wallet UI 또는 automation script)를 validator의 Ledger API에 authenticate합니다.
+
+### Clock Skew
+
+```
+ACCESS_TOKEN_EXPIRED(2,0): Claims were valid until 2025-09-08T08:32:07Z,
+current time is 2025-09-08T08:32:07.254413051Z
+```
+
+Token lifetime이 짧으면 token issuer의 clock과 validator clock 사이에 1초 미만의 차이만 있어도 expiry failure가 발생할 수 있습니다. 해결 방법은 다음과 같습니다.
+
+- OIDC provider의 access token lifetime을 최소 15분으로 늘립니다.
+- Validator host에서 NTP가 실행 중이고 동기화되어 있는지 확인합니다.
+
+  ```bash
+  timedatectl status
+  # or
+  chronyc tracking
+  ```
+
+### 잘못된 Audience Claim
+
+```
+PERMISSION_DENIED: JWT token has wrong audience. Expected: https://ledger_api.example.com
+```
+
+JWT의 `aud` claim은 validator에 구성된 `LEDGER_API_AUTH_AUDIENCE`와 일치해야 합니다. OIDC provider의 application setting을 확인하고 audience를 validator config와 맞추세요.
+
+### 만료된 Token
+
+API call이 `UNAUTHENTICATED`와 함께 간헐적으로 실패한다면 token refresh logic이 올바르게 작동하지 않을 수 있습니다. 다음을 확인하세요.
+
+- Token refresh interval이 token lifetime보다 짧습니다.
+- Call을 수행하는 application에서 OIDC provider의 token endpoint에 접근할 수 있습니다.
+- Refresh token 자체가 만료되지 않았습니다. Refresh token은 수명이 더 긴 경우가 많지만 여전히 유한합니다.
+
+### JWKS Endpoint에 접근할 수 없음
+
+Validator가 token signature를 validation하기 위해 JWKS(JSON Web Key Set) endpoint에 접근할 수 없는 경우 다음 error가 발생합니다.
+
+```
+Failed to fetch JWKS from https://your-tenant.auth0.com/.well-known/jwks.json
+```
+
+Validator에서 OIDC provider로의 network connectivity를 확인합니다. Kubernetes에서는 DNS resolution 문제 또는 egress restriction이 이를 차단할 수 있습니다.
+
+## Key Management
+
+### KMS Connectivity
+
+Validator가 signing key에 cloud KMS(AWS KMS, GCP Cloud KMS, Azure Key Vault)를 사용하는 경우 connectivity failure로 transaction signing이 불가능해집니다.
+
+**증상:**
+
+```
+com.amazonaws.SdkClientException: Unable to execute HTTP request: Connect to kms.us-east-1.amazonaws.com:443
+```
+
+**확인 사항:**
+
+- Validator pod에서 KMS endpoint에 접근할 수 있는지 확인합니다.
+- IAM role 또는 service account에 `kms:Sign`, `kms:GetPublicKey`, `kms:Decrypt` permission이 있는지 확인합니다.
+- EKS에서 IRSA(IAM Roles for Service Accounts)를 사용하는 경우 service account annotation과 OIDC provider trust를 확인합니다.
+
+### Permission Error
+
+```
+AccessDeniedException: User: arn:aws:sts::123456789:assumed-role/validator-role/...
+is not authorized to perform: kms:Sign on resource: arn:aws:kms:...
+```
+
+Validator role에 연결된 IAM policy에는 특정 KMS key ARN이 포함되어야 합니다. Resource field의 wildcard(`*`)는 testing에는 사용할 수 있지만 production에서는 정확한 key로 범위를 제한해야 합니다.
+
+### Key Rotation
+
+Canton은 node initialization 중 cryptographic key를 생성합니다. 의심되는 compromise 이후와 같이 key를 rotate해야 한다면 Canton Console을 사용하세요.
+
+<CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_SECURITY_ISSUES_0 />
+
+Key rotation에는 신중한 coordination이 필요합니다. 항상 non-production environment에서 먼저 테스트하세요.
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/troubleshoot/tls.rst" hash="156f13a7" */}
+
+# TLS Troubleshooting
+
+TLS는 여기에 설명된 parameter를 사용하여 구성할 수 있습니다.
+
+SSL/TLS 설정에 문제가 있다면 SSL debugging을 활성화하거나 netty logging을 늘리거나 test key와 certificate를 생성하여 configuration을 검증할 수 있습니다.
+
+## SSL debug logging 활성화
+
+Canton을 시작할 때 command line에 다음 flag를 추가하여 SSL debugging을 활성화할 수 있습니다.
+
+```bash
+bin/canton -Djavax.net.debug=all
+```
+
+이 flag는 handshake process의 세부 정보를 포함한 자세한 SSL 관련 정보를 console에 출력합니다. 출력량이 매우 많고 application performance에 영향을 줄 수 있으므로 troubleshooting할 때만 사용하는 것이 좋습니다.
+
+## Netty debug logging 활성화
+
+Networking library `netty`가 제공하는 TLS 문제 error message는 충분히 명확하지 않습니다. TLS 설정에 어려움이 있다면 `io.netty` logger에서 `DEBUG` logging을 활성화하세요. 일반적으로 logback logging configuration에 다음 줄을 추가하면 됩니다.
+
+``` xml
+<logger name="io.grpc.netty.shaded.io.netty.handler.ssl" level="DEBUG"/>
+```
+
+## Test key 및 certificate 생성
+
+Configuration을 테스트하기 위한 test TLS certificate가 필요하다면 다음 OpenSSL script를 사용할 수 있습니다.
+
+``` none
+# include certs-common.sh from config/tls
+. "$(dirname "${BASH_SOURCE[0]}")/certs-common.sh"
+
+# create root certificate such that we can issue self-signed certs
+create_key "root-ca"
+create_certificate "root-ca" "/O=TESTING/OU=ROOT CA/emailAddress=canton@digitalasset.com"
+print_certificate "root-ca"
+
+# create public api certificate
+create_key "public-api"
+create_csr "public-api" "/O=TESTING/OU=DOMAIN/CN=localhost/emailAddress=canton@digitalasset.com" "DNS:localhost,IP:127.0.0.1"
+sign_csr "public-api" "root-ca"
+print_certificate "public-api"
+
+# create participant ledger-api certificate
+create_key "ledger-api"
+create_csr "ledger-api" "/O=TESTING/OU=PARTICIPANT/CN=localhost/emailAddress=canton@digitalasset.com" "DNS:localhost,IP:127.0.0.1"
+sign_csr "ledger-api" "root-ca"
+
+# create participant admin-api certificate
+create_key "admin-api"
+create_csr "admin-api" "/O=TESTING/OU=PARTICIPANT ADMIN/CN=localhost/emailAddress=canton@digitalasset.com" "DNS:localhost,IP:127.0.0.1"
+sign_csr "admin-api" "root-ca"
+
+# create participant client key and certificate
+create_key "admin-client"
+create_csr "admin-client" "/O=TESTING/OU=PARTICIPANT ADMIN CLIENT/CN=localhost/emailAddress=canton@digitalasset.com"
+sign_csr "admin-client" "root-ca"
+print_certificate "admin-client"
+```
+
+직접 key와 certificate 집합을 생성하고 싶다면 이 process에서 사용되는 command는 다음과 같습니다.
+
+``` none
+DAYS=3650
+
+function create_key {
+  local name=$1
+  openssl genrsa -out "${name}.key" 4096
+  # netty requires the keys in pkcs8 format, therefore convert them appropriately
+  openssl pkcs8 -topk8 -nocrypt -in "${name}.key" -out "${name}.pem"
+}
+
+# create self signed certificate
+function create_certificate {
+  local name=$1
+  local subj=$2
+  openssl req -new -x509 -sha256 -key "${name}.key" \
+              -out "${name}.crt" -days ${DAYS} -subj "$subj"
+}
+
+# create certificate signing request with subject and SAN
+# we need the SANs as our certificates also need to include localhost or the
+# loopback IP for the console access to the admin-api and the ledger-api
+function create_csr {
+  local name=$1
+  local subj=$2
+  local san=$3
+  (
+    echo "authorityKeyIdentifier=keyid,issuer"
+    echo "basicConstraints=CA:FALSE"
+    echo "keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment"
+  ) > ${name}.ext
+  if [[ -n $san ]]; then
+    echo "subjectAltName=${san}" >> ${name}.ext
+  fi
+  # create certificate (but ensure that localhost is there as SAN as otherwise, admin local connections won't work)
+  openssl req -new -sha256 -key "${name}.key" -out "${name}.csr" -subj "$subj"
+}
+
+function sign_csr {
+  local name=$1
+  local sign=$2
+  openssl x509 -req -sha256 -in "${name}.csr" -extfile "${name}.ext" -CA "${sign}.crt" -CAkey "${sign}.key" -CAcreateserial  \
+               -out "${name}.crt" -days ${DAYS}
+  rm "${name}.ext" "${name}.csr"
+}
+
+function print_certificate {
+  local name=$1
+  openssl x509 -in "${name}.crt" -text -noout
+}
+```
+
+{/* COPIED_END */}

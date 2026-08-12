@@ -1,0 +1,123 @@
+---
+title: "Troubleshooting 방법론"
+description: "Global Synchronizer 문제를 진단하고 해결하는 체계적인 접근 방식"
+source_id: "SRC-E7B9D3799F"
+source_path: "global-synchronizer/troubleshooting-guide/troubleshooting-methodology"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "47c51c366bd9866a2bcfb02c3c295c6fce1d3759541ece82de4cceba79a219cc"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalSpliceMainSpliceRstCodeDocsSrcDeploymentTroubleshootingText89 from "/snippets/internal/splice/main/splice-rst-code-docs-src-deployment-troubleshooting-text-89.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcDeploymentTroubleshootingText109 from "/snippets/internal/splice/main/splice-rst-code-docs-src-deployment-troubleshooting-text-109.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcDeploymentTroubleshootingText123 from "/snippets/internal/splice/main/splice-rst-code-docs-src-deployment-troubleshooting-text-123.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcDeploymentTroubleshootingText135 from "/snippets/internal/splice/main/splice-rst-code-docs-src-deployment-troubleshooting-text-135.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcDeploymentTroubleshootingText161 from "/snippets/internal/splice/main/splice-rst-code-docs-src-deployment-troubleshooting-text-161.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcDeploymentTroubleshootingText174 from "/snippets/internal/splice/main/splice-rst-code-docs-src-deployment-troubleshooting-text-174.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/troubleshooting-guide/troubleshooting-methodology.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/deployment/troubleshooting.rst" hash="15096792" */}
+
+이 section에서는 Canton Network node의 문제를 debugging하기 위해 수집할 수 있는 정보를 개괄합니다. Canton node에 직접 console로 접근하는 방법은 [Canton Console Reference](/global-synchronizer/reference/canton-console-reference)를 참조하세요.
+
+## Log를 찾을 수 있는 위치
+
+**로컬에서 실행하는 경우** splice-node는 repository root에 `log/` directory를 생성하고 `canton_network.log`에 기록합니다. Canton은 `canton.log`에 기록합니다.
+
+<Note>
+처음에 Debug로 설정되는 기본 log level은 `--log-level-canton` flag로 변경할 수 있습니다. 예: `splice-node --config "${OUTPUT_CONFIG}" --log-level-canton=DEBUG ...`
+</Note>
+
+**Kubernetes cluster에서 node를 실행하는 경우** 최소한 지난 하루의 log를 보관할 수 있도록 log collector를 설정하는 것이 좋습니다. 현재 기본 log level은 Debug로 설정되어 있습니다.
+
+Log를 읽을 때는 `lnav` 사용을 권장합니다. 지침은 [이 문서](https://github.com/canton-network/splice/blob/main/TESTING.md#setting-up-lnav-to-inspect-canton-and-cometbft-logs)에서 제공합니다.
+
+<Note>
+Kubernetes logging, 제한된 기간의 log만 제공한다는 점에 유의하세요.
+
+- `kubectl describe pod <pod-name>`으로 해당 pod의 상세 status를 가져옵니다.
+- `kubectl logs <pod-name> -n <namespace-name>` 또는 `kubectl logs -l app=<app-name> -n <namespace-name> --tail=-1`로 해당 namespace의 pod log를 가져옵니다.
+</Note>
+
+## Web UI 문제 Debugging
+
+Connectivity 문제와 관련된 상황에서 Chrome 또는 Firefox 기반 browser를 사용한다면 다음을 수행합니다.
+
+1.  Browser address bar 오른쪽의 settings에서 `More tools -> Developer tools`로 이동하거나 Ctrl + Shift + i를 누릅니다. Browser developer tools window가 열립니다.
+2.  `Network` tab을 클릭합니다.
+3.  `Preserve or Persist log` check box를 활성화합니다.
+4.  Console을 열어 둔 상태에서 **보고하려는 문제를 재현**합니다.
+5.  완료되면 right-click하고 `Save all as HAR`를 선택합니다.
+6.  문제를 설명하는 이름으로 file을 저장합니다.
+
+완료되면 `Network` tab 대신 `Console` tab을 클릭한 뒤 2-6단계를 반복합니다.
+
+## Configuration
+
+문제를 진단할 때 모든 configuration을 수집하는 것도 유용한 경우가 많습니다.
+
+- 로컬에서 실행할 때의 application configuration file
+- Helm chart를 사용할 때의 Helm values, `helm get values -n <namespace> <chartname>`
+- Helm chart가 아닌 Docker container를 사용할 때의 environment variable
+
+또한 사용 중인 version과 연결 대상 network(dev/test/mainnet)를 확인하세요.
+
+## 일반적인 Error Message
+
+### Traffic balance below reserved amount
+
+아래 형태의 log는 validator app이 [traffic을 전혀 구매하지 못했음](/global-synchronizer/deployment/synchronizer-traffic)을 나타냅니다. Validator는 구매한 traffic balance가 일정 수치 아래로 내려가면 traffic 추가 구매에 필요하지 않은 transaction을 차단합니다. 이는 traffic 구매를 완료할 traffic마저 부족해 validator가 스스로를 차단하는 상황을 피하기 위한 것입니다. 가능한 원인을 찾으려면 log에서 `TopupMemberTrafficTrigger`를 확인하세요.
+
+Free traffic에만 의존하고 extra traffic을 구매하지 않으려면 validator top-up config를 제거하세요.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcDeploymentTroubleshootingText89 />
+
+### Insufficient funds to buy configured traffic amount
+
+{/* DIVERGENCE: updated locally to reflect CIP-0096 (validator liveness rewards discontinued, $0 cap effective 2026-04-30); upstream splice source (docs/src/deployment/troubleshooting.rst, hash 15096792) still describes "liveness rewards". See cf-docs issues #1038 and #1049. */}
+
+아래 형태의 log는 validator app이 [traffic 구매](/global-synchronizer/deployment/synchronizer-traffic)를 시도했지만 validator operator party의 wallet에 잔액이 충분하지 않음을 나타냅니다. Balance가 0인 상태로 시작하는 TestNet 및 MainNet의 새 node에서 흔히 발생합니다. 이전에는 liveness reward를 통해 새 node가 시간 경과에 따라 수동적으로 CC를 적립할 수 있었습니다. [CIP-0096](https://github.com/canton-foundation/cips/blob/main/cip-0096/cip-0096.md)이 2026-04-30부터 liveness reward를 중단했으므로, 다른 transaction activity가 없는 새 node는 더 이상 자체적으로 CC를 적립하지 못합니다. CC balance가 있는 기존 node가 balance를 늘리도록 CC를 전송할 수 있으며, 또는 party들이 transaction을 시작하면 validator가 activity reward를 획득할 수 있습니다.
+
+Free traffic에만 의존하고 extra traffic을 구매하지 않으려면 validator top-up config를 제거하세요.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcDeploymentTroubleshootingText109 />
+
+### Gave up getting app version
+
+아래 형태의 log는 SV URL이 필요한 곳에 scan URL을 사용했거나 그 반대인 경우를 나타내는 경우가 많습니다. `https://scan.` prefix와 끝부분의 `/api/sv` path가 일치하지 않는다는 점에 유의하세요.
+
+Docker Compose setup에서는 `-s`로 전달한 URL이 SV URL인지 확인하고, Helm deployment에서는 `svSponsorAddress`를 확인하세요.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcDeploymentTroubleshootingText123 />
+
+### Validator, SV, scan app의 UNAUTHENTICATED error
+
+SV, scan 또는 validator app log에 아래 형태의 log가 나타나면 participant 연결에서 authentication error가 발생했음을 의미합니다. Request가 거부된 이유에 대한 자세한 내용은 participant log에서 확인하세요.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcDeploymentTroubleshootingText135 />
+
+### Node has identity X, but identifier Y was expected
+
+Validator 또는 SV app의 아래 형태의 log는 participant에 사용되는 identifier, 또는 SV의 경우 sequencer나 mediator에 사용되는 identifier를 이미 초기화한 뒤 변경하려 했음을 나타냅니다. Validator의 node identifier는 기본적으로 `validatorPartyHint`이므로 이를 변경해도 이 error가 발생합니다. SV에서는 기본값이 SV name입니다. 새 node라면 participant와 validator의 해당 database를 삭제하는 것이 가장 간단한 방법입니다. SV의 경우 sequencer, participant, mediator, validator, sv 및 scan app database를 삭제합니다. Database를 삭제한 뒤 node를 다시 시작합니다.
+
+<Warning>
+이 작업은 node의 모든 data를 삭제하며 복구할 수 없습니다. 성공적으로 초기화된 적이 없는 새 node에서만 실행하세요.
+</Warning>
+
+새 node가 아니라면 값을 이전 값으로 되돌리세요.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcDeploymentTroubleshootingText161 />
+
+### Sequencer 연결 시 MemberDisabled error
+
+Participant의 아래 형태의 log는 participant가 30일 sequencer pruning window보다 오랫동안 중단되어 SV가 이를 비활성화했음을 나타냅니다. 연결 시도는 모두 같은 error와 함께 실패합니다. [validator_reonboard](/global-synchronizer/production-operations/validator-disaster-recovery)를 통해 새 node를 구성하여 CC balance를 복구할 수 있습니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcDeploymentTroubleshootingText174 />
+
+
+{/* COPIED_END */}

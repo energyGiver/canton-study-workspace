@@ -1,0 +1,155 @@
+---
+title: "DA.Optional"
+description: "Daml module DA.Optional의 reference documentation"
+source_id: "SRC-0EEA8C6B89"
+source_path: "appdev/reference/daml-standard-library/da-optional"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "3f50f8ee29ad3e472ffccaa79d0fdff97871dd2d119953776b978b211c105da5"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-optional.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-optional-38505"></span>
+
+# DA.Optional
+
+`Optional` type은 선택적 값을 encapsulate합니다. `Optional a` type의 값은 `a` type의 값을 포함하거나, `Some a`로 표현되며, 비어 있거나, `None`으로 표현됩니다. `Optional`을 사용하면 error 같은 과격한 방법에 의존하지 않고 error나 예외적인 경우를 다룰 수 있습니다.
+
+Optional type은 action이기도 합니다. 모든 error를 `None`으로 표현하는 간단한 error action입니다. `Either` type을 사용하면 더 풍부한 error action을 만들 수 있습니다.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Functions
+
+<span id="function-da-optional-fromsome-59859"></span>
+
+### `fromSome`
+
+`fromSome` : [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a` -> `a`
+
+`fromSome` function은 `Some`에서 element를 추출하고, argument가 `None`이면 error를 발생시킵니다.
+
+대부분의 경우 실패 시 더 좋은 error를 얻기 위해 `fromSomeNote`를 사용하는 것이 좋습니다.
+
+<span id="function-da-optional-fromsomenote-25463"></span>
+
+### `fromSomeNote`
+
+`fromSomeNote` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a` -> `a`
+
+custom error message를 사용하는 `fromSome`입니다.
+
+<span id="function-da-optional-catoptionals-11568"></span>
+
+### `catOptionals`
+
+`catOptionals` : [[`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a`] -> [`a`]
+
+`catOptionals` function은 `Optional` list를 받아 모든 `Some` 값의 list를 반환합니다.
+
+<span id="function-da-optional-listtooptional-83598"></span>
+
+### `listToOptional`
+
+`listToOptional` : [`a`] -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a`
+
+`listToOptional` function은 empty list에 대해 `None`을 반환하고, 그렇지 않으면 list의 첫 번째 element인 a를 `Some` a로 반환합니다.
+
+<span id="function-da-optional-optionaltolist-83426"></span>
+
+### `optionalToList`
+
+`optionalToList` : [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a` -> [`a`]
+
+`optionalToList` function은 `None`이 주어지면 empty list를, 그렇지 않으면 singleton list를 반환합니다.
+
+<span id="function-da-optional-fromoptional-77879"></span>
+
+### `fromOptional`
+
+`fromOptional` : `a` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a` -> `a`
+
+`fromOptional` function은 default 값과 `Optional` 값을 받습니다. `Optional`이 `None`이면 default 값을 반환하고, 그렇지 않으면 `Optional`에 포함된 값을 반환합니다.
+
+<span id="function-da-optional-issome-25261"></span>
+
+### `isSome`
+
+`isSome` : [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`isSome` function은 argument가 `Some _` 형태일 때에만 `True`를 반환합니다.
+
+<span id="function-da-optional-isnone-84783"></span>
+
+### `isNone`
+
+`isNone` : [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`isNone` function은 argument가 `None`일 때에만 `True`를 반환합니다.
+
+<span id="function-da-optional-mapoptional-4330"></span>
+
+### `mapOptional`
+
+`mapOptional` : (`a` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `b`) -> [`a`] -> [`b`]
+
+`mapOptional` function은 element를 제외할 수 있는 `map` 버전입니다. function argument는 `Optional b` type을 반환합니다. 결과가 `None`이면 결과 list에 element를 추가하지 않고, `Some b`이면 결과 list에 `b`를 포함합니다.
+
+<span id="function-da-optional-whensome-82167"></span>
+
+### `whenSome`
+
+`whenSome` : [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `m` => [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a` -> (`a` -> `m` ()) -> `m` ()
+
+`Some` 내부의 field가 주어지면 `Some`에 작업을 수행합니다.
+
+<span id="function-da-optional-whensome-5861"></span>
+
+### `whenSome_`
+
+`whenSome_` : [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `m` => [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a` -> (`a` -> `m` `b`) -> `m` ()
+
+`Some` 내부의 field가 주어지면 `Some`에 작업을 수행하고 결과를 버립니다.
+
+<span id="function-da-optional-whennone-99309"></span>
+
+### `whenNone`
+
+`whenNone` : [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `m` => [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a` -> `m` `a` -> `m` `a`
+
+`None`에 작업을 수행합니다. 그렇지 않으면 `Some`의 내용을 Applicative에 pure해 반환합니다.
+
+<span id="function-da-optional-whennone-43843"></span>
+
+### `whenNone_`
+
+`whenNone_` : [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `m` => [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a` -> `m` `b` -> `m` ()
+
+`None`에 작업을 수행합니다. `Some`에는 아무 작업도 하지 않습니다. `Some` 내용을 버릴 때 편리합니다.
+
+<span id="function-da-optional-findoptional-83634"></span>
+
+### `findOptional`
+
+`findOptional` : (`a` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `b`) -> [`a`] -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `b`
+
+`findOptional`은 predicate가 처음으로 `Some`을 반환하는 element에서 predicate의 값을 반환합니다. `findOptional`은 `find`와 비슷하지만 predicate에서 값을 반환할 수 있습니다. predicate가 pattern match에 해당할 때 더 type-safe한 버전으로 사용하거나, predicate에서 수행한 작업의 중복을 피해 성능을 높이는 데 유용합니다.

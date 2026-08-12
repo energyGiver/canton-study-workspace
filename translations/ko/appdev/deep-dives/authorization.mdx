@@ -1,0 +1,198 @@
+---
+title: "Authorization"
+description: "Canton Ledger API의 access token, Identity Provider, scope 및 right"
+source_id: "SRC-4CA0A3A918"
+source_path: "appdev/deep-dives/authorization"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "3ccd85bb2ea39a81cd0675fd0b39dab5997eb7374df6db4f04cc9af19a2cd352"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/deep-dives/authorization.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/sdlc-howtos/applications/secure/authorization.rst" hash="04aa3ece" */}
+
+SDK tool로 Daml application을 개발할 때 local 설정은 대부분 Ledger API request authorization을 수행하지 않습니다. 기본적으로 Sandbox는 유효한 Ledger API request를 모두 accept합니다.
+
+배포된 ledger의 Participant Node에서는 그렇지 않습니다. Participant Node는 모든 Ledger API request에 대해 해당 request를 authorize하기에 유효하고 충분한 access token이 포함되어 있는지 검사합니다. 따라서 배포된 ledger에서 application을 실행하려면 access token을 사용하는 authorization을 application이 지원하도록 해야 합니다.
+
+<Note>
+Mutual(two-way) TLS authentication을 사용하는 경우 Ledger API client는 authentication process의 일부로 access token뿐 아니라 certificate도 Ledger API server에 제시해야 합니다. 제공하는 certificate는 Ledger API server가 신뢰하는 Certificate Authority(CA)의 서명을 받아야 합니다. 이 방법을 사용한다고 application identity가 증명되는 것은 아닙니다. 즉 request의 `application_id` field가 certificate의 CN(Common Name)과 반드시 연결되지는 않습니다.
+</Note>
+
+## 기본 interaction
+
+Daml application은 Participant Node가 제공하는 Ledger API에 request를 보내 ledger 변경 사항을 제출하거나(예: "*Party Alice로 contract Y의 choice X를 exercise*") ledger에서 data를 읽습니다(예: "*Party Alice에게 보이는 모든 active contract 읽기*").
+
+Participant Node가 이러한 request를 처리할 *수 있는지*는 Participant Node가 해당 Party를 host하는지와 request가 Daml Ledger Model에 따라 유효한지에 달려 있습니다. Participant Node가 Daml application에 이러한 request를 처리*할지*는 해당 Participant Node에서 request를 authorize하기에 유효하고 충분한 access token이 request에 포함되어 있는지에 달려 있습니다.
+
+## Access Token 획득 및 사용
+
+Application이 access token을 얻는 방법은 통신하는 Participant Node에 따라 달라지며 궁극적으로 Participant Node operator가 설정합니다. 많은 설정에서 [OAuth 2.0](https://oauth.net/2/) 방식의 flow를 사용합니다.
+
+이 scenario에서 Daml application은 먼저 token issuer에 연락하여 access token을 받습니다. Token issuer는 요청한 application의 identity를 verify하고 application privilege를 조회한 다음 해당 privilege를 설명하는 서명된 access token을 생성합니다.
+
+Access token이 발행되면 Daml application은 모든 Ledger API request에 함께 전송합니다. Daml ledger는 다음을 verify합니다.
+
+- 신뢰하는 token issuer 중 하나가 token을 발행했는지
+- Token이 tamper되지 않았는지
+- Token이 만료되지 않았는지
+- Token에 포함된 privilege가 request를 authorize하는지
+
+![바로 위 두 단락에서 설명한 authentication process의 flowchart](./images/Authentication.svg)
+
+Request에 token을 첨부하는 방법은 Ledger API와 interaction하는 데 사용하는 tool 또는 library에 따라 달라집니다. 자세한 내용은 해당 tool이나 library documentation을 참조하세요. 예를 들어 Java bindings를 사용하는 gRPC Ledger API access 및 JSON Ledger API 관련 documentation이 있습니다.
+
+## Access Token Format
+
+Application은 access token을 opaque blob으로 취급해야 합니다. 그러나 application developer가 문제를 debug할 때 access token format을 이해하면 도움이 될 수 있습니다.
+
+모든 Daml ledger는 access token을 [JSON Web Token(JWT)](https://datatracker.ietf.org/doc/html/rfc7519)으로 표현합니다.
+
+<Note>
+Testing 목적의 access token은 [jwt.io](https://jwt.io/) website에서 생성할 수 있습니다.
+</Note>
+
+## Access Token과 Right
+
+Access token에는 token bearer에게 부여된 right 정보가 들어 있습니다. 이 right는 접근하는 API별로 다릅니다.
+
+Ledger API는 다음 right를 사용하여 request authorization을 제어합니다.
+
+- `public`: Ledger identity 같은 공개 정보를 가져올 right
+- `participant_admin`: Participant Node를 관리할 right
+- `idp_admin`: Authenticate된 user와 동일한 Identity Provider configuration에 속한 user 및 Party를 관리할 right
+- `canReadAs(p)`: Party `p`에게 보이는 ledger 정보(예: Active Contract)를 읽을 right
+- `canActAs(p)`: `canReadAs(p)`와 같으며 Party `p`를 대신하여 command를 발행할 추가 right 포함
+- `canExecuteAs(p)`: Read access 없이 Party `p`로 submission을 prepare하고 execute할 right. Read도 필요하다면 별도의 `canReadAs(p)` right가 필요합니다. 이 right는 `canActAs(p)`에 암묵적으로 포함됩니다.
+- `canReadAsAnyParty`: Participant의 어떤 Party에게든 보이는 ledger data를 읽을 right. Party가 추가되거나 제거될 때 subscription을 update하지 않고 모든 Party의 continuous feed가 필요한 PQS 같은 tool을 위한 것입니다.
+- `canExecuteAsAnyParty`: Participant의 어떤 Party로든 submission을 prepare하고 execute할 right. 여러 Party를 대신하여 interactive submission을 수행하는 service를 위한 것입니다.
+
+다음 table은 각 Ledger API endpoint 접근에 필요한 right를 요약합니다.
+
+| Ledger API service            | Endpoint                                                     | 필요한 right                                          |
+|-------------------------------|--------------------------------------------------------------|------------------------------------------------------|
+| StateService                  | GetActiveContracts                                           | 요청한 각 Party p: canReadAs(p)                       |
+| CommandCompletionService      | CompletionEnd                                                | public                                               |
+|                               | CompletionStream                                             | 요청한 각 Party p: canReadAs(p)                       |
+| CommandSubmissionService      | Submit                                                       | 제출 Party p: canActAs(p)                             |
+| CommandService                | All                                                          | 제출 Party p: canActAs(p)                             |
+| EventQueryService             | All                                                          | 요청한 각 Party p: canReadAs(p)                       |
+| Health                        | All                                                          | Health check에 access token 필요 없음                 |
+| IdentityProviderConfigService | All                                                          | participant_admin                                    |
+| PackageService                | All                                                          | public                                               |
+| PackageManagementService      | All                                                          | participant_admin                                    |
+| PartyManagementService        | All                                                          | participant_admin                                    |
+|                               | All (except GetParticipantId, UpdatePartyIdentityProviderId) | idp_admin                                            |
+| ParticipantPruningService     | All                                                          | participant_admin                                    |
+| ServerReflection              | All                                                          | gRPC service reflection에 access token 필요 없음      |
+| TimeService                   | GetTime                                                      | public                                               |
+|                               | SetTime                                                      | participant_admin                                    |
+| UpdateService                 | LedgerEnd                                                    | public                                               |
+|                               | All (except LedgerEnd)                                       | 요청한 각 Party p: canReadAs(p)                       |
+| UserManagementService         | All                                                          | participant_admin                                    |
+|                               | All (except UpdateUserIdentityProviderId)                    | idp_admin                                            |
+|                               | GetUser                                                      | Authenticate된 user는 자신의 user를 가져올 수 있음    |
+|                               | ListUserRights                                               | Authenticate된 user는 자신의 right를 나열할 수 있음   |
+| VersionService                | All                                                          | public                                               |
+
+## User Access Token
+
+Participant Node는 dynamic user 집합과 해당 right를 저장합니다. User access token은 request를 대신 발행하는 Participant user를 encode합니다.
+
+Participant Node는 이러한 request를 처리할 때 위 table에 따라 request authorization을 검사하기 전에 Participant user의 current right를 조회합니다. 따라서 새 access token을 발행하지 않고도 Participant User Management Service를 사용하여 application에 부여된 right를 동적으로 변경할 수 있습니다.
+
+User access token은 [JWT](https://datatracker.ietf.org/doc/html/rfc7519)이며 [OAuth 2.0 standard](https://datatracker.ietf.org/doc/html/rfc6749)를 따릅니다. JSON encoding에는 두 가지가 있습니다. Audience field를 사용하여 특정 Daml Participant용임을 지정하는 audience-based token format과 scope field를 사용하여 목적을 지정하는 scope-based token format입니다. 두 format은 서로 바꾸어 사용할 수 있지만 가능하면 audience-based token format을 사용하세요. 더 다양한 IAM과 호환되기 때문입니다. 예를 들어 Kubernetes는 scope field 설정을 지원하지 않고 Participant ID를 필수로 만들어 다른 Participant에서 token을 오용하지 못하게 합니다.
+
+### Audience-Based Token
+
+```json
+{
+   "aud": "https://daml.com/jwt/aud/participant/someParticipantId",
+   "sub": "someUserId",
+   "iss": "someIdpId",
+   "exp": 1300819380
+}
+```
+
+위 notation의 의미는 다음과 같습니다.
+
+- `aud`는 주어진 ID(예: `someParticipantId`)를 가진 Participant Node로 token을 제한하는 필수 field입니다.
+- `sub`는 Participant user ID를 지정하는 필수 field입니다.
+- `iss`는 Identity Provider ID를 지정하는 field입니다.
+- `exp`는 JWT expiration date(EPOCH 이후 초 단위)를 지정하는 optional field입니다.
+
+### Scope-Based Token
+
+```json
+{
+   "aud": "someParticipantId",
+   "sub": "someUserId",
+   "exp": 1300819380,
+   "iss": "someIdpId",
+   "scope": "daml_ledger_api"
+}
+```
+
+위 notation의 의미는 다음과 같습니다.
+
+- `aud`는 주어진 ID를 가진 Participant Node로 token을 제한하는 optional field입니다.
+- `sub`는 Participant user ID를 지정하는 필수 field입니다.
+- `iss`는 Identity Provider ID를 지정하는 field입니다.
+- `exp`는 JWT expiration date(EPOCH 이후 초 단위)를 지정하는 optional field입니다.
+- `scope`는 `"daml_ledger_api"` scope를 포함해야 하는 공백으로 구분된 [OAuth 2.0 scope](https://datatracker.ietf.org/doc/html/rfc6749#section-3.3) list입니다.
+
+### User ID Requirement
+
+User ID는 최대 128자의 비어 있지 않은 string이어야 하며 영숫자 ASCII 문자 또는 "@^\$.!\`-#+'~\_\|:()" symbol 중 하나만 포함할 수 있습니다.
+
+### Identity Provider
+
+Identity Provider configuration은 다음 특성을 가진 Participant user 집합으로 볼 수 있습니다.
+- Access token을 verify하는 정의된 방식이 있습니다.
+- 같은 Participant Node의 나머지 user와 독립적으로 관리할 수 있습니다.
+- Participant Node별로 고유한 Identity Provider ID가 있습니다.
+- 동일한 Identity Provider ID를 공유하는 관련 Party 집합이 있습니다.
+
+Participant Node에는 ID가 빈 string `""`인 정적으로 구성된 default Identity Provider configuration이 항상 있습니다. 또한 비어 있지 않은 Identity Provider ID와 Participant Node가 access token verify에 필요한 cryptographic data를 가져오는 데 사용할 [JWK Set](https://datatracker.ietf.org/doc/html/rfc7517) URL을 제공하여 `IdentityProviderConfigService`로 소수의 non-default Identity Provider를 구성할 수 있습니다.
+
+Non-default Identity Provider configuration의 user로 authenticate할 때 access token에는 값이 Identity Provider ID와 일치하는 `iss` field가 있어야 합니다. Default Identity Provider configuration에서는 access token의 `iss` field가 비어 있거나 생략될 수 있습니다.
+
+## Encoding 및 Signature
+
+JWT specification을 준수하는 access token은 별도의 header와 payload가 있는 더 큰 JSON structure에 embedded됩니다.
+
+```json
+{
+   "alg": "RS256",
+   "typ": "JWT"
+}
+{
+   "aud": "https://daml.com/jwt/aud/participant/someParticipantId",
+   "sub": "someUserId",
+   "iss": "someIdpId",
+   "exp": 1300819380
+}
+```
+
+그런 다음 두 항목을 함께 base64 encoding하여 최종 token stem을 만듭니다. 이어서 header에 식별된 cryptographic algorithm으로 stem에 서명합니다. Signature 자체도 base64-encoded되어 stem에 append됩니다. 결과 character string은 다음과 비슷한 형태입니다.
+
+```bash
+eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL2RhbWwuY29tL2p3dC9hdWQvcGFydGljaXBhbnQvc29tZVBhcnRpY2lwYW50SWQiLCJzdWIiOiJzb21lVXNlcklkIiwiaXNzIjoic29tZUlkcElkIiwiZXhwIjoxMzAwODE5MzgwfQ.DLVPehRLt8WiddI6mwUU1lqIgRbysLK34mgkuzSDQTThCXlEY_S57SHKEQHw-Pai0Y0OeGP7wNsT6uq51vBVbRNfxOLwy5owQRm3LEeTbSXMjnnPVrtRrhelVQCsH2AcV4J4bbrAe6YfKGYFBXZOfeRL3Gy7KIplcfxDZekHdPD8lhwK8AkvAR4IaOX72Q5jhjB2yOY9IwpVxx-pN0vWCqmxTbQqnIpSGo185Y0f38nKZeofGT5jcJZaSv7z4Ks15gs9gm1pHorEL6TZLCbX7T064hQeTBFea-kxQlUkcfcgmUOMAmA05_4a8fdFz2uHq5km7ylp6pUITogN5MJ-_CVFEwOD0GveOgiUJBBMHDBjq_V_DfRE4nZ04tFQ0DDthWpMd0F59JFIhmjZSZT9DWppj6G7VBWpu9aIFPefyX--2U_aO0Smt_dBBV5A6pvbIgX6ITF2tjEvvOCLHtLKmNTlP8cclna70DCsDIrojNVDMFpLXYLvsP6DhQWkGaRb-nz0hLjQE_PtuQzSexrZG5d8tHFS351E2-aUVTKoJuEGHH3n1it-d9yHdt4fAynIbhWUVAervxc-oXyrA3-uafrxbIiQCpnw0kQ8K-HwJpkfz_Yqf-luI1FaRiPT9F-cYzwvceNf2_2hhmiuGiYp3rVIPwkFAuBc1vgpPiWSNLc
+```
+
+올바른 format의 access token 생성은 일반적으로 Identity Provider system에 위임합니다. Client application developer가 직접 처리할 가능성은 낮습니다.
+
+## Token expiration
+
+JWT token 기반 authorization은 본질적으로 stateless하여 뛰어난 scalability를 제공하고 server가 client session을 관리하거나 비용이 많이 드는 claim verification 검사를 수행할 필요를 없앱니다. 하지만 이러한 stateless 특성 때문에 JWT token을 revoke할 수 없습니다.
+
+Token 분실 또는 탈취와 관련된 risk를 완화하기 위해 JWT token을 사용하는 system의 표준 practice를 따를 것을 *강력히 권장*합니다. IAM system이 이상적으로 5~15분 동안 유효한 short-lived token을 발행하도록 구성하세요. 그러면 unauthorized actor가 system에 접근할 수 있는 time window가 제한됩니다.
+
+Long-lived token을 사용하는 것은 best practice에 어긋나며 token이 compromise될 경우 IAM token issuance mechanism을 많은 비용을 들여 다시 구성해야 할 risk가 있습니다. Token 분실 시 token signing key를 rotate해야 할 수 있습니다. 이 action은 JSON Web Key Set(JWKS) mechanism을 통해 아직 유효한 모든 token을 invalidate합니다. JWT token 탈취를 완화하는 자세한 전략은 IAM system documentation을 참조하세요.
+
+{/* COPIED_END */}

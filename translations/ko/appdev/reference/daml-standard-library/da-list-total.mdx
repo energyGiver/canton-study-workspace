@@ -1,0 +1,135 @@
+---
+title: "DA.List.Total"
+description: "Daml module DA.List.Total의 reference documentation"
+source_id: "SRC-FA02539FEC"
+source_path: "appdev/reference/daml-standard-library/da-list-total"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "90983e813f6cc19540e3668fe4bff91c0522ec48f0b05cea52060e30abc56f0b"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-list-total.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-list-total-99663"></span>
+
+# DA.List.Total
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Functions
+
+<span id="function-da-list-total-head-26095"></span>
+
+### `head`
+
+`head` : [`a`] -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a`
+
+list의 첫 번째 element를 반환합니다. list가 비어 있으면 `None`을 반환합니다.
+
+<span id="function-da-list-total-tail-49055"></span>
+
+### `tail`
+
+`tail` : [`a`] -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`a`]
+
+list에서 첫 번째 element를 제외한 모든 element를 반환합니다. list가 비어 있으면 `None`을 반환합니다.
+
+<span id="function-da-list-total-last-22829"></span>
+
+### `last`
+
+`last` : [`a`] -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a`
+
+list의 마지막 element를 추출합니다. list가 비어 있으면 `None`을 반환합니다.
+
+<span id="function-da-list-total-init-12739"></span>
+
+### `init`
+
+`init` : [`a`] -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`a`]
+
+list에서 마지막 element를 제외한 모든 element를 반환합니다. list가 비어 있으면 `None`을 반환합니다.
+
+<span id="function-da-list-total-bangbang-57917"></span>
+
+### `!!`
+
+`!!` : [`a`] -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a`
+
+list의 n번째 element를 반환합니다. index가 범위를 벗어나면 `None`을 반환합니다.
+
+<span id="function-da-list-total-foldl1-27683"></span>
+
+### `foldl1`
+
+`foldl1` : (`a` -> `a` -> `a`) -> [`a`] -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a`
+
+list의 head에서 시작해 왼쪽으로 fold합니다. 예: `foldl1 f [a,b,c] = f (f a b) c`. list가 비어 있으면 `None`을 반환합니다.
+
+<span id="function-da-list-total-foldr1-3777"></span>
+
+### `foldr1`
+
+`foldr1` : (`a` -> `a` -> `a`) -> [`a`] -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a`
+
+list의 마지막 element에서 시작해 오른쪽으로 fold합니다. 예: `foldr1 f [a,b,c] = f a (f b c)`
+
+<span id="function-da-list-total-foldbalanced1-85298"></span>
+
+### `foldBalanced1`
+
+`foldBalanced1` : (`a` -> `a` -> `a`) -> [`a`] -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a`
+
+non-empty list를 balanced 방식으로 fold합니다. balanced란 각 element가 operator tree에서 거의 같은 depth를 갖는다는 뜻입니다. 거의 같은 depth란 최대 depth와 최소 depth의 차이 1 이하임을 의미합니다. `foldl1` 또는 `foldr1`과 같은 결과를 얻으려면 accumulation operation이 associative이고 commutative여야 합니다.
+
+list가 비어 있으면 `None`을 반환합니다.
+
+<span id="function-da-list-total-minimumby-50223"></span>
+
+### `minimumBy`
+
+`minimumBy` : (`a` -> `a` -> [`Ordering`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-ordering-35353)) -> [`a`] -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a`
+
+주어진 comparison function에 따라 list의 최솟값을 반환합니다. list가 비어 있으면 `None`을 반환합니다.
+
+<span id="function-da-list-total-maximumby-35485"></span>
+
+### `maximumBy`
+
+`maximumBy` : (`a` -> `a` -> [`Ordering`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-ordering-35353)) -> [`a`] -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a`
+
+주어진 comparison function에 따라 list의 최댓값을 반환합니다. list가 비어 있으면 `None`을 반환합니다.
+
+<span id="function-da-list-total-minimumon-58803"></span>
+
+### `minimumOn`
+
+`minimumOn` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => (`a` -> `k`) -> [`a`] -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a`
+
+key function을 기준으로 비교해 list의 최솟값을 반환합니다. 예: `minimumOn (\(x,y) -> x + y) [(1,2), (2,0)] == Some (2,0)`. list가 비어 있으면 `None`을 반환합니다.
+
+<span id="function-da-list-total-maximumon-82285"></span>
+
+### `maximumOn`
+
+`maximumOn` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => (`a` -> `k`) -> [`a`] -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a`
+
+key function을 기준으로 비교해 list의 최댓값을 반환합니다. 예: `maximumOn (\(x,y) -> x + y) [(1,2), (2,0)] == Some (1,2)`. list가 비어 있으면 `None`을 반환합니다.

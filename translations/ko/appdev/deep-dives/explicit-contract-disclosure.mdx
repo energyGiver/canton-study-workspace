@@ -1,0 +1,236 @@
+---
+title: "Explicit Contract Disclosure"
+description: "Non-stakeholder를 stakeholder로 추가하지 않고도 contract를 input으로 사용할 수 있도록 공개합니다."
+source_id: "SRC-AC80056DF3"
+source_path: "appdev/deep-dives/explicit-contract-disclosure"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "4f4a84653e656824a9c13b29d1a3be5f66f8d3cbcff5e23a0b769ed01541a139"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/deep-dives/explicit-contract-disclosure.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/sdlc-howtos/applications/develop/explicit-contract-disclosure.rst" hash="fbd2f79a" */}
+
+Daml에서는 template definition의 stakeholder annotation으로 누가 data를 볼 수 있는지 지정해야 합니다. Data를 볼 수 있는 대상을 변경하려면 일반적으로 다른 stakeholder Party를 계산하는 template로 contract를 다시 생성해야 합니다.
+
+Explicit Contract Disclosure를 사용하면 off-ledger data distribution을 통해 non-stakeholder에게 contract read right를 위임할 수 있습니다. 이는 ledger에서 효율적이고 확장 가능한 data sharing을 지원합니다.
+
+<Note>
+Explicit Disclosure는 기본적으로 활성화되어 있습니다. 비활성화하려면 `participants.participant.ledger-api.enable-explicit-disclosure = false`를 구성하세요.
+</Note>
+
+다음 use case는 Explicit Contract Disclosure를 통해 얻을 수 있는 이점을 보여줍니다.
+
+- Stock Transaction을 위한 price data의 증거를 제공하려고 합니다. Price update를 subscribe하여 매분 수천 건의 price update를 받을 가능성을 감수하는 대신 전통적인 Web 2.0 API를 통해 price data를 제공할 수 있습니다. 그런 다음 사용 시점의 현재 price만 해당 API에서 ledger로 다시 전달할 수 있습니다. 동일한 validation과 security를 유지하면서 전송되는 data 양을 크게 줄일 수 있습니다.
+- Ledger에서 open market을 운영하려고 합니다. 모든 bid와 ask를 모든 marketplace user에게 명시적으로 공개하는 대신 표준 Web 2.0 API를 통해 market data를 제공합니다. 사용 시점에 이용 가능한 bid와 ask를 Transaction에 다시 전달하면 observer mechanism을 통해 공유했을 때와 동일한 activeness 및 correctness 보장을 얻을 수 있습니다.
+
+## Contract Read Delegation
+
+Contract Read Delegation을 사용하면 Party가 stakeholder도 informee도 아닌 contract에 대해 command 제출 중 read right를 획득할 수 있습니다.
+
+Read Delegation을 사용할 수 있는 example application으로 두 Party 사이의 단순화된 trade를 생각해 보겠습니다. 이 example에서 **Seller** Party는 **StockExchange** Party가 발행한 Canton Network `Stock` 한 단위를 소유합니다. Stock issuer인 **StockExchange**는 올바른 market value로 trade를 settle할 때 사용할 수 있는 stock의 `PriceQuotation`도 public data로 publish합니다. **Seller**는 누구나 exercise할 수 있는 `Offer` contract를 생성하여 stock 판매 offer를 public하게 알립니다. Exercise하려면 올바른 market value를 `IOU` 단위로 지불할 수 있어야 합니다.
+
+반대편에서 **Buyer** Party는 10 monetary unit의 `IOU`를 소유하며, 이를 사용하여 **Seller**의 stock을 취득하려고 합니다.
+
+위 trade를 modeling하는 데 사용하는 Daml template는 아래와 같습니다.
+
+```haskell
+module StockExchange where
+
+import Daml.Script
+import DA.Assert
+import DA.Action
+
+template IOU
+  with
+    issuer: Party
+    owner: Party
+    value: Int
+  where
+    signatory issuer
+    observer owner
+
+    choice IOU_Transfer: ()
+      with
+        target: Party
+        amount: Int
+      controller owner
+      do
+        -- Check that the transferred amount is not higher than the current IOU value
+        assert (value >= amount)
+        create this with issuer = issuer, owner = target, value = amount
+        -- No need to create a new IOU for owner if the full value is transferred
+        if value == amount then pure ()
+        else void $ create this with issuer = issuer, owner = owner, value = value - amount
+        pure ()
+
+template Stock
+  with
+    issuer: Party
+    owner: Party
+    stockName: Text
+  where
+    signatory issuer
+    observer owner
+
+    choice Stock_Transfer: ()
+      with
+        newOwner: Party
+      controller owner
+      do
+        create this with owner = newOwner
+        pure ()
+
+-- Expresses the current market value of a stock issued by the issuer.
+-- Not modelled in this example: the issuer ensures that only one `PriceQuotation`
+-- is active at a time for a specific `stockName`.
+template PriceQuotation
+  with
+    issuer: Party
+    stockName: Text
+    value: Int
+  where
+    signatory issuer
+
+    -- Helper choice to allow the controller to fetch this contract without being a stakeholder.
+    -- By fetching this contract, the controller (i.e. `fetcher) proves
+    -- that this contract is active and represents the current market value for this stock.
+    nonconsuming choice PriceQuotation_Fetch: PriceQuotation
+      with fetcher: Party
+      controller fetcher
+      do pure this
+
+template Offer
+  with
+    seller: Party
+    quotationProducer: Party
+    offeredAssetCid: ContractId Stock
+  where
+    signatory seller
+
+    choice Offer_Accept: ()
+      with
+        priceQuotationCid: ContractId PriceQuotation
+        buyer: Party
+        buyerIou: ContractId IOU
+      controller buyer
+      do
+        priceQuotation models the setup of the trade between the parties.
+
+let stockName = "Daml"
+
+stockCid <- submit stockExchange do
+  createCmd Stock with
+    issuer = stockExchange
+    owner = seller
+    stockName = stockName
+
+offerCid <- submit seller do
+  createCmd Offer with
+    seller = seller
+    quotationProducer = stockExchange
+    offeredAssetCid = stockCid
+
+priceQuotationCid <- submit stockExchange do
+  createCmd PriceQuotation with
+    issuer = stockExchange
+    stockName = stockName
+    value = 3
+
+buyerIouCid <- submit bank do
+  createCmd IOU with
+    issuer = bank
+    owner = buyer
+    value = 10
+```
+
+On-ledger에서 trade를 settle하려면 **Buyer**가 `Offer_Accept`를 `offerCid` contract에서 exercise해야 합니다. 하지만 **Buyer**가 stakeholder도 prior informee도 아닌 contract에서 어떻게 choice를 exercise할 수 있을까요? 같은 질문이 `stockCid` 및 priceQuotationCid contract에 대한 **Buyer**의 visibility에도 적용됩니다.
+
+아래 snippet처럼 **Buyer**가 단순히 choice를 exercise하면 관련 contract에 대한 visibility right가 없다는 error와 함께 제출이 실패합니다.
+
+    -- Command fails with missing visibility over the contracts for buyer
+    _ their contracts to any party desiring to execute such a trade. **Buyer** can attach the disclosed contracts to the command submission that is exercising `Offer_Accept` on **Seller**'s `offerCid`, thus bypassing the visibility restriction over the contracts.
+
+<Note>
+Ledger API는 command 제출에 첨부된 disclosed contract를 사용하여 command interpretation 중 contract 및 key activeness lookup을 resolve합니다. 즉 disclosed contract를 사용하면 해당 contract에 대한 submitting Party의 visibility restriction을 사실상 우회합니다. 하지만 Daml model의 authorization restriction은 여전히 적용됩니다. 제출된 command는 여전히 올바르게 authorize되어야 하며 actor는 action을 실행하도록 올바르게 authorize되어야 합니다.
+</Note>
+
+## Stakeholder가 submitter에게 contract를 공개하는 방법
+
+Contract stakeholder는 contract와 연결된 CreatedEvent에서 disclosed contract 상세 정보를 fetch할 수 있습니다. CreatedEvent는 state 및 update query를 통해 Ledger API에서 읽을 수 있습니다.
+
+그런 다음 stakeholder는 HTTPS, SFTP 또는 email 같은 일반적인 방법으로 disclosed contract 상세 정보를 off-ledger, 즉 Daml 외부에서 submitter와 공유할 수 있습니다. DisclosedContract는 원래 contract의 `CreatedEvent`에서 같은 이름의 field를 사용하여 구성할 수 있습니다.
+
+<Note>
+`created_event_blob` field는 `CreatedEvent`에 있으며 DisclosedContract를 구성하는 데 사용됩니다. 이 field는 `GetUpdates`, `GetUpdateTrees`, `GetActiveContracts` stream에서 **요청이 있을 때만** populate됩니다.
+
+자세한 내용은 event format 구성을 참조하세요.
+</Note>
+
+## Command 제출에 disclosed contract 첨부
+
+Disclosed contract는 `Command`의 disclosed_contracts 일부로 첨부할 수 있으며, 다음 field를 원래 `CreatedEvent`에서 populate해야 합니다(위 내용 및 DisclosedContract content 상세 정보 참조).
+
+- **template_id**: Contract의 template ID
+- **contract_id**: Contract ID
+- **created_event_blob**: Opaque blob encoding으로 표현된 contract
+
+<Note>
+Canton 2.8부터 생성된 contract만 disclosed contract로 공유할 수 있습니다. 이전 version에서는 **CreatedEvent**에 필요한 `created_event_blob` field가 populate되지 않으므로 disclosed contract로 사용할 수 없습니다.
+</Note>
+
+## Explicit Disclosure로 stock 거래
+
+위 example에서 **Buyer**는 `stockCid`, `priceQuotationCid`, `offerCid` contract에 대한 visibility가 없으므로 `Offer_Accept`를 exercise하는 command 제출에 이들을 disclosed contract로 제공해야 합니다. 이를 위해 contract stakeholder가 ledger에서 contract를 fetch하여 **Buyer**가 사용할 수 있게 해야 합니다.
+
+그런 다음 **Buyer**는 offer를 accept하는 command 제출에 disclosed contract payload를 첨부합니다.
+
+이 마지막 두 단계는 Explicit Disclosure를 지원하는 새 Daml Script function인 `queryDisclosure`와 `submitWithDisclosures`를 사용하여 실행합니다.
+
+```haskell
+disclosedStock <- fromSome <$> queryDisclosure stockExchange stockCid
+disclosedOffer <- fromSome <$> queryDisclosure seller offerCid
+disclosedPriceQuotation <- fromSome <$> queryDisclosure stockExchange priceQuotationCid
+
+_ <- submitWithDisclosures buyer [disclosedStock, disclosedOffer, disclosedPriceQuotation] do
+  exerciseCmd offerCid Offer_Accept with priceQuotationCid = priceQuotationCid, buyer = buyer, buyerIou = buyerIouCid
+```
+<Note>
+Client application용 Java bindings를 사용하는 example은 [Java Bindings StockExchange example project](https://github.com/digital-asset/ex-java-bindings/blob/f474ae83976b0ad197e2fabfce9842fb9b3de907/StockExchange/README.rst)를 참조하세요.
+</Note>
+
+## Safeguard
+
+위 example에서 **Buyer**가 malicious하여 **Seller**의 stock에 대해 공식 price quotation보다 적게 지불하려 하면 어떻게 될까요? **Buyer**는 **StockExchange**에서 받은 `disclosedPriceQuotation` payload의 contract argument에 더 낮은 값을 설정하여 수정하고, 위조한 payload를 **Seller**의 offer에서 `Offer_Accept`를 exercise하는 command 제출의 disclosed contract로 사용하려 할 수 있습니다.
+
+### Contract authentication
+
+위에서 예로 든 scenario는 Explicit Contract Disclosure 기능과 함께 도입된 새 기술 기능인 Daml Contract Authentication 덕분에 불가능합니다.
+
+더 구체적으로 각 contract의 argument, template-id, signatory, key 등이 모든 관련 정보의 hash로 contract-id에 포함됩니다. 따라서 tampering이 있으면 제출된 ID와 다른 contract-id가 생성됩니다. Transaction에 관련된 모든 정직한 Participant가 이 불일치를 포착합니다.
+
+위 example에서 **Buyer**의 Participant가 정직하면 속지 않으며 `DISCLOSED_CONTRACT_AUTHENTICATION_FAILED`와 함께 제출을 reject합니다. **Buyer**의 Participant 역시 malicious하여 malformed payload가 포함된 confirmation request를 제출하면 Transaction에 관련된 다른 Participant가 불일치를 감지하고 request를 reject합니다.
+
+### Business logic safeguard
+
+Good practice로서 각 Daml application workflow에는 misuse를 방지하는 business logic precondition이 있어야 합니다.
+
+이 example에서 `Offer_Accept` choice에는 argument로 제공되는 *flexible* controller인 `buyer`가 있습니다. 어느 Party든 command 제출 시 `disclosedOffer` disclosed contract를 제공하여 choice를 exercise할 수 있으므로 choice body에는 malicious use를 허용하지 않는 safeguard를 포함해야 합니다. 이 example에서는 Daml assert로 modeling합니다.
+
+    -- Assert the quotation issuer and asset name
+    priceQuotation.issuer === quotationProducer
+    priceQuotation.stockName === asset.stockName
+
+Disclosed contract를 사용하여 Daml workflow를 modeling할 때 이러한 safeguard는 다음을 보장합니다.
+
+- Disclosed contract user에게 content가 예상 condition에 맞게 validate됨
+- Disclosed contract owner에게 예상 agreement 안에서 사용됨
+
+이 example에서 `Offer_Accept`의 Daml assertion은 price quotation이 **Seller**가 신뢰하는 Party인 **Issuer**에서 제공되며 실제로 **Seller**가 판매하려는 stock과 일치하도록 보장합니다.
+
+{/* COPIED_END */}

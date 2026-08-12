@@ -1,0 +1,107 @@
+---
+title: "Upgrade Compatibility"
+description: "Daml smart contract upgrade에 허용되는 변경, breaking change 및 compatibility rule"
+source_id: "SRC-2CCB16BFE6"
+source_path: "appdev/modules/m6-upgrade-compatibility"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "87a592aecc5303e1ca098e527b0d07c0e551d1bb9e94453ac7627e172d07c476"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m6-upgrade-compatibility.md)을 사용하세요.
+</Warning>
+
+SCU는 Daml model의 어떤 변경이 backward-compatible인지 엄격한 rule을 정의합니다. Daml compiler는 build 시 이러한 rule을 강제합니다. V2 package에 v1과 비교하여 breaking change가 있으면 `dpm build`가 reject합니다.
+
+## Backward-Compatible 변경
+
+{/* COPIED_START source="docs-website:manual/build/3.5/sdlc-howtos/applications/upgrade/arch-considerations-upgrading.rst" hash="backward-compat" */}
+
+### Optional field 추가
+
+Contract, choice argument 및 choice return type에 `Optional` field를 추가할 수 있습니다.
+
+Component가 이전 version으로 생성된 contract를 fetch하면 새로 추가된 `Optional` field의 default는 `None`입니다. 따라서 template가 발전한 이후에도 이전 contract를 계속 읽을 수 있습니다.
+
+이전 version을 참조하는 Daml code가 새 version의 contract를 fetch하면 알 수 없는 모든 field의 값이 `None`일 때만 fetch가 성공합니다. 알 수 없는 field에 `None`이 아닌 값이 하나라도 있으면 fetch가 실패합니다. 이는 archive-and-recreate 같은 workflow에서 의도하지 않은 data loss를 방지합니다.
+
+<Note>
+Choice return type에 `Optional` field를 추가할 때 return type은 Daml record여야 하며 scalar, tuple, list, set 또는 map이면 안 됩니다. 설계 처음부터 Daml-record return type을 사용하여 choice가 향후 return field를 추가할 수 있도록 준비하는 것이 좋습니다.
+</Note>
+
+### Variant에 새 constructor 추가
+
+Enum을 포함한 variant type에 새 constructor를 추가할 수 있습니다. 새 constructor 값을 이전 version을 기대하는 code와 함께 사용하면 실패합니다. 이는 새 `Optional` field를 이전 code에서 `None`이 아닌 값으로 설정했을 때 실패하는 것과 같습니다.
+
+### 새 choice 추가
+
+특정 active v1 contract에서 v2의 새 choice를 사용하려면 해당 contract의 모든 stakeholder Validator가 v2 DAR file을 upload하고 vetting해야 합니다. 새 choice는 모든 stakeholder Validator가 v2 package를 인식해야 하는 Mediator Consensus layer를 통과해야 합니다. Stakeholder가 아닌 Validator의 v2 DAR file upload 여부는 해당 contract stakeholder가 새 choice를 사용할 수 있는지에 영향을 주지 않습니다.
+
+### 기존 choice 수정
+
+Bug를 수정하거나 새 argument를 처리하기 위해 controller, observer 및 choice body를 update할 수 있습니다. 기존 choice는 제거할 수 없습니다. 기존 code가 이를 참조할 수 있으므로 compiler는 제거를 breaking change로 reject합니다. Choice를 deprecate하려면 body를 `abort "Deprecated."`로 바꿉니다.
+
+### Signatory, observer 및 ensure clause update
+
+Signatory, observer 및 `ensure` clause를 결정하는 code는 제한 사항 안에서 update할 수 있습니다. 기존 contract에 대해 계산된 signatory와 observer는 변경되지 않아야 합니다. Contract를 fetch하거나 exercise하면 Daml이 최신 code로 이 값을 다시 계산하여 원래 값과 비교합니다. 일치하지 않으면 Transaction이 abort됩니다.
+
+기존 contract를 fetch하거나 exercise할 때 `ensure` clause도 다시 계산하고 평가합니다.
+
+### Interface definition 및 instance 추가
+
+Template에 새 interface instance를 추가할 수 있지만 기존 instance를 제거할 수는 없습니다. Interface definition 자체는 배포 후 변경할 수 없습니다. Interface definition은 항상 interface만 포함하고 template는 없는 독립 package에 배치하세요.
+
+Interface choice가 `error "No longer implemented."`를 평가하도록 하여 작동하지 않게 만들 수 있습니다.
+
+### Template 추가 및 deprecate
+
+새 template는 자유롭게 추가할 수 있습니다. 기존 template는 제거할 수 없지만 다음 방법으로 deprecate할 수 있습니다.
+
+- 다른 Daml code에서 해당 template에 대한 reference 제거
+- `ensure False`를 추가하여 작동하지 않게 만들기. 새 contract 생성과 암묵적 `Archive` choice를 포함한 choice exercise를 방지합니다.
+
+<Warning>
+`ensure False`를 추가하면 ledger의 기존 contract를 archive할 방법이 없어집니다. 해당 template에서 생성된 모든 active contract를 automation 또는 정상적인 business operation을 통해 archive한 후에만 `ensure False`를 추가하세요.
+</Warning>
+
+{/* COPIED_END */}
+
+## Breaking Change
+
+다음 변경은 backward-compatible하지 않으며 compiler가 reject합니다.
+
+- Template 또는 choice에서 field 제거
+- 기존 field의 type 변경
+- Template에서 choice 제거
+- Template 전체 제거
+- Variant type에서 constructor 제거
+- Template에서 interface instance 제거
+- Interface definition 변경
+
+Breaking change가 필요하다면 원하는 구조의 새 template를 만들고, 기존 contract를 archive한 뒤 새 contract를 생성하는 `Upgrade` choice를 이전 template에 추가합니다. Compiler가 검사하는 항목은 [SCU compatibility rule](/appdev/modules/m6-writing-first-upgrade#step-3-verify-compatibility)을 참조하세요.
+
+## Backend Compatibility
+
+{/* COPIED_START source="docs-website:manual/build/3.5/sdlc-howtos/applications/upgrade/arch-considerations-upgrading.rst" hash="backend-compat" */}
+
+Package ID가 아니라 symbolic package reference를 사용해야 합니다. Ledger read에서 이 reference는 `#package-name:module-name:template-id` 형식입니다. 이를 통해 `module-name`과 `template-id`를 갖는 template instance인 모든 contract의 data를 `package-name`의 모든 version에서 가져옵니다.
+
+새 version의 template에는 이전 version에 없던 `Optional` field가 추가될 수 있으므로 backend는 이러한 field가 누락된 경우를 처리해야 합니다. Daml SDK codegen은 누락된 `Optional` field를 자동으로 `None`으로 설정합니다.
+
+{/* COPIED_END */}
+
+## Package Naming
+
+Reverse DNS convention, version marker 및 interface와 template 분리를 포함한 naming convention은 [Package Naming](/appdev/modules/m6-package-naming)을 참조하세요.
+
+## Compiler Version 고려 사항
+
+Daml compiler는 build 시 v1과 v2 사이의 upgrade compatibility를 validate합니다. V1을 build한 시점과 v2를 생성하는 시점 사이에 compiler version이 변경되었다면 compatibility 검사를 수행하기 위해 compiler가 compile된 v1 DAR에 접근할 수 있어야 합니다. V2 package는 `upgrades` field로 v1을 참조하며 이 field는 `daml.yaml`에 있고 v1 DAR file을 가리킵니다. V1 DAR를 사용할 수 있는 한 현재 compiler version이 더 이상 v1 source code를 compile할 수 없더라도 새 compiler가 upgrade를 validate할 수 있습니다.
+
+## 다음 단계
+
+- [첫 Upgrade 작성](/appdev/modules/m6-writing-first-upgrade): V2 package를 생성하는 단계별 tutorial
+- [Package Selection](/appdev/modules/m6-package-selection): Ledger가 package version을 resolve하는 방법

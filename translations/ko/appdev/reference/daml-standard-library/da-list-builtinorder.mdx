@@ -1,0 +1,159 @@
+---
+title: "DA.List.BuiltinOrder"
+description: "Daml module DA.List.BuiltinOrder의 reference documentation"
+source_id: "SRC-41C588E16F"
+source_path: "appdev/reference/daml-standard-library/da-list-builtinorder"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "1b228c2779b6401bd0b18af7d8ab543d31dd2b124b8f2ad8a184872ca4062d27"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-list-builtinorder.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-list-builtinorder-49213"></span>
+
+# DA.List.BuiltinOrder
+
+참고: Daml-LF 1.11 이상에서만 지원됩니다.
+
+이 module은 user-defined ordering이 아니라 builtin Daml-LF ordering을 기반으로 하는 다른 standard library function의 variant를 제공합니다. 이는 `DA.Map`에서도 사용하는 ordering과 같습니다.
+
+이 function들은 보통 `Ord` 기반 counterpart보다 훨씬 효율적입니다.
+
+이 module의 function에도 여전히 `Ord` constraint가 필요합니다. 이 constraint는 function과 같이 비교할 수 없는 값을 전달하지 못하게 하려는 목적으로만 사용됩니다. 해당 instance의 implementation은 사용되지 않습니다.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Functions
+
+<span id="function-da-list-builtinorder-dedup-38418"></span>
+
+### `dedup`
+
+`dedup` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`a`] -> [`a`]
+
+`dedup l`은 list에서 중복 element를 제거합니다. 각 element의 첫 번째 occurrence만 유지합니다.
+
+`dedup`은 stable하므로 출력 element는 입력에서 처음 나타난 순서대로 배치됩니다. stability가 필요하지 않다면 더 효율적인 `dedupSort`를 고려하세요.
+
+```
+>>> dedup [3, 1, 1, 3]
+[3, 1]
+```
+
+<span id="function-da-list-builtinorder-dedupon-23739"></span>
+
+### `dedupOn`
+
+`dedupOn` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => (`v` -> `k`) -> [`v`] -> [`v`]
+
+주어진 function을 적용한 후 deduplication을 수행하는 `dedup` 버전입니다. 사용 예: `dedupOn (.employeeNo) employees`.
+
+`dedupOn`은 stable하므로 출력 element는 입력에서 처음 나타난 순서대로 배치됩니다. stability가 필요하지 않다면 더 효율적인 `dedupOnSort`를 고려하세요.
+
+```
+>>> dedupOn fst [(3, "a"), (1, "b"), (1, "c"), (3, "d")]
+[(3, "a"), (1, "b")]
+```
+
+<span id="function-da-list-builtinorder-dedupsort-5846"></span>
+
+### `dedupSort`
+
+`dedupSort` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`a`] -> [`a`]
+
+`dedupSort`는 입력 element의 순서를 유지하지 않는 대신 더 효율적인 `dedup` variant입니다. 출력은 builtin Daml-LF ordering에 따라 sort됩니다.
+
+```
+>>> dedupSort [3, 1, 1, 3]
+[1, 3]
+```
+
+<span id="function-da-list-builtinorder-deduponsort-69087"></span>
+
+### `dedupOnSort`
+
+`dedupOnSort` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => (`v` -> `k`) -> [`v`] -> [`v`]
+
+`dedupOnSort`는 입력 element의 순서를 유지하지 않는 대신 더 효율적인 `dedupOn` variant입니다. 출력은 function이 반환한 값을 기준으로 sort됩니다.
+
+중복이 있으면 list의 첫 번째 element가 출력에 포함됩니다.
+
+```
+>>> dedupOnSort fst [(3, "a"), (1, "b"), (1, "c"), (3, "d")]
+[(1, "b"), (3, "a")]
+```
+
+<span id="function-da-list-builtinorder-sort-65819"></span>
+
+### `sort`
+
+`sort` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`a`] -> [`a`]
+
+Daml-LF ordering에 따라 list를 sort합니다.
+
+builtin Daml-LF ordering에서 동일한 값은 구분할 수 없으므로 stability는 관련이 없습니다.
+
+```
+>>> sort [3,1,2]
+[1,2,3]
+```
+
+<span id="function-da-list-builtinorder-sorton-7978"></span>
+
+### `sortOn`
+
+`sortOn` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `b` => (`a` -> `b`) -> [`a`] -> [`a`]
+
+`sortOn f`는 주어진 function의 결과를 기준으로 sort할 수 있는 `sort` 버전입니다.
+
+`sortOn`은 stable하므로 같은 sort key로 mapping되는 element는 입력에서의 위치 순서대로 배치됩니다.
+
+```
+>>> sortOn fst [(3, "a"), (1, "b"), (3, "c"), (2, "d")]
+[(1, "b"), (2, "d"), (3, "a"), (3, "c")]
+```
+
+<span id="function-da-list-builtinorder-unique-2492"></span>
+
+### `unique`
+
+`unique` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`a`] -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+주어진 list에 중복 element가 없을 때에만 True를 반환합니다.
+
+```
+>>> unique [1, 2, 3]
+True
+```
+
+<span id="function-da-list-builtinorder-uniqueon-93017"></span>
+
+### `uniqueOn`
+
+`uniqueOn` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => (`a` -> `k`) -> [`a`] -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+주어진 list에 function을 적용한 후 중복 element가 없을 때에만 True를 반환합니다.
+
+```
+>>> uniqueOn fst [(1, 2), (2, 42), (1, 3)]
+False
+```

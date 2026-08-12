@@ -1,0 +1,125 @@
+---
+title: "DA.Either"
+description: "Daml module DA.Either의 reference documentation"
+source_id: "SRC-93C1122974"
+source_path: "appdev/reference/daml-standard-library/da-either"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "439ba8cbbda16374b3883bf73273c02dc43dfdfa8493c4fe3616267fe9fb69c0"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-either.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-either-91022"></span>
+
+# DA.Either
+
+`Either` type은 두 가지 가능성을 가진 값을 표현합니다.
+
+정상 값 또는 error인 값을 표현하는 데 사용되기도 합니다. 관례상 `Left` constructor는 error 값을 담고, `Right` constructor는 정상 값을 담는 데 사용됩니다. 연상법으로 "right"는 옮다는 뜻도 가집니다.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Functions
+
+<span id="function-da-either-lefts-59601"></span>
+
+### `lefts`
+
+`lefts` : [[`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) `a` `b`] -> [`a`]
+
+list에서 모든 `Left` element를 추출합니다.
+
+<span id="function-da-either-rights-20455"></span>
+
+### `rights`
+
+`rights` : [[`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) `a` `b`] -> [`b`]
+
+list에서 모든 `Right` element를 추출합니다.
+
+<span id="function-da-either-partitioneithers-19904"></span>
+
+### `partitionEithers`
+
+`partitionEithers` : [[`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) `a` `b`] -> ([`a`], [`b`])
+
+`Either` list를 각각 `Left`와 `Right` element를 담은 두 list로 나눕니다. 순서는 유지됩니다.
+
+<span id="function-da-either-isleft-96021"></span>
+
+### `isLeft`
+
+`isLeft` : [`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) `a` `b` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+주어진 값이 `Left` 값이면 `True`를, 그렇지 않으면 `False`를 반환합니다.
+
+<span id="function-da-either-isright-36975"></span>
+
+### `isRight`
+
+`isRight` : [`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) `a` `b` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+주어진 값이 `Right` 값이면 `True`를, 그렇지 않으면 `False`를 반환합니다.
+
+<span id="function-da-either-fromleft-63875"></span>
+
+### `fromLeft`
+
+`fromLeft` : `a` -> [`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) `a` `b` -> `a`
+
+`Left` 값의 내용을 반환하고, `Right` 값인 경우 default 값을 반환합니다.
+
+<span id="function-da-either-fromright-27657"></span>
+
+### `fromRight`
+
+`fromRight` : `b` -> [`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) `a` `b` -> `b`
+
+`Right` 값의 내용을 반환하고, `Left` 값인 경우 default 값을 반환합니다.
+
+<span id="function-da-either-optionaltoeither-21876"></span>
+
+### `optionalToEither`
+
+`optionalToEither` : `a` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `b` -> [`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) `a` `b`
+
+`Optional` 값을 `Either` 값으로 변환하며, `Optional`이 `None`이면 제공된 parameter를 `Left` 값으로 사용합니다.
+
+<span id="function-da-either-eithertooptional-89140"></span>
+
+### `eitherToOptional`
+
+`eitherToOptional` : [`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) `a` `b` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `b`
+
+`Either` 값을 `Optional`로 변환하며, `Left`의 값은 버립니다.
+
+<span id="function-da-either-maybetoeither-6635"></span>
+
+### `maybeToEither`
+
+`maybeToEither` : `a` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `b` -> [`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) `a` `b`
+
+<span id="function-da-either-eithertomaybe-94811"></span>
+
+### `eitherToMaybe`
+
+`eitherToMaybe` : [`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) `a` `b` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `b`

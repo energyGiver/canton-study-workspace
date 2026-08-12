@@ -1,0 +1,101 @@
+---
+title: "DA.Assert"
+description: "Daml module DA.Assert의 reference documentation"
+source_id: "SRC-E0AE7C0824"
+source_path: "appdev/reference/daml-standard-library/da-assert"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "1ca83a7c390f9cf0a802a3cf3ce3953178b0aab4df66075aed78d6f92c75fd94"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-assert.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-assert-92761"></span>
+
+# DA.Assert
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Functions
+
+<span id="function-da-assert-asserteq-7135"></span>
+
+### `assertEq`
+
+`assertEq` : ([`CanAssert`](/appdev/reference/daml-standard-library/prelude#class-da-internal-assert-canassert-67323) `m`, [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a`, [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a`) => `a` -> `a` -> `m` ()
+
+두 값이 같은지 확인합니다. 같지 않으면 message와 함께 실패합니다.
+
+<span id="function-da-assert-eqeqeq-18699"></span>
+
+### `===`
+
+`===` : ([`CanAssert`](/appdev/reference/daml-standard-library/prelude#class-da-internal-assert-canassert-67323) `m`, [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a`, [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a`) => `a` -> `a` -> `m` ()
+
+`assertEq`의 infix 버전입니다.
+
+<span id="function-da-assert-assertnoteq-28771"></span>
+
+### `assertNotEq`
+
+`assertNotEq` : ([`CanAssert`](/appdev/reference/daml-standard-library/prelude#class-da-internal-assert-canassert-67323) `m`, [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a`, [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a`) => `a` -> `a` -> `m` ()
+
+두 값이 다른지 확인합니다. 같으면 message와 함께 실패합니다.
+
+<span id="function-da-assert-eqslasheq-37517"></span>
+
+### `=/=`
+
+`=/=` : ([`CanAssert`](/appdev/reference/daml-standard-library/prelude#class-da-internal-assert-canassert-67323) `m`, [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a`, [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a`) => `a` -> `a` -> `m` ()
+
+`assertNotEq`의 infix 버전입니다.
+
+<span id="function-da-assert-assertaftermsg-14090"></span>
+
+### `assertAfterMsg`
+
+`assertAfterMsg` : ([`CanAssert`](/appdev/reference/daml-standard-library/prelude#class-da-internal-assert-canassert-67323) `m`, [`HasTime`](/appdev/reference/daml-standard-library/prelude#class-da-internal-lf-hastime-96546) `m`) => [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> `m` ()
+
+주어진 time이 미래인지 확인합니다. 미래가 아니면 message와 함께 abort합니다.
+
+<span id="function-da-assert-assertbeforemsg-56514"></span>
+
+### `assertBeforeMsg`
+
+`assertBeforeMsg` : ([`CanAssert`](/appdev/reference/daml-standard-library/prelude#class-da-internal-assert-canassert-67323) `m`, [`HasTime`](/appdev/reference/daml-standard-library/prelude#class-da-internal-lf-hastime-96546) `m`) => [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> `m` ()
+
+주어진 time이 과거인지 확인합니다. 과거가 아니면 message와 함께 abort합니다.
+
+<span id="function-da-assert-assertwithindeadline-85580"></span>
+
+### `assertWithinDeadline`
+
+`assertWithinDeadline` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072) ()
+
+transaction의 ledger time이 주어진 deadline보다 엄격하게 앞선지 확인합니다. 앞서지 않으면 message와 함께 abort합니다.
+
+<span id="function-da-assert-assertdeadlineexceeded-21600"></span>
+
+### `assertDeadlineExceeded`
+
+`assertDeadlineExceeded` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072) ()
+
+transaction의 ledger time이 주어진 deadline과 같거나 그 이후인지 확인합니다. 그렇지 않으면 message와 함께 abort합니다.

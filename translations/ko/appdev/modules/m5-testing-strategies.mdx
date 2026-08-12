@@ -1,0 +1,183 @@
+---
+title: "Testing 전략"
+description: "Daml Script unit test부터 integration 및 end-to-end testing까지 Canton application을 위한 testing pyramid"
+source_id: "SRC-6B9967EA80"
+source_path: "appdev/modules/m5-testing-strategies"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "7dc09c01a65d61f57acc37f8d09c7e4d0ee5e748a16f6fc533ffc1b62eb2c50b"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m5-testing-strategies.md)을 사용하세요.
+</Warning>
+
+import DamlAppdevModulesM5TestingStrategiesL38 from "/snippets/daml-docs/appdev_modules_m5-testing-strategies_L38.mdx";
+import DamlAppdevModulesM5CiCdIntegrationL45 from "/snippets/daml-docs/appdev_modules_m5-ci-cd-integration_L45.mdx";
+
+
+Canton application testing은 가능한 한 많이 automate하고 bug를 포착할 수 있는 가장 낮은 level에서 test한다는 다른 distributed system과 동일한 원칙을 따릅니다. 차이점은 각 layer의 tooling과 Multi-Party privacy-preserving ledger에서 발생하는 구체적인 문제입니다.
+
+## Testing Pyramid
+
+{/* COPIED_START source="docs-website:manual/build/3.5/sdlc-howtos/sdlc-best-practices.rst" hash="test-section" */}
+
+Canton application은 각 layer가 서로 다른 유형의 issue를 포착하는 세 layer testing 접근 방식을 사용합니다.
+
+- **Unit test**: Smart contract logic을 독립적으로 verify하는 Daml Script test입니다. Network overhead 없이 in-memory ledger인 Sandbox에서 실행됩니다.
+- **Integration test**: 실행 중인 Canton sandbox 또는 LocalNet을 대상으로 backend와 API를 exercise하는 test입니다. Off-ledger code가 ledger와 올바르게 interaction하는지 verify합니다.
+- **End-to-end test**: 여러 Validator, backend 및 frontend에 걸친 전체 workflow test입니다. 전체 system이 user가 경험하는 방식대로 작동하는지 validate합니다.
+
+{/* COPIED_END */}
+
+## Daml Script를 사용한 Unit Testing
+
+Daml Script는 smart contract logic을 unit test하는 주요 tool입니다. `Script ()` type의 top-level value로 test script를 작성하고 `dpm test`로 Sandbox에서 실행합니다.
+
+<DamlAppdevModulesM5CiCdIntegrationL45 />
+
+Daml Script test는 Sandbox를 대상으로 실행되므로 대개 몇 초 안에 빠르게 실행됩니다.
+
+Daml Script unit test는 Party를 생성하고 command를 제출하며 result를 assertion합니다.
+
+<DamlAppdevModulesM5TestingStrategiesL38 />
+
+어느 test script가 통과하고 실패했는지 `dpm test` output을 검토하여 확인합니다.
+
+### Unit level에서 test할 항목
+
+Daml model에 고유한 동작에 집중합니다.
+
+- 유효하거나 유효하지 않은 parameter를 사용한 template 생성
+- Choice authorization. 올바른 controller는 exercise할 수 있고 다른 Party는 할 수 없어야 합니다.
+- Choice 안의 business logic. Calculation과 state transition을 포함합니다.
+- Edge case 및 error condition. 실패해야 하는 assertion을 포함합니다.
+- Multi-Party authorization pattern. Propose-accept workflow를 포함합니다.
+
+### Test code와 production code 분리
+
+{/* COPIED_START source="docs-website:manual/build/3.5/sdlc-howtos/sdlc-best-practices.rst" hash="test-separation" */}
+
+Daml workflow unit test는 DAR file로 compile됩니다. 이 DAR file은 testing 전용이며 Validator에 배포하면 안 됩니다. 전용 package에 test를 배치하여 test code를 production code와 별도의 DAR file로 유지합니다.
+
+```text
+daml/
+├── main/           # Production Daml code → main.dar
+│   └── daml.yaml
+└── test/           # Test scripts → test.dar (depends on main.dar)
+    └── daml.yaml
+```
+
+{/* COPIED_END */}
+
+## Integration Testing
+
+Integration test는 backend service, API handler, database query 등의 off-ledger code가 live ledger에서 올바르게 작동하는지 verify합니다. 다음 두 tool을 사용할 수 있습니다.
+
+- **`dpm sandbox`**: 하나의 process에서 local Canton sandbox를 시작합니다. 전체 network overhead 없이 Ledger API를 대상으로 하나의 backend를 test할 때 적합합니다.
+- **LocalNet**: Docker Compose 기반 Multi-Validator network입니다. 서로 다른 Validator의 여러 Party, Wallet integration 또는 PQS가 필요한 test에 필요합니다.
+
+### Backend integration test
+
+Ledger API와 통신하는 backend service에는 다음 작업을 수행하는 test를 작성합니다.
+
+1. Sandbox를 시작하거나 실행 중인 LocalNet에 연결합니다.
+2. Test Party를 생성하고 DAR를 upload합니다.
+3. Backend API layer를 통해 command를 제출합니다.
+4. 생성된 ledger state 또는 API response를 assertion합니다.
+
+{/* COPIED_START source="docs-website:daml/3.5/sdk/tutorials/quickstart/template-root/src/main/java/com/daml/quickstart/iou/IouMain.java" hash="integration-pattern" */}
+
+Java integration test는 gRPC를 통해 Ledger API에 연결하고 command를 제출합니다.
+
+```java
+// Set up a gRPC channel to the participant's Ledger API
+Channel channel = ManagedChannelBuilder
+    .forAddress(ledgerhost, ledgerport)
+    .usePlaintext()
+    .build();
+
+// Create a blocking stub for command submission
+CommandServiceGrpc.CommandServiceBlockingStub commandService =
+    CommandServiceGrpc.newBlockingStub(channel);
+
+// Submit a contract creation and wait for the transaction result
+var updateSubmission = UpdateSubmission
+    .create(APP_ID, randomUUID().toString(), update)
+    .withActAs(party);
+var request = new SubmitAndWaitForTransactionRequest(
+    updateSubmission.toCommandsSubmission());
+var response = commandService.submitAndWaitForTransaction(request.toProto());
+```
+
+Active contract를 query하려면 `StateService`를 사용합니다.
+
+```java
+StateServiceGrpc.StateServiceBlockingStub stateService =
+    StateServiceGrpc.newBlockingStub(channel);
+long ledgerEnd = stateService
+    .getLedgerEnd(GetLedgerEndRequest.newBuilder().build())
+    .getOffset();
+
+var request = new GetActiveContractsRequest(eventFormat, ledgerEnd);
+Iterator<GetActiveContractsResponse> activeContracts =
+    stateService.getActiveContracts(request.toProto());
+```
+
+{/* COPIED_END */}
+
+### Test isolation
+
+{/* COPIED_START source="docs-website:manual/build/3.5/sdlc-howtos/sdlc-best-practices.rst" hash="test-isolation" */}
+
+Testing optimization 방법으로 장시간 실행되는 Canton instance를 두어 Canton을 반복해서 초기화하고 시작하지 않을 수 있습니다. 각 test 실행마다 고유한 Participant user와 Party를 사용하여 test를 isolate합니다.
+한 가지 방법은 test harness에서 Party와 user 이름의 suffix로 test run ID를 추가하는 것입니다.
+
+{/* COPIED_END */}
+
+이 pattern을 사용하면 같은 Canton instance에서 test case 간 interference 없이 test를 parallel하게 실행할 수 있습니다.
+
+## End-to-End Testing
+
+End-to-end test는 여러 Validator, backend 및 frontend에 걸친 end user와 system 간 workflow를 exercise합니다.
+
+### Browser automation
+
+Frontend가 관련된 test에서는 [Selenium](https://www.selenium.dev/) 또는 [Playwright](https://playwright.dev/) 같은 tool로 browser session을 구동합니다. 이 test는 login, UI를 통한 contract 생성, counterparty가 예상 result를 보는지 verify하는 실제 user interaction을 simulate합니다.
+
+### 시간 의존적 workflow
+
+{/* COPIED_START source="docs-website:manual/build/3.5/sdlc-howtos/sdlc-best-practices.rst" hash="time-deps" */}
+
+시간에 민감한 workflow에서는 Daml의 `passTime` function을 사용하고 더 빠른 CI 실행을 위해 wait time을 줄여 구성합니다. Coupon payment가 있는 bond lifecycling처럼 calendar 또는 time function을 포함하는 workflow는 `passTime`으로 시간을 진행하여 test할 수 있습니다. End-to-end test에서는 CI execution time을 줄이도록 workflow가 millisecond 단위로 진행되게 구성합니다. Race condition을 방지하려면 test harness에서 automation을 pause하고 resume합니다.
+
+{/* COPIED_END */}
+
+## Flaky Test 처리
+
+Distributed system에는 data propagation delay와 concurrent execution이 있어 test가 일관성 없이 실패할 수 있습니다. 이러한 flaky test는 developer의 신뢰를 떨어뜨리고 iteration 속도를 늦춥니다.
+
+Canton test에서 흔한 flakiness 원인은 다음과 같습니다.
+
+- **Propagation delay**: Command는 성공했지만 reading Party의 Validator에 Transaction이 아직 나타나지 않은 경우입니다. Fixed sleep 대신 timeout이 있는 polling을 사용합니다.
+- **Party visibility**: 모든 관련 Validator에 Party를 할당하기 전에 contract를 query하는 경우입니다.
+- **Concurrent exercise**: 두 test가 같은 contract를 동시에 exercise하여 하나는 성공하고 다른 하나는 contract가 이미 archive되었음을 확인하는 경우입니다.
+
+Flaky test를 제거하는 데 투자한 시간은 빠르게 보상됩니다. 신뢰할 수 있는 test suite는 feedback cycle을 단축하고 더 확신 있게 배포할 수 있게 합니다.
+
+## Performance Testing
+
+{/* COPIED_START source="docs-website:manual/build/3.5/sdlc-howtos/sdlc-best-practices.rst" hash="perf-testing" */}
+
+Performance testing을 일찍 시작하여 지속적으로 수행합니다. 관련 workflow마다 별도의 performance test를 만듭니다. Production 특성과 유사한 synthetic data로 scale test를 수행합니다. Performance 특성을 측정하고 test 실행 사이에 이를 reset하여 regression을 감지합니다. 장시간 실행하는 deployment로 soak testing을 수행하여 bottleneck을 감지합니다. System failure를 monitoring하는 alert를 설정하고 optimal observability를 위해 계속 조정합니다.
+
+{/* COPIED_END */}
+
+Canton application의 performance testing에서는 on-ledger operation과 off-ledger operation을 구분해야 합니다. Ledger operation에는 Transaction complexity와 관련 Party 수에 따라 달라지는 synchronization overhead가 발생합니다. Off-ledger operation(PQS query, backend logic)은 표준 performance profiling 접근 방식을 따릅니다.
+
+## 다음 단계
+
+- [LocalNet 개발](/appdev/modules/m5-localnet-development): Cn-quickstart LocalNet environment 설정 및 사용
+- [CI/CD Integration](/appdev/modules/m5-ci-cd-integration): Test pipeline automate

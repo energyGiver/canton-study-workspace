@@ -1,0 +1,153 @@
+---
+title: "Okta 및 Keycloak OIDC Configuration Guide"
+description: "Canton Network validator node를 배포할 때 Okta 및 Keycloak OIDC provider를 설정하는 단계별 안내입니다."
+source_id: "SRC-74D2C3DC11"
+source_path: "global-synchronizer/deployment/oidc-providers"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "e5d2c6c8390141e5a62e26d97983b054d0519119ad57fe27de9f5c48d1235ad3"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/deployment/oidc-providers.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/community/oidc-config-okta-keycloak.rst" hash="bb49ca0b" */}
+
+<Warning>
+이 section은 community member가 공유한 solution을 소개합니다.
+Splice maintainer가 공식적으로 테스트하지 않았으므로,
+사용자는 정보를 독립적으로 검증하는 것이 좋습니다.
+정확성과 완성도를 높이는 contribution은 언제나 환영합니다.
+</Warning>
+
+Validator node를 배포하려면 선호하는 OIDC provider를 사용하여 authentication을 구성하세요.
+이 section에서는 Okta와 Keycloak에 대한 지침을 제공합니다.
+Auth0 지침과 authentication configuration에 대한 자세한 내용은 [Authentication 구성](/global-synchronizer/deployment/installation#configuring-authentication)을 참조하세요.
+
+이 문서의 Okta section은 [community discussion](https://github.com/global-synchronizer-foundation/docs/discussions/15#discussioncomment-12877002)에 의견을 제공한 Stéphane Loeuillet의 contribution을 기반으로 합니다.
+
+## Okta
+
+다음 단계에 따라 Okta를 validator의 OIDC provider로 구성하세요.
+
+1. Validator app backend용 application을 생성합니다.
+
+   1. "Admin Panel > Applications > Applications"로 이동하고 "Create App Integration"을 클릭합니다.
+   2. Sign-in method로 OIDC가 아닌 "API Services"를 선택합니다.
+   3. "App integration name"에 `Validator app backend`를 입력합니다.
+   4. General Settings에서 "Proof of possession"을 선택 해제합니다.
+   5. "Save"를 클릭하고 "Client ID"와 "Client Secret"을 복사합니다.
+
+2. Wallet web UI용 application을 생성합니다.
+
+   1. "Admin Panel > Applications > Applications"로 이동하고 "Create App Integration"을 클릭합니다.
+   2. Sign-in method로 "OIDC"를 선택한 다음 application type으로 "Single-Page Application"을 선택합니다.
+   3. "App integration name"에 `Wallet web UI`를 입력합니다.
+
+      - "Sign-in redirect URIs"에 wallet UI URL `https://wallet.validator.YOUR_HOSTNAME`을 입력합니다.
+      - "Sign-out redirect URIs"에 wallet UI URL `https://wallet.validator.YOUR_HOSTNAME`을 입력합니다.
+      - "Trusted Origins/Base URIs"에 wallet UI URL `https://wallet.validator.YOUR_HOSTNAME`을 입력합니다.
+
+   4. 접근을 허용할 group에 app을 할당합니다.
+   5. "Save"를 클릭하고 "Client ID"를 복사합니다.
+
+3. CNS web UI용 application을 생성합니다.
+
+   1. "Admin Panel > Applications > Applications"로 이동하고 "Create App Integration"을 클릭합니다.
+   2. Sign-in method로 "OIDC"를 선택한 다음 application type으로 "Single-Page Application"을 선택합니다.
+   3. "App integration name"에 `CNS web UI`를 입력합니다.
+
+      - "Sign-in redirect URIs"에 CNS UI URL `https://cns.validator.YOUR_HOSTNAME`을 입력합니다.
+      - "Sign-out redirect URIs"에 CNS UI URL `https://cns.validator.YOUR_HOSTNAME`을 입력합니다.
+      - "Trusted Origins/Base URIs"에 CNS UI URL `https://cns.validator.YOUR_HOSTNAME`을 입력합니다.
+
+   4. 접근을 허용할 group에 app을 할당합니다.
+   5. "Save"를 클릭하고 "Client ID"를 복사합니다.
+
+4. Custom audience용 client를 생성합니다(선택 사항).
+
+   1. 다른 application이 Ledger API에 접근하도록 하려면 1-3단계에 따라 추가 client를 생성합니다.
+
+5. Validator/environment마다 custom Authorization server를 생성합니다.
+
+   1. "Admin Panel > Directory > Groups"로 이동하여 "Add Group"을 클릭하고 group 이름을 "canton_wallet_admin"으로 지정합니다.
+   2. "canton_all" group을 하나 더 추가합니다.
+   3. "Admin Panel > Security > API"로 이동합니다.
+   4. "Authorization Servers" tab에서 "Add Authorization Server"를 클릭합니다. Name과 audience를 정의합니다. Authorization server는 M2M flow에 사용되며 보안상의 이유로 environment/validator마다 달라야 합니다.
+   5. "Scopes" tab에서 `daml_ledger_api`라는 custom scope를 추가하고 "Set as a default scope"를 클릭합니다.
+   6. "Claims" tab에서 "sub" 값을 "app.clientId"로 변경합니다. 기본값을 유지하면 user email을 사용하며, values.yaml에서 공백을 제외한 `' " email.address@domain " '` 형태로 formatting해야 합니다. Helm chart가 이를 올바르게 quote하도록 update되기 전까지 필요합니다.
+   7. "Access Policies" tab에서 세 application 각각에 policy를 하나씩 생성합니다.
+
+      - Name: `Validator app backend`
+      - Assigned to: 1단계에서 생성한 `Validator app backend`
+      - "Add rule"을 클릭합니다. "Rule Name"을 입력하고 "User is" 옆에서 "Any user assigned the app"을 선택하여 app에 할당된 모든 user와 일치하는 rule을 정의합니다. "Create rule"을 클릭합니다.
+
+      - Name: `Wallet web UI`
+      - Assigned to: 2단계에서 생성한 `Wallet web UI`
+      - "Add rule"을 클릭합니다. "Rule Name"을 입력하고 "User is" 옆에서 "Assigned the app and a member of one of the following"을 선택합니다. "canton_wallet_admin" group을 추가하여 group과 일치하는 rule을 정의합니다. "Create rule"을 클릭합니다.
+
+      - Name: `CNS web UI`
+      - Assigned to: 3단계에서 생성한 `CNS web UI`
+      - "Add rule"을 클릭합니다. "Rule Name"을 입력하고 "User is" 옆에서 "Assigned the app and a member of one of the following"을 선택합니다. "canton_all" group을 추가하여 group과 일치하는 rule을 정의합니다. "Create rule"을 클릭합니다.
+
+## Keycloak
+
+다음 단계에 따라 Keycloak을 validator의 OIDC provider로 구성하세요.
+
+1. Realm을 생성합니다.
+
+   1. "Admin Panel > Manage realms"로 이동하여 "Create realm"을 클릭하고 realm name을 입력합니다.
+
+2. Ledger API용 client를 생성합니다.
+
+   1. "Admin Panel > Clients"로 이동하여 "Create client"를 클릭합니다.
+   2. Client type을 "OpenID Connect"로 설정하고 client ID로 `ledger-api`를 입력한 다음 "Next"를 클릭합니다.
+   3. "Capability config"에서 모든 field를 선택 해제하고 "Next"를 클릭합니다.
+   4. "Login settings"에서 "Valid redirect URIs"와 "Web origins" field를 비워 둔 다음 "Save"를 클릭합니다.
+   5. "Admin Panel > Client scopes" tab으로 이동하여 "Create client scope"를 클릭합니다.
+   6. Name에 `daml_ledger_api`를 입력하고 type으로 "Default"를 선택합니다.
+   7. "Mappers" tab에서 "Configure a new mapper"를 클릭합니다.
+   8. Mapper type으로 "User Client Role"을 선택하고 이름을 `daml_ledger_api_scope`로 지정합니다. "Add to Access Token"을 활성화하고 "Add to ID token", "Add to userinfo", "Add to token introspection" 등 다른 option은 모두 비활성화합니다. "Save"를 클릭합니다.
+   9. 이 scope를 `ledger-api` client에 추가하려면 "Admin Panel > Clients > ledger_api > Client scopes"로 이동하여 "Add client scope"를 클릭합니다. `daml_ledger_api`를 선택하고 type "Default"로 "Add"를 클릭합니다.
+   10. "Admin Panel > Realm Settings > Sessions"로 이동하여 "Offline Session Max Limited"가 활성화되어 있고 "Offline Session Max"에 충분한 값이 지정되어 있는지 확인합니다. 이는 Auth0의 "Allow Offline Access"와 유사하게 refresh token을 활성화합니다. "Save"를 클릭합니다.
+
+3. Custom audience용 client를 생성합니다(선택 사항).
+
+   1. Backend service에 다른 audience가 필요하다면 "Client ID"를 `validator-app-api`, 예를 들어 `https://validator.example.com/api`로 설정하여 다른 client를 생성하고, 필요하면 2단계에서 설명한 custom client scope를 정의하여 이 API를 구분합니다.
+
+4. Validator app backend용 client를 생성합니다.
+
+   1. "Admin Panel > Clients"로 이동하여 "Create client"를 클릭합니다.
+   2. Client type을 "OpenID Connect"로 설정하고 client ID로 `validator-app-backend`를 입력한 다음 "Next"를 클릭합니다.
+   3. "Capability config"에서는 "Client authentication"과 "Service accounts"만 선택합니다. "Next"를 클릭합니다.
+   4. "Login settings"에서 "Valid redirect URIs"와 "Web origins" field를 비워 둔 다음 "Save"를 클릭합니다.
+   5. "Settings" tab에서 "Client ID"를, "Credentials" tab에서 "Client Secret"을 복사합니다. Keycloak의 Client ID는 client 생성 시 할당한 이름인 `validator-app-backend`입니다.
+
+5. Wallet web UI용 client를 생성합니다.
+
+   1. "Admin Panel > Clients"로 이동하여 "Create client"를 클릭합니다.
+   2. Client type을 "OpenID Connect"로 설정하고 client ID로 `wallet-web-ui`를 입력한 다음 "Next"를 클릭합니다.
+   3. "Capability config"에서는 "Standard flow"만 선택하고 "Next"를 클릭합니다.
+   4. "Login settings"에서 다음과 같이 설정합니다.
+
+      - "Valid redirect URIs": `https://wallet.validator.YOUR_HOSTNAME/*`
+      - "Valid post logout redirect URIs": `https://wallet.validator.YOUR_HOSTNAME`
+      - "Web origins": `https://wallet.validator.YOUR_HOSTNAME`
+      - Save를 클릭합니다.
+
+   5. "Settings" tab에서 "Client ID"(`wallet-web-ui`)를 복사합니다.
+
+6. CNS web UI용 client를 생성합니다.
+
+   1. Wallet web UI와 동일한 단계를 따르되 "Client ID"로 `cns-ui`를 사용하고 다음을 설정합니다.
+
+      - "Valid redirect URIs": `https://cns.validator.YOUR_HOSTNAME/*`
+      - "Valid post logout redirect URIs": `https://cns.validator.YOUR_HOSTNAME`
+      - "Web origins": `https://cns.validator.YOUR_HOSTNAME`
+
+   2. "Settings" tab에서 "Client ID"(`cns-ui`)를 복사합니다.
+
+{/* COPIED_END */}

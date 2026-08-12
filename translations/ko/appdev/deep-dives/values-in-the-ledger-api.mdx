@@ -1,0 +1,341 @@
+---
+title: "Ledger API의 Value"
+description: "Ledger API를 통해 교환되는 value의 validation, normalization 및 dynamic package resolution rule"
+source_id: "SRC-321EDBF9C0"
+source_path: "appdev/deep-dives/values-in-the-ledger-api"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "893cda011ca2e1081ec98d3595b3a7b5ff7abfa611db06afc4e210f54aa1a386"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/deep-dives/values-in-the-ledger-api.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/reference/smart-contract-upgrades.rst#values-in-the-ledger-api" */}
+
+Command와 query는 수신한 value에 완화된 validation rule을 적용합니다. 반환되는 value에는 normalization이 적용됩니다.
+
+### Command의 Value Validation
+
+다음 example에서 command의 *target template*는 dynamic package resolution 이후 command의 `template_id` field로 식별되는 template 또는 interface입니다.
+
+Command에 포함된 value(예: `create_arguments`)가 target template의 type signature를 충족하기 위해 `T`에 대해 type-check되어야 한다면 해당 value의 *expected type*은 `T`입니다. 이 definition은 필연적으로 sub-value에도 확장된다는 점에 유의하세요.
+
+`Constructor { field1 = v1, ..., fieldn = vn }` 형식의 record value에서 `vi`는 모든 `n >= j >= i`에 대해 `vj = None`이면 *trailing None*입니다.
+
+Command 제출 시 value validation rule은 다음과 같이 완화됩니다.
+
+> - Value의 `record_id`, `variant_id`, `enum_id` field가 있는 경우 해당 value의 expected type에 있는 module 및 type 이름에 대해서만 검사합니다. 이 field의 package ID component는 무시됩니다.
+> - 모든 field 이름이 제공된 record value에서는 value가 None인 *어떤* field든 생략할 수 있습니다.
+> - 일부 field 이름이 제공되지 않은 record value에서는 record type definition과 같은 순서로 field를 제공해야 하며 trailing None은 생략할 수 있습니다.
+
+이 rule은 모든 sub-value에 적용됩니다.
+
+**Example 1**
+
+`example1-1.0.0`이라는 package가 `T`라는 template를 `Main`이라는 module에 정의한다고 가정합니다.
+
+```haskell
+module Main where
+
+template T
+  with
+    p : Party
+  where
+    signatory p
+```
+
+`other-1.0.0`이라는 다른 package가 역시 `T`라는 서로 다른 template를 `Main`이라는 module에 정의한다고 가정합니다.
+
+```haskell
+module Main where
+
+template T
+  with
+    s : Party
+    i : Int
+  where
+    signatory s
+```
+
+그러면 Ledger API는 `example1-1.0.0:Main.T`의 Create command에서 create argument에 `other-1.0.0:T:Main.T` type annotation이 있어도 accept합니다. Type annotation이 잘못되었지만 다음 console command가 성공합니다.
+
+```scala
+@ val createCmd = Command(
+    command = Command.Command.Create(
+      value = CreateCommand(
+        templateId = Some(
+          value = Identifier(packageId = packageIdExample1, moduleName = "Main", entityName = "T")),
+        createArguments = Some(
+          value = Record(
+            recordId = Some(
+              Identifier(
+                packageId = packageIdOther,
+                moduleName = "Main",
+                entityName = "T"
+              )
+            ),
+            fields = Seq(
+              RecordField(
+                label = "p",
+                value = Some(
+                  value = Value(sum = Value.Sum.Party(value = sandbox.adminParty.toLf))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+@ sandbox.ledger_api.commands.submit(Seq(sandbox.adminParty), Seq(createCmd))
+```
+
+이는 type annotation의 module과 type 이름인 `Main`과 `T`가 expected type인 `example1-1.0.0:Main.T`의 이름과 일치하기 때문입니다.
+
+**Example 2**
+
+Optional field가 두 개이며 하나는 앞쪽, 다른 하나는 뒤쪽에 있는 template를 정의하는 `example2-1.0.0`이라는 package가 있다고 가정합니다.
+
+```haskell
+module Main where
+
+template T
+  with
+    i : Optional Int
+    p : Party
+    j : Optional Int
+  where
+    signatory p
+```
+
+그러면 `example2-1.0.0:Main.T`의 Create command에서 `p`만 이름으로 제공하고 다른 field는 제공하지 않아도 제출이 성공합니다.
+
+```scala
+@ val createCmd = Command(
+    command = Command.Command.Create(
+      value = CreateCommand(
+        templateId = Some(value = Identifier(packageId = packageIdExample2, moduleName = "Main", entityName = "T")),
+        createArguments = Some(
+          value = Record(
+            recordId = None,
+            fields = Seq(
+              RecordField(
+                label = "p",
+                value = Some(value = Value(sum = Value.Sum.Party(value = sandbox.adminParty.toLf)))
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+@ sandbox.ledger_api.commands.submit(Seq(sandbox.adminParty), Seq(createCmd))
+res13: com.daml.ledger.api.v1.transaction.TransactionTree = TransactionTree(
+  ...
+  eventsById = Map(
+    "#122062d3d0b89f011ac651ea0139f381a73fe080ab215e5970a8c7bf804edeec932c:0" -> TreeEvent(
+      kind = Created(
+        value = CreatedEvent(
+          ...
+          createArguments = Some(
+            value = Record(
+              recordId = Some(value = Identifier(packageId = "627f4ad4df901b80bae208eded1c03932f38ed9c1f44c50468f27c88ef988e25", moduleName = "Main", entityName = "T")),
+              fields = Vector(
+                RecordField(label = "i", value = Some(value = Value(sum = Optional(value = Optional(value = None))))),
+                RecordField(label = "p", value = Some(value = Value(sum = Party(value = "sandbox::1220077e3366037ffce33cba97d757506fc1c72ad957a9b86c6bf137404637c7fee3")))),
+                RecordField(label = "j", value = Some(value = Value(sum = Optional(value = Optional(value = None)))))
+              )
+            )
+          ),
+          ...
+        )
+      )
+    )
+  ),
+  ...
+)
+```
+
+같은 command를 제출하되 field `p`에 label을 지정하지 않으면 실패합니다.
+
+```
+@ val createCmd = Command(
+    command = Command.Command.Create(
+      value = CreateCommand(
+        templateId = Some(value = Identifier(packageId = packageIdExample2, moduleName = "Main", entityName = "T")),
+        createArguments = Some(
+          value = Record(
+            recordId = None,
+            fields = Seq(
+              RecordField(
+                label = "",
+                value = Some(value = Value(sum = Value.Sum.Party(value = sandbox.adminParty.toLf)))
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+@ sandbox.ledger_api.commands.submit(Seq(sandbox.adminParty), Seq(createCmd))
+
+ERROR c.d.c.e.CommunityConsoleEnvironment - Request failed for sandbox.
+  GrpcClientError: INVALID_ARGUMENT/COMMAND_PREPROCESSING_FAILED(8,b880be91): Missing non-optional field "p", cannot upgrade non-optional fields.
+  Request: SubmitAndWaitTransactionTree(
+  actAs = sandbox::1220077e3366...,
+  readAs = Seq(),
+  commandId = '',
+  workflowId = '',
+  submissionId = '',
+  deduplicationPeriod = None(),
+  applicationId = 'CantonConsole',
+  commands = ...
+)
+...
+```
+
+그러나 label 없이도 trailing optional field `j`를 제외한 모든 field를 제공하면 성공합니다.
+
+```scala
+@ val createCmd = Command(
+    command = Command.Command.Create(
+      value = CreateCommand(
+        templateId = Some(value = Identifier(packageId = packageIdExample2, moduleName = "Main", entityName = "T")),
+        createArguments = Some(
+          value = Record(
+            recordId = None,
+            fields = Seq(
+              RecordField(label = "", value = Some(value = Value(sum = Value.Sum.Optional(value = Optional(value = None))))),
+              RecordField(
+                label = "",
+                value = Some(value = Value(sum = Value.Sum.Party(value = sandbox.adminParty.toLf)))
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+@ sandbox.ledger_api.commands.submit(Seq(sandbox.adminParty), Seq(createCmd))
+res22: com.daml.ledger.api.v1.transaction.TransactionTree = TransactionTree(
+  ...
+  eventsById = Map(
+    "#12203bb4082d4868c393ca2c969bb639757d21992cbac2a1abad271d688a30dbcae6:0" -> TreeEvent(
+      kind = Created(
+        value = CreatedEvent(
+          ...
+          createArguments = Some(
+            value = Record(
+              recordId = Some(value = Identifier(packageId = "627f4ad4df901b80bae208eded1c03932f38ed9c1f44c50468f27c88ef988e25", moduleName = "Main", entityName = "T")),
+              fields = Vector(
+                RecordField(label = "i", value = Some(value = Value(sum = Optional(value = Optional(value = None))))),
+                RecordField(label = "p", value = Some(value = Value(sum = Party(value = "sandbox::1220077e3366037ffce33cba97d757506fc1c72ad957a9b86c6bf137404637c7fee3")))),
+                RecordField(label = "j", value = Some(value = Value(sum = Optional(value = Optional(value = None)))))
+              )
+            )
+          ),
+          ...
+        )
+      )
+    )
+  ),
+  ...
+)
+```
+
+### Ledger API response의 Value normalization
+
+Ledger API value(예: `create_arguments` in a `CreatedEvent`) 자체를 포함한 어떤 sub-value에도 trailing None이 없으면 normal form이라고 합니다.
+
+Daml 3.3.0부터 Ledger API의 non-verbose response에 있는 value에는 normalization이 적용됩니다. Normalization은 모든 sub-value로 확장됩니다.
+
+**Example**
+
+`example1-1.0.0`이라는 package가 template `T`와 record `Record`를 `Main`이라는 module에 정의한다고 가정합니다.
+
+```haskell
+module Main where
+
+data Record = Record { ri : Optional Int, rj : Int, rk : Optional Int }
+  deriving (Eq, Show)
+
+template T
+  with
+    p : Party
+    i : Optional Int
+    r : Record
+    j : Optional Int
+  where
+    signatory p
+```
+
+또한 type `T`의 contract를 포함하는 ledger가 있으며, 이 contract는 `example1-1.0.0`이 작성했고 모든 optional field는 `None`으로 설정되어 있다고 가정합니다.
+
+```scala
+val createCmd = ledger_api_utils.create(
+  packageIdExample1,
+  "Main",
+  "T",
+  Map(
+    "p" -> sandbox.adminParty,
+    "i" -> None,
+    "r" -> Map("ri" -> None, "rj" -> 1, "rk" -> None),
+    "j" -> None))
+
+sandbox.ledger_api.commands.submit(Seq(sandbox.adminParty), Seq(createCmd))
+```
+
+그러면 non-verbose mode에서 ledger의 Active Contract Set을 query할 때 다음 결과가 반환됩니다.
+
+```scala
+@ sandbox.ledger_api.acs.of_party(sandbox.adminParty, verbose=false)
+res15: Seq[com.digitalasset.canton.admin.api.client.commands.LedgerApiTypeWrappers.WrappedCreatedEvent] = List(
+  WrappedCreatedEvent(
+    event = CreatedEvent(
+      ...
+      createArguments = Some(
+        value = Record(
+          recordId = None,
+          fields = Vector(
+            RecordField(
+              label = "",
+              value = Some(value = Value(sum = Party(value = "sandbox::122010fdef685011beecd318f03c9d82bf1e2d45950bdb0fceb3497a112ee17f9476")))
+            ),
+            RecordField(label = "", value = Some(value = Value(sum = Optional(value = Optional(value = None))))),
+            RecordField(
+              label = "",
+              value = Some(
+                value = Value(
+                  sum = Record(
+                    value = Record(
+                      recordId = None,
+                      fields = Vector(
+                        RecordField(label = "", value = Some(value = Value(sum = Optional(value = Optional(value = None))))),
+                        RecordField(label = "", value = Some(value = Value(sum = Int64(value = 1L))))
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      ),
+      ...
+    )
+  )
+)
+```
+
+Response에서 세 번째 template argument(원래 `j`)뿐 아니라 nested record의 세 번째 field(원래 `rk`)도 생략되었습니다. 또한 value가 `None`인 optional field인데도 두 번째 template argument(원래 `i`)와 첫 번째 nested record field(원래 `ri`)는 trailing position에 있지 않으므로 response에 존재한다는 점에 유의하세요.
+
+
+{/* COPIED_END */}

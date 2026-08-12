@@ -1,0 +1,202 @@
+---
+title: "LocalNet 개발"
+description: "cn-quickstart의 LocalNet을 주요 개발 및 testing environment로 사용"
+source_id: "SRC-F3899FAB1C"
+source_path: "appdev/modules/m5-localnet-development"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "729f9cef22e2a93d833bf5b764a0365fd876eabcd1fb67a126fa75a3a0b68210"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m5-localnet-development.md)을 사용하세요.
+</Warning>
+
+import DamlDocsAppdevModulesM5LocalnetDevelopmentL101 from "/snippets/daml-docs/appdev_modules_m5-localnet-development_L101.mdx";
+import DamlDocsAppdevModulesM5LocalnetDevelopmentL190 from "/snippets/daml-docs/appdev_modules_m5-localnet-development_L190.mdx";
+import DamlDocsAppdevModulesM5LocalnetDevelopmentL198 from "/snippets/daml-docs/appdev_modules_m5-localnet-development_L198.mdx";
+import DamlDocsAppdevModulesM5LocalnetDevelopmentL213 from "/snippets/daml-docs/appdev_modules_m5-localnet-development_L213.mdx";
+
+
+LocalNet은 개발 machine에서 Canton Network Topology를 모방하는 Docker Compose 기반 local network입니다. 여러 Validator, Wallet service, PQS 및 전체 Splice application을 제공하므로 shared network에 연결하지 않고도 Multi-Party application을 build하고 test하는 데 필요한 모든 것을 사용할 수 있습니다.
+
+## LocalNet이 제공하는 기능
+
+{/* COPIED_START source="splice:docs/src/app_dev/testing/localnet.rst" hash="localnet-overview" */}
+
+LocalNet은 NGINX gateway 뒤에 있는 Participant 3개, Validator 3개, PostgreSQL database 및 여러 web application(Wallet, SV, Scan)으로 구성된 Topology를 제공합니다. 각 Validator는 Splice ecosystem에서 서로 다른 역할을 수행합니다.
+
+- **app-provider**: 자신의 application을 운영하는 user를 위한 Validator
+- **app-user**: App Provider의 app을 사용하려는 user를 위한 Validator
+- **sv**: Global Synchronizer를 제공하고 automated market trading(AMT)을 처리하는 Super Validator
+
+LocalNet은 개발 및 test용으로 설계되었습니다. Production 용도가 아닙니다.
+
+{/* COPIED_END */}
+
+## 개발 Lifecycle
+
+{/* COPIED_START source="docs-website:replicated/quickstart/3.5/sdk/quickstart/configure/development-lifecycle.rst" hash="dev-lifecycle" */}
+
+대부분의 개발 team은 cn-quickstart를 사용하면서 서로 구분되는 다섯 단계를 거칩니다.
+
+### 학습 단계(1~2일)
+
+Cn-quickstart와 처음 interaction할 때는 environment를 실행하고 sample application을 살펴보며 architecture를 이해하는 데 집중합니다. Main에서 pull하여 local copy를 최신 상태로 유지합니다.
+
+```bash
+git clone https://github.com/digital-asset/cn-quickstart.git
+cd cn-quickstart
+
+# Regular updates during learning
+git pull origin main
+```
+
+### 실험 단계(1~2주)
+
+Configuration을 수정하고 API를 살펴보며 Daml code를 변경하여 integration pattern을 test하기 시작합니다. 변경 사항을 선택적으로 반영할 수 있도록 upstream tracking을 설정합니다.
+
+```bash
+git remote add upstream https://github.com/digital-asset/cn-quickstart.git
+git checkout -b experiments
+git fetch upstream
+git merge upstream/main
+```
+
+### 개발 단계(2~3주)
+
+Sample과 나란히 자체 application을 build하기 시작합니다. 많은 developer가 parallel directory에 code를 생성합니다.
+
+```text
+cn-quickstart/
+├── quickstart/    # Original sample code
+│   ├── daml/
+│   ├── backend/
+│   └── frontend/
+└── myapp/         # Your application code
+    ├── daml/
+    ├── backend/
+    └── frontend/
+```
+
+두 project structure를 모두 포함하도록 `settings.gradle.kts`를 update합니다. Local environment override에는 `.envrc.private`을 사용합니다. Cn-quickstart configuration을 extend하는 custom Docker Compose file을 생성합니다.
+
+### 분리 단계
+
+Application 복잡성이 cn-quickstart sample을 넘어서면 original code에 대한 dependency를 제거합니다. Sample directory를 삭제하고 build file을 update하며 upstream Git remote를 제거합니다.
+
+```bash
+git remote remove upstream
+rm -rf quickstart/
+# Update settings.gradle.kts, build.gradle.kts, etc.
+```
+
+### 지속적인 update
+
+분리한 후에는 cn-quickstart changelog를 주기적으로 검토하여 도입할 수 있는 tooling 개선 사항과 update된 tool version을 확인합니다. Cn-quickstart는 dependency가 아니라 reference가 됩니다.
+
+{/* COPIED_END */}
+
+## LocalNet 시작 및 중지
+
+Cn-quickstart를 사용한다면 Makefile이 Docker Compose command를 감쌉니다.
+
+<DamlDocsAppdevModulesM5LocalnetDevelopmentL101 />
+
+{/* COPIED_START source="splice:docs/src/app_dev/testing/localnet.rst" hash="localnet-start-stop" */}
+
+Docker Compose를 직접 제어하려면 환경 변수 `LOCALNET_DIR`(LocalNet directory 경로)와 `IMAGE_TAG`(Splice version)를 설정하고 다음을 사용합니다.
+
+```bash
+# Start all nodes
+docker compose --env-file $LOCALNET_DIR/compose.env \
+               --env-file $LOCALNET_DIR/env/common.env \
+               -f $LOCALNET_DIR/compose.yaml \
+               -f $LOCALNET_DIR/resource-constraints.yaml \
+               --profile sv \
+               --profile app-provider \
+               --profile app-user up -d
+
+# Stop all nodes
+docker compose --env-file $LOCALNET_DIR/compose.env \
+               --env-file $LOCALNET_DIR/env/common.env \
+               -f $LOCALNET_DIR/compose.yaml \
+               -f $LOCALNET_DIR/resource-constraints.yaml \
+               --profile sv \
+               --profile app-provider \
+               --profile app-user down -v
+```
+
+Docker Compose profile(`--profile app-provider` 등)를 환경 변수(`APP_PROVIDER_PROFILE=on/off`)와 함께 사용하여 특정 Validator를 비활성화하고 resource 사용량을 줄일 수 있습니다.
+
+{/* COPIED_END */}
+
+## Port 및 Service
+
+{/* COPIED_START source="splice:docs/src/app_dev/testing/localnet.rst" hash="localnet-ports" */}
+
+Port는 Validator 역할에 따라 정해진 pattern을 따릅니다.
+
+- **SV**: `4${PORT_SUFFIX}`(예: `4901`의 Ledger API)
+- **App Provider**: `3${PORT_SUFFIX}`(예: `3901`의 Ledger API)
+- **App User**: `2${PORT_SUFFIX}`(예: `2901`의 Ledger API)
+
+주요 port suffix:
+- `901`: Participant Ledger API(gRPC)
+- `902`: Participant Admin API
+- `975`: JSON API(HTTP)
+- `903`: Validator Admin API
+- `900`: Canton HTTP health check
+- `961`: Canton gRPC health check
+
+Web UI:
+- App User Wallet: `http://wallet.localhost:2000`
+- App Provider Wallet: `http://wallet.localhost:3000`
+- SV UI: `http://sv.localhost:4000`
+- Scan UI: `http://scan.localhost:4000`
+
+{/* COPIED_END */}
+
+<Note>
+Machine에서 `*.localhost` domain을 resolve할 수 없다면 `/etc/hosts`에 entry를 추가합니다.
+```text
+127.0.0.1   scan.localhost
+127.0.0.1   wallet.localhost
+127.0.0.1   sv.localhost
+```
+</Note>
+
+## LocalNet Debugging
+
+### Log capture 및 확인
+
+Debugging을 시작하는 가장 빠른 방법은 모든 log를 한 번에 capture하는 것입니다.
+
+<DamlDocsAppdevModulesM5LocalnetDevelopmentL190 />
+
+[lnav](https://lnav.org/)를 사용하여 capture한 log file을 분석합니다. Lnav는 여러 log format을 처리하고 여러 service의 event를 filter, search 및 correlate할 수 있게 합니다.
+
+### Live log 확인
+
+<DamlDocsAppdevModulesM5LocalnetDevelopmentL198 />
+
+### Canton Console 접근
+
+Canton Console을 사용하면 Participant, Sequencer 및 Mediator Node를 직접 검사하고 수정할 수 있습니다.
+
+<DamlDocsAppdevModulesM5LocalnetDevelopmentL213 />
+
+또는 cn-quickstart에서 `make canton-console`을 사용합니다.
+
+### 일반적인 문제
+
+- **Container 시작 실패**: 사용 가능한 memory를 확인하세요. 세 Validator를 모두 사용하는 LocalNet에는 상당한 resource가 필요합니다. 사용하지 않는 profile을 비활성화하여 resource 사용량을 줄입니다.
+- **Scan UI에 round가 표시되지 않음**: Startup 후 Scan UI에 data가 나타나기까지 몇 분이 걸릴 수 있습니다. 초기 network bootstrapping 중 예상되는 동작입니다.
+- **Database connection error**: 하나의 PostgreSQL instance가 모든 component를 처리합니다. 다른 service보다 먼저 성공적으로 시작되었는지 확인하세요.
+
+## 다음 단계
+
+- [Testing 전략](/appdev/modules/m5-testing-strategies): Canton application의 testing pyramid와 접근 방식
+- [Deployment Progression](/appdev/modules/m5-deployment-progression): LocalNet에서 DevNet, TestNet 및 MainNet으로 이동

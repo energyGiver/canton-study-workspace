@@ -1,0 +1,101 @@
+---
+title: "DA.Semigroup"
+description: "Daml module DA.Semigroup의 reference documentation"
+source_id: "SRC-DC38728203"
+source_path: "appdev/reference/daml-standard-library/da-semigroup"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "27d0bbf2742ed090358fca1eff99028666305b72273c62232d258cd178db8e09"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-semigroup.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-semigroup-27147"></span>
+
+# DA.Semigroup
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-da-semigroup-types-max-52699"></span>
+
+### `data Max a`
+
+`max`에 따른 Semigroup입니다.
+
+```
+> Max 23 <> Max 42
+Max 42
+```
+
+Constructor:
+
+<span id="constr-da-semigroup-types-max-20326"></span>
+- `Max a`
+
+Instance:
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Max`](#type-da-semigroup-types-max-52699) `a`)
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Max`](#type-da-semigroup-types-max-52699) `a`)
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`Max`](#type-da-semigroup-types-max-52699) `a`)
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Max`](#type-da-semigroup-types-max-52699) `a`)
+
+<span id="type-da-semigroup-types-min-78217"></span>
+
+### `data Min a`
+
+`min`에 따른 Semigroup입니다.
+
+```
+> Min 23 <> Min 42
+Min 23
+```
+
+Constructor:
+
+<span id="constr-da-semigroup-types-min-6532"></span>
+- `Min a`
+
+Instance:
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Min`](#type-da-semigroup-types-min-78217) `a`)
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Min`](#type-da-semigroup-types-min-78217) `a`)
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`Min`](#type-da-semigroup-types-min-78217) `a`)
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Min`](#type-da-semigroup-types-min-78217) `a`)
+
+## Orphan Typeclass Instances
+
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Min`](#type-da-semigroup-types-min-78217) `a`)
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`Min`](#type-da-semigroup-types-min-78217) `a`)
+
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Min`](#type-da-semigroup-types-min-78217) `a`)
+
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Max`](#type-da-semigroup-types-max-52699) `a`)
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`Max`](#type-da-semigroup-types-max-52699) `a`)
+
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Max`](#type-da-semigroup-types-max-52699) `a`)
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Min`](#type-da-semigroup-types-min-78217) `a`)
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Max`](#type-da-semigroup-types-max-52699) `a`)

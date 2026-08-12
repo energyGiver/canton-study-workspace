@@ -1,0 +1,246 @@
+---
+title: "Canton Validator용 Keycloak Configuration Guide(Community)"
+description: "Community가 제공한 Canton validator용 end-to-end Keycloak configuration guide"
+source_id: "SRC-91FE471ECE"
+source_path: "global-synchronizer/deployment/community-keycloak-config"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "b319fd19b51f52b9dffecd53604fe8ccba02d9978f6a610d3828b9b839a75fc5"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/deployment/community-keycloak-config.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/community/keycloak-docker-canton-validator-config.rst" hash="b03f12f0" */}
+
+<Warning>
+이 section은 community member가 공유한 solution을 소개합니다. Splice maintainer가 공식적으로 테스트하지 않았으므로 사용자는 정보를 독립적으로 검증하는 것이 좋습니다. 정확성과 완성도를 높이는 contribution은 언제나 환영합니다.
+</Warning>
+
+Keycloak authentication으로 validator node를 배포하려면 다음의 상세한 configuration 단계를 따르세요. 이 guide는 Canton network deployment에 필요한 모든 customization을 포함하여 Keycloak을 validator의 OIDC provider로 설정하는 포괄적인 지침을 제공합니다.
+
+추가 authentication provider 및 configuration 세부 정보는 [Authentication 구성](/global-synchronizer/deployment/validator-kubernetes)을 참조하세요.
+
+## 전제 조건
+
+Configuration을 진행하기 전에 다음을 준비했는지 확인하세요.
+
+- Administrative access가 가능한 실행 중인 Keycloak instance
+- Keycloak deployment의 Admin Console access
+- 다음과 같이 구성된 hostname
+  - Validator API base URL: `https://validator-api.your-domain.example/api`
+  - Wallet UI: `https://wallet.your-domain.example`
+  - CNS UI: `https://cns.your-domain.example`
+- Canton network에서 할당받은 `PARTY_HINT` identifier
+
+## Realm Configuration
+
+1.  Canton validator용 realm을 생성합니다.
+    1.  **Admin Console** → **Manage realms** → **Create realm**으로 이동합니다.
+    2.  **Realm name**을 `canton` 또는 environment별 이름으로 설정합니다.
+    3.  **Create**를 클릭하여 realm을 initialize합니다.
+2.  Offline access 및 refresh token을 위한 session setting을 구성합니다.
+    1.  **Realm Settings** → **Sessions**로 이동합니다.
+    2.  다음 setting을 구성합니다.
+        - **Offline Session Max Limited**를 `ON`으로 설정
+        - **Offline Session Max**를 `5,184,000`초, 즉 60일로 설정하고 필요에 따라 조정
+        - **Offline Session Idle Timeout**을 `2,592,000`초, 즉 30일로 설정하고 필요에 따라 조정
+    3.  **Save**를 클릭하여 변경 사항을 적용합니다.
+
+## Client Scope 설정
+
+3.  `daml_ledger_api` client scope를 생성합니다.
+    1.  **Client Scopes** → **Create**로 이동합니다.
+
+    2.  기본 setting을 구성합니다.
+
+        - **Name**: `daml_ledger_api`
+        - **Protocol**: `OpenID Connect`
+        - **Type**: `Default`
+        - **Display on consent screen**: `OFF`
+        - **Include in token scope**: `OFF`
+
+    3.  **Save**를 클릭합니다.
+
+    4.  `daml_ledger_api`에 필요한 mapper를 추가합니다.
+
+        **User Client Role mapper:**
+
+        - **daml_ledger_api** → **Mappers** → **Create**로 이동
+        - **Mapper Type**을 `User Client Role`로 설정
+        - **Name**을 `daml_ledger_api_scope`로 설정
+        - **Add to access token**을 `ON`으로 설정
+        - **Add to ID token**, **Add to userinfo**, **Add to token introspection**, **Multivalued**를 `OFF`로 설정
+        - **Save** 클릭
+
+        **Audience mapper:**
+
+        - **daml_ledger_api** → **Mappers** → **Create**로 이동
+        - **Mapper Type**을 `Audience`로 설정
+        - **Name**을 `audience`로 설정
+        - **Included Custom Audience**를 `https://canton.network.global`로 설정
+        - **Add to access token** 및 **Add to token introspection**을 `ON`으로 설정
+        - **Add to ID token** 및 **Add to lightweight access token**을 `OFF`로 설정
+        - **Save** 클릭
+4.  `openid` client scope를 생성합니다.
+    1.  **Client Scopes** → **Create**로 이동합니다.
+
+    2.  Setting을 구성합니다.
+
+        - **Name**: `openid`
+        - **Protocol**: `OpenID Connect`
+        - **Type**: `Default`
+        - **Display on consent screen**: `OFF`
+        - **Include in token scope**: `ON`
+
+    3.  **Save**를 클릭합니다.
+
+    4.  `openid`에 필요한 mapper를 추가합니다.
+
+        **Validator API Audience mapper:**
+
+        - **openid** → **Mappers** → **Create**로 이동
+        - **Mapper Type**을 `Audience`로 설정
+        - **Name**을 `aud`로 설정
+        - **Included Custom Audience**를 `https://validator-api.your-domain.example/api`로 설정
+        - **Add to access token** 및 **Add to token introspection**을 `ON`으로 설정
+        - **Add to ID token** 및 **Add to lightweight access token**을 `OFF`로 설정
+        - **Save** 클릭
+
+        **Subject mapper:**
+
+        - **openid** → **Mappers** → **Create**로 이동
+        - **Mapper Type**을 `Subject (sub)`로 설정
+        - **Name**을 `sub`로 설정
+        - **Add to access token** 및 **Add to token introspection**을 `ON`으로 설정
+        - **Add to lightweight access token**을 `OFF`로 설정
+        - **Save** 클릭
+
+## Client Configuration
+
+5.  Ledger API resource client를 생성합니다.
+    1.  **Clients** → **Create client**로 이동합니다.
+    2.  **Client Type**을 `OpenID Connect`로, **Client ID**를 `ledger-api`로 설정합니다.
+    3.  **Next**를 클릭합니다.
+    4.  **Capability config**에서 모든 toggle을 `OFF`로 설정합니다.
+    5.  **Next**를 클릭합니다.
+    6.  모든 **Login settings** field를 비워 두고 **Save**를 클릭합니다.
+    7.  Client scope를 추가합니다. **Client scopes** → **Add client scope**로 이동 → `daml_ledger_api` 선택 → **Add as "Default"**를 클릭합니다.
+6.  Validator app backend service account client를 생성합니다.
+    1.  **Clients** → **Create client**로 이동합니다.
+    2.  **Client Type**을 `OpenID Connect`로, **Client ID**를 `validator-app-backend`로 설정합니다.
+    3.  **Next**를 클릭합니다.
+    4.  **Capability config**에서 다음을 설정합니다.
+        - **Client authentication**을 `ON`으로 설정
+        - **Service accounts**를 `ON`으로 설정
+        - 다른 모든 option을 `OFF`로 설정
+    5.  **Next**를 클릭합니다.
+    6.  **Login settings** field를 비워 두고 **Save**를 클릭합니다.
+    7.  Credential을 기록합니다.
+        - **Credentials tab**에서 **Client Secret** 복사
+        - **Service account roles tab**에서 service account user link 클릭
+        - Browser URL에서 **user ID(UUID)**를 복사하여 `LEDGER_API_ADMIN_USER`로 사용
+    8.  Client scope를 추가합니다. **Client scopes** → **Add client scope**로 이동 → `daml_ledger_api` 선택 → **Add as "Default"**를 클릭합니다.
+7.  Wallet web UI public client를 생성합니다.
+    1.  **Clients** → **Create client**로 이동합니다.
+    2.  **Client Type**을 `OpenID Connect`로, **Client ID**를 `wallet-web-ui`로 설정합니다.
+    3.  **Next**를 클릭합니다.
+    4.  **Capability config**에서 다음을 설정합니다.
+        - **Standard flow**를 `ON`으로 설정
+        - 다른 모든 option을 `OFF`로 설정
+    5.  **Next**를 클릭합니다.
+    6.  **Login settings**를 구성합니다.
+        - **Valid redirect URIs**: `https://wallet.your-domain.example/*`
+        - **Valid post logout redirect URIs**: `https://wallet.your-domain.example`
+        - **Web origins**: `https://wallet.your-domain.example`
+    7.  **Save**를 클릭합니다.
+    8.  Client scope를 구성합니다.
+        - `openid` 및 `daml_ledger_api`를 **"Default"**로 추가
+        - 필요하면 `offline_access`를 **"Optional"**로 추가
+8.  CNS UI public client를 생성합니다.
+    1.  다음 변경 사항을 적용하여 wallet web UI와 동일한 process를 따릅니다.
+        - **Client ID**를 `cns-ui`로 설정
+        - **Valid redirect URIs**를 `https://cns.your-domain.example/*`로 설정
+        - **Valid post logout redirect URIs**를 `https://cns.your-domain.example`로 설정
+        - **Web origins**를 `https://cns.your-domain.example`로 설정
+        - Wallet-web-ui와 동일한 client scope 구성
+
+## User Management
+
+9.  Operator wallet user를 생성합니다.
+    1.  **Users** → **Add user**로 이동합니다.
+    2.  User를 구성합니다.
+        - **Username**을 정확한 `PARTY_HINT` 값으로 설정
+        - **User Enabled**를 `ON`으로 설정
+    3.  **Save**를 클릭합니다.
+    4.  Permanent password를 설정합니다. **Credentials tab**으로 이동 → **Temporary**를 `OFF`로 설정하여 password를 지정합니다.
+    5.  Browser URL에서 **user ID(UUID)**를 복사하여 `WALLET_ADMIN_USER`로 사용합니다.
+
+<Warning>
+Username은 Canton network에서 할당받은 `PARTY_HINT` identifier와 정확히 일치해야 합니다.
+</Warning>
+
+## Application Configuration
+
+다음 Keycloak 관련 environment variable을 사용하여 validator application을 구성합니다.
+
+    # Keycloak Realm Endpoints
+    AUTH_URL=https://your-keycloak-host/realms/canton
+    AUTH_WELLKNOWN_URL=https://your-keycloak-host/realms/canton/.well-known/openid-configuration
+    AUTH_JWKS_URL=https://your-keycloak-host/realms/canton/protocol/openid-connect/certs
+
+    # Backend Client Credentials
+    VALIDATOR_AUTH_CLIENT_ID=validator-app-backend
+    VALIDATOR_AUTH_CLIENT_SECRET=REPLACE_WITH_CLIENT_SECRET
+
+    # User Identity UUIDs (from Keycloak Users URLs)
+    LEDGER_API_ADMIN_USER=REPLACE_WITH_SERVICE_ACCOUNT_USER_UUID
+    WALLET_ADMIN_USER=REPLACE_WITH_OPERATOR_USER_UUID
+
+    # OAuth Scopes and Audiences
+    LEDGER_API_AUTH_SCOPE=daml_ledger_api
+    LEDGER_API_AUTH_AUDIENCE=https://canton.network.global
+    VALIDATOR_AUTH_AUDIENCE=https://validator-api.your-domain.example/api
+
+    # UI Client IDs
+    WALLET_UI_CLIENT_ID=wallet-web-ui
+    ANS_UI_CLIENT_ID=cns-ui
+
+## Validation 및 Testing
+
+10. Backend client credentials flow를 테스트하여 configuration을 확인합니다.
+
+        curl -X POST "https://your-keycloak-host/realms/canton/protocol/openid-connect/token" \
+          -H "Content-Type: application/x-www-form-urlencoded" \
+          -d "grant_type=client_credentials" \
+          -d "client_id=validator-app-backend" \
+          -d "client_secret=YOUR_CLIENT_SECRET"
+
+    반환된 `access_token`을 decode하고 다음 항목이 포함되어 있는지 확인합니다.
+
+    - `aud`: `["https://canton.network.global"]`
+    - `scope`: `"daml_ledger_api"`
+
+## Configuration 참고 사항
+
+<Note>
+- **User Identifier**: `LEDGER_API_ADMIN_USER`와 `WALLET_ADMIN_USER`는 모두 username이 아니라 Keycloak URL의 UUID여야 합니다.
+- **Mapper Configuration**: `daml_ledger_api` scope는 포괄적인 authorization을 위해 User Client Role 및 Audience mapper를 모두 사용합니다.
+- **Token Audience**: UI token에는 표준 OpenID Connect claim과 validator API audience가 모두 포함됩니다.
+- **Username 일치**: Wallet admin user의 username은 `PARTY_HINT` 값과 정확히 일치해야 합니다.
+</Note>
+
+## Troubleshooting
+
+Authentication 문제가 발생하면 다음을 확인하세요.
+
+- 모든 audience mapping이 올바르게 구성되어 있는지 확인합니다.
+- Client scope가 "Default" type으로 올바르게 할당되었는지 확인합니다.
+- Username을 사용하는 대신 Keycloak URL에서 user UUID를 복사했는지 확인합니다.
+- Session timeout 값이 use case에 적합한지 확인합니다.
+
+
+{/* COPIED_END */}
