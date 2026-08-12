@@ -110,10 +110,41 @@ def _translated_navigation_entries(
     return translated
 
 
+def _localized_navigation(
+    products: list[dict], korean_groups: list[dict], global_navigation: dict | None = None
+) -> dict:
+    navigation: dict = {}
+    if global_navigation:
+        navigation["global"] = global_navigation
+    if not korean_groups:
+        navigation["products"] = products
+        return navigation
+
+    navigation["languages"] = [
+        {
+            "language": "en",
+            "default": True,
+            "products": products,
+        },
+        {
+            "language": "ko",
+            "products": [
+                {
+                    "product": "한글 번역",
+                    "icon": "language",
+                    "groups": korean_groups,
+                }
+            ],
+        },
+    ]
+    return navigation
+
+
 def _extend_docs_config(translation_count: int) -> None:
     config_path = SITE_DIR / "docs.json"
     config = json.loads(config_path.read_text(encoding="utf-8"))
-    products = config.setdefault("navigation", {}).setdefault("products", [])
+    original_navigation = config.setdefault("navigation", {})
+    products = original_navigation.get("products", [])
     products.append(
         {
             "product": "Research Workspace",
@@ -136,16 +167,6 @@ def _extend_docs_config(translation_count: int) -> None:
         }
     )
 
-    languages = [{"language": "en", "default": True, "href": "/"}]
-    if translation_count:
-        languages.append(
-            {
-                "language": "ko",
-                "href": "/ko/overview/understand/what-is-canton",
-            }
-        )
-    config["navigation"].setdefault("global", {})["languages"] = languages
-
     translated_pages = {
         str(path.relative_to(TRANSLATIONS_DIR).with_suffix(""))
         for path in TRANSLATIONS_DIR.rglob("*.mdx")
@@ -167,14 +188,11 @@ def _extend_docs_config(translation_count: int) -> None:
                 "pages": [f"ko/{page}" for page in remaining_pages],
             }
         )
-    if korean_groups:
-        products.append(
-            {
-                "product": "한글 번역",
-                "icon": "language",
-                "groups": korean_groups,
-            }
-        )
+    config["navigation"] = _localized_navigation(
+        products,
+        korean_groups if translation_count else [],
+        original_navigation.get("global"),
+    )
     config_path.write_text(
         json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )

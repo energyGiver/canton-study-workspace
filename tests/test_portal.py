@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from portal.build import _translated_navigation_entries
+from portal.build import _localized_navigation, _translated_navigation_entries
 from portal.content import (
     ContentRepository,
     canonical_path,
@@ -51,6 +51,32 @@ class ContentHelpersTest(unittest.TestCase):
         )
         self.assertEqual(first, ["ko/overview/one"])
         self.assertEqual(second, [])
+
+    def test_localized_navigation_partitions_english_and_korean(self) -> None:
+        products = [{"product": "Overview", "groups": []}]
+        korean_groups = [{"group": "Overview", "pages": ["ko/overview/one"]}]
+        navigation = _localized_navigation(products, korean_groups)
+        self.assertNotIn("products", navigation)
+        self.assertEqual(
+            navigation["languages"],
+            [
+                {
+                    "language": "en",
+                    "default": True,
+                    "products": products,
+                },
+                {
+                    "language": "ko",
+                    "products": [
+                        {
+                            "product": "한글 번역",
+                            "icon": "language",
+                            "groups": korean_groups,
+                        }
+                    ],
+                },
+            ],
+        )
 
     def test_canonical_path_normalizes_locales_and_suffixes(self) -> None:
         self.assertEqual(

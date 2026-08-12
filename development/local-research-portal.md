@@ -157,7 +157,7 @@ The portal compares `source_sha256` with the current upstream file. A mismatch d
 
 The translation glossary must preserve Canton component names, API names, protocol terms, code, identifiers, and product names in English. Every Korean page must display an `Unofficial Korean translation` notice and link to the official English page.
 
-Mintlify supports locale-based routing and a language switcher through `docs.json`. The generated site configuration should add the Korean navigation without editing upstream `docs.json` directly. See the official [Mintlify internationalization guide](https://www.mintlify.com/docs/guides/internationalization).
+Mintlify supports locale-based routing and a language switcher through `docs.json`. The generated site configuration must partition the complete English and Korean navigation under `navigation.languages`; `navigation.global.languages` is only a global link switcher and does not establish locale-aware document navigation. The overlay also rewrites internal document links inside a Korean article to the corresponding `/ko/` route when that translation exists. Explicit ENG controls remain unchanged, and untranslated targets fall back to the official English page. See the official [Mintlify internationalization guide](https://www.mintlify.com/docs/guides/internationalization).
 
 ## Local web architecture
 

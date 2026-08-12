@@ -106,6 +106,46 @@
     });
   }
 
+  function localizeKoreanDocumentLinks() {
+    if (!window.location.pathname.startsWith("/ko/")) return;
+    document.querySelectorAll("main a[href]").forEach((link) => {
+      if (link.closest("#research-summary-panel")) return;
+      const rawHref = link.getAttribute("href");
+      if (!rawHref || rawHref.startsWith("#")) return;
+
+      const target = new URL(rawHref, window.location.href);
+      if (target.origin !== window.location.origin || target.pathname.startsWith("/ko/")) {
+        return;
+      }
+      const item = state.statusByPath.get(canonicalPath(target.pathname));
+      if (!item?.translation_available) return;
+
+      target.pathname = `/ko/${item.path}`;
+      const localizedHref = `${target.pathname}${target.search}${target.hash}`;
+      link.setAttribute("href", localizedHref);
+      link.dataset.researchLocalizedHref = localizedHref;
+    });
+  }
+
+  function preserveKoreanDocumentNavigation(event) {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+    const link = event.target.closest?.("a[data-research-localized-href]");
+    if (!link || link.target === "_blank" || link.hasAttribute("download")) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    window.location.assign(link.dataset.researchLocalizedHref);
+  }
+
   function articleRoot() {
     return document.querySelector("article") || document.querySelector("main");
   }
@@ -755,14 +795,17 @@
     window.clearTimeout(state.refreshTimer);
     state.refreshTimer = window.setTimeout(() => {
       decorateNavigation();
+      localizeKoreanDocumentLinks();
       refreshCurrentPage();
     }, 120);
   }
 
   async function boot() {
     document.documentElement.dataset.researchWorkspace = "ready";
+    document.addEventListener("click", preserveKoreanDocumentNavigation, true);
     await loadStatuses();
     await refreshCurrentPage(true);
+    localizeKoreanDocumentLinks();
     new MutationObserver(scheduleRefresh).observe(document.body, { childList: true, subtree: true });
     window.addEventListener("popstate", () => refreshCurrentPage(true));
   }
