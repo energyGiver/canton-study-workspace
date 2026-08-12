@@ -15,7 +15,7 @@ from portal.content import (
 )
 from portal.store import DraftConflictError, PortalStore
 from portal.server import write_origin_allowed
-from portal.validate import validate_workspace
+from portal.validate import _frontmatter_syntax_errors, validate_workspace
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -133,6 +133,13 @@ class StoreTest(unittest.TestCase):
 
 
 class WorkspaceValidationTest(unittest.TestCase):
+    def test_invalid_double_quoted_frontmatter_is_rejected(self) -> None:
+        text = '---\ntitle: "Example"\ndescription: "new ContractId("test")"\n---\n'
+        self.assertEqual(
+            _frontmatter_syntax_errors(text),
+            ["line 3 has an invalid double-quoted value"],
+        )
+
     def test_shared_research_metadata_is_valid(self) -> None:
         report = validate_workspace()
         self.assertTrue(report.valid, report.errors)

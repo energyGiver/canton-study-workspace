@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from collections import Counter
+import json
 from pathlib import Path
 import re
 
@@ -9,6 +10,26 @@ from .content import ContentRepository, TRANSLATION_ROOT, canonical_path
 
 
 MIDDLE_DOT = "\u00b7"
+
+
+def _frontmatter_syntax_errors(text: str) -> list[str]:
+    if not text.startswith("---\n"):
+        return ["missing opening delimiter"]
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        return ["missing closing delimiter"]
+
+    errors: list[str] = []
+    for line_number, line in enumerate(text[4:end].splitlines(), start=2):
+        if not line.strip() or line.lstrip().startswith("#") or ":" not in line:
+            continue
+        raw = line.split(":", 1)[1].strip()
+        if raw.startswith('"'):
+            try:
+                json.loads(raw)
+            except json.JSONDecodeError:
+                errors.append(f"line {line_number} has an invalid double-quoted value")
+    return errors
 
 
 def _heading_levels(text: str) -> list[int]:
@@ -86,6 +107,8 @@ def validate_workspace() -> ValidationReport:
             translation_path = repository.translation_path(page)
             known_translation_paths.add(translation_path.resolve())
             translation_text = translation_path.read_text(encoding="utf-8")
+            for syntax_error in _frontmatter_syntax_errors(translation_text):
+                errors.append(f"{page.path}: translation frontmatter {syntax_error}")
             source_path = repository.official_source_path(page)
             source_text = (
                 source_path.read_text(encoding="utf-8") if source_path.is_file() else ""

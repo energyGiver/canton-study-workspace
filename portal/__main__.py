@@ -64,6 +64,13 @@ def main() -> None:
         if not report.valid:
             raise SystemExit(1)
     elif args.command == "dev":
+        validation = validate_workspace()
+        for warning in validation.warnings:
+            print(f"WARNING: {warning}")
+        for error in validation.errors:
+            print(f"ERROR: {error}")
+        if not validation.valid:
+            raise SystemExit("Workspace validation failed; local preview was not started")
         result = build_site()
         api_thread = threading.Thread(
             target=serve,
