@@ -1,0 +1,214 @@
+---
+title: "DA.TextMap"
+description: "Daml module DA.TextMap의 reference documentation"
+source_id: "SRC-8C8846958F"
+source_path: "appdev/reference/daml-standard-library/da-textmap"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "079d9de808614e50285208aca5944779781d2560fac11dd5fea1f05265c3d98c"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-textmap.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-textmap-81719"></span>
+
+# DA.TextMap
+
+TextMap, map은 key/value pair collection으로 구성된 associative array data type이며, 각 가능한 key는 collection에 최대 한 번만 나타납니다.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Functions
+
+<span id="function-da-textmap-fromlist-19033"></span>
+
+### `fromList`
+
+`fromList` : [([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952), `a`)] -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+key/value pair list에서 map을 생성합니다.
+
+<span id="function-da-textmap-fromlistwithl-22912"></span>
+
+### `fromListWithL`
+
+`fromListWithL` : (`a` -> `a` -> `a`) -> [([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952), `a`)] -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+combining function을 사용해 key/value pair list에서 map을 생성합니다. combining function은 list에 key가 여러 번 나타날 때만 사용되며, 두 argument를 받습니다. 첫 번째는 해당 key에 새로 insert되는 값이고, 두 번째는 해당 key에 지금까지 accumulate된 값입니다.
+예:
+
+```
+>>> fromListWithL (++) [("A", [1]), ("A", [2]), ("B", [2]), ("B", [1]), ("A", [3])]
+fromList [("A", [3, 2, 1]), ("B", [1, 2])]
+>>> fromListWithL (++) [] == (empty : TextMap [Int])
+True
+```
+
+<span id="function-da-textmap-fromlistwithr-69626"></span>
+
+### `fromListWithR`
+
+`fromListWithR` : (`a` -> `a` -> `a`) -> [([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952), `a`)] -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+combining function의 순서를 바꾼 `fromListWithL`처럼 key/value pair list에서 map을 생성합니다. 예:
+
+```
+>>> fromListWithR (++) [("A", [1]), ("A", [2]), ("B", [2]), ("B", [1]), ("A", [3])]
+fromList [("A", [1, 2, 3]), ("B", [2, 1])]
+>>> fromListWithR (++) [] == (empty : TextMap [Int])
+True
+```
+
+<span id="function-da-textmap-fromlistwith-41741"></span>
+
+### `fromListWith`
+
+`fromListWith` : (`a` -> `a` -> `a`) -> [([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952), `a`)] -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+<span id="function-da-textmap-tolist-95168"></span>
+
+### `toList`
+
+`toList` : [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a` -> [([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952), `a`)]
+
+map을 key가 오름차순으로 배치된 key/value pair list로 변환합니다.
+
+<span id="function-da-textmap-empty-66187"></span>
+
+### `empty`
+
+`empty` : [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+empty map입니다.
+
+<span id="function-da-textmap-size-46150"></span>
+
+### `size`
+
+`size` : [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a` -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+map의 element 수입니다.
+
+<span id="function-da-textmap-null-64690"></span>
+
+### `null`
+
+`null` : [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `v` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+map이 비어 있는지 확인합니다.
+
+<span id="function-da-textmap-lookup-87021"></span>
+
+### `lookup`
+
+`lookup` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a`
+
+map의 key에 해당하는 값을 lookup합니다.
+
+<span id="function-da-textmap-member-14417"></span>
+
+### `member`
+
+`member` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `v` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+key가 map의 member인지 확인합니다.
+
+<span id="function-da-textmap-filter-317"></span>
+
+### `filter`
+
+`filter` : (`v` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `v` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `v`
+
+predicate를 사용해 `TextMap`을 filtering하고, 값이 predicate를 만족하는 entry만 유지합니다.
+
+<span id="function-da-textmap-filterwithkey-64027"></span>
+
+### `filterWithKey`
+
+`filterWithKey` : ([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> `v` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `v` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `v`
+
+predicate를 사용해 `TextMap`을 filtering하고, predicate를 만족하는 entry만 유지합니다.
+
+<span id="function-da-textmap-delete-54270"></span>
+
+### `delete`
+
+`delete` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+map에서 key와 그 값을 삭제합니다. key가 map의 member가 아니면 원래 map을 반환합니다.
+
+<span id="function-da-textmap-singleton-39431"></span>
+
+### `singleton`
+
+`singleton` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> `a` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+singleton map을 생성합니다.
+
+<span id="function-da-textmap-insert-41312"></span>
+
+### `insert`
+
+`insert` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> `a` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+map에 새 key/value pair를 insert합니다. key가 map에 이미 있으면 연결된 값을 제공된 값으로 바꿉니다.
+
+<span id="function-da-textmap-insertwith-45464"></span>
+
+### `insertWith`
+
+`insertWith` : (`v` -> `v` -> `v`) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> `v` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `v` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `v`
+
+map에 새 key/value pair를 insert합니다. key가 map에 이미 있으면 주어진 function `f new_value old_value`를 사용해 이전 값과 결합합니다.
+
+<span id="function-da-textmap-union-13945"></span>
+
+### `union`
+
+`union` : [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`
+
+두 map의 union이며, 같은 key가 나타나면 첫 번째 map을 선호합니다.
+
+<span id="function-da-textmap-merge-26784"></span>
+
+### `merge`
+
+`merge` : ([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> `a` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `c`) -> ([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> `b` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `c`) -> ([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> `a` -> `b` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `c`) -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `b` -> [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `c`
+
+두 map을 merge합니다. `merge f g h x y`는 key가 `x`에만 있는 모든 key/value pair에 `f`를, key가 `y`에만 있는 모든 pair에 `g`를, key가 `x`와 `y` 모두에 있는 모든 pair에 `h`를 적용합니다. 마지막에 `Some`을 생성한 모든 pair를 결과로 수집합니다.
+
+## Orphan Typeclass Instances
+
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`)
+
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`)
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `a`)
+
+- instance [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `b`)
+
+- instance [`Monoid`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-monoid-6742) ([`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691) `b`)
+
+- instance [`Functor`](/appdev/reference/daml-standard-library/prelude#class-ghc-base-functor-31205) [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691)
+
+- instance [`Foldable`](/appdev/reference/daml-standard-library/da-foldable#class-da-foldable-foldable-25994) [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691)
+
+- instance [`Traversable`](/appdev/reference/daml-standard-library/da-traversable#class-da-traversable-traversable-18144) [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691)

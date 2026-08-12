@@ -1,0 +1,538 @@
+---
+title: "Transaction 실패"
+description: "Authorization 오류, Package Vetting 실패 및 Transaction timeout 진단"
+source_id: "SRC-41113C3971"
+source_path: "global-synchronizer/troubleshooting-guide/transaction-failures"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "d983f2915d59577acd046635d883f77f17542a3117dafaf11d70b617855d0c74"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_TRANSACTION_FAILURES_0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-troubleshooting-guide-transaction-failures-0.mdx";
+import CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_TRANSACTION_FAILURES_1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-troubleshooting-guide-transaction-failures-1.mdx";
+import CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_TRANSACTION_FAILURES_2 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-troubleshooting-guide-transaction-failures-2.mdx";
+import CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_TRANSACTION_FAILURES_3 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-troubleshooting-guide-transaction-failures-3.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/troubleshooting-guide/transaction-failures.md)을 사용하세요.
+</Warning>
+
+Global Synchronizer의 Transaction 실패는 root cause를 가리키는 구체적인 error code를 생성합니다. 이 페이지에서는 가장 일반적인 세 가지 category인 authorization 오류, Package Vetting 문제 및 timeout을 다룹니다.
+
+## Authorization 오류
+
+Party가 수행할 권한이 없는 action을 시도하면 authorization 실패가 발생합니다.
+
+### Signatory 누락
+
+```
+INVALID_ARGUMENT: DAML_AUTHORIZATION_ERROR: ... requires authorizers <party-id> but only <other-party-id> were given
+```
+
+이는 Command에 필수 signatory가 누락되었다는 뜻입니다. 다음을 확인하세요.
+
+- Daml model에 선언된 template의 signatory
+- 제출 Party가 contract의 signatory로 등록되어 있는지 여부
+- multi-party submission을 사용하는 경우 모든 필수 Party가 `actAs` 목록에 포함되어 있는지 여부
+
+### 잘못된 Party
+
+Onboarding 직후 authorization 오류가 발생한다면 Party ID가 등록된 값과 일치하는지 확인하세요.
+
+
+
+
+<CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_TRANSACTION_FAILURES_0 />
+
+
+출력을 application configuration의 Party ID와 비교하세요. Party ID는 대소문자를 구분하며 fingerprint suffix를 포함합니다. 예: `validator::1220abcd...`.
+
+## Package Vetting 문제
+
+Package Vetting은 Transaction에 관여하는 모든 Validator가 실행되는 Daml code에 동의하도록 보장합니다.
+
+### DAR가 upload되지 않음
+
+```
+PACKAGE_NOT_FOUND: Could not find package <package-id>
+```
+
+필요한 DAR를 Validator에 upload하세요.
+
+```bash
+# Via REST API
+curl -X POST "http://localhost/api/validator/v0/admin/dars" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "dar=@path/to/your-app.dar"
+```
+
+또는 Canton Console을 사용합니다.
+
+
+
+
+<CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_TRANSACTION_FAILURES_1 />
+
+
+### Counterparty에서 DAR가 vetting되지 않음
+
+사용 중인 Validator에 package가 있더라도 상대 Party의 Validator에도 동일한 package가 upload되고 vetted 상태여야 합니다. 다음 오류가 발생하는 경우:
+
+```
+PACKAGE_SELECTION_FAILED: No package found for module <module-name>
+```
+
+Counterparty의 Validator operator에게 동일한 DAR를 upload하고 vetting하도록 요청하세요. Transaction 양측 모두 package를 사용할 수 있어야 합니다.
+
+### Vetting 상태 확인
+
+
+
+
+<CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_TRANSACTION_FAILURES_2 />
+
+
+## Timeout 문제
+
+Timeout은 허용된 시간 안에 Transaction이 완료되지 않았음을 나타냅니다. Confirmation이 너무 늦게 도착하면 Mediator가 Transaction을 reject합니다.
+
+### Traffic 고갈
+
+```
+MEDIATOR_SAYS_TX_TIMED_OUT: Rejected transaction as the mediator did not receive
+sufficient confirmations within the expected timeframe
+```
+
+Timeout의 가장 일반적인 원인은 traffic balance 고갈입니다. Global Synchronizer의 모든 Transaction은 traffic을 소비하며, traffic은 Canton Coin으로 구매합니다.
+
+**Traffic balance 확인:**
+
+
+
+
+<CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_TRANSACTION_FAILURES_3 />
+
+
+Balance가 0이거나 거의 0이면 Sequencer가 Validator의 message를 받지 않으므로 Transaction이 실패합니다.
+
+**Traffic 충전:**
+
+```bash
+curl -X POST "http://localhost/api/validator/v0/wallet/buy-traffic-requests" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "receiving_validator_party_id": "<validator-party-id>",
+    "domain_id": "<synchronizer-id>",
+    "traffic_amount": 100000,
+    "tracking_id": "<unique-tracking-id>",
+    "expires_at": <expiry-unix-timestamp-micros>
+  }'
+```
+
+이 호출은 request만 생성합니다. `/v0/wallet/buy-traffic-requests/{tracking_id}/status` endpoint로 상태를 확인하세요. 전체 request/response schema는 [Buying Traffic](/sdks-tools/api-reference/splice-validator-api#buying-traffic)을 참조하세요.
+
+문제가 반복되지 않도록 **auto-top-up을 활성화**하세요. `validator-values.yaml`에서 다음과 같이 설정합니다.
+
+```yaml
+topup:
+  enabled: true
+  targetThroughput: 100000
+  minTopupInterval: 10m
+```
+
+### 느린 Database query
+
+Validator의 traffic이 충분한데도 Transaction timeout이 계속된다면 database가 bottleneck일 수 있습니다. 느린 query를 확인하세요.
+
+```sql
+SELECT pid, now() - pg_stat_activity.query_start AS duration, query
+FROM pg_stat_activity
+WHERE state = 'active' AND (now() - pg_stat_activity.query_start) > interval '5 seconds';
+```
+
+Pruning되지 않은 대형 table은 시간이 지나면서 query latency를 증가시킵니다. 아직 pruning을 활성화하지 않았다면 다음과 같이 설정하세요.
+
+```yaml
+participantPruningSchedule:
+  cron: "0 */10 * * * ?"
+  maxDuration: 30m
+  retention: 90d
+```
+
+### 응답하지 않는 Counterparty
+
+Timeout 오류에는 `unresponsiveParties`가 나열된 `context` field가 포함됩니다. 응답하지 않는 Party가 자신이 아니라면 문제는 Counterparty 측에 있습니다. 해당 Validator가 offline이거나 traffic funding이 부족하거나 자체 문제를 겪고 있을 수 있습니다. 이를 직접 해결할 수 없으므로 Counterparty operator에게 문의하세요.
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/troubleshoot/commitments.rst" hash="f64b1ce5" */}
+
+# ACS Commitment 문제 해결
+
+Participant Node는 정기적으로 Active Contract Set(ACS)에 대한 commitment를 생성하고 counter-participant와 교환합니다. 이 commitment는 Participant 간 공통 ACS state에 대해 non-repudiation을 확립하는 데 사용되며, Participant state를 pruning하려면 필요합니다. Commitment에 관한 자세한 내용은 Pruning overview section에서 확인할 수 있습니다.
+
+## Error code
+
+Participant Node는 counter-participant의 ACS와 fork를 감지하거나, commitment 계산이 느리거나, 수신한 commitment에서 tampering evidence가 발견되면 warning message를 기록합니다. 다음 error code는 commitment troubleshooting에 관련되며 Error codes reference section에 자세히 설명되어 있습니다.
+
+- `ACS_COMMITMENT_ALARM`: 이 warning은 malicious behavior를 나타냅니다. Counter-participant로부터 받은 ACS commitment의 signature가 유효하지 않거나, 동일한 interval을 대상으로 같은 counter-participant가 올바르게 서명했지만 서로 다른 두 commitment를 Participant가 받은 경우 발생합니다.
+- `ACS_COMMITMENT_MISMATCH`: 이 warning은 Participant와 하나 이상의 counter-participant가 공유하는 ACS state의 fork를 나타냅니다. Commitment mismatch inspection runbook을 참조하세요.
+- `ACS_MISMATCH_NO_SHARED_CONTRACTS`: 이 warning은 fork의 특수한 경우를 나타냅니다. Counter-participant는 특정 period의 commitment를 전송했지만 이 Participant는 해당 period 종료 시점에 공유된 active contract가 없다고 판단하는 경우입니다. Counter-participant에는 `ACS_COMMITMENT_MISMATCH`가 기록됩니다.
+- `ACS_COMMITMENT_DEGRADATION`: 이 warning은 Participant Node가 heavy load 등의 이유로 일부 counter-participant보다 commitment 계산이 뒤처져 catch-up mode에 진입했음을 나타냅니다. 이 Participant가 pruning을 방해하기 때문에 counter-participant가 해당 Participant를 blacklist할 수 있습니다.
+- `ACS_COMMITMENT_DEGRADATION_WITH_INEFFECTIVE_CONFIG`: 이 error code는 commitment 계산이 저하되어 catch-up mode가 시작되었지만 catch-up mode configuration이 유효하지 않아 performance를 개선하지 못함을 나타냅니다.
+
+## Inspection Tool
+
+Inspection Tool은 operator가 자신의 Participant Node와 counter-participant의 ACS state가 어느 정도 일치하는지 이해할 수 있게 합니다. 특히 다음 두 상황에서 유용합니다.
+
+- Operator가 합의가 가능한 속도 또는 필요한 속도보다 느리다고 의심하는 경우입니다. 예를 들어 commitment monitoring이 commitment 송수신 지연을 알리는 경우입니다. Inspection Tool을 사용하면 어떤 counter-participant가 얼마나 뒤처졌는지 또는 Participant 자체가 뒤처졌는지 조사할 수 있습니다.
+- Participant의 ACS state와 하나 이상의 counter-participant state 사이에 fork가 있는 경우입니다. Participant Node operator는 fork가 transient한지, 여러 counter-participant에 걸쳐 있는지 아니면 하나에만 해당하는지 등 fork의 context를 파악하려 합니다.
+
+### 느린 Commitment 문제 해결
+
+{/* DIVERGENCE: removed three editorial notes ("Refine when addressing #27011", plus a mid-paragraph note about generating example output from integration tests) that leaked into the rendered page as user-facing prose. Upstream docs-website source (docs/replicated/canton/3.5/participant/howtos/troubleshoot/commitments.rst, hash f64b1ce5) still has them inline. Related to github.com/DACH-NY/canton/issues/27011. */}
+
+Operator가 commitment monitoring을 통해 Participant 자체의 commitment 또는 counter-participant의 commitment가 느리다는 것을 관찰했거나 log에서 `ACS_COMMITMENT_DEGRADATION` warning을 확인했다고 가정합니다. Participant operator는 admin console 또는 gRPC의 `commitments.lookup_received_acs_commitments` Command를 사용해 어떤 counter-participant가 자체 Participant보다 얼마나 앞서 있는지 파악할 수 있습니다. 여러 counter-participant가 앞서 있다면 slowdown이 시작된 counter-participant commitment period와 Participant load, connectivity 등의 변경을 연관 지어 볼 수 있습니다.
+
+다음 예시는 `participant1` operator가 Synchronizer `synchronizerId`에서 특정 time period에 대해 모든 counter-participant로부터 받은 commitment를 검사하는 방법을 보여줍니다. Buffered commitment로 filter하며, 이는 Participant가 commitment를 받았지만 아직 해당 period의 commitment를 계산하지 않았음을 의미합니다.
+
+``` none
+import com.digitalasset.canton.admin.api.client.commands.ParticipantAdminCommands.Inspection.{
+  TimeRange,
+  SynchronizerTimeRange,
+}
+participant1.commitments.lookup_received_acs_commitments(
+  synchronizerTimeRanges = Seq(
+    SynchronizerTimeRange(
+      synchronizerId,
+      Some(TimeRange(startTimestamp, endTimestamp)),
+    )
+  ),
+  counterParticipants = Seq.empty,
+  commitmentState = Seq(ReceivedCmtState.Buffered),
+  verboseMode = true,
+)
+```
+
+출력은 counter-participant `participant2`가 `1970-01-01T00:00:20Z to 1970-01-01T00:00:25Z`와 `1970-01-01T00:00:25Z to 1970-01-01T00:00:30Z` period에 대한 commitment를 전송했음을 나타냅니다. 수신한 commitment hash는 표시되지만 Participant가 아직 이를 계산하지 않았기 때문에 전송한 commitment는 표시되지 않으며, 해당 commitment가 buffered 상태임을 보여줍니다.
+
+``` none
+Map(synchronizer1::122025ee4d83... ->
+  Vector(
+    ReceivedAcsCmt(CommitmentPeriod(fromExclusive = 1970-01-01T00:00:20Z, toInclusive = 1970-01-01T00:00:25Z),PAR::participant2::122080ac62a3...,Some(SHA-256:9a5a5575876d...),None,Buffered),
+    ReceivedAcsCmt(CommitmentPeriod(fromExclusive = 1970-01-01T00:00:25Z, toInclusive = 1970-01-01T00:00:30Z),PAR::participant2::122080ac62a3...,Some(SHA-256:ac9142943183...),None,Buffered)
+  )
+)
+```
+
+다른 예로 operator가 log에서 `ACS_COMMITMENT_MISMATCH`를 관찰했다고 가정합니다. 첫 단계로 admin console 또는 gRPC의 `commitments.lookup_sent_acs_commitments`를 사용해 mismatch를 검사할 수 있습니다. 이 Command를 사용하면 어떤 counter-participant와 어떤 period에 mismatch가 있는지 파악할 수 있습니다. 이후 mismatch period를 Participant에서 실행했을 수 있는 repair Command와 연관 지어 보거나 misbehaving counter-participant를 찾아낼 수도 있습니다.
+
+다음 예시는 `participant1` operator가 Synchronizer `synchronizerId`에서 특정 time period에 대해 모든 counter-participant에 전송한 commitment를 검사하는 방법을 보여줍니다. Mismatch commitment로 filter합니다.
+
+``` none
+import com.digitalasset.canton.admin.api.client.commands.ParticipantAdminCommands.Inspection.{
+  TimeRange,
+  SynchronizerTimeRange,
+}
+participant1.commitments.lookup_sent_acs_commitments(
+  synchronizerTimeRanges = Seq(
+    SynchronizerTimeRange(
+      synchronizerId,
+      Some(TimeRange(startTimestamp, endTimestamp)),
+    )
+  ),
+  counterParticipants = Seq.empty,
+  commitmentState = Seq(SentCmtState.Mismatch),
+  verboseMode = true,
+)
+```
+
+출력은 Participant `participant1`이 `1970-01-01T00:00:40Z to 1970-01-01T00:00:45Z` period의 commitment를 `participant2`에 보냈음을 나타냅니다. 전송 및 수신 commitment의 bytestring이 서로 다르므로 mismatch 상태임을 보여줍니다.
+
+``` none
+Map(synchronizer1::1220087eeae4... ->
+  Vector(
+    SentAcsCmt(CommitmentPeriod(fromExclusive = 1970-01-01T00:00:40Z, toInclusive = 1970-01-01T00:00:45Z),PAR::participant2::12208336b38e...,Some(SHA-256:1d7e803bed16...),Some(SHA-256:c72753e6adc6...),Mismatch)
+  )
+)
+```
+
+## 느린 Counter-participant 처리
+
+Participant operator가 counter-participant의 commitment 전송이 느린 것을 관찰하면 여러 Synchronizer에서 특정 counter-participant의 commitment를 기다리지 않도록 선택할 수 있습니다. Configuration은 즉시 적용됩니다. Participant가 이 counter-participant의 commitment를 받지 못하거나 받은 commitment가 일치하지 않아도 pruning을 계속할 수 있습니다. Participant는 이 counter-participant의 commitment를 기다리지는 않지만 계속 commitment를 계산해 전송하며, 잠재적으로 수신되는 commitment도 처리합니다. 예를 들어 mismatch warning을 기록합니다.
+
+<Note>
+Commitment 대기를 비활성화하면 Participant를 pruning할 때 non-repudiation과 관련해 해당 counter-participant를 무시하지만, 해당 counter-participant 또는 Network의 failure 및 slowdown에 대한 pruning resilience는 높아집니다.
+</Note>
+
+다음은 `participant1` operator가 Synchronizer `synchronizerId1`에서 counter-participant `participant2`를 no-wait로 표시하는 방법을 보여줍니다. 이 section의 다른 Command와 마찬가지로 여러 counter-participant 및 Synchronizer도 지정할 수 있습니다.
+
+``` none
+participant1.commitments.set_no_wait_commitments_from(Seq(participant2), Seq(synchronizerId1))
+```
+
+Operator는 유사한 Command를 사용해 Synchronizer `synchronizerId1`의 counter-participant `participant2`에 대한 no-wait configuration을 reset하고 다시 commitment를 기다리게 할 수도 있습니다.
+
+``` none
+participant1.commitments.set_wait_commitments_from(Seq(participant2), Seq(synchronizerId1))
+```
+
+`synchronizerId1`의 current no-wait configuration과 `participant1`이 해당 Synchronizer에서 알고 있는 모든 Participant를 조회하려면 아래 Command를 사용합니다. 해당 Participant가 현재 `synchronizerId1`에 연결되어 있는지는 관계없습니다. Command는 특정 counter-participant 또는 Synchronizer로 filtering할 수 있습니다.
+
+``` none
+val (participant1FilterNoWaitList, participant1FilterWaitList) =
+  participant1.commitments.get_wait_commitments_config_from(Seq(synchronizer1Id), Seq.empty)
+```
+
+출력은 `participant2`가 `participant1`의 `synchronizerId1`에서 no-wait로 표시되어 있고, `participant1`이 현재 `synchronizerId1`에서 commitment를 기다리는 Participant가 없음을 보여줍니다.
+
+``` none
+(Vector
+  (NoWaitCommitments
+    (no-wait counter-participant = PAR::participant2::12206a279664..., synchronizers = synchronizer1::1220034cf0b0...)
+  ),
+Vector()
+)
+```
+
+<Note>
+No-wait 목록에 추가된 Participant는 *Default* 또는 *Distinguished* counter-participant latency monitoring에 영향을 주지 않습니다.
+</Note>
+
+## 느린 Commitment 계산 처리
+
+Catch-up mode는 Participant가 스스로 뒤처지고 있음을 감지하면 자동으로 trigger되는 동작입니다. Synchronizer operator는 Synchronizer별로 catch-up mode를 configure할 수 있습니다.
+
+Participant가 일정 period 수만큼 뒤처졌음을 감지하면 default 2인 `nrIntervalsToTriggerCatchUp`에 따라 period skipping을 활성화합니다. Default 5인 `catchUpIntervalSkip`을 사용해 계산량을 줄이고 catch up합니다. 이는 사이에 있는 모든 period에서 fork detection을 수행하지 않고 skip interval만 비교한다는 뜻입니다. Skip에서 fork가 감지되지 않으면 잠재적인 fork는 이미 자체적으로 해소된 것입니다.
+
+Synchronizer의 대체 configuration인 `reconciliationInterval`은 default 1분이며 Participant가 counter-participant와 commitment를 얼마나 자주 교환할지 결정합니다. 값이 작으면 fork detection이 더 자주, 더 빠르게 수행됩니다. 값이 크면 계산량은 줄지만 fork를 인지하기까지 더 오래 걸립니다. Catch-up mode는 `reconciliationInterval`의 직접적인 영향을 받습니다. Default 값에서는 Participant가 10분 뒤처졌음을 감지하면 catch-up이 trigger됩니다. 계산식은 `reconciliationInterval` \* `nrIntervalsToTriggerCatchUp` \* `catchUpIntervalSkip`입니다.
+
+위 parameter의 configuration은 Synchronizer management의 Manage dynamic synchronizer parameters section을 참조하세요.
+
+### Fork 문제 해결(Commitment Mismatch)
+
+Operator가 log에서 `ACS_COMMITMENT_MISMATCH`를 관찰하면 Participant의 ACS state가 counter-participant의 state와 diverge했음을 의미합니다. 즉, 두 Participant가 공유 contract에 동의하지 않는 상태입니다. 아래 예에서 `participant1`은 `synchronizer1`의 `1970-01-01T00:01:35Z to 1970-01-01T00:01:40Z` period에 대해 `participant2`에서 commitment를 받았지만, 수신한 commitment가 해당 period의 local commitment와 일치하지 않습니다.
+
+``` none
+ACS_COMMITMENT_MISMATCH(5,246a29fb): The local commitment does not match the remote commitment
+err-context:
+  {
+    local=Vector((CommitmentPeriod(fromExclusive = 1970-01-01T00:01:35Z, toInclusive = 1970-01-01T00:01:40Z), SHA-256:cfd7fd917fb9...)),
+    remote=AcsCommitment(
+      synchronizerId = synchronizer1::1220b9dd1a9f199b898522ec31a8ce3ff098a7ce05b0cd3ce76e0a544959fe58c8e9::34-0,
+      sender = PAR::participant2::1220b2063ef1...,
+      counterParticipant = PAR::participant1::1220cc59a221...,
+      period = CommitmentPeriod(fromExclusive = 1970-01-01T00:01:35Z, toInclusive = 1970-01-01T00:01:40Z),
+      commitment = SHA-256:e2c0cf0361cb...
+    ),
+    synchronizerId=synchronizer1::1220b9dd1a9f...
+  }
+```
+
+<Note>
+Mismatch troubleshooting을 위해서는 두 Participant operator가 원인을 식별하도록 협업해야 합니다. Mismatch는 repair service로 contract store를 변경할 때의 misconfiguration, bug 또는 malicious behavior로 인해 발생할 수 있습니다. Non-repudiation section은 fork에 대해 더 자세히 설명합니다. 예를 들어 한 Participant는 다른 Participant가 mismatch timestamp에 공유되었다고 주장하는 contract를 알지 못할 수 있고, 과거에는 알았지만 mismatch timestamp 전에 deactivate했을 수 있으며, contract가 active이지만 다른 Synchronizer에 있을 수도 있습니다. 따라서 mismatch troubleshooting의 결과는 두 Participant 중 하나만 상대와 공유한다고 판단하는 각 contract의 mismatch 유형을 제공합니다.
+</Note>
+
+Participant가 서로 신뢰하지 않는 경우 troubleshooting 과정에서 교환하는 data를 validate할 수 있습니다. 따라서 trust level에 따라 이 validation 단계는 optional입니다.
+
+Mismatch는 다음과 같이 해결합니다.
+
+1.  **Local shared contract metadata 검사** 이 data는 `participant1`이 `synchronizer1`의 timestamp `1970-01-01T00:01:40Z`에 counter-participant `participant2`와 공유한다고 판단하는 contract set을 나타냅니다. `participant1` operator는 먼저 lookup_sent_acs_commitments로 자신이 보낸 commitment를 가져온 다음, admin console 또는 gRPC의 `commitments.open_commitment` Command로 다음과 같이 commitment를 열어 이 set을 얻을 수 있습니다.
+
+    ``` none
+    val sentCommitmentP1 = participant1.commitments
+      .lookup_sent_acs_commitments(
+        synchronizerTimeRanges = Seq(
+          SynchronizerTimeRange(
+            synchronizerId1,
+            Some(
+              TimeRange(
+                mismatchTimestamp.minusMillis(1),
+                mismatchTimestamp,
+              )
+            ),
+          )
+        ),
+        counterParticipants = Seq(participant2.id),
+        commitmentState = Seq.empty,
+        verboseMode = true,
+      )(synchronizerId1)
+      .head
+      .sentCommitment
+      .getOrElse(throw new IllegalStateException("Commitment is empty"))
+    val contractsAndReassignmentCountersP1 = participant1.commitments.open_commitment(
+      commitment = sentCommitmentP1,
+      physicalSynchronizerId = synchronizerId1,
+      timestamp = mismatchTimestamp,
+      counterParticipant = participant2,
+      outputFile = Some(openCmtLocalFilename),
+    )
+    ```
+
+    여기서 `mismatchTimestamp = 1970-01-01T00:01:40Z`입니다. Local commitment와 remote commitment의 period end가 다르면 local commitment의 period end를 사용합니다.
+
+    Operator가 console Command를 사용할 때 output을 file에 optional로 기록할 수 있습니다. 여기서는 다음 단계에 유용한 `openCmtLocalFilename`을 사용합니다. `openCmtLocalFilename` file의 output에는 local shared contract ID와 reassignment counter가 포함됩니다.
+
+    ``` none
+    {"cid":"00749df26491a08f246d4cd262307ea0c9676adde3861d6d2c80e081ddd8160430ca1112202942877d5c9e8d6f79d9167f9841fd4fd092ed2c97c47459c2c40f18a236b239","reassignmentCounter":"0"}
+    {"cid":"008403c268ce244fda036c7916b1f33885df153e6a4b0f60e3c8724277100b4362ca111220f5a052b1c66024133c844a8e6f67dec9a1d3c6e0cd3cb0023843b10cdeff4126","reassignmentCounter":"0"}
+    {"cid":"002e46d505d569ad80638831c5ad043d281960121f8b6a564e18937819cf1c8536ca111220985ed1546f8a45e39626290d80d0640c8663ed13d078f9761b0e1e2bd0c99ec5","reassignmentCounter":"0"}
+    {"cid":"00f22bb479621372e70bc1b9d83ea0a6741282ab014319ef1a7c4ae0b82f442785ca1112207e6d62fda4b9ae58fdc686332b4c7c688814cab840283d1f3245d7fc6c026fd1","reassignmentCounter":"0"}
+    {"cid":"00e577eb32be4082705edcccc231657551b83bef6076fafcd0f3a89f63f09645f3ca1112208604884e3c2d4711bae0ab6178238b36de6ba1e5f5913be6dce2016e6371725a","reassignmentCounter":"0"}
+    {"cid":"002d6217d1ea6ff05ca0d089a8988465197e6c5518a9f83cb0dc69611cf0572acbca1112202329ef987c25375e0130580e289df681581dc9439737cd53f3223cb22e7c2ff9","reassignmentCounter":"0"}
+    ```
+
+    <Note>
+    Commitment mismatch inspection에 사용하는 file은 `.json` format입니다. 일부 file에서는 file 전체가 아니라 각 line이 하나의 `JSON` object입니다. File content가 변경될 수 있으므로 읽기와 쓰기에는 제공되는 tooling을 사용할 것을 권장합니다.
+    </Note>
+
+2.  **Counter-participant에서 counter-participant의 shared contract metadata 검사** 이 data는 counter-participant가 `synchronizer1`의 timestamp `1970-01-01T00:01:40Z`에 해당 Participant와 공유한다고 판단하는 contract set을 나타냅니다. `participant1` operator는 `participant2` operator에게 `commitments.open_commitment`를 실행하도록 요청합니다. Counter-participant operator도 log에서 mismatch warning을 관찰하므로 이를 실행하려 할 가능성이 높습니다.
+
+    ``` none
+    val sentCommitmentP2 = participant2.commitments
+      .lookup_sent_acs_commitments(
+        synchronizerTimeRanges = Seq(
+          SynchronizerTimeRange(
+            synchronizerId1,
+            Some(
+              TimeRange(
+                mismatchTimestamp.minusMillis(1),
+                mismatchTimestamp,
+              )
+            ),
+          )
+        ),
+        counterParticipants = Seq(participant1.id),
+        commitmentState = Seq.empty,
+        verboseMode = true,
+      )(synchronizerId1)
+      .head
+      .sentCommitment
+      .getOrElse(throw new IllegalStateException("Commitment is empty"))
+    val contractsAndReassignmentCountersP2 = participant2.commitments.open_commitment(
+      commitment = sentCommitmentP2,
+      physicalSynchronizerId = synchronizerId1,
+      timestamp = mismatchTimestamp,
+      counterParticipant = participant1,
+      outputFile = Some(openCmtRemoteFilename),
+    )
+    ```
+
+    이번에는 `participant2` operator가 `mismatchTimestamp = 1970-01-01T00:01:40Z`에 `participant1`으로 전송한 commitment를 가져옵니다. Local commitment와 remote commitment의 period end가 달랐다면 remote commitment의 period end를 사용합니다.
+
+    앞서와 같이 `openCmtRemoteFilename` file의 output에는 local shared contract ID와 reassignment counter가 포함됩니다.
+
+    ``` none
+    {"cid":"00749df26491a08f246d4cd262307ea0c9676adde3861d6d2c80e081ddd8160430ca1112202942877d5c9e8d6f79d9167f9841fd4fd092ed2c97c47459c2c40f18a236b239","reassignmentCounter":"0"}
+    {"cid":"008403c268ce244fda036c7916b1f33885df153e6a4b0f60e3c8724277100b4362ca111220f5a052b1c66024133c844a8e6f67dec9a1d3c6e0cd3cb0023843b10cdeff4126","reassignmentCounter":"0"}
+    {"cid":"002e46d505d569ad80638831c5ad043d281960121f8b6a564e18937819cf1c8536ca111220985ed1546f8a45e39626290d80d0640c8663ed13d078f9761b0e1e2bd0c99ec5","reassignmentCounter":"0"}
+    {"cid":"00e577eb32be4082705edcccc231657551b83bef6076fafcd0f3a89f63f09645f3ca1112208604884e3c2d4711bae0ab6178238b36de6ba1e5f5913be6dce2016e6371725a","reassignmentCounter":"0"}
+    {"cid":"002d6217d1ea6ff05ca0d089a8988465197e6c5518a9f83cb0dc69611cf0572acbca1112202329ef987c25375e0130580e289df681581dc9439737cd53f3223cb22e7c2ff9","reassignmentCounter":"0"}
+    ```
+
+    `participant2` operator는 `openCmtRemoteFilename` file을 `participant1` operator에게 보낼 수 있습니다.
+
+3.  **Optional: counter-participant data validate** `participant1` operator는 `participant2`에서 받은 contract metadata가 `participant2`에서 받은 commitment와 일치하는지 validate할 수 있습니다.
+
+    ``` none
+    import com.digitalasset.canton.integration.tests.util.CommitmentTestUtil.computeHashedCommitment
+    import com.digitalasset.canton.participant.pruning.OpenCommitmentHelper
+    val remoteContractsAndTransferCounters =
+      OpenCommitmentHelper.readFromFile(openCmtRemoteFilename)
+    val receivedCommitmentP1fromP2 = participant1.commitments
+      .lookup_received_acs_commitments(
+        synchronizerTimeRanges = Seq(
+          SynchronizerTimeRange(
+            synchronizerId1,
+            Some(
+              TimeRange(
+                mismatchTimestamp.minusMillis(1),
+                mismatchTimestamp,
+              )
+            ),
+          )
+        ),
+        counterParticipants = Seq(participant2.id),
+        commitmentState = Seq.empty,
+        verboseMode = true,
+      )(synchronizerId1)
+      .head
+      .receivedCommitment
+      .getOrElse(throw new IllegalStateException("Commitment is empty"))
+    val receivedOpenedCommitmentP1fromP2 =
+      computeHashedCommitment(remoteContractsAndTransferCounters)
+    if (receivedOpenedCommitmentP1fromP2 != receivedCommitmentP1fromP2)
+      throw new InvalidRequestStateException(
+        s"The commitment does not match the opened contract metadata!"
+      )
+    ```
+
+    여기서 `openCmtRemoteFilename`은 `participant1` operator가 2단계에서 `participant2` operator로부터 받은 file입니다.
+
+    이 단계가 실패하면 counter-participant가 잘못된 commitment 또는 잘못된 contract metadata를 보냈거나 둘 다 잘못 보낸 것입니다. 이 경우 `participant1` operator는 `participant2` operator의 input을 신뢰할 수 없으므로 mismatch 원인을 안정적으로 식별할 수 없으며 아래 troubleshooting 단계를 진행해서는 안 됩니다.
+
+4.  **Mismatch contract 식별** `participant1` operator는 1단계의 자체 opened commitment output인 `openCmtLocalFilename` file과 2단계에서 받은 counter-participant의 opened commitment output인 `openCmtRemoteFilename` file을 비교해 mismatch contract를 식별할 수 있습니다.
+
+    ``` none
+    import com.digitalasset.canton.participant.pruning.CommitmentContractMetadata
+    import com.digitalasset.canton.participant.pruning.OpenCommitmentHelper
+    val contractsAndTransferCounters1 =
+      OpenCommitmentHelper.readFromFile(openCmtLocalFilename)
+    val contractsAndTransferCountersCounterParticipant1 =
+      OpenCommitmentHelper.readFromFile(openCmtRemoteFilename)
+    val mismatchingContracts = CommitmentContractMetadata.compare(
+      contractsAndTransferCounters1,
+      contractsAndTransferCountersCounterParticipant1,
+    )
+    mismatchingContracts.writeToFile(mismatchingContractsFilename)
+    ```
+
+    Code excerpt와 같이 output을 file에 optional로 기록할 수 있습니다. 여기서는 다음 단계에 유용한 `mismatchingContractsFilename`을 사용합니다.
+
+    출력은 mismatch를 보여줍니다. `participant1`만 active로 간주하는 contract가 하나 있습니다. `participant2`만 active로 간주하는 contract가 있거나 두 Participant가 모두 active로 간주하지만 reassignment counter가 다른 contract가 있는 경우에도 output에 표시됩니다.
+
+    ``` none
+    {
+      "cidsOnlyLocal": [
+        "00f22bb479621372e70bc1b9d83ea0a6741282ab014319ef1a7c4ae0b82f442785ca1112207e6d62fda4b9ae58fdc686332b4c7c688814cab840283d1f3245d7fc6c026fd1"
+      ],
+      "cidsOnlyRemote": [],
+      "differentReassignmentCounters": []
+    }
+    ```
+
+5.  **Mismatch 원인 검사** `participant1` operator는 contract `00e773decfb7f537880972943980da..`이 active인 이유를 검사해 mismatch 원인을 분석할 수 있습니다. `participant2` operator와 ACS state repair를 위해 교환할 수 있도록 output을 file에 optional로 기록할 수 있으며, 여기서는 `inspectContractsFilename`을 사용합니다.
+
+    ``` none
+    import com.digitalasset.canton.participant.pruning.CommitmentInspectContract
+    val mismatches = CompareCmtContracts.readFromFile(mismatchingContractsFilename)
+
+    val inspectContracts = participant1.commitments.inspect_commitment_contracts(
+      contracts = mismatches.cidsOnlyLocal ++ mismatches.differentReassignmentCounters,
+      timestamp = mismatchTimestamp,
+      expectedSynchronizerId = synchronizerId1,
+      downloadPayload = true,
+    )
+    CommitmentInspectContract.writeToFile(inspectContractsFilename, inspectContracts)
+    ```
+
+    Command는 지정된 contract가 처음부터 현재까지 각 Synchronizer에서 거친 contract state인 created, assigned, unassigned, archived, unknown을 반환합니다. 이 경우 `inspectContractsFilename`에는 Participant가 알고 있는 모든 Synchronizer에서 contract `00e773decfb7f537880972943980da..`의 state가 포함됩니다.
+
+    ``` none
+    {
+      "cid":"00f22bb479621372e70bc1b9d83ea0a6741282ab014319ef1a7c4ae0b82f442785ca1112207e6d62fda4b9ae58fdc686332b4c7c688814cab840283d1f3245d7fc6c026fd1",
+      "activeOnExpectedSynchronizer":true,
+      "contract":"CgMyLjES4QQKRQDKmKJSNKcVjBs2yEfu9TDXuGxVS8/FDK3F3QxK8tOs58oREiA3S1IQ7INuTTYMHjMRm/fNx6VaEaI/t61bwhf5XN5NexIOQ2FudG9uRXhhbXBsZXMaTApAODIwYTA5MjEzYzgyYmRlNjdmZjUxODEyMWViMTFhYjdjYTUwNTA3MTAzNDIyMDMzNzEyN2UyNjhkMTVkZWI1NhIDSW91GgNJb3Ui3AFq2QEKVgpUOlJwYXJ0aWNpcGFudDE6OjEyMjA4OWRlZjczZGEzYTAzOTkzMDIxZmFjM2Q1NDY5ZDQ5YWJmMzc1NWFhNzJlNTFhNzc0MTEwNWJlMjFmOWVlZGJlClYKVDpScGFydGljaXBhbnQyOjoxMjIwYjdhMzBmMDYwODIxNzU1YzZmNDFlNTg2MDU3NDBiZGE0NWM0ZjM5ZmEzMTVjODAwOThkYTNhZjAwM2FhNzFjOAohCh9qHQoSChAyDjEwMC4wMDAwMDAwMDAwCgcKBUIDVVNECgQKAloAKlJwYXJ0aWNpcGFudDE6OjEyMjA4OWRlZjczZGEzYTAzOTkzMDIxZmFjM2Q1NDY5ZDQ5YWJmMzc1NWFhNzJlNTFhNzc0MTEwNWJlMjFmOWVlZGJlMlJwYXJ0aWNpcGFudDI6OjEyMjBiN2EzMGYwNjA4MjE3NTVjNmY0MWU1ODYwNTc0MGJkYTQ1YzRmMzlmYTMxNWM4MDA5OGRhM2FmMDAzYWE3MWM4OQEtMQEAAAAAQioKJgokCAESICk3eHUEqY8nX3bxxmkk5wkSkfDtDxlKUI52dC38tZU5EB4=",
+      "state":[
+        {
+          "synchronizerId":"synchronizer1::12207195bde33b4c24dac3f1d7105873ff6c6724d9160491386d17d97e910f3155e3",
+          "contractState":{"$type":"ContractCreated"}
+        }
+      ]
+    }
+    ```
+
+    `participant2` operator도 4단계와 5단계의 Command를 실행해 자신의 mismatch 원인을 검사하고, 결과를 `participant1` operator와 교환해 root cause를 공동으로 식별할 수 있습니다.
+
+{/* COPIED_END */}

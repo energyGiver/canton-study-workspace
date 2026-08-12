@@ -1,0 +1,673 @@
+---
+title: "Validator Disaster Recovery"
+description: "Validator Node의 disaster recovery 및 restore 절차"
+source_id: "SRC-7C4FD68B51"
+source_path: "global-synchronizer/production-operations/validator-disaster-recovery"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "f3adaeb5d6eaaec2b600fc701a1bda95c4a372a9aac510568218482ab17d9c2c"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDisasterRecoveryBash140 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-disaster-recovery-bash-140.mdx";
+import ExternalSpliceMainSpliceRstLiteralMarkerAppsAppSrcPackExamplesSvHelmStandaloneValidatorValuesParticipantBootstrapMigrateToNewParticipantStart from "/snippets/external/splice/main/splice-literal-marker-apps-app-src-pack-examples-sv-helm-standalone-validator-values-participant-bootstrap-migrate-to-new-participant-start.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDisasterRecoveryYaml185 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-disaster-recovery-yaml-185.mdx";
+import InternalSpliceMainSpliceRstLiteralFullAppsAppSrcPackExamplesRecoveryManualIdentitiesDump from "/snippets/internal/splice/main/splice-literal-full-apps-app-src-pack-examples-recovery-manual-identities-dump.mdx";
+
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDisasterRecoveryNone299 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-disaster-recovery-none-299.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDisasterRecoveryNone314 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-disaster-recovery-none-314.mdx";
+
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDisasterRecoveryNone485 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-disaster-recovery-none-485.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/validator-disaster-recovery.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/validator_operator/validator_disaster_recovery.rst" hash="48572fc5" */}
+
+Disaster에서 복구하는 방법은 세 가지입니다.
+
+1.  단일 Node만 영향을 받고 전체 network는 정상인 단순한 경우 일반적으로 backup restore로 충분합니다.
+2.  Full backup은 없지만 [identity backup](/global-synchronizer/production-operations/validator-backups)을 생성했다면 새 Validator에서 Validator balance를 복구할 수 있습니다.
+3.  Global Synchronizer가 중단되면 Super Validator가 새 Physical Synchronizer로 진행하기 위한 roll-forward Logical Synchronizer Upgrade를 시작합니다. Validator는 SV가 전달한 정보를 바탕으로 자체 Node에서 절차를 시작해야 합니다.
+
+> Asset 복구는 다음 중 최소 **하나**가 충족되는 경우에만 가능합니다.
+>
+> - 최신 [database backup](/global-synchronizer/production-operations/validator-backups)을 사용할 수 있습니다.
+> - 최신 identity backup을 사용할 수 있습니다.
+> - Validator Participant가 key 관리에 [external KMS](/global-synchronizer/production-operations/validator-security)를 사용했고 KMS가 해당 key를 계속 보유하고 있습니다. KMS key만으로, 즉 identity backup 또는 database backup 없이 Validator를 복구하는 것은 복잡한 process이며 여기에는 명시적으로 설명되어 있지 않습니다.
+>
+> 위 조건 중 어느 것도 충족되지 않으면 asset ownership을 증명하는 관련 Participant secret key를 복구할 수 없습니다.
+
+## Backup에서 Validator restore
+
+다음 조건을 **모두** 충족하면 전체 Node를 backup에서 restore할 수 있습니다.
+
+- Database backup을 사용할 수 있습니다.
+- Database backup이 생성된 지 30일 미만입니다. Sequencer pruning으로 인해 30일 넘게 뒤처진 Participant는 Synchronizer를 catch up하여 다시 완전히 operational한 상태가 될 수 없습니다.
+- Synchronizer가 [Logical Synchronizer Upgrade](/global-synchronizer/production-operations/logical-synchronizer-upgrade)를 거치기 전에 backup을 생성했다면 이전 Physical Synchronizer의 Synchronizer Node를 계속 사용할 수 있을 때만 backup에서 Node를 restore할 수 있습니다. 이 조건이 충족되면 먼저 이전 Physical Synchronizer에서 Node를 restore하여 catch up한 후 새 Physical Synchronizer에서 완전히 operational한 상태가 되도록 해야 합니다.
+
+위 조건 중 하나를 충족하지 않아도 아래에서 설명하는 re-onboarding 절차로 Node를 복구할 수 있습니다.
+
+Backup에서 Node를 restore하려면 다음 단계를 수행합니다.
+
+1.  Validator Node의 모든 component를 replica 0개로 scale down합니다.
+2.  Backup에서 모든 component의 storage 및 DB를 restore합니다. 정확한 process는 component가 사용하는 storage 및 DB에 따라 달라지며 여기에는 설명되어 있지 않습니다.
+3.  모든 storage를 restore한 후 Validator Node의 모든 component를 replica 1개로 다시 scale up합니다.
+
+**참고:** 현재는 backup 생성 후 onboard된 user를 수동으로 re-onboard해야 합니다.
+
+Docker Compose deployment를 실행 중이라면 다음과 같이 Postgres database를 restore할 수 있습니다.
+
+1.  `./stop.sh`를 사용하여 Validator 및 Participant를 중지합니다.
+2.  기존 database volume을 삭제합니다: `docker volume rm compose_postgres-splice`.
+3.  Postgres container만 시작합니다: `docker compose up -d postgres-splice`
+4.  `docker exec splice-validator-postgres-splice-1 pg_isready`로 Postgres가 준비되었는지 확인합니다. 성공할 때까지 이 command를 다시 실행합니다.
+5.  `validator_dump_file`에 restore할 dump filename이 들어 있다고 가정하고 Validator database를 restore합니다: `docker exec -i splice-validator-postgres-splice-1 psql -U cnadmin validator < $validator_dump_file`
+6.  `participant_dump_file`에 restore할 dump filename이 들어 있고 `migration_id`에 최신 migration ID가 들어 있다고 가정하고 Participant database를 restore합니다: `docker exec -i splice-validator-postgres-splice-1 psql -U cnadmin participant-$migration_id < $participant_dump_file`
+7.  Postgres instance를 중지합니다: `docker compose down`
+8.  평소와 같이 Validator를 시작합니다.
+
+## Identity backup에서 복구: Validator re-onboard 및 host하는 모든 user balance 복구
+
+Validator Node에 catastrophic failure가 발생하면 Validator와 Validator가 host하는 user가 소유한 일부 data를 SV에서 복구할 수 있습니다. 여기에는 Canton Coin balance와 CNS entry가 포함됩니다. 기존 Validator의 namespace key를 control하는 새 Validator Node를 deploy하여 복구합니다. Namespace key는 identity backup file을 통해 제공해야 합니다. 새 Validator는 이 key를 사용하여 기존 Validator에서 host되던 Party를 새 Validator로 migrate합니다. SV는 migrate된 Party가 stakeholder인 알려진 모든 contract 정보를 제공하여 이 process를 지원합니다.
+
+다음 단계에서는 [Node Identity Backup](/global-synchronizer/production-operations/validator-backups) section에서 생성한 Validator identity backup이 있다고 가정합니다. 해당 backup은 없지만 Validator Participant database backup이 있다면 identity backup을 수동으로 구성할 수 있습니다.
+
+Identity backup에서 복구하기 위해 아래에 설명된 특수 [configuration option](/global-synchronizer/deployment/configuration)을 적용하여 새 Validator를 deploy합니다. 선택한 설정에 따라 Docker Compose 또는 Kubernetes deployment 안내를 참고하세요.
+
+새 Validator가 실행되면 administrator로 login하여 balance를 확인할 수 있어야 합니다. Validator에서 host되는 다른 user는 re-onboard해야 하지만 coin balance 및 CNS entry는 복구되어 re-onboard한 user가 access할 수 있습니다.
+
+문제가 발생하면 아래 troubleshooting section을 참고하세요.
+
+<Warning>
+이 process는 모든 Party ID와 DSO Party와 공유하는 모든 contract를 보존합니다. 따라서 동일한 Validator Party hint를 *반드시* 유지해야 하며 새 onboarding secret은 필요하지 않습니다. 새 onboarding secret이 필요하다는 error가 발생하면 새 secret을 요청하지 말고 configuration을 다시 확인하세요.
+</Warning>
+
+### Kubernetes Deployment
+
+Kubernetes deployment에서 Validator를 re-onboard하고 host하는 모든 user의 balance를 복구하려면 Validator app 및 Participant를 설치하는 [Helm Validator 설치](/global-synchronizer/deployment/validator-kubernetes)의 단계를 반복합니다. 다음 사항에 유의하세요.
+
+- Identity backup file 내용으로 Kubernetes secret을 생성합니다. `PARTICIPANT_BOOTSTRAP_DUMP_FILE` environment variable을 backup file path로 설정했다고 가정하면 다음 command로 secret을 생성할 수 있습니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDisasterRecoveryBash140 />
+
+- `standalone-validator-values.yaml` file에서 다음 line의 comment를 제거합니다. 그러면 Validator의 새 Participant ID가 지정됩니다. `put-some-new-string-never-used-before`를 이전에 사용한 적이 없는 string으로 바꾸고 `nodeIdentifier`도 같은 value와 일치하도록 조정하세요.
+
+<ExternalSpliceMainSpliceRstLiteralMarkerAppsAppSrcPackExamplesSvHelmStandaloneValidatorValuesParticipantBootstrapMigrateToNewParticipantStart />
+
+### Docker-Compose Deployment
+
+Docker Compose deployment에서 Validator를 re-onboard하고 host하는 모든 user의 balance를 복구하려면 다음을 입력합니다.
+
+```bash
+./start.sh -s "<SPONSOR_SV_URL>" -o "" -p <party_hint> -m "<MIGRATION_ID>" -i "<node_identities_dump_file>" -P "<new_participant_id>" -w
+```
+
+여기서 `<node_identities_dump_file>`은 Node identity backup이 포함된 file path이고 `<new_participant_id>`는 새 Participant에 사용할 새 identifier입니다. 이전에 사용한 적이 없는 값이어야 합니다. 이후 Validator를 restart할 때도 `-P`를 동일한 `<new_participant_id>`와 함께 계속 제공해야 합니다.
+
+### Obtaining an Identities Backup from a Participant Database Backup
+
+사용할 수 있는 identity backup은 없지만 Validator Participant database backup이 있다면 identity backup을 수동으로 구성할 수 있습니다. 한 가지 방법은 다음과 같습니다.
+
+1.  Database backup을 임시 Postgres instance에 restore하고 해당 instance를 사용하는 임시 Participant를 deploy합니다.
+
+    - Deployment model에 맞는 안내는 backup에서 Validator를 restore하는 section을 참고하세요.
+    - Participant만 restore하고 scale up하면 되므로 Validator app과 database는 무시할 수 있습니다.
+    - Restore된 Participant가 failure로 즉시 종료되면 다음 [additional configuration](/global-synchronizer/deployment/configuration)을 추가합니다.
+
+    <ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDisasterRecoveryYaml185 />
+
+2.  임시 Participant에 연결된 [Canton Console](/global-synchronizer/canton-console/essential-commands)을 엽니다.
+
+3.  열린 Console에서 아래 command를 실행합니다. 그러면 backup이 Console을 연 local directory 기준의 *local* file인 `identities-dump.json`에 저장됩니다.
+
+    <InternalSpliceMainSpliceRstLiteralFullAppsAppSrcPackExamplesRecoveryManualIdentitiesDump />
+
+    Participant가 external KMS에 key를 저장하도록 구성되어 있다면 위 command를 이에 맞게 조정해야 합니다.
+
+### Limitation 및 Troubleshooting
+
+일부 non-standard case에서는 key backup을 사용한 automated re-onboarding이 Party migrate, 즉 복구에 성공하지 못할 수 있습니다. 원인을 파악할 수 있도록 Validator log에서 warning 또는 error entry를 확인하세요.
+
+#### 자동으로 migrate되지 않는 Party
+
+다음 type의 Party는 기본적으로 migrate되지 않습니다.
+
+- 여러 Participant에서 host되는 Party. 기존의 failure가 발생한 Participant에서는 unhost될 수 있지만 다른 Participant에서는 계속 host됩니다.
+- Validator에서 host되는 External Party. 기존의 failure가 발생한 Participant에서는 unhost될 수 있습니다. External Party 복구 방법은 `validator_recover_external_party`를 참고하세요.
+
+자동으로 migrate되지 않은 Party set의 migration을 강제로 시도해야 할 수 있습니다. 이를 위해 Validator app에서 `parties-to-migrate` configuration option을 설정할 수 있습니다. 이 option에 전달한 각 Party의 migration을 시도하며 첫 번째 migration failure에서 Validator app initialization이 중단됩니다.
+
+#### 실패한 ACS import troubleshooting
+
+{/* NETWORKVARS_START source="/snippets/networkvars/global-synchronizer/production-operations/validator-disaster-recovery-1.mdx" */}
+<Tabs>
+
+<Tab title="DevNet (0.7.1)">
+
+문제가 계속 발생하고 특히 Participant log에서 `ACS_COMMITMENT_MISMATCH` warning이 나타난다면 Node에서 host되는 Party 중 하나 이상의 active contract를 import하는 과정에서 문제가 발생했을 가능성이 높습니다. 또 다른 일반적인 증상은 Validator Party가 영향을 받은 경우 Validator initialization이 `Unknown secret` error로 실패하고 Validator log에 `ValidatorLicense not found` message가 포함되는 것입니다. 실패한 `ACS` import는 일반적으로 다음과 같이 처리할 수 있습니다.
+
+1.  먼저 모든 Party가 같은 Node에서 host되는지 확인합니다. 가장 일반적인 경우는 Party가 이전 Participant ID를 가진 기존 Node에 아직 있거나 새 Node로 migrate된 경우입니다. Network의 아무 Participant에나 Canton Console을 열어 확인할 수 있으며 다른 Validator 또는 SV operator에게 이 정보를 요청할 수도 있습니다. 다음 query에서 \<namespace\>는 예를 들어 Validator Party ID에서 `::` 뒤에 있는 부분입니다.
+
+    ```
+    val syncId = participant.synchronizers.list_connected().head.synchronizerId
+    participant.topology.party_to_participant_mappings.list(syncId, filterParticipant = <namespace>)
+    ```
+    모든 Party가 같은 Node에 있다면 다음 단계로 진행합니다. 일부는 기존 Node에 있고 일부는 새 Node에 있다면 새 Node에 Console을 열고 다음 command를 실행하여 기존 Node의 Party를 새 Node로 migrate합니다. Party에 맞게 parameter를 조정하세요.
+
+    ```
+    val participantId = participant.id // ID of the new participant
+    participant.topology.party_to_participant_mappings.propose(<party-id>, Seq((participantId, <participant-permission>)), store = syncId)
+    ```
+2.  모든 Party가 이미 새 Node에 있다면 해당 Party의 ACS를 수동으로 다시 import할 수 있습니다. 다음 단계는 새 Validator Node에서 수행합니다.
+
+    1.  Validator app을 중지합니다.
+
+    2.  새 Validator에 연결된 [Participant Console](/global-synchronizer/canton-console/essential-commands)을 열고 다음 단계 동안 계속 열어 둡니다.
+
+    3.  Canton Console에서 다음을 실행합니다.
+
+        ```
+        participant.synchronizers.disconnect_all()
+        ```
+    4.  Migrate하거나 ACS를 다시 import하려는 각 `PARTY_ID`에 대해 다음을 수행합니다.
+
+        일반 shell에서 실행합니다. Canton Console을 시작한 directory와 같은 working directory를 사용합니다.
+
+        ```bash
+        curl -sSL --fail-with-body 'https://scan.sv-1.dev.global.canton.network.sync.global/api/scan/v0/acs/YOUR_PARTY_ID' -H 'Content-Type: application/json' | jq -r .acs_snapshot | base64 -d > acs_snapshot
+        ```
+        Canton Console에서 다음을 실행합니다.
+
+        ```
+        participant.repair.import_acs("acs_snapshot")
+        ```
+    5.  Canton Console에서 `participant.synchronizers.reconnect_all()`을 실행합니다.
+
+    6.  Validator app을 다시 시작합니다.
+
+3.  이전 단계가 실패했거나 시도하지 않기로 했다면 새 Participant로 migration 절차를 다시 시도할 수 있습니다. Party가 identity backup을 생성한 기존 Node에 아직 있다면 기존 backup을 사용할 수 있습니다. Party가 이미 새 Node로 migrate되었다면 새 Node에서 새 identity dump를 생성합니다. 새 Node가 새 dump를 생성할 수 없는 상태라면 이전 dump를 사용하되 `id` field를 새 Node의 Participant ID로 수정합니다. 올바른 format의 `id`는 예를 들어 Participant에 연결된 Canton Console에서 `participant.id.toProtoPrimitive`를 실행하여 얻을 수 있습니다. 이제 처음 restore를 시도했던 Node를 중지하고, deployment model에 따라 다른 `newParticipantIdentifier` 또는 `&lt;new_participant_id&gt;`를 사용하여 Participant ID prefix가 다른 새 Node에서 조정한 dump로 restore 절차를 다시 시도할 수 있습니다.
+
+</Tab>
+
+<Tab title="TestNet (0.7.0)">
+
+문제가 계속 발생하고 특히 Participant log에서 `ACS_COMMITMENT_MISMATCH` warning이 나타난다면 Node에서 host되는 Party 중 하나 이상의 active contract를 import하는 과정에서 문제가 발생했을 가능성이 높습니다. 또 다른 일반적인 증상은 Validator Party가 영향을 받은 경우 Validator initialization이 `Unknown secret` error로 실패하고 Validator log에 `ValidatorLicense not found` message가 포함되는 것입니다. 실패한 `ACS` import는 일반적으로 다음과 같이 처리할 수 있습니다.
+
+1.  먼저 모든 Party가 같은 Node에서 host되는지 확인합니다. 가장 일반적인 경우는 Party가 이전 Participant ID를 가진 기존 Node에 아직 있거나 새 Node로 migrate된 경우입니다. Network의 아무 Participant에나 Canton Console을 열어 확인할 수 있으며 다른 Validator 또는 SV operator에게 이 정보를 요청할 수도 있습니다. 다음 query에서 \<namespace\>는 예를 들어 Validator Party ID에서 `::` 뒤에 있는 부분입니다.
+
+    ```
+    val syncId = participant.synchronizers.list_connected().head.synchronizerId
+    participant.topology.party_to_participant_mappings.list(syncId, filterParticipant = <namespace>)
+    ```
+    모든 Party가 같은 Node에 있다면 다음 단계로 진행합니다. 일부는 기존 Node에 있고 일부는 새 Node에 있다면 새 Node에 Console을 열고 다음 command를 실행하여 기존 Node의 Party를 새 Node로 migrate합니다. Party에 맞게 parameter를 조정하세요.
+
+    ```
+    val participantId = participant.id // ID of the new participant
+    participant.topology.party_to_participant_mappings.propose(<party-id>, Seq((participantId, <participant-permission>)), store = syncId)
+    ```
+2.  모든 Party가 이미 새 Node에 있다면 해당 Party의 ACS를 수동으로 다시 import할 수 있습니다. 다음 단계는 새 Validator Node에서 수행합니다.
+
+    1.  Validator app을 중지합니다.
+
+    2.  새 Validator에 연결된 [Participant Console](/global-synchronizer/canton-console/essential-commands)을 열고 다음 단계 동안 계속 열어 둡니다.
+
+    3.  Canton Console에서 다음을 실행합니다.
+
+        ```
+        participant.synchronizers.disconnect_all()
+        ```
+    4.  Migrate하거나 ACS를 다시 import하려는 각 `PARTY_ID`에 대해 다음을 수행합니다.
+
+        일반 shell에서 실행합니다. Canton Console을 시작한 directory와 같은 working directory를 사용합니다.
+
+        ```bash
+        curl -sSL --fail-with-body 'https://scan.sv-1.test.global.canton.network.sync.global/api/scan/v0/acs/YOUR_PARTY_ID' -H 'Content-Type: application/json' | jq -r .acs_snapshot | base64 -d > acs_snapshot
+        ```
+        Canton Console에서 다음을 실행합니다.
+
+        ```
+        participant.repair.import_acs("acs_snapshot")
+        ```
+    5.  Canton Console에서 `participant.synchronizers.reconnect_all()`을 실행합니다.
+
+    6.  Validator app을 다시 시작합니다.
+
+3.  이전 단계가 실패했거나 시도하지 않기로 했다면 새 Participant로 migration 절차를 다시 시도할 수 있습니다. Party가 identity backup을 생성한 기존 Node에 아직 있다면 기존 backup을 사용할 수 있습니다. Party가 이미 새 Node로 migrate되었다면 새 Node에서 새 identity dump를 생성합니다. 새 Node가 새 dump를 생성할 수 없는 상태라면 이전 dump를 사용하되 `id` field를 새 Node의 Participant ID로 수정합니다. 올바른 format의 `id`는 예를 들어 Participant에 연결된 Canton Console에서 `participant.id.toProtoPrimitive`를 실행하여 얻을 수 있습니다. 이제 처음 restore를 시도했던 Node를 중지하고, deployment model에 따라 다른 `newParticipantIdentifier` 또는 `&lt;new_participant_id&gt;`를 사용하여 Participant ID prefix가 다른 새 Node에서 조정한 dump로 restore 절차를 다시 시도할 수 있습니다.
+
+</Tab>
+
+<Tab title="MainNet (0.6.14)">
+
+문제가 계속 발생하고 특히 Participant log에서 `ACS_COMMITMENT_MISMATCH` warning이 나타난다면 Node에서 host되는 Party 중 하나 이상의 active contract를 import하는 과정에서 문제가 발생했을 가능성이 높습니다. 또 다른 일반적인 증상은 Validator Party가 영향을 받은 경우 Validator initialization이 `Unknown secret` error로 실패하고 Validator log에 `ValidatorLicense not found` message가 포함되는 것입니다. 실패한 `ACS` import는 일반적으로 다음과 같이 처리할 수 있습니다.
+
+1.  먼저 모든 Party가 같은 Node에서 host되는지 확인합니다. 가장 일반적인 경우는 Party가 이전 Participant ID를 가진 기존 Node에 아직 있거나 새 Node로 migrate된 경우입니다. Network의 아무 Participant에나 Canton Console을 열어 확인할 수 있으며 다른 Validator 또는 SV operator에게 이 정보를 요청할 수도 있습니다. 다음 query에서 \<namespace\>는 예를 들어 Validator Party ID에서 `::` 뒤에 있는 부분입니다.
+
+    ```
+    val syncId = participant.synchronizers.list_connected().head.synchronizerId
+    participant.topology.party_to_participant_mappings.list(syncId, filterParticipant = <namespace>)
+    ```
+    모든 Party가 같은 Node에 있다면 다음 단계로 진행합니다. 일부는 기존 Node에 있고 일부는 새 Node에 있다면 새 Node에 Console을 열고 다음 command를 실행하여 기존 Node의 Party를 새 Node로 migrate합니다. Party에 맞게 parameter를 조정하세요.
+
+    ```
+    val participantId = participant.id // ID of the new participant
+    participant.topology.party_to_participant_mappings.propose(<party-id>, Seq((participantId, <participant-permission>)), store = syncId)
+    ```
+2.  모든 Party가 이미 새 Node에 있다면 해당 Party의 ACS를 수동으로 다시 import할 수 있습니다. 다음 단계는 새 Validator Node에서 수행합니다.
+
+    1.  Validator app을 중지합니다.
+
+    2.  새 Validator에 연결된 [Participant Console](/global-synchronizer/canton-console/essential-commands)을 열고 다음 단계 동안 계속 열어 둡니다.
+
+    3.  Canton Console에서 다음을 실행합니다.
+
+        ```
+        participant.synchronizers.disconnect_all()
+        ```
+    4.  Migrate하거나 ACS를 다시 import하려는 각 `PARTY_ID`에 대해 다음을 수행합니다.
+
+        일반 shell에서 실행합니다. Canton Console을 시작한 directory와 같은 working directory를 사용합니다.
+
+        ```bash
+        curl -sSL --fail-with-body 'https://scan.sv-1.global.canton.network.sync.global/api/scan/v0/acs/YOUR_PARTY_ID' -H 'Content-Type: application/json' | jq -r .acs_snapshot | base64 -d > acs_snapshot
+        ```
+        Canton Console에서 다음을 실행합니다.
+
+        ```
+        participant.repair.import_acs("acs_snapshot")
+        ```
+    5.  Canton Console에서 `participant.synchronizers.reconnect_all()`을 실행합니다.
+
+    6.  Validator app을 다시 시작합니다.
+
+3.  이전 단계가 실패했거나 시도하지 않기로 했다면 새 Participant로 migration 절차를 다시 시도할 수 있습니다. Party가 identity backup을 생성한 기존 Node에 아직 있다면 기존 backup을 사용할 수 있습니다. Party가 이미 새 Node로 migrate되었다면 새 Node에서 새 identity dump를 생성합니다. 새 Node가 새 dump를 생성할 수 없는 상태라면 이전 dump를 사용하되 `id` field를 새 Node의 Participant ID로 수정합니다. 올바른 format의 `id`는 예를 들어 Participant에 연결된 Canton Console에서 `participant.id.toProtoPrimitive`를 실행하여 얻을 수 있습니다. 이제 처음 restore를 시도했던 Node를 중지하고, deployment model에 따라 다른 `newParticipantIdentifier` 또는 `&lt;new_participant_id&gt;`를 사용하여 Participant ID prefix가 다른 새 Node에서 조정한 dump로 restore 절차를 다시 시도할 수 있습니다.
+
+</Tab>
+
+</Tabs>
+{/* NETWORKVARS_END */}
+
+#### Rejected topology snapshot troubleshooting
+
+드문 경우 re-onboarding process가 `ImportTopologySnapshot` 단계에서 실패할 수 있습니다. 이는 topology snapshot에 있는 기존 Participant ID의 `OwnerToKeyMapping` signature 수가 부족하기 때문입니다. Mapping된 key가 `OwnerToKeyMapping` transaction을 co-sign하도록 요구하지 않는 Canton version을 사용한 Splice 0.4.1 이하에서 처음 onboard된 Validator에만 영향을 줍니다. Participant log에서 다음 message를 찾아 이 issue를 식별할 수 있습니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDisasterRecoveryNone299 />
+
+이 문제를 우회하려면 다음 단계를 수행합니다.
+
+1.  Validator app 없이 새 Participant만 시작합니다. 이전의 실패한 re-onboarding 시도에서 생성된 state를 삭제하지 마세요.
+
+2.  새 Participant에 연결된 Canton Console을 열고 다음 command를 실행하여 수정된 `OwnerToKeyMapping`을 propose합니다. Key ID prefix는 Participant log에서 reject된 `OwnerToKeyMapping`의 값으로 바꾸고, 기존 Participant ID는 실제 기존 Participant ID로 바꿉니다.
+
+    <ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDisasterRecoveryNone314 />
+
+3.  기존 identity dump configuration을 사용하여 Validator app을 시작합니다.
+
+## External Party의 Coin balance 복구
+
+{/* NETWORKVARS_START source="/snippets/networkvars/global-synchronizer/production-operations/validator-disaster-recovery-2.mdx" */}
+<Tabs>
+
+<Tab title="DevNet (0.7.1)">
+
+External signing을 사용하는 Party를 기존에 host하던 Validator가 어떤 이유로든 사용할 수 없게 되면 유사한 절차로 coin balance를 복구할 수 있습니다.
+
+<Warning>
+복구 후 Party를 host할 대상 Validator는 **완전히 새로운 Validator**여야 합니다. Party migration 관련 일부 limitation으로 인해 기존 Validator가 완전히 작동 불능 상태가 될 수 있으며 현재는 이 상태에서 복구할 방법이 없습니다. Identity backup에서 Validator를 복구하는 것은 여기서 말하는 완전히 새로운 Validator에 해당하지 않습니다. 완전히 새로운 identity와 완전히 깨끗한 database로 설정해야 합니다. 이 limitation은 향후 제거될 것으로 예상됩니다.
+</Warning>
+
+먼저 standard Validator deployment 문서에 따라 새 Validator를 설정합니다.
+
+다음으로 새 Validator에 Canton Console을 연결합니다.
+
+이제 새 Node에서 External Party를 host하고 해당 Party의 ACS를 import하기 위해 topology transaction을 sign하고 submit해야 합니다.
+
+먼저 topology transaction을 생성합니다. 여기서는 Party가 단일 Participant Node에서만 host된다고 가정합니다. 여러 Node에서 host하려면 이에 맞게 조정해야 합니다.
+
+```
+// replace YOUR_PARTY_ID by the ID of your external party
+val partyId = PartyId.tryFromProtoPrimitive("YOUR_PARTY_ID")
+val participantId = participant.id
+val synchronizerId = participant.synchronizers.id_of("global")
+
+// generate topology transaction
+val partyToParticipant = PartyToParticipant.tryCreate(
+    partyId = partyId,
+    threshold = PositiveInt.one,
+    participants = Seq(
+      HostingParticipant(
+        participantId,
+        ParticipantPermission.Confirmation,
+      )
+    ),
+  )
+
+import com.digitalasset.canton.admin.api.client.commands.TopologyAdminCommands.Write.GenerateTransactions
+val topologyTransaction = participant.topology.transactions.generate(
+  Seq(
+    GenerateTransactions.Proposal(
+      partyToParticipant,
+      TopologyStoreId.Synchronizer(synchronizerId),
+    )
+  )
+).head
+
+// Print out the hash that needs to be signed. Note that you need to sign
+// the actual bytes the hex string represents not the hex string
+topologyTransaction.hash.hash.toHexString
+```
+이 topology transaction과 여기서 정의한 definition은 나중에 다시 필요합니다. Canton Console을 계속 열어 두거나 저장하세요.
+
+Topology transaction hash는 [external signing 문서](/appdev/deep-dives/external-signing-onboarding#external-party-onboarding-transactions)에 따라 external 방식으로 sign해야 합니다.
+
+External 방식으로 sign한 후 signed topology transaction을 구성하고 Participant를 통해 추가로 sign한 다음 Synchronizer를 통해 submit해야 합니다.
+
+```
+import com.digitalasset.canton.util.HexString
+// Replace HASH_SIGNATURE_HEXSTRING with the signed topology transaction hash
+val signature = Signature.fromExternalSigning(SignatureFormat.Raw, HexString.parseToByteString("HASH_SIGNATURE_HEXSTRING").get, partyId.namespace.fingerprint, SigningAlgorithmSpec.Ed25519)
+val topologyTxSignedByParty = SignedTopologyTransaction.create(
+  topologyTransaction,
+  NonEmpty(Set, SingleTransactionSignature(topologyTransaction.hash, signature): TopologyTransactionSignature),
+  isProposal = false,
+  ProtocolVersion.v35,
+).fold(err => sys.error(err), identity)
+val topologyTxSignedByBoth = participant.topology.transactions.sign(
+  topologyTxSignedByParty,
+  TopologyStoreId.Synchronizer(synchronizerId),
+  signedBy = Seq(participantId.namespace.fingerprint)
+)
+participant.topology.transactions.load(
+  topologyTxSignedByBoth,
+  TopologyStoreId.Synchronizer(synchronizerId),
+)
+```
+이제 topology transaction이 올바르게 적용되었는지 확인하고 `validFrom` time을 얻을 수 있습니다.
+
+```
+// The detailed output will slightly vary. Make sure that you see the new participant ID though.
+participant.topology.party_to_participant_mappings.list(synchronizerId, filterParty = partyId.filterString)
+  res36: Seq[topology.ListPartyToParticipantResult] = Vector(
+    ListPartyToParticipantResult(
+      context = BaseResult(
+        storeId = Synchronizer(id = global-domain::122025296c61...),
+        validFrom = 2025-05-14T10:19:33.534074Z,
+        validUntil = None,
+        sequenced = 2025-05-14T10:19:33.534074Z,
+        operation = Replace,
+        transactionHash = <ByteString@2d53bfcc size=34 contents="\022 \320\215d\276\352m)\316 \231\345 \360\252WQB\331\3668\216\362\022\342S\310k\vF\267\347\374">,
+        serial = PositiveNumeric(value = 1),
+        signedBy = Vector(1220b529c1d9...)
+      ),
+      item = PartyToParticipant(YOUR_PARTY_ID, PositiveNumeric(1), Vector(HostingParticipant(YOUR_PARTICIPANT_ID..., Submission)))
+    )
+  )
+```
+이 예시에서 validFrom time은 `2025-05-14T10:19:33.534074Z`입니다.
+
+이제 CC Scan에 query하여 Party의 Active Contract Set(ACS)을 얻고 `acs_snapshot` file에 기록할 수 있습니다.
+
+```bash
+// Make sure to adjust YOUR_VALID_FROM to the time you got from the previous query and YOUR_PARY_ID
+curl -sSL --fail-with-body 'https://scan.sv-1.dev.global.canton.network.sync.global/api/scan/v0/acs/YOUR_PARTY_ID?record_time=YOUR_VALID_FROM' -H 'Content-Type: application/json' | jq -r .acs_snapshot | base64 -d > acs_snapshot
+```
+마지막으로 ACS를 import합니다.
+
+```
+participant.synchronizers.disconnect_all()
+participant.repair.import_acs("acs_snapshot")
+participant.synchronizers.reconnect_all()
+```
+이제 Party가 Node에서 host되어 transaction에 참여할 수 있습니다. 마지막 단계는 Validator automation이 transfer preapproval을 renew하고 transfer command를 완료할 수 있도록 필요한 contract를 설정하는 것입니다. 이를 위해 Party의 최초 onboarding에 사용한 것과 같은 flow, 즉 `/v0/admin/external-party/setup-proposal`, `/v0/admin/external-party/setup-proposal/prepare-accept`, `/v0/admin/external-party/setup-proposal/submit-accept`를 수행합니다. 자세한 내용은 [Validator external signing API 문서](/sdks-tools/api-reference/splice-validator-api)를 참고하세요.
+
+</Tab>
+
+<Tab title="TestNet (0.7.0)">
+
+External signing을 사용하는 Party를 기존에 host하던 Validator가 어떤 이유로든 사용할 수 없게 되면 유사한 절차로 coin balance를 복구할 수 있습니다.
+
+<Warning>
+복구 후 Party를 host할 대상 Validator는 **완전히 새로운 Validator**여야 합니다. Party migration 관련 일부 limitation으로 인해 기존 Validator가 완전히 작동 불능 상태가 될 수 있으며 현재는 이 상태에서 복구할 방법이 없습니다. Identity backup에서 Validator를 복구하는 것은 여기서 말하는 완전히 새로운 Validator에 해당하지 않습니다. 완전히 새로운 identity와 완전히 깨끗한 database로 설정해야 합니다. 이 limitation은 향후 제거될 것으로 예상됩니다.
+</Warning>
+
+먼저 standard Validator deployment 문서에 따라 새 Validator를 설정합니다.
+
+다음으로 새 Validator에 Canton Console을 연결합니다.
+
+이제 새 Node에서 External Party를 host하고 해당 Party의 ACS를 import하기 위해 topology transaction을 sign하고 submit해야 합니다.
+
+먼저 topology transaction을 생성합니다. 여기서는 Party가 단일 Participant Node에서만 host된다고 가정합니다. 여러 Node에서 host하려면 이에 맞게 조정해야 합니다.
+
+```
+// replace YOUR_PARTY_ID by the ID of your external party
+val partyId = PartyId.tryFromProtoPrimitive("YOUR_PARTY_ID")
+val participantId = participant.id
+val synchronizerId = participant.synchronizers.id_of("global")
+
+// generate topology transaction
+val partyToParticipant = PartyToParticipant.tryCreate(
+    partyId = partyId,
+    threshold = PositiveInt.one,
+    participants = Seq(
+      HostingParticipant(
+        participantId,
+        ParticipantPermission.Confirmation,
+      )
+    ),
+  )
+
+import com.digitalasset.canton.admin.api.client.commands.TopologyAdminCommands.Write.GenerateTransactions
+val topologyTransaction = participant.topology.transactions.generate(
+  Seq(
+    GenerateTransactions.Proposal(
+      partyToParticipant,
+      TopologyStoreId.Synchronizer(synchronizerId),
+    )
+  )
+).head
+
+// Print out the hash that needs to be signed. Note that you need to sign
+// the actual bytes the hex string represents not the hex string
+topologyTransaction.hash.hash.toHexString
+```
+이 topology transaction과 여기서 정의한 definition은 나중에 다시 필요합니다. Canton Console을 계속 열어 두거나 저장하세요.
+
+Topology transaction hash는 [external signing 문서](/appdev/deep-dives/external-signing-onboarding#external-party-onboarding-transactions)에 따라 external 방식으로 sign해야 합니다.
+
+External 방식으로 sign한 후 signed topology transaction을 구성하고 Participant를 통해 추가로 sign한 다음 Synchronizer를 통해 submit해야 합니다.
+
+```
+import com.digitalasset.canton.util.HexString
+// Replace HASH_SIGNATURE_HEXSTRING with the signed topology transaction hash
+val signature = Signature.fromExternalSigning(SignatureFormat.Raw, HexString.parseToByteString("HASH_SIGNATURE_HEXSTRING").get, partyId.namespace.fingerprint, SigningAlgorithmSpec.Ed25519)
+val topologyTxSignedByParty = SignedTopologyTransaction.create(
+  topologyTransaction,
+  NonEmpty(Set, SingleTransactionSignature(topologyTransaction.hash, signature): TopologyTransactionSignature),
+  isProposal = false,
+  ProtocolVersion.v35,
+).fold(err => sys.error(err), identity)
+val topologyTxSignedByBoth = participant.topology.transactions.sign(
+  topologyTxSignedByParty,
+  TopologyStoreId.Synchronizer(synchronizerId),
+  signedBy = Seq(participantId.namespace.fingerprint)
+)
+participant.topology.transactions.load(
+  topologyTxSignedByBoth,
+  TopologyStoreId.Synchronizer(synchronizerId),
+)
+```
+이제 topology transaction이 올바르게 적용되었는지 확인하고 `validFrom` time을 얻을 수 있습니다.
+
+```
+// The detailed output will slightly vary. Make sure that you see the new participant ID though.
+participant.topology.party_to_participant_mappings.list(synchronizerId, filterParty = partyId.filterString)
+  res36: Seq[topology.ListPartyToParticipantResult] = Vector(
+    ListPartyToParticipantResult(
+      context = BaseResult(
+        storeId = Synchronizer(id = global-domain::122025296c61...),
+        validFrom = 2025-05-14T10:19:33.534074Z,
+        validUntil = None,
+        sequenced = 2025-05-14T10:19:33.534074Z,
+        operation = Replace,
+        transactionHash = <ByteString@2d53bfcc size=34 contents="\022 \320\215d\276\352m)\316 \231\345 \360\252WQB\331\3668\216\362\022\342S\310k\vF\267\347\374">,
+        serial = PositiveNumeric(value = 1),
+        signedBy = Vector(1220b529c1d9...)
+      ),
+      item = PartyToParticipant(YOUR_PARTY_ID, PositiveNumeric(1), Vector(HostingParticipant(YOUR_PARTICIPANT_ID..., Submission)))
+    )
+  )
+```
+이 예시에서 validFrom time은 `2025-05-14T10:19:33.534074Z`입니다.
+
+이제 CC Scan에 query하여 Party의 Active Contract Set(ACS)을 얻고 `acs_snapshot` file에 기록할 수 있습니다.
+
+```bash
+// Make sure to adjust YOUR_VALID_FROM to the time you got from the previous query and YOUR_PARY_ID
+curl -sSL --fail-with-body 'https://scan.sv-1.test.global.canton.network.sync.global/api/scan/v0/acs/YOUR_PARTY_ID?record_time=YOUR_VALID_FROM' -H 'Content-Type: application/json' | jq -r .acs_snapshot | base64 -d > acs_snapshot
+```
+마지막으로 ACS를 import합니다.
+
+```
+participant.synchronizers.disconnect_all()
+participant.repair.import_acs("acs_snapshot")
+participant.synchronizers.reconnect_all()
+```
+이제 Party가 Node에서 host되어 transaction에 참여할 수 있습니다. 마지막 단계는 Validator automation이 transfer preapproval을 renew하고 transfer command를 완료할 수 있도록 필요한 contract를 설정하는 것입니다. 이를 위해 Party의 최초 onboarding에 사용한 것과 같은 flow, 즉 `/v0/admin/external-party/setup-proposal`, `/v0/admin/external-party/setup-proposal/prepare-accept`, `/v0/admin/external-party/setup-proposal/submit-accept`를 수행합니다. 자세한 내용은 [Validator external signing API 문서](/sdks-tools/api-reference/splice-validator-api)를 참고하세요.
+
+</Tab>
+
+<Tab title="MainNet (0.6.14)">
+
+External signing을 사용하는 Party를 기존에 host하던 Validator가 어떤 이유로든 사용할 수 없게 되면 유사한 절차로 coin balance를 복구할 수 있습니다.
+
+<Warning>
+복구 후 Party를 host할 대상 Validator는 **완전히 새로운 Validator**여야 합니다. Party migration 관련 일부 limitation으로 인해 기존 Validator가 완전히 작동 불능 상태가 될 수 있으며 현재는 이 상태에서 복구할 방법이 없습니다. Identity backup에서 Validator를 복구하는 것은 여기서 말하는 완전히 새로운 Validator에 해당하지 않습니다. 완전히 새로운 identity와 완전히 깨끗한 database로 설정해야 합니다. 이 limitation은 향후 제거될 것으로 예상됩니다.
+</Warning>
+
+먼저 standard Validator deployment 문서에 따라 새 Validator를 설정합니다.
+
+다음으로 새 Validator에 Canton Console을 연결합니다.
+
+이제 새 Node에서 External Party를 host하고 해당 Party의 ACS를 import하기 위해 topology transaction을 sign하고 submit해야 합니다.
+
+먼저 topology transaction을 생성합니다. 여기서는 Party가 단일 Participant Node에서만 host된다고 가정합니다. 여러 Node에서 host하려면 이에 맞게 조정해야 합니다.
+
+```
+// replace YOUR_PARTY_ID by the ID of your external party
+val partyId = PartyId.tryFromProtoPrimitive("YOUR_PARTY_ID")
+val participantId = participant.id
+val synchronizerId = participant.synchronizers.id_of("global")
+
+// generate topology transaction
+val partyToParticipant = PartyToParticipant.tryCreate(
+    partyId = partyId,
+    threshold = PositiveInt.one,
+    participants = Seq(
+      HostingParticipant(
+        participantId,
+        ParticipantPermission.Confirmation,
+      )
+    ),
+  )
+
+import com.digitalasset.canton.admin.api.client.commands.TopologyAdminCommands.Write.GenerateTransactions
+val topologyTransaction = participant.topology.transactions.generate(
+  Seq(
+    GenerateTransactions.Proposal(
+      partyToParticipant,
+      TopologyStoreId.Synchronizer(synchronizerId),
+    )
+  )
+).head
+
+// Print out the hash that needs to be signed. Note that you need to sign
+// the actual bytes the hex string represents not the hex string
+topologyTransaction.hash.hash.toHexString
+```
+이 topology transaction과 여기서 정의한 definition은 나중에 다시 필요합니다. Canton Console을 계속 열어 두거나 저장하세요.
+
+Topology transaction hash는 [external signing 문서](/appdev/deep-dives/external-signing-onboarding#external-party-onboarding-transactions)에 따라 external 방식으로 sign해야 합니다.
+
+External 방식으로 sign한 후 signed topology transaction을 구성하고 Participant를 통해 추가로 sign한 다음 Synchronizer를 통해 submit해야 합니다.
+
+```
+import com.digitalasset.canton.util.HexString
+// Replace HASH_SIGNATURE_HEXSTRING with the signed topology transaction hash
+val signature = Signature.fromExternalSigning(SignatureFormat.Raw, HexString.parseToByteString("HASH_SIGNATURE_HEXSTRING").get, partyId.namespace.fingerprint, SigningAlgorithmSpec.Ed25519)
+val topologyTxSignedByParty = SignedTopologyTransaction.create(
+  topologyTransaction,
+  NonEmpty(Set, SingleTransactionSignature(topologyTransaction.hash, signature): TopologyTransactionSignature),
+  isProposal = false,
+  ProtocolVersion.v35,
+).fold(err => sys.error(err), identity)
+val topologyTxSignedByBoth = participant.topology.transactions.sign(
+  topologyTxSignedByParty,
+  TopologyStoreId.Synchronizer(synchronizerId),
+  signedBy = Seq(participantId.namespace.fingerprint)
+)
+participant.topology.transactions.load(
+  topologyTxSignedByBoth,
+  TopologyStoreId.Synchronizer(synchronizerId),
+)
+```
+이제 topology transaction이 올바르게 적용되었는지 확인하고 `validFrom` time을 얻을 수 있습니다.
+
+```
+// The detailed output will slightly vary. Make sure that you see the new participant ID though.
+participant.topology.party_to_participant_mappings.list(synchronizerId, filterParty = partyId.filterString)
+  res36: Seq[topology.ListPartyToParticipantResult] = Vector(
+    ListPartyToParticipantResult(
+      context = BaseResult(
+        storeId = Synchronizer(id = global-domain::122025296c61...),
+        validFrom = 2025-05-14T10:19:33.534074Z,
+        validUntil = None,
+        sequenced = 2025-05-14T10:19:33.534074Z,
+        operation = Replace,
+        transactionHash = <ByteString@2d53bfcc size=34 contents="\022 \320\215d\276\352m)\316 \231\345 \360\252WQB\331\3668\216\362\022\342S\310k\vF\267\347\374">,
+        serial = PositiveNumeric(value = 1),
+        signedBy = Vector(1220b529c1d9...)
+      ),
+      item = PartyToParticipant(YOUR_PARTY_ID, PositiveNumeric(1), Vector(HostingParticipant(YOUR_PARTICIPANT_ID..., Submission)))
+    )
+  )
+```
+이 예시에서 validFrom time은 `2025-05-14T10:19:33.534074Z`입니다.
+
+이제 CC Scan에 query하여 Party의 Active Contract Set(ACS)을 얻고 `acs_snapshot` file에 기록할 수 있습니다.
+
+```bash
+// Make sure to adjust YOUR_VALID_FROM to the time you got from the previous query and YOUR_PARY_ID
+curl -sSL --fail-with-body 'https://scan.sv-1.global.canton.network.sync.global/api/scan/v0/acs/YOUR_PARTY_ID?record_time=YOUR_VALID_FROM' -H 'Content-Type: application/json' | jq -r .acs_snapshot | base64 -d > acs_snapshot
+```
+마지막으로 ACS를 import합니다.
+
+```
+participant.synchronizers.disconnect_all()
+participant.repair.import_acs("acs_snapshot")
+participant.synchronizers.reconnect_all()
+```
+이제 Party가 Node에서 host되어 transaction에 참여할 수 있습니다. 마지막 단계는 Validator automation이 transfer preapproval을 renew하고 transfer command를 완료할 수 있도록 필요한 contract를 설정하는 것입니다. 이를 위해 Party의 최초 onboarding에 사용한 것과 같은 flow, 즉 `/v0/admin/external-party/setup-proposal`, `/v0/admin/external-party/setup-proposal/prepare-accept`, `/v0/admin/external-party/setup-proposal/submit-accept`를 수행합니다. 자세한 내용은 [Validator external signing API 문서](/sdks-tools/api-reference/splice-validator-api)를 참고하세요.
+
+</Tab>
+
+</Tabs>
+{/* NETWORKVARS_END */}
+
+## Roll Forward Logical Synchronizer Upgrade
+
+SV가 Physical Synchronizer 손실에서 복구한다고 알리면 `newPhysicalSynchronizerId`와 `sequencerSuccessors`를 전달합니다.
+
+이후 Validator는 다음 작업을 수행해야 합니다.
+
+1.  자체 Node가 기존 Synchronizer의 최신 transaction까지 catch up할 때까지 기다립니다. Participant INFO log에 `Processing event at`이 포함된 새 log가 더 이상 나타나지 않는 것이 유용한 지표입니다.
+2.  Canton Console을 통해 roll-forward LSU를 시작합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDisasterRecoveryNone485 />
+
+### ACS mismatch 해결
+
+기존 Synchronizer의 구체적인 failure 방식에 따라 일부 Validator는 failure 전에 transaction을 관찰하고 다른 Validator는 관찰하지 못하여 desynchronize될 수 있습니다. 이 경우 Participant가 ACS mismatch를 생성하며, 새 Physical Synchronizer로 migrate한 다음 [standard ACS mismatch 해결 process](/global-synchronizer/troubleshooting-guide/transaction-failures#troubleshoot-acs-commitments)를 사용하여 해결해야 합니다.
+
+{/* COPIED_END */}

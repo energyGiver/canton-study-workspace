@@ -1,0 +1,375 @@
+---
+title: "Performance Optimization"
+description: "Validator 및 SV node performance를 위한 database, JVM 및 Canton configuration tuning"
+source_id: "SRC-823781B979"
+source_path: "global-synchronizer/production-operations/performance-optimization"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "f58efbf92aa7af0ec8328edcc0c6cbace0ee1eefa617f867673bcc34b6ac2ce7"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import CANTON_DOCS_CN_GS_PERFORMANCE_OPTIMIZATION_CONNECTION_POOL_HOCON_0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/docs-global-synchronizer-performance-optimization-connection-pool-hocon-0.mdx";
+import CANTON_DOCS_CN_GS_PERFORMANCE_OPTIMIZATION_BATCHING_PARAMS_HOCON_1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/docs-global-synchronizer-performance-optimization-batching-params-hocon-1.mdx";
+import CANTON_DOCS_CN_GS_PERFORMANCE_OPTIMIZATION_BURST_FACTOR_HOCON_2 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/docs-global-synchronizer-performance-optimization-burst-factor-hocon-2.mdx";
+import ExternalCantonMainCommunityAppSrcTestResourcesDocumentationSnippetsStorageQueueSize from "/snippets/external/canton/main/community/app/src/test/resources/documentation-snippets/storage-queue-size.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/performance-optimization.md)을 사용하세요.
+</Warning>
+
+Canton node performance는 database throughput, JVM configuration, sequencer capacity 및 pruning strategy에 따라 달라집니다. 이 페이지에서는 validator 및 SV node operator를 위한 주요 tuning 영역을 설명합니다.
+
+## Database optimization
+
+대부분의 Canton deployment에서 PostgreSQL이 주요 performance bottleneck입니다.
+
+### Connection pool
+
+Canton은 database connection pooling에 HikariCP를 사용합니다. 기본 pool size는 가벼운 workload에 적합하지만 high-throughput deployment에서는 tuning을 통해 이점을 얻을 수 있습니다.
+
+
+<CANTON_DOCS_CN_GS_PERFORMANCE_OPTIMIZATION_CONNECTION_POOL_HOCON_0 />
+
+
+PostgreSQL `max_connections` setting과 database server를 공유하는 Canton process 수를 기준으로 `maxConnections`를 설정합니다. Monitoring 및 maintenance connection을 위한 여유를 남기고 `max_connections / number_of_canton_processes`를 시작점으로 사용하는 것이 좋습니다.
+
+### PostgreSQL tuning
+
+다음 PostgreSQL parameter가 Canton workload에 가장 큰 영향을 줍니다.
+
+- **`shared_buffers`** — 사용 가능한 RAM의 25%로 설정합니다. 64GB database server에서는 `16GB`를 사용합니다.
+- **`effective_cache_size`** — 사용 가능한 RAM의 50-75%로 설정합니다. OS cache를 포함하여 caching에 사용할 수 있는 memory 크기를 query planner에 알려 줍니다.
+- **`work_mem`** — Sort operation 및 hash table용 memory를 제어합니다. `64MB`로 시작하고 query plan에서 disk-based sort가 보이면 늘립니다.
+- **`maintenance_work_mem`** — VACUUM 및 index operation용 memory입니다. 큰 database에서는 `1GB` 이상으로 설정합니다.
+- **`max_wal_size`** — Checkpoint frequency를 제어합니다. Write load가 높을 때 checkpoint pressure를 줄이려면 `4GB` 또는 `8GB`로 늘립니다.
+- **`random_page_cost`** — Database가 SSD storage에서 실행되면 `1.1`로 설정합니다. 기본값 `4.0`은 spinning disk에 맞춰져 있습니다.
+
+`postgresql.conf` 추가 예:
+
+```ini
+shared_buffers = 16GB
+effective_cache_size = 48GB
+work_mem = 64MB
+maintenance_work_mem = 1GB
+max_wal_size = 8GB
+random_page_cost = 1.1
+checkpoint_completion_target = 0.9
+wal_buffers = 64MB
+```
+
+### Indexing
+
+Canton은 schema migration 중 필요한 index를 생성합니다. Canton-managed index를 수정하거나 drop하지 마세요. PostgreSQL log에서 느린 query가 관찰되면 autovacuum이 올바르게 실행되는지 확인하세요. Bloat된 table과 오래된 statistic이 query plan degradation의 가장 일반적인 원인입니다.
+
+```sql
+-- Check for tables that need vacuuming
+SELECT schemaname, relname, n_dead_tup, last_autovacuum
+FROM pg_stat_user_tables
+WHERE n_dead_tup > 10000
+ORDER BY n_dead_tup DESC;
+```
+
+## JVM tuning
+
+Canton은 JVM에서 실행됩니다. 기본 JVM setting은 보수적이며 production deployment에서는 명시적인 configuration을 통해 이점을 얻을 수 있습니다.
+
+### Heap size
+
+Node type 및 예상 workload에 따라 heap size를 설정합니다.
+
+- **Validator(participant)** — `-Xmx4g`로 시작합니다. High-throughput workload 또는 많은 party를 hosting할 때는 8-12GB로 늘립니다.
+- **Sequencer** — `-Xmx4g`로 시작합니다. Sequencer memory 요구 사항은 message throughput에 따라 증가합니다.
+- **Mediator** — `-Xmx2g`로 시작합니다. Mediator의 memory 요구 사항은 sequencer 또는 participant보다 적습니다.
+
+```yaml
+# Helm values for JVM settings
+participant:
+  jvmOptions: "-Xms4g -Xmx4g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+```
+
+### Garbage collection
+
+G1GC는 Canton에 권장되는 garbage collector입니다. 예측 가능한 pause time과 좋은 throughput을 제공합니다. 주요 setting은 다음과 같습니다.
+
+- **`-XX:+UseG1GC`** — G1 garbage collector 활성화
+- **`-XX:MaxGCPauseMillis=200`** — Target maximum GC pause. 낮은 값은 latency spike를 줄이지만 throughput을 낮출 수 있습니다.
+- **`-XX:G1HeapRegionSize=16m`** — 8GB보다 큰 heap에서는 region size를 늘리면 G1 efficiency가 향상됩니다.
+
+`-Xlog:gc*:file=/var/log/canton/gc.log:time,uptime,level,tags`로 GC activity를 monitoring하고 빈번한 full GC pause를 확인하세요. 이는 heap이 너무 작음을 나타냅니다.
+
+## Sequencer throughput
+
+Sequencer throughput은 ordering backend 및 database performance에 따라 결정됩니다. 현재 Alpha인 centralized(PostgreSQL) ordering backend의 경우 다음이 적용됩니다.
+
+- 단일 database가 모든 message ordering의 serialization point입니다.
+- Database server의 vertical scaling, 즉 더 빠른 CPU와 높은 IOPS는 throughput을 직접 향상합니다.
+- Sequencer process와 database 사이의 network latency는 모든 message에 영향을 줍니다.
+
+Decentralized(BFT) ordering backend의 throughput은 consensus round time과 sequencer node 수에 따라 달라집니다. BFT consensus는 message당 latency를 추가하지만 fault tolerance를 제공합니다.
+
+## Traffic management
+
+Global Synchronizer에서 모든 transaction은 Canton Coin으로 비용을 지불하는 traffic을 사용합니다. Traffic cost를 줄이려면 다음을 수행합니다.
+
+- **Batch operation** — 관련 command를 개별적으로 제출하지 말고 함께 제출합니다. Canton은 batched command를 더 효율적으로 처리합니다.
+- **Contract design** — 더 작은 contract와 transaction당 더 적은 contract create/archive는 traffic consumption을 줄입니다.
+- **Synchronizer assignment** — High-frequency bilateral workflow를 traffic fee가 없는 dedicated synchronizer로 이동합니다.
+
+Peak period에 traffic balance가 소진되지 않도록 validator wallet 또는 Splice admin API를 통해 traffic consumption을 monitoring하세요.
+
+## Pruning
+
+Canton은 transaction 및 ACS(Active Contract Set) snapshot의 전체 history를 저장합니다. 시간이 지나면 이 data가 누적되어 query가 느려질 수 있습니다. Pruning은 더 이상 필요하지 않은 historical data를 제거합니다.
+
+### Performance에 미치는 영향
+
+- Pruning은 database size를 줄여 backup time 및 query performance를 개선합니다.
+- Pruning process 자체는 resource-intensive하므로 traffic이 적은 시간대에 예약합니다.
+- Pruning 후 영향을 받은 table에서 `VACUUM ANALYZE`를 실행하여 disk space를 회수하고 query statistic을 update합니다.
+
+### Configuration
+
+
+<CANTON_DOCS_CN_GS_PERFORMANCE_OPTIMIZATION_BATCHING_PARAMS_HOCON_1 />
+
+
+<Warning>
+Pruning된 data는 recovery할 수 없습니다. Aggressive pruning을 활성화하기 전에 backup이 있는지 확인하세요. 일부 regulatory context에서는 정해진 기간 동안 transaction history를 보존해야 합니다.
+</Warning>
+
+## Batch size
+
+Canton은 내부적으로 command를 batch 단위로 처리합니다. 기본 batch size는 latency와 throughput의 균형을 맞춥니다. High-throughput workload에서는 batch size를 늘릴 수 있습니다.
+
+
+<CANTON_DOCS_CN_GS_PERFORMANCE_OPTIMIZATION_BURST_FACTOR_HOCON_2 />
+
+
+더 큰 batch는 command당 latency가 약간 높아지는 대신 throughput을 개선합니다. Sequencer 및 command completion latency metric을 monitoring하여 적절한 균형을 찾으세요.
+
+## Performance monitoring
+
+Bottleneck을 식별하려면 다음 metric을 추적하세요. `canton_participant_command_completion_latency`(end-to-end command time), `canton_sequencer_send_latency`(sequencer throughput), `canton_participant_db_query_latency`(database health), `hikaricp_connections_active`(connection pool saturation), JVM heap/GC metric. Dashboard를 설정하고 값이 baseline을 초과하면 alert를 발생시키세요. Performance degradation은 일반적으로 점진적이며 조기 detection으로 outage를 방지할 수 있습니다.
+
+{/* DIVERGENCE: removed an editorial TODO that gated replication docs behind "enterprise nodes"; upstream docs-website source (docs/replicated/canton/3.5/participant/howtos/operate/ha/ha.rst, hash 2beef6c6) still has it. Related to issue #615 (no more enterprise license as of Canton 3.5). */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/operate/ha/ha.rst" hash="2beef6c6" */}
+
+## High Availability 사용
+
+이 section에서는 앞서 언급한 일부 component를 살펴보고 유용한 Canton command를 제공합니다.
+
+### Participant
+
+Participant node의 high availability는 shared database에 접근할 수 있는 여러 participant node replica를 실행하여 구현합니다.
+
+Participant node replica는 Canton configuration file에 individual participant로 구성하며 각 participant node replica에 다음 두 변경이 필요합니다.
+
+- 동일한 storage configuration을 사용하여 shared database에 접근할 수 있도록 합니다. HA에는 PostgreSQL 및 Oracle 기반 storage만 지원됩니다. Oracle에서는 participant replica가 동일한 username으로 shared database에 접근하는 것이 매우 중요합니다.
+- 각 participant node replica에 `replication.enabled = true`를 설정합니다.
+
+<Note>
+Canton 2.4.0부터 지원되는 storage를 사용하면 participant replication이 기본적으로 활성화됩니다.
+</Note>
+
+#### Fail-over 수동 trigger
+
+Active replica에 failure가 발생하면 active replica에서 passive replica로의 fail-over가 자동으로 수행되지만 다음 command로 graceful fail-over를 시작할 수도 있습니다.
+
+```scala
+activeParticipantReplica.replication.set_passive()
+```
+
+현재 active replica를 대신할 passive replica가 하나 이상 있으면 command가 성공하고, 그렇지 않으면 active replica가 active 상태로 유지됩니다.
+
+#### Load balancer configuration
+
+여러 replicated participant를 적절히 정교한 load balancer 뒤에 배치할 수 있습니다. Load balancer는 health check로 어떤 participant instance가 active인지 판단하고 ledger 및 admin API request를 해당 instance로 적절히 보냅니다. 이로써 ledger-api application 또는 logical participant를 관리하는 Canton console 관점에서 participant replication과 failover가 투명해집니다. 단순히 load balancer를 가리키면 됩니다.
+
+Participant는 다음 monitoring configuration을 사용하여 health HTTP server에서 "IsActive" health status를 노출하도록 구성해야 합니다.
+
+``` none
+canton {
+  monitoring {
+    health {
+      server {
+        address = 0.0.0.0
+        port = 8000
+      }
+
+      check.type = is-active
+    }
+  }
+}
+```
+
+실행되면 Participant가 현재 active replica인 경우 이 server는 `/health`에 대한 HTTP/1 GET request에 HTTP 200 status code를 보고합니다. 그렇지 않으면 error를 반환합니다.
+
+Load balancer를 사용하려면 별도의 HTTP/2(GRPC) server에서 request를 route하기 위한 HTTP/1 health check를 지원해야 합니다. 다음 example configuration을 사용하는 [HAProxy](http://www.haproxy.org/)로 구현할 수 있습니다.
+
+```nginx
+    global
+        log stdout format raw local0
+
+    defaults
+        log global
+        mode http
+        option httplog
+        # enabled so long running connections are logged immediately upon connect
+        option logasap
+
+    # expose the admin-api and ledger-api as separate servers
+    frontend admin-api
+        bind :15001 proto h2
+        default_backend admin-api
+
+    backend admin-api
+        # enable HTTP health checks
+        option httpchk
+        # required to create a separate connection to query the load balancer.
+        # this is particularly important as the health HTTP server does not support h2
+        # which would otherwise be the default.
+        http-check connect
+        # set the health check uri
+        http-check send meth GET uri /health
+
+        # list all participant backends
+        server participant1 participant1.lan:15001 proto h2 check port 8080
+        server participant2 participant2.lan:15001 proto h2 check port 8080
+        server participant3 participant3.lan:15001 proto h2 check port 8080
+
+    # repeat a similar configuration to the above for the ledger-api
+    frontend ledger-api
+        bind :15000 proto h2
+        default_backend ledger-api
+
+    backend ledger-api
+        option httpchk
+        http-check connect
+        http-check send meth GET uri /health
+
+        server participant1 participant1.lan:15000 proto h2 check port 8080
+        server participant2 participant2.lan:15000 proto h2 check port 8080
+        server participant3 participant3.lan:15000 proto h2 check port 8080
+```
+
+{/* COPIED_END */}
+
+
+{/* DIVERGENCE: reworked the connection-pool table to split by "with/without replication" instead of "Enterprise Edition"/"Community Edition", since there's no more edition distinction as of Canton 3.5; upstream docs-website source (docs/replicated/canton/3.5/participant/howtos/optimize/storage.rst, hash 9a5ee104) still uses the edition axis. Related to issue #615. */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/optimize/storage.rst" hash="9a5ee104" */}
+
+Query cost logging을 추가합니다.
+
+## Storage 최적화
+
+### 일반 Setting
+
+#### Max Connection Setting
+
+다음 추가 setting으로 storage configuration을 더 tuning할 수 있습니다.
+
+```
+canton.participants.<service-name>.storage.parameters.max-connections = X
+```
+
+Canton node가 사용하는 DB connection의 maximum number를 설정할 수 있습니다. 값이 None이거나 양수가 아니면 processor 수가 값으로 사용됩니다. Slick option, 즉 storage.config.numThreads를 통해 connection 수가 이미 설정된 경우 이 setting은 영향을 주지 않습니다.
+
+Connection pool size를 정하는 방법이 확실하지 않다면 [이 article](https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing)이 좋은 시작점이 될 수 있습니다.
+
+일반적으로 connection 수는 database machine CPU 수의 최대 두 배여야 합니다.
+
+Parallel indexer connection 수는 다음으로 구성할 수 있습니다.
+
+```conf
+    canton.participants.<participant-name>.parameters.ledger-api-server-parameters.indexer.ingestion-parallelism = Y
+```
+
+Exclusive sequencer writer component가 사용하는 connection 수 `Z`는 제어할 수 있는 마지막 parameter입니다.
+
+```conf
+    canton.sequencers.<sequencer-name>.sequencer.high-availability.exclusive-storage.max-connections = Z
+```
+
+Canton participant node는 database와 최대 `X + Y + 2`개의 permanent connection을 설정합니다. Synchronizer는 최대 `X`개의 permanent connection을 사용하지만 HA setup의 sequencer는 최대 `2X`개의 connection을 할당합니다. Startup 중에는 database initialization을 위해 최대 `X`개의 temporary connection 집합을 추가로 사용합니다.
+
+숫자 `X`는 permanent connection의 upper bound이며 implementation에 따라 내부적으로 여러 목적에 배분됩니다. 따라서 예를 들어 실제 write connection pool size는 더 작을 수 있습니다. 할당된 connection 중 일부는 *read* pool, 일부는 *Write* pool에서 사용하며 locking mechanism을 관리하는 전용 *main* connection용으로 한 개가 추가 예약됩니다.
+
+다음 표는 여러 Canton node에서 connection pool이 상세하게 나뉘는 방식을 요약합니다. `R`은 *Read* pool, `W`는 *Write* pool, `A`는 *Ledger API* pool, `I`는 *Indexer* pool, `RW`는 결합된 *Read/Write* pool, `M`은 *Main* pool을 의미합니다.
+
+분할 방식은 node가 replication을 활성화하여 실행하는지에 따라 다릅니다. Replicated node는 locking mechanism을 위해 별도의 *Read* 및 *Write* pool과 *Main* connection을 유지합니다. Replication이 없는 node는 결합된 단일 *Read/Write* pool을 사용합니다.
+
+| Node Type | Replication 사용 | Replication 미사용 |
+| --- | --- | --- |
+| Participant | A = X / 2<br/>R = X / 4<br/>W = X / 4 - 1<br/>M = 1<br/>I = Y | A = X / 2<br/>RW = X / 2<br/>I = Y |
+| Mediator | R = X / 2<br/>W = X / 2 - 1<br/>M = 1 | N/A |
+| Sequencer | RW = X | N/A |
+| Sequencer writer | R = X / 2<br/>W = X / 2 - 1<br/>M = 1 | N/A |
+| Sequencer exclusive writer | R = Z / 2<br/>W = Z / 2 | N/A |
+| Synchronizer | N/A | RW = X |
+
+Division 결과는 0이 되는 경우를 제외하면 항상 내림합니다. 0이 되는 경우 최소 pool size 1을 보장합니다.
+
+이 formula에서 얻은 값은 *Ledger API* `A`, *Read* `R`, *Write* `W` pool의 explicit configuration setting으로 override할 수 있습니다.
+
+```conf
+    canton.participants.<participant-name>.storage.parameters.connection-allocation.num-reads = R-overwrite
+    canton.participants.<participant-name>.storage.parameters.connection-allocation.num-writes = W-overwrite
+    canton.participants.<participant-name>.storage.parameters.connection-allocation.num-ledger-api = A-overwrite
+```
+
+다른 Canton node type에도 유사한 parameter가 있습니다.
+
+```conf
+    canton.sequencers.sequencer.storage.parameters.connection-allocation...
+    canton.mediators.mediator.storage.parameters.connection-allocation...
+```
+Node가 결합된 *Read/Write* connection pool을 운영하는 경우 `R` 및 `W` override의 수를 더하여 전체 pool size를 결정합니다.
+
+Effective connection pool size는 Canton node가 startup할 때 보고합니다.
+
+    INFO  c.d.c.r.DbStorageMulti$:participant=participant_b - Creating storage, num-reads: 5, num-writes: 4
+
+#### Queue Size
+
+Canton은 database가 처리할 수 있는 것보다 많은 database query를 schedule할 수 있습니다. 그 결과 query는 database queue에 배치됩니다. 기본적으로 database queue의 size는 1000 query입니다. Queue limit에 도달하면 `DB_STORAGE_DEGRADATION` warning이 발생합니다. 이 warning의 영향은 queue가 asynchronous execution context로 overflow되어 processing이 서서히 degrade되고 생성되는 database query 수가 줄어드는 것입니다. 그러나 high-performance setup에서는 이러한 spike가 더 자주 발생할 수 있습니다. 따라서 degradation warning이 너무 자주 나타나는 것을 방지하려면 다음을 사용하여 queue size를 구성할 수 있습니다.
+
+<ExternalCantonMainCommunityAppSrcTestResourcesDocumentationSnippetsStorageQueueSize />
+
+### PostgreSQL
+
+#### PostgreSQL Configuration
+
+PostgreSQL에서는 [PGTune online tool](https://pgtune.leopard.in.ua/)이 합리적인 parameter를 찾는 좋은 시작점입니다. Online transaction processing system을 사용하세요. 다만 아래 설명대로 `shared_buffers`, `checkpoint_timeout`, `max_wal_size` setting을 늘려야 합니다.
+
+Initial configuration 외에도 Canton이 사용하는 대부분의 index가 "hash based"라는 점에 유의하세요. 따라서 이 index에 대한 read 및 write access는 균일하게 분산됩니다. 하지만 PostgreSQL은 8KB page 단위로 index를 read 및 write하며 단순 index는 write 몇 건에 불과할 수 있습니다. 따라서 index를 memory에 유지하고 때때로 update만 disk에 write할 수 있어야 합니다. 그렇지 않으면 32 byte의 단순한 변경에 8KB I/O operation이 필요합니다.
+
+PostgreSQL caching이 host 기반 file access caching보다 더 효과적인 것으로 보이므로 `shared_buffers` setting을 기본 권장값 25% 대신 host memory의 60-70%를 보유하도록 구성하는 것이 좋습니다.
+
+다음 variable도 기본값보다 늘립니다. `checkpoint_timeout`을 늘려 시간에 따라 누적된 disk flush가 page당 write 하나가 아니라 여러 write를 포함하도록 하고, `max_wal_size`도 높여 system이 `checkpoint_timeout`에 도달하기 전에 조기 flush하지 않도록 합니다. Load testing 중 system을 monitoring하고 use case에 맞게 parameter를 tuning하세요. Checkpointing parameter 변경의 단점은 crash recovery가 더 오래 걸린다는 것입니다.
+
+#### Sizing 및 Performance
+
+원하는 performance를 달성하려면 PostgreSQL database setup을 적절히 tuning해야 합니다. Canton은 database-heavy합니다. 이 section은 tuning effort의 시작점을 제공합니다. Database가 limiting factor인지 분석하는 방법은 troubleshooting section을 참조할 수 있습니다.
+
+이 guide는 tuning의 시작점을 제공할 수 있습니다. 궁극적으로 모든 use case는 다르며 정확한 resource 요구 사항은 예측할 수 없고 측정해야 합니다.
+
+먼저 사용 중인 database가 use case에 적절한 size인지 확인합니다. Core 수는 throughput 요구 사항에 따라 달라집니다. Rule of thumb은 다음과 같습니다.
+
+- Participant core 1개당 DB core 1개
+- 초당 ledger event 30-100개당 participant core 1개. Command complexity에 따라 달라집니다.
+
+Memory 요구 사항은 data retention period와 저장하는 data size에 따라 달라집니다. 이상적으로 database index cache hit/miss ratio를 monitoring합니다. Instance가 계속 disk에서 index를 load해야 하면 performance가 저하됩니다. 128GB로 시작하여 장기간 scale & performance test를 실행하고 [cache hit/miss ratio를 monitoring](https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STATIO-ALL-INDEXES-VIEW)하는 것이 합리적일 수 있습니다.
+
+대부분의 Canton index는 contract ID 기반이므로 index lookup이 무작위로 분산됩니다. High-throughput SSD가 이 목적에서는 spinning disk보다 훨씬 나은 performance를 제공합니다.
+
+#### Shared Environment의 Predictability
+
+Canton node의 throughput과 latency는 database performance에 따라 달라집니다. Hardware 또는 software 공유는 비용을 절감하고 사용 가능한 resource를 더 잘 활용하지만 몇 가지 단점이 있습니다. Cloud처럼 다른 application이 동일한 database를 사용하거나 동일한 hardware에서 운영되는 shared environment에서는 shared resource contention으로 Canton node performance가 달라집니다. 이는 shared environment의 자연스러운 영향이며 완전히 피할 수 없습니다. 다른 application 및 host system에 대한 visibility 부족으로 shared environment user가 진단하기 어려울 수 있습니다.
+
+Shared environment에서 운영한다면 database performance를 monitoring하고 latency 및 throughput variance가 더 클 것으로 예상해야 합니다.
+
+{/* COPIED_END */}

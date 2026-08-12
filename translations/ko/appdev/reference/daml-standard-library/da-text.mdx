@@ -1,0 +1,445 @@
+---
+title: "DA.Text"
+description: "Daml module DA.Text의 reference documentation"
+source_id: "SRC-D85E6C43ED"
+source_path: "appdev/reference/daml-standard-library/da-text"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "192774d1f0f3d683f7467713b9ff1b61cc3a503af5fffbf8ed4e5df06a87fb9a"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-text.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-text-83238"></span>
+
+# DA.Text
+
+Text를 다루기 위한 function입니다.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Functions
+
+<span id="function-da-text-explode-24206"></span>
+
+### `explode`
+
+`explode` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [[`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)]
+
+<span id="function-da-text-implode-82253"></span>
+
+### `implode`
+
+`implode` : [[`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)] -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+<span id="function-da-text-isempty-39554"></span>
+
+### `isEmpty`
+
+`isEmpty` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+비어 있는지 검사합니다.
+
+<span id="function-da-text-isnotempty-43984"></span>
+
+### `isNotEmpty`
+
+`isNotEmpty` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+비어 있지 않은지 검사합니다.
+
+<span id="function-da-text-length-94326"></span>
+
+### `length`
+
+`length` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+text의 symbol 수를 계산합니다.
+
+<span id="function-da-text-trim-11808"></span>
+
+### `trim`
+
+`trim` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+주어진 text의 양쪽에서 space를 제거합니다.
+
+<span id="function-da-text-replace-9445"></span>
+
+### `replace`
+
+`replace` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+subsequence가 나타나는 모든 위치에서 이를 replace합니다. 첫 번째 argument는 비어 있지 않아야 합니다.
+
+<span id="function-da-text-lines-25154"></span>
+
+### `lines`
+
+`lines` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [[`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)]
+
+`Text` value를 newline symbol 위치에서 `Text` list로 나눕니다. 결과 text에는 newline symbol이 포함되지 않습니다.
+
+<span id="function-da-text-unlines-66467"></span>
+
+### `unlines`
+
+`unlines` : [[`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)] -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+각 line 끝에 newline을 추가한 뒤 line을 join합니다.
+
+<span id="function-da-text-words-34636"></span>
+
+### `words`
+
+`words` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [[`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)]
+
+'Text'를 whitespace를 나타내는 symbol로 구분된 word list로 나눕니다.
+
+<span id="function-da-text-unwords-40113"></span>
+
+### `unwords`
+
+`unwords` : [[`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)] -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+하나의 space symbol을 사용해 word를 join합니다.
+
+<span id="function-da-text-linesby-11211"></span>
+
+### `linesBy`
+
+`linesBy` : ([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [[`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)]
+
+custom test를 사용하는 `lines` variant입니다. 특히 trailing separator가 있으면 이를 버립니다.
+
+<span id="function-da-text-wordsby-15461"></span>
+
+### `wordsBy`
+
+`wordsBy` : ([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [[`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)]
+
+custom test를 사용하는 `words` variant입니다. 특히 인접한 separator와 leading 또는 trailing separator를 버립니다.
+
+<span id="function-da-text-intercalate-63059"></span>
+
+### `intercalate`
+
+`intercalate` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [[`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)] -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+`intercalate`는 `ts`의 item 사이에 text argument `t`를 삽입하고 결과를 concatenate합니다.
+
+<span id="function-da-text-dropprefix-62361"></span>
+
+### `dropPrefix`
+
+`dropPrefix` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+`dropPrefix`는 argument에서 주어진 prefix를 제거합니다. text가 주어진 prefix로 시작하지 않으면 원래 text를 반환합니다.
+
+<span id="function-da-text-dropsuffix-37682"></span>
+
+### `dropSuffix`
+
+`dropSuffix` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+argument에서 주어진 suffix를 제거합니다. text가 주어진 suffix로 끝나지 않으면 원래 text를 반환합니다. 예:
+```
+  dropSuffix "!" "Hello World!"  == "Hello World"
+  dropSuffix "!" "Hello World!!" == "Hello World!"
+  dropSuffix "!" "Hello World."  == "Hello World."
+```
+
+<span id="function-da-text-stripsuffix-58624"></span>
+
+### `stripSuffix`
+
+`stripSuffix` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+두 번째 text의 suffix가 첫 번째 text 전체와 일치하면 두 번째 text의 prefix를 반환합니다. 예:
+```
+  stripSuffix "bar" "foobar" == Some "foo"
+  stripSuffix ""    "baz"    == Some "baz"
+  stripSuffix "foo" "quux"   == None
+```
+
+<span id="function-da-text-stripprefix-74987"></span>
+
+### `stripPrefix`
+
+`stripPrefix` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+`stripPrefix` function은 argument text에서 주어진 prefix를 제거합니다. text가 해당 prefix로 시작하지 않으면 `None`을 반환합니다.
+
+<span id="function-da-text-isprefixof-82357"></span>
+
+### `isPrefixOf`
+
+`isPrefixOf` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`isPrefixOf` function은 두 text argument를 받아 첫 번째 text가 두 번째 text의 prefix일 때만 `True`를 반환합니다.
+
+<span id="function-da-text-issuffixof-35218"></span>
+
+### `isSuffixOf`
+
+`isSuffixOf` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`isSuffixOf` function은 두 text argument를 받아 첫 번째 text가 두 번째 text의 suffix일 때만 `True`를 반환합니다.
+
+<span id="function-da-text-isinfixof-98358"></span>
+
+### `isInfixOf`
+
+`isInfixOf` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`isInfixOf` function은 두 text argument를 받아 첫 번째 text 전체가 두 번째 text 안에 온전히 포함될 때만 `True`를 반환합니다.
+
+<span id="function-da-text-takewhile-40431"></span>
+
+### `takeWhile`
+
+`takeWhile` : ([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+function `takeWhile`은 predicate `p`와 text에 적용되며 `p`를 충족하는 symbol의 가장 긴 prefix(비어 있을 수 있음)를 반환합니다.
+
+<span id="function-da-text-takewhileend-32455"></span>
+
+### `takeWhileEnd`
+
+`takeWhileEnd` : ([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+function 'takeWhileEnd'는 predicate `p`와 'Text'에 적용되며 `p`를 충족하는 element의 가장 긴 suffix(비어 있을 수 있음)를 반환합니다.
+
+<span id="function-da-text-dropwhile-46373"></span>
+
+### `dropWhile`
+
+`dropWhile` : ([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+`dropWhile p t`는 `takeWhile p t` 이후 남은 suffix를 반환합니다.
+
+<span id="function-da-text-dropwhileend-2917"></span>
+
+### `dropWhileEnd`
+
+`dropWhileEnd` : ([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+`dropWhileEnd p t`는 `t`의 끝에서 predicate `p`를 충족하는 symbol을 제거한 뒤 남은 prefix를 반환합니다.
+
+<span id="function-da-text-spliton-44082"></span>
+
+### `splitOn`
+
+`splitOn` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [[`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)]
+
+첫 번째 text argument(비어 있을 수 없음)를 delimiter로 사용해 text를 piece로 나누고 delimiter를 소비합니다.
+
+<span id="function-da-text-splitat-25614"></span>
+
+### `splitAt`
+
+`splitAt` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> ([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952), [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952))
+
+`0 <= n <= length t`일 때 `length (fst (splitAt n t)) == n`이 되도록 주어진 position 앞에서 text를 나눕니다.
+
+<span id="function-da-text-take-27133"></span>
+
+### `take`
+
+`take` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+text `t`에 적용된 `take n`은 길이가 `n`인 `t`의 prefix를 반환하며, `n`이 `t`의 길이보다 크면 `t` 자체를 반환합니다.
+
+<span id="function-da-text-drop-34163"></span>
+
+### `drop`
+
+`drop` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+text `t`에 적용된 `drop n`은 처음 `n` character 뒤의 `t` suffix를 반환하며, `n`이 `t`의 길이보다 크면 빈 `Text`를 반환합니다.
+
+<span id="function-da-text-substring-36270"></span>
+
+### `substring`
+
+`substring` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+argument text의 `s`에서 시작하는 길이 `l`의 symbol sequence를 계산합니다.
+
+<span id="function-da-text-ispred-73747"></span>
+
+### `isPred`
+
+`isPred` : ([`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`isPred f t`는 `t`가 비어 있지 않고 `t`의 모든 symbol에 대해 `f`가 `True`이면 `True`를 반환합니다.
+
+<span id="function-da-text-isspace-72803"></span>
+
+### `isSpace`
+
+`isSpace` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`isSpace t`는 `t`가 비어 있지 않고 space로만 구성된 경우 `True`입니다.
+
+<span id="function-da-text-isnewline-85831"></span>
+
+### `isNewLine`
+
+`isNewLine` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`isSpace t`는 `t`가 비어 있지 않고 newline으로만 구성된 경우 `True`입니다.
+
+<span id="function-da-text-isupper-58977"></span>
+
+### `isUpper`
+
+`isUpper` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`isUpper t`는 `t`가 비어 있지 않고 uppercase symbol로만 구성된 경우 `True`입니다.
+
+<span id="function-da-text-islower-60966"></span>
+
+### `isLower`
+
+`isLower` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`isLower t`는 `t`가 비어 있지 않고 lowercase symbol로만 구성된 경우 `True`입니다.
+
+<span id="function-da-text-isdigit-15622"></span>
+
+### `isDigit`
+
+`isDigit` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`isDigit t`는 `t`가 비어 있지 않고 digit symbol로만 구성된 경우 `True`입니다.
+
+<span id="function-da-text-isalpha-72233"></span>
+
+### `isAlpha`
+
+`isAlpha` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`isAlpha t`는 `t`가 비어 있지 않고 alphabet symbol로만 구성된 경우 `True`입니다.
+
+<span id="function-da-text-isalphanum-87978"></span>
+
+### `isAlphaNum`
+
+`isAlphaNum` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`isAlphaNum t`는 `t`가 비어 있지 않고 alphanumeric symbol로만 구성된 경우 `True`입니다.
+
+<span id="function-da-text-parseint-736"></span>
+
+### `parseInt`
+
+`parseInt` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+주어진 `Text`에서 `Int` value parse를 시도합니다.
+
+<span id="function-da-text-parsenumeric-9858"></span>
+
+### `parseNumeric`
+
+`parseNumeric` : [`NumericScale`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-numericscale-83720) `n` => [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) ([`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n`)
+
+주어진 `Text`에서 `Numeric` value parse를 시도합니다.
+`Some` value를 얻으려면 text가 다음 regex를 따라야 합니다
+`(-|\+)?[0-9]+(\.[0-9]+)?`
+특히 shorthand `".12"`와 `"12."`는 동작하지 않지만 value 앞에 `+`를 붙일 수 있습니다.
+leading 및 trailing zero는 허용되지만 space는 허용되지 않습니다.
+예:
+```
+  parseNumeric "3.14" == Some 3.14
+  parseNumeric "+12.0" == Some 12
+```
+
+<span id="function-da-text-parsedecimal-57278"></span>
+
+### `parseDecimal`
+
+`parseDecimal` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`Decimal`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-decimal-18135)
+
+주어진 `Text`에서 `Decimal` value parse를 시도합니다.
+`Some` value를 얻으려면 text가 다음 regex를 따라야 합니다
+`(-|\+)?[0-9]+(\.[0-9]+)?`
+특히 shorthand `".12"`와 `"12."`는 동작하지 않지만 value 앞에 `+`를 붙일 수 있습니다.
+leading 및 trailing zero는 허용되지만 space는 허용되지 않습니다.
+예:
+```
+  parseDecimal "3.14" == Some 3.14
+  parseDecimal "+12.0" == Some 12
+```
+
+<span id="function-da-text-sha256-29291"></span>
+
+### `sha256`
+
+`sha256` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+`Text`의 UTF8 byte에 대한 SHA256 hash를 계산하고 hex-encoded form으로 반환합니다. hex encoding은 lowercase letter를 사용합니다.
+
+Daml을 Daml-LF < 1.2로 compile하면 이 function은 runtime에 crash합니다.
+
+<span id="function-da-text-reverse-37387"></span>
+
+### `reverse`
+
+`reverse` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+`Text`를 reverse합니다.
+```
+  reverse "Daml" == "lmaD"
+```
+
+<span id="function-da-text-tocodepoints-44801"></span>
+
+### `toCodePoints`
+
+`toCodePoints` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [[`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)]
+
+`Text`를 unicode code point sequence로 변환합니다.
+
+<span id="function-da-text-fromcodepoints-94464"></span>
+
+### `fromCodePoints`
+
+`fromCodePoints` : [[`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)] -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+unicode code point sequence를 `Text`로 변환합니다. code point 중 하나라도 유효하지 않으면 exception을 발생시킵니다.
+
+<span id="function-da-text-asciitolower-24557"></span>
+
+### `asciiToLower`
+
+`asciiToLower` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+`Text`의 uppercase ASCII character를 lowercase로 변환하며 다른 모든 character는 변경하지 않습니다.
+
+<span id="function-da-text-asciitoupper-96826"></span>
+
+### `asciiToUpper`
+
+`asciiToUpper` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+`Text`의 lowercase ASCII character를 uppercase로 변환하며 다른 모든 character는 변경하지 않습니다.
+

@@ -1,0 +1,393 @@
+---
+title: "Token Standard"
+description: "Canton Network Token Standard API 및 Daml interface"
+source_id: "SRC-3EBD574A61"
+source_path: "appdev/deep-dives/token-standard"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "10b8d7b77a6d27690500991e354a5be24ce99cae95b8960c2f0e49efd62e1747"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/deep-dives/token-standard.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/app_dev/token_standard/index.rst" hash="f20ad600" */}
+
+## 개요
+
+- Canton Network Token Standard V1에 포함된 API의 개요는 [CIP-0056 원문](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md)을 참조하세요.
+- Canton Network Token Standard V2에 포함된 API의 개요는 [CIP-0112 원문](https://github.com/canton-foundation/cips/blob/main/cip-0112/cip-0112.md)을 참조하세요.
+- API 사용 방법의 배경 정보는 [source code의 README](https://github.com/canton-network/splice/tree/main/token-standard#readme)를 참조하세요.
+
+## Holding UTXO 관리
+
+Bitcoin과 마찬가지로 Canton은 UTXO model을 사용하며, 여기서 UTXO는 `Holding` interface를 구현하는 모든 active Contract입니다.
+
+Active `Holding` Contract는 해당 `Holding` Contract를 소유한 user를 hosting하는 Validator Node와 Token Administrator를 hosting하는 Validator Node 모두에 storage 및 compute cost를 발생시킵니다. Network resource를 효율적으로 사용하려면 Wallet Provider가 user당 UTXO 수를 평균 약 10개 미만으로 낮게 유지하는 것을 목표로 하는 것이 좋습니다.
+
+Transfer의 각 UTXO input은 추가 traffic cost를 발생시키므로 이 방법은 traffic cost도 최적화합니다. 또한 다음과 같은 Canton Coin 등의 Token이 마련한 incentive와도 일치합니다.
+
+- 단일 transfer에 최대 100개의 input Contract만 허용하여 Holding을 과도하게 분할하지 않도록 유도합니다.
+- Initial amount보다 누적 Holding Fee가 큰 Coin UTXO를 expire하여 dust UTXO 생성을 억제합니다.
+
+Wallet Provider는 다음과 같은 UTXO 관리 전략을 구현하는 것이 좋습니다.
+
+- Transfer 자금에 사용할 input Holding에는 amount가 작은 `Holding` UTXO를 우선 선택합니다.
+- Wallet onboarding의 일부로 user에게 `MergeDelegation` Contract 설정을 요청합니다. Documentation을 참조하세요. 그러면 Wallet Provider가 user를 대신하여 작은 `Holding` UTXO를 자동으로 merge할 수 있습니다.
+
+<Note>
+`MergeDelegation` Contract를 사용하면 Wallet Provider가 여러 user와 여러 instrument의 Holding을 airdrop하고 merge하는 단일 batch call을 통해 Holding 자동 merge와 함께 airdrop campaign을 실행할 수도 있습니다. 또한 Featured Wallet Provider는 user를 위해 merge를 수행하면 Featured App Reward를 받습니다.
+</Note>
+
+### MergeDelegation 설정
+
+{/* NETWORKVARS_START source="/snippets/networkvars/appdev/deep-dives/token-standard-1.mdx" */}
+<Tabs>
+
+<Tab title="DevNet (0.7.1)">
+
+User를 위해 Validator Node를 실행하는 Wallet Provider라고 가정하면 다음과 같이 user의 `MergeDelegation` Contract를 설정할 수 있습니다.
+
+1.  Release bundle에서 최신 version의 `splice-util-token-standard-wallet.dar` file을 추출합니다(<a href="https://github.com/digital-asset/decentralized-canton-sync/releases/download/v0.7.1/0.7.1_splice-node.tar.gz">Bundle download, DevNet 0.7.1</a>).
+2.  추출한 `.dar` file을 Validator Node에 upload합니다.
+3.  User가 `MergeDelegationProposal` Contract creation에 서명하도록 user onboarding procedure를 조정합니다. Documentation을 참조하세요.
+4.  `MergeDelegationProposal` Contract를 Wallet Provider Party로 `Accept` Choice를 exercise하여 accept합니다.
+
+</Tab>
+
+<Tab title="TestNet (0.7.0)">
+
+User를 위해 Validator Node를 실행하는 Wallet Provider라고 가정하면 다음과 같이 user의 `MergeDelegation` Contract를 설정할 수 있습니다.
+
+1.  Release bundle에서 최신 version의 `splice-util-token-standard-wallet.dar` file을 추출합니다(<a href="https://github.com/digital-asset/decentralized-canton-sync/releases/download/v0.7.0/0.7.0_splice-node.tar.gz">Bundle download, TestNet 0.7.0</a>).
+2.  추출한 `.dar` file을 Validator Node에 upload합니다.
+3.  User가 `MergeDelegationProposal` Contract creation에 서명하도록 user onboarding procedure를 조정합니다. Documentation을 참조하세요.
+4.  `MergeDelegationProposal` Contract를 Wallet Provider Party로 `Accept` Choice를 exercise하여 accept합니다.
+
+</Tab>
+
+<Tab title="MainNet (0.6.14)">
+
+User를 위해 Validator Node를 실행하는 Wallet Provider라고 가정하면 다음과 같이 user의 `MergeDelegation` Contract를 설정할 수 있습니다.
+
+1.  Release bundle에서 최신 version의 `splice-util-token-standard-wallet.dar` file을 추출합니다(<a href="https://github.com/digital-asset/decentralized-canton-sync/releases/download/v0.6.14/0.6.14_splice-node.tar.gz">Bundle download, MainNet 0.6.14</a>).
+2.  추출한 `.dar` file을 Validator Node에 upload합니다.
+3.  User가 `MergeDelegationProposal` Contract creation에 서명하도록 user onboarding procedure를 조정합니다. Documentation을 참조하세요.
+4.  `MergeDelegationProposal` Contract를 Wallet Provider Party로 `Accept` Choice를 exercise하여 accept합니다.
+
+</Tab>
+
+</Tabs>
+{/* NETWORKVARS_END */}
+
+### MergeDelegation 사용
+
+다음과 같이 `MergeDelegation` Contract를 batch 방식으로 사용하는 것이 좋습니다.
+
+1.  Validator Node 설정의 일부로 Wallet Provider Party를 위한 단일 `BatchMergeUtility` Contract를 생성합니다. Documentation을 참조하세요.
+
+2.  Wallet Provider user에게 Validator Node의 `CanReadAsAnyParty` right를 부여하여 모든 user의 `Holding` UTXO를 읽을 수 있게 합니다.
+
+3.  다음 단계를 정기적으로 수행하는 background process를 실행합니다.
+
+    > 1.  `Holding` UTXO가 10개보다 많은 모든 user를 확인합니다. 예를 들어 [Participant Query Store](/appdev/deep-dives/query-with-pqs)가 제공하는 DB를 사용하거나 Validator Node의 Ledger API에서 Holding Contract를 직접 읽습니다. 전자가 더 scalable한 option입니다.
+    >
+    > 2.  추가 `Holding` Contract를 merge할 Transfer Choice를 `token_standard_usage_executing_factory_choice`에 설명된 대로 Registry API를 query하여 구성합니다.
+    >
+    > 3.  각 user의 `MergeDelegation` Contract를 lookup하고 대응하는 `MergeDelegation_Merge` Choice exercise call을 구성합니다.
+    >
+    > 4.  약 100개의 merge delegation Choice를 `BatchMergeUtility_MergeHoldings` Choice에 대한 단일 call로 batch 처리합니다.
+    >
+    > 5.  앞에서 설정한 `BatchMergeUtility` Contract의 Contract ID를 lookup합니다.
+    >
+    > 6.  Validator Node에서 Wallet Provider user를 사용하여 `BatchMergeUtility_MergeHoldings` Choice를 exercise하고 batch merge를 실행합니다. Ledger API를 사용해 Choice를 exercise하고 이전 단계에서 얻은 모든 disclosed Contract를 단일 call에 추가해야 합니다.
+    >
+    >     더 높은 throughput을 위해 여러 batch를 병렬로 실행할 수 있습니다.
+
+선택적으로 Operator Party에서 보내는 transfer를 merge call에 추가하여 airdrop campaign을 batch 방식으로 구현할 수 있습니다.
+
+### Custom MergeDelegation implementation에서 upgrade
+
+일부 Wallet Provider는 이미 자체 custom merge delegation Contract를 구현합니다. 이들은 Splice가 제공하는 `MergeDelegation` Contract와 함께 자체 Contract를 계속 사용할 수 있습니다. Splice 제공 Contract로 upgrade할 의무는 없습니다.
+
+하지만 추가 기능을 활용하는 등의 목적으로 Splice 제공 Contract로 upgrade하려면 다음과 같이 할 수 있습니다.
+
+1.  `CustomMergeDelegation_Upgrade` Choice를 `CustomMergeDelegation` Template에 추가하여 user를 위한 `MergeDelegation` Contract를 생성합니다. Choice를 `consuming`으로 만들어 upgrade Choice를 exercise할 때 이전 `CustomMergeDelegation` Contract가 archive되게 합니다.
+2.  Custom merge delegation `.dar` file의 version을 올리고 새 release를 build합니다.
+3.  새 `custom-merge-delegation.dar` file을 Validator Node에 upload합니다.
+4.  `CustomMergeDelegation_Upgrade` Choice를 기존의 모든 `CustomMergeDelegation` Contract에서 call하여 Splice 제공 `MergeDelegation` Contract로 upgrade합니다.
+
+## Wallet과 Token Standard Asset 통합
+
+이 section에서는 Wallet developer가 Token Standard Asset과 통합하는 방법을 안내합니다. 이러한 통합은 Wallet user Party를 hosting하는 Validator Node의 Ledger API에 올바른 read 및 write request를 보내는 방식으로 작동합니다. 통합 pattern에는 다섯 가지가 있습니다.
+
+> - `token_standard_usage_reading_contracts`
+> - `token_standard_usage_reading_tx_history`
+> - `token_standard_usage_executing_factory_choice`
+> - `token_standard_usage_executing_nonfactory_choice`
+> - `token_standard_usage_custom_daml_code`
+
+이러한 integration pattern은 최근 `canton-network/wallet-gateway` repository에서 관리하는 [Wallet SDK](https://github.com/canton-network/wallet-gateway/tree/main/sdk/wallet-sdk)에 잘 package되었으며 [여기에 documentation이 있습니다](/sdks-tools/sdks/wallet-sdk/overview).
+
+모든 integration pattern은 Token Standard Asset을 위한 [experimental command-line interface](https://github.com/canton-network/splice/tree/main/token-standard#cli)의 executable code로도 제공됩니다. 따라서 아래에서 pattern을 설명하는 각 section은 code link로 시작하고 implementor를 위한 추가 context를 제공합니다.
+
+모든 interaction은 JSON Ledger API를 통해 작동합니다. [OpenAPI definition은 여기에서 확인할 수 있습니다](/sdks-tools/api-reference/json-api). 이 OpenAPI definition은 `http(s)://${YOUR_PARTICIPANT}/docs/openapi`에서도 access할 수 있습니다. HTTP request를 수동으로 작성하기보다 OpenAPI code generation tool을 사용하는 것이 좋습니다.
+
+Request를 authenticate하는 방법에 관한 자세한 내용은 [Authentication documentation](/global-synchronizer/reference/security-configuration#configure-api-authentication-and-authorization-with-jwt)을 참조하세요.
+
+### Party의 Token Standard interface 구현 Contract 읽기
+
+[Interface별 Contract를 나열하는 Token Standard CLI reference code](https://github.com/canton-network/splice/blob/main/token-standard/cli/src/commands/listContractsByInterface.ts)
+
+Token Standard에는 Daml Template이 구현하는 여러 interface가 포함됩니다. 특정 interface를 구현하는 모든 Contract를 나열하려면 Participant의 [active-contracts endpoint](/sdks-tools/api-reference/json-api)를 query해야 합니다.
+
+최신 ACS를 가져오려면 `activeAtOffset` parameter를 [Participant의 Ledger End endpoint 결과](/sdks-tools/api-reference/json-api#ledger-end)로 설정합니다. 이전의 pruned되지 않은 값으로 설정하면 해당 시점의 ACS를 가져올 수 있습니다.
+
+특정 Party와 interface로 filter하려면 `filtersByParty`에 `InterfaceFilter`를 포함해야 합니다.
+
+```json
+{
+  "filtersByParty": {
+    "$A_PARTY": {
+      "cumulative": [
+        {
+          "identifierFilter": {
+            "InterfaceFilter": {
+              "value": {
+                "interfaceId": "$AN_INTERFACE_ID",
+                "includeInterfaceView": true,
+                "includeCreatedEventBlob": true
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+예를 들면 다음과 같습니다.
+
+- `"$A_PARTY"`는 `test::1220a0db3761b3fc919b55e7ff80ad740824336010bfde8829611c0e64477ab7bee5`와 같은 형식일 수 있습니다.
+- `"$AN_INTERFACE_ID"`는 `#splice-api-token-holding-v2:Splice.Api.Token.HoldingV2:Holding`일 수 있습니다.
+
+다음과 같이 설정할 수 있는 flag도 세 개 있습니다.
+
+- `includeInterfaceView`: Response에 Contract의 interface view를 포함합니다.
+- `includeCreatedEventBlob`: [Explicit Contract Disclosure](/appdev/deep-dives/explicit-contract-disclosure)에 필요한 binary blob을 포함합니다.
+- `verbose`: Response에 추가 정보를 포함합니다.
+
+이 query의 response에는 요청된 interface view가 있다면 이를 포함하여 Contract의 `createdEvent`가 들어 있습니다. 그 안의 `viewValue`는 JSON으로 serialize된 Daml interface view입니다. 둘 이상의 interface를 요청했다면 `interfaceId` field를 확인하여 구분할 수 있습니다. [Holding example response는 여기에서 확인할 수 있습니다](https://github.com/canton-network/splice/blob/main/token-standard/cli/__tests__/mocks/data/holdings.json).
+
+### Token Standard Contract와 관련된 Transaction history 읽기 및 parse
+
+Example code: [Transaction을 나열하는 Token Standard CLI code](https://github.com/canton-network/splice/blob/main/token-standard/cli/src/commands/listHoldingTransactions.ts)
+
+Participant에는 지정된 Party와 interface가 관련된 [모든 Transaction을 나열하는 endpoint](/sdks-tools/api-reference/json-api)가 있습니다.
+
+특정 Party와 interface로 filter하려면 `filtersByParty`에 `InterfaceFilter`를 포함해야 합니다.
+
+```json
+{
+  "filtersByParty": {
+    "$A_PARTY": {
+      "cumulative": [
+        {
+          "identifierFilter": {
+            "InterfaceFilter": {
+              "value": {
+                "interfaceId": "$AN_INTERFACE_ID",
+                "includeInterfaceView": true,
+                "includeCreatedEventBlob": true
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+예를 들면 다음과 같습니다.
+
+- `"$A_PARTY"`는 `test::1220a0db3761b3fc919b55e7ff80ad740824336010bfde8829611c0e64477ab7bee5`와 같은 형식일 수 있습니다.
+- `"$AN_INTERFACE_ID"`는 `#splice-api-token-holding-v2:Splice.Api.Token.HoldingV2:Holding`일 수 있으며 지정된 Party의 모든 `Holding` Contract를 읽습니다.
+
+Interface와 직접 관련되지 않은 다른 Transaction node, 예를 들어 interface에 종속되지 않는 child node를 포함하려면 `WildcardFilter`를 `cumulative` filter array에 포함할 수 있습니다.
+
+```json
+{
+  "identifierFilter": {
+    "WildcardFilter": {
+      "value": {
+        "includeCreatedEventBlob": true
+      }
+    }
+  }
+}
+```
+
+`beginExclusive` field는 Transaction 읽기를 시작할 offset입니다. Pagination하려면 `participantPrunedUpToInclusive`를 `GET ${PARTICIPANT_URL}/v2/state/latest-pruned-offsets`에서 가져와 시작하고 이전 response의 마지막 Transaction offset을 전달하여 계속할 수 있습니다.
+
+#### History parse, V2
+
+Example code: [Parser](https://github.com/canton-network/splice/blob/main/token-standard/cli/src/txparse/parserv2.ts). `Holding` 및 `TransferInstruction` interface가 관련된 Transaction을 parse하여 user가 읽을 수 있는 Wallet history를 추출합니다.
+
+Parser는 모든 `EventLog_HoldingsChange` exercise를 찾아 Transaction history를 구성합니다.
+이 Choice는 account의 Holding 변경을 observer에게 알립니다.
+[전체 documentation](/sdks-tools/api-reference/splice-daml/splice-api-token-transfer-events-v2/splice-api-token-transfereventsv2#choice-eventlog_holdingschange)을 참조하세요.
+
+#### History parse, V1
+
+Example code: [Parser](https://github.com/canton-network/splice/blob/main/token-standard/cli/src/txparse/parserv1.ts). `Holding` 및 `TransferInstruction` interface가 관련된 Transaction을 parse하여 user가 읽을 수 있는 Wallet history를 추출합니다.
+
+Endpoint는 Transaction tree를 array로 반환합니다. Transaction은 Ledger에서 발생한 순서로 정렬됩니다. `ExercisedEvent`의 `nodeId=X`이고 `lastDescendantNodeId=Y`이면 해당 node의 child는 `nodeId`가 `[X+1, Y]` 범위에 있는 node입니다. `CreatedEvent`와 `ArchivedEvent`, 또는 이에 해당하는 `ExercisedEvent` 중 `consuming=true`인 event에는 child가 없습니다.
+
+이를 바탕으로 Transaction node를 tree 형태로 traverse할 수 있습니다. 일반적으로 Token Standard parser는 Token Standard Choice exercise와 Token Standard interface를 구현하는 Contract creation에 집중합니다. 추가 customization이 필요하면 parser가 Standard에는 없고 특정 implementation에만 있는 internal/specific Choice에도 집중할 수 있습니다.
+
+각 Token Standard exercise node에서는 다음을 확인할 수 있습니다.
+
+- 실행되는 Choice: 어떤 operation이 수행되었는지 구분하는 데 유용합니다.
+- Child의 archival/creation 과정에서 발생한 다른 관련 operation을 파악할 수 있습니다. 예를 들어 `Holdings`의 creation 또는 archival입니다.
+- Standard의 일부인 meta key/value:
+  - `splice.lfdecentralizedtrust.org/tx-kind`: Node에서 발생하는 operation 유형입니다. Exercise된 Choice보다 더 많은 정보를 제공할 수 있습니다. 다음 중 하나일 수 있습니다.
+    - `transfer`
+    - `merge-split`
+    - `burn`
+    - `mint`
+    - `unlock`
+    - `expire-dust`
+  - `splice.lfdecentralizedtrust.org/sender`: Node의 sender Party입니다.
+  - `splice.lfdecentralizedtrust.org/reason`: Node의 operation 이유를 지정하는 text입니다.
+  - `splice.lfdecentralizedtrust.org/burned`: Node에서 burn된 Holding의 양입니다.
+
+<Warning>
+Meta key/value는 여러 optional field에 지정될 수 있습니다. Transfer의 경우 존재하는 field의 값을 다음 last-write-wins 순서로 merge해야 합니다.
+
+- event.choiceArgument.transfer.meta,
+- event.choiceArgument.extraArgs.meta,
+- event.choiceArgument.meta,
+- event.exerciseResult.meta,
+</Warning>
+
+### Factory Choice 실행
+
+Example code: [TransferFactory를 통해 transfer를 생성하는 Token Standard CLI code](https://github.com/canton-network/splice/blob/main/token-standard/cli/src/commands/transfer.ts)
+
+Token Standard Factory를 통해 Choice를 실행하려면 먼저 해당 Registry에서 Factory를 fetch해야 합니다.
+
+<Note>
+Generic solution, [CNS 기반일 가능성이 높은 방식](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md#off-ledger-api-discovery-and-access)이 구현되기 전까지 instrument의 `admin` Party ID와 해당 Registry URL의 mapping은 현재 Wallet이 직접 관리해야 합니다.
+</Note>
+
+Registry는 해당 endpoint에서 관련 Factory를 반환합니다.
+
+- TransferFactory
+- AllocationFactory
+
+Response payload에는 관련 field 세 개가 포함됩니다.
+
+- `factoryId`: Factory의 Contract ID
+- `disclosedContracts`: Factory Choice를 exercise할 때 작동하도록 제공해야 함
+- `choiceContextData`: `context`로 `choiceArgument`에 전달
+
+이 data를 사용하면 Factory의 Choice를 실행할 수 있습니다. External Party의 경우 Participant의 [prepare](/sdks-tools/api-reference/json-api#interactive-submission) 및 [execute](/sdks-tools/api-reference/json-api#interactive-submission) endpoint를 call해야 합니다. External Party가 아닌 경우 [submit-and-wait endpoint](/sdks-tools/api-reference/json-api#command-submission)를 사용하면 됩니다.
+
+두 경우 모두 payload에 다음 field를 가진 `ExerciseCommand`를 포함해야 합니다.
+
+- `templateId`: Choice를 exercise하려는 Factory의 interface ID입니다. 예: `#splice-api-token-transfer-instruction-v2:Splice.Api.Token.TransferInstructionV2:TransferFactory`
+- `contractId`: Registry에서 가져온 `factoryId`입니다.
+- `choice`: 실행할 Choice의 이름입니다. 예: `TransferFactory_Transfer`
+- `choiceArgument`: Daml Choice에 전달할 argument입니다. JSON에서 decode됩니다. 예를 들어 `TransferFactory_Transfer`에는 여러 field 중 sender, receiver, amount가 포함됩니다.
+
+### Factory를 사용하지 않는 Choice 실행
+
+Example code: [Transfer Instruction을 accept하는 Token Standard CLI code](https://github.com/canton-network/splice/blob/main/token-standard/cli/src/commands/acceptTransferInstruction.ts)
+
+External Party를 위해 Token Standard interface를 구현하는 Contract의 Choice를 실행하려면 Participant의 [prepare](/sdks-tools/api-reference/json-api#interactive-submission) 및 [execute](/sdks-tools/api-reference/json-api#interactive-submission) endpoint를 call해야 합니다. External Party가 아닌 경우 [submit-and-wait endpoint](/sdks-tools/api-reference/json-api#command-submission)를 사용하면 됩니다.
+
+두 경우 모두 payload에 다음 field를 가진 `ExerciseCommand`를 포함해야 합니다.
+
+- `templateId`: Choice를 exercise하려는 Contract의 interface ID입니다. 예: `#splice-api-token-transfer-instruction-v2:Splice.Api.Token.TransferInstructionV2:TransferInstruction`
+- `contractId`: Choice를 exercise하려는 Contract의 Contract ID입니다. 일반적으로 Party의 현재 ACS에서 가져옵니다.
+- `choice`: 실행할 Choice의 이름입니다. 예: `TransferInstruction_Accept`
+- `choiceArgument`: Daml Choice에 전달할 argument입니다. JSON에서 decode됩니다.
+
+`context`가 `choiceArgument`의 일부로 필요한 경우 해당 Registry에서 가져올 수 있습니다.
+
+- TransferInstruction accept
+- TransferInstruction reject
+- TransferInstruction withdraw
+- Allocation withdraw
+- Allocation cancel
+
+이 endpoint의 response에는 두 field가 포함됩니다.
+
+- `choiceContextData`: `context`로 `choiceArgument`에 전달
+- `disclosedContracts`: Submit 또는 prepare request에 전달
+
+<Warning>
+`AllocationRequest_Reject`와 `AllocationRequest_Withdraw`는 빈 Choice context로 call해야 합니다. 이 `ChoiceContext`는 이러한 Choice implementation 동작의 향후 extension 가능성을 위해 존재합니다.
+</Warning>
+
+### Custom Daml code에서 Token Standard Choice 사용
+
+Custom Daml code에서 Token Standard Choice를 call하면 자체 App workflow를 Token Standard와 통합할 때 유용합니다. Wallet Provider와 관련된 example workflow에는 user의 ACS를 작게 유지하기 위한 Holding merge, bulk transfer, user action을 Wallet App activity로 표시하는 작업이 있습니다.
+
+Splice release에는 Wallet App operation을 개선하는 일반적인 workflow를 package한 optional `splice-util-token-standard-wallet.dar` file이 포함됩니다. Template별 reference는 [splice-util-token-standard-wallet](/sdks-tools/api-reference/splice-daml/splice-util-token-standard-wallet)을 참조하세요.
+
+## API Reference
+
+V1 API에 관한 추가 context는 [CIP-0056](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md#details)을 참조하고,
+and to [CIP-0112](https://github.com/canton-foundation/cips/blob/main/cip-0112/cip-01 for more context on the V2 APIs.
+
+### Token Metadata
+
+- Daml reference: [splice-api-token-metadata-v1](/sdks-tools/api-reference/splice-daml/splice-api-token-metadata-v1)
+- OpenAPI reference: [Token Metadata Service](/reference/splice-token-metadata-service/get-registrymetadatav1info)
+
+### Holding
+
+[Portfolio View](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md#wallet-client--portfolio-view)를 구현할 수 있습니다.
+
+- V2 Daml reference: [splice-api-token-holding-v2](/sdks-tools/api-reference/splice-daml/splice-api-token-holding-v2)
+- V1 Daml reference: [splice-api-token-holding-v1](/sdks-tools/api-reference/splice-daml/splice-api-token-holding-v1)
+
+### Transfer Instruction
+
+[Direct Peer-to-Peer / Free of Payment(FOP) Transfer](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md#direct-peer-to-peer--free-of-payment-fop-transfer-workflow)를 구현할 수 있습니다.
+
+- V2 Daml reference: [splice-api-token-transfer-instruction-v2](/sdks-tools/api-reference/splice-daml/splice-api-token-transfer-instruction-v2)
+- V2 OpenAPI reference: [Transfer Instruction V2 API](/reference/splice-transfer-instruction-api/post-registrytransfer-instructionv2transfer-factory)
+- V1 Daml reference: [splice-api-token-transfer-instruction-v1](/sdks-tools/api-reference/splice-daml/splice-api-token-transfer-instruction-v1)
+- V1 OpenAPI reference: [Transfer Instruction V1 API](/reference/splice-transfer-instruction-api/post-registrytransfer-instructionv1transfer-factory)
+
+### Allocation
+
+아래 Allocation Instruction 및 Allocation Request API와 함께 [Delivery versus Payment(DVP) Transfer Workflow](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md#delivery-versus-payment-dvp-transfer-workflows)를 구현할 수 있습니다.
+
+- V2 Daml reference: [splice-api-token-allocation-v2](/sdks-tools/api-reference/splice-daml/splice-api-token-allocation-v2)
+- V2 OpenAPI reference: [Allocation V2 API](/reference/splice-allocation-api/post-registryallocationsv2:allocationidchoice-contextsexecute-transfer)
+- V1 Daml reference: [splice-api-token-allocation-v1](/sdks-tools/api-reference/splice-daml/splice-api-token-allocation-v1)
+- V1 OpenAPI reference: [Allocation V1 API](/reference/splice-allocation-api/post-registryallocationsv1:allocationidchoice-contextsexecute-transfer)
+
+### Allocation Instruction
+
+- V2 Daml reference: [splice-api-token-allocation-instruction-v2](/sdks-tools/api-reference/splice-daml/splice-api-token-allocation-instruction-v2)
+- V2 OpenAPI reference: [Allocation Instruction V2 API](/reference/splice-allocation-instruction-api/post-registryallocation-instructionv2allocation-factory)
+- V1 Daml reference: [splice-api-token-allocation-instruction-v1](/sdks-tools/api-reference/splice-daml/splice-api-token-allocation-instruction-v1)
+- V1 OpenAPI reference: [Allocation Instruction V1 API](/reference/splice-allocation-instruction-api/post-registryallocation-instructionv1allocation-factory)
+
+### Allocation Request
+
+- V2 Daml reference: [splice-api-token-allocation-request-v2](/sdks-tools/api-reference/splice-daml/splice-api-token-allocation-request-v2)
+- V1 Daml reference: [splice-api-token-allocation-request-v1](/sdks-tools/api-reference/splice-daml/splice-api-token-allocation-request-v1)
+
+{/* COPIED_END */}
+
+{/* Mintlify preview rebuild marker. */}

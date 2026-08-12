@@ -1,0 +1,701 @@
+---
+title: "3.5.1"
+description: "Canton 3.5.1 release note입니다."
+source_id: "SRC-73C65430A6"
+source_path: "global-synchronizer/release-notes/canton-releases/3-5-1"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "510a49e38bc547fa064d4b347169d620ada2c1c644839c2413c8fc55f9e5aa38"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/release-notes/canton-releases/3-5-1.md)을 사용하세요.
+</Warning>
+
+# Canton 3.5.1 Release
+
+Canton 3.5.1은 2026년 5월 27일에 release되었습니다.
+
+## 새로운 기능
+
+### Contract Key
+
+#### 개요
+Canton 3.5에는 contract key가 도입되었습니다. Canton 2.x에서 제공되던 유사한 feature와 비교하면 두 가지 주목할 차이가 있습니다.
+
+- Key가 unique하지 않으므로 여러 contract가 같은 key를 공유할 수 있습니다.
+- Negative lookup은 검증되지 않습니다.
+
+따라서 application developer는 external enforcement mechanism을 통해 key uniqueness를 보장해야 합니다. Contract key는 Daml-LF 2.3부터 사용할 수 있으며, Daml-LF 2.3은 아래 설명처럼 Protocol Version 35부터 사용할 수 있습니다.
+
+#### Standard library
+Daml language는 이제 contract key와 관련된 여러 primitive를 지원합니다. 모든 경우에 contract는 다음 순서로 반환됩니다.
+- 먼저 Transaction 안에서 생성된 contract가 가장 최근 것부터 반환됩니다.
+- 다음으로 명시적으로 disclosed된 contract가 반환됩니다.
+- 마지막으로 Participant가 알고 있는 contract가 최신순으로 반환됩니다.
+
+다음 primitive를 사용할 수 있습니다.
+
+- ``lookupByKey`` - Prelude에서 사용할 수 있습니다. 주어진 key를 가진 contract가 존재하는지 확인하고 존재하면 Contract ID를 반환합니다. 여러 contract가 있으면 가장 최근에 생성된 contract를 반환합니다. Signature는 2.x와 같습니다.
+- ``fetchByKey`` - Prelude에서 사용할 수 있습니다. 주어진 contract key와 연결된 첫 번째 Contract ID 및 contract data를 가져옵니다. 여러 contract가 있으면 가장 최근에 생성된 contract를 반환합니다. Signature는 2.x와 같습니다.
+- ``exerciseByKey`` - Prelude에서 사용할 수 있습니다. 주어진 key와 연결된 첫 번째 contract에서 choice를 exercise합니다. Signature는 2.x와 같습니다.
+- ``lookupNByKey`` - ``DA.ContractKeys``에서 사용할 수 있습니다. 전달된 key와 연결된 contract를 최대 n개 lookup합니다.
+
+#### Daml Script
+Standard library primitive에 대응하는 다음 Daml Script function이 있습니다.
+
+- ``queryByKey`` - 전달된 key와 연결된 contract를 lookup하고 ID와 data를 반환합니다. ``Script`` type이므로 Script의 일부로서 top-level instruction에 있어야 합니다.
+- ``queryNByKey`` - 전달된 key와 연결된 contract를 최대 n개 lookup하고 ID와 data를 반환합니다. ``Script`` type이므로 Script의 일부로서 top-level instruction에 있어야 합니다.
+- ``exerciseByKeyCmd`` - 주어진 key를 가진 첫 번째 contract에서 choice를 exercise합니다. ``Commands`` type이므로 submit operation으로 감싸야 하며 다른 ``Commands``와 결합할 수 있습니다.
+
+
+#### Smart Contract Upgrades (SCU)
+Key와 maintainer definition의 SCU upgrade를 지원하기 위해 새로운 guideline이 추가되었습니다. Upgrade 시 다시 계산한 key와 maintainer가 upgrade 대상 contract의 원래 key 및 maintainer와 동일한지 검증합니다. 동일하지 않으면 upgrade error가 발생하고 Transaction이 중단됩니다.
+Template의 후속 version에서 key definition을 추가하거나 제거할 수 없습니다. 이는 Package Vetting 시점에 강제됩니다.
+
+#### Ledger API
+Ledger API에 다음과 같은 contract key 관련 확장이 추가되었습니다.
+
+- ``contract_key_hash``가 ``State-`` 및 ``UpdateService`` response에서 반환하는 ``CreatedEvent`` message에 추가되었습니다.
+- ``Command-``, ``CommandSubmission-``, ``InteractiveSubmissionService``가 사용하는 ``Command`` 및 ``PrepareSubmissionRequest``에 있는 ``prefetch_contract_keys`` field가 다시 활성화되었습니다. Caller는 이를 통해 Command interpretation의 기반이 되는 contract key cache의 사전 준비를 요청할 수 있습니다. 다수의 순차적인 contract key lookup이 Command interpretation 속도에 부정적 영향을 준다는 사실을 performance test에서 확인한 경우 사용하세요.
+
+#### PQS
+PQS에서 key는 다른 metadata처럼 query할 수 있는 단순한 metadata입니다. 주어진 key를 가진 모든 contract를 query할 수 있습니다.
+
+    ```
+    select contract_id, payload ->> 'label'
+    from __contracts
+    where contract_key = jsonb_build_object(...)
+    order by created_at_ix
+    ```
+
+### Daml-LF 2.3
+
+새로운 Daml-LF version인 Daml-LF 2.3이 release되었습니다. 주요 feature는 다음과 같습니다.
+
+- [`DA.Crypto.Text`](https://docs.digitalasset.com/build/3.5/reference/daml/stdlib/DA-Crypto-Text.html)는 원래 3.4에서 early access인 alpha 상태로 release되었으며 이제 LF 2.3의 일부이므로 stable로 표시됩니다.
+- Contract Key 지원.
+
+#### LF 2.3 target 지정
+
+LF 2.3에서 제공되는 새 feature를 사용하려면 command line에서 직접 argument로 지정하거나 `daml.yaml`의 일부로 `--target=2.3`을 설정하여 compilation target으로 명시적으로 선택하세요.
+
+```
+sdk-version: 3.5.1
+name: some-name
+source: daml
+version: 0.0.1
+dependencies:
+  - daml-prim
+  - daml-stdlib
+build-options:
+- --target=2.3
+```
+
+Setting을 변경한 후 source code를 다시 compile해야 합니다. 이로 인해 package ID가 변경되므로 version도 함께 변경해야 합니다.
+
+### Logical Synchronizer Upgrade
+Logical Synchronizer Upgrade, 즉 LSU는 이전 Synchronizer upgrade 절차인 Synchronizer Upgrade with Downtime을 대체합니다. LSU는 이전 upgrade 절차의 다음과 같은 단점을 해결합니다.
+
+- Downtime 감소
+
+  Daml Transaction의 downtime은 수십 초 수준입니다.
+  Topology Transaction의 downtime은 upgrade 전 수 시간 수준입니다.
+  이는 후속 version에서 개선될 예정입니다.
+
+- Validator를 위한 수동 coordination 불필요
+
+  Validator Node operator는 upgrade 시간 전에 binary만 upgrade하면 됩니다.
+  나머지 절차는 automation으로 진행됩니다.
+
+- SV coordination 감소
+
+  SV는 upgrade 준비를 독립적으로 진행하고 전용 Topology Transaction을 사용해 진행 상황을 signal할 수 있습니다.
+
+- 각 Validator의 asynchronous upgrade
+
+  각 Validator는 upgrade 시간 전에 binary를 독립적으로 upgrade합니다.
+  각 Validator는 이전 Synchronizer의 마지막 message를 처리할 때 자동으로 upgrade를 수행합니다.
+
+- Local history 및 cryptographic evidence 보존
+
+  Update와 offset을 포함한 Transaction history 및 ACS commitment가 보존됩니다.
+
+#### Upgrade 시간 전후의 external submission
+Protocol Version 34를 실행하는 Synchronizer에서 upgrade 전에 준비한 external submission은 LSU 후 Protocol Version 35를 실행하는 Synchronizer에 제출할 수 없습니다. 다시 prepare하고 다시 sign해야 합니다.
+
+### DA BFT Beta
+
+DA BFT는 Synchronizer에 포함되는 새로운 ordering service입니다. Global Synchronizer의 기존 single-leader CometBFT ordering service를 parallel multi-leader consensus architecture로 대체하여 훨씬 높은 Transaction throughput과 fault tolerance를 제공합니다.
+
+이번 release에서 DA BFT는 early access test용 beta 형태로 준비되었지만 production 또는 production에 가까운 test에는 아직 권장하지 않습니다.
+
+### Multi Synchronizer Alpha
+
+Multi-synchronizer 지원은 early access로 제공되며 명시적으로 활성화해야 합니다.
+이 feature는 test environment에서만 사용해야 합니다.
+
+Synchronizer 간 contract Reassignment를 활성화하려면 source 및 target Synchronizer 양쪽에서 contract의 stakeholder를 hosting하는 모든 Participant에서 `PARTICIPANT_FEATURE_FLAG_ENABLE_ALPHA_MULTI_SYNCHRONIZER` flag를 활성화해야 합니다. Synchronizer에서는 다음과 같이 수행할 수 있습니다.
+
+```
+participant.topology.synchronizer_trust_certificates.propose(
+  p.id,
+  synchronizerId,
+  featureFlags = Seq(ParticipantTopologyFeatureFlag.EnableAlphaMultiSynchronizer),
+)
+```
+
+
+## 기능 변경 사항
+
+### Party Replication
+
+#### Offline Party Replication
+
+Protocol Version 35를 사용할 때 onboarding flag를 clear하여 offline Party Replication을 마무리하는 과정에 다음 두 가지 주요 update가 포함됩니다.
+- 진행 중인 clearance에 대한 crash resilience가 추가되었습니다.
+- Participant가 Synchronizer에 다시 연결될 때 clearance가 자동으로 schedule됩니다.
+
+이 변경 사항은 `participant.parties.import_party_acs` 및 `participant.parties.clear_party_onboarding_flag` endpoint에만 적용됩니다.
+
+참고: 자동 scheduling을 활성화하려면 Party ACS import call에 replicated Party ID를 포함해야 합니다. Protocol Version 34에서는 기존 behavior가 유지됩니다.
+
+#### Party Replication onboarding Topology event를 Ledger API에 노출
+
+기존 contract가 있는 Party를 replicate하는 과정에서 사용하는 `PartyToParticipant` Topology의 "onboarding" state가 이제 Protocol Version 35 이상 Synchronizer에서 Party가 onboard할 때 Ledger API를 통해 표시됩니다. PV=35부터 새로 도입된 `ParticipantAuthorizationOnboarding` Ledger API Topology event가 Party Replication의 시작을 signal하고, Party의 ACS가 Ledger API에 완전히 표시되면 `ParticipantAuthorizationAdded`로 transition합니다.
+
+#### Preview: Online Party Replication
+
+- File 기반 online Party Replication command `participant.parties.add_party_with_acs_async`가 추가되었습니다. 이 command는 `participant.parties.export_party_acs`와 함께 사용하며 Sequencer channel 기반 `add_party_async` command를 대체합니다.
+- Online Party Replication status command는 이제 기존 "oneof" style 대신 크게 달라진 "vector-status" 형식으로 status를 반환합니다. 이는 `participant.parties.get_add_party_status` command 및 `com.digitalasset.canton.admin.participant.v30.PartyManagementService.GetAddPartyStatus` gRPC response type에 영향을 줍니다.
+- Online Party Replication을 활성화하는 Participant configuration은 다른 alpha feature와 일관성을 맞추고 default file 기반 mode가 Sequencer channel에 의존하지 않아 더 안전하다는 점을 반영하기 위해 `unsafe-online-party-replication`에서 `alpha-online-party-replication-support`로 이름이 변경되었습니다.
+- Online Party Replication을 위한 Sequencer channel을 활성화하는 Sequencer configuration은 일관성을 유지하고 Sequencer channel을 구체적으로 가리키도록 `unsafe-enable-online-party-replication`에서 `unsafe-sequencer-channel-support`로 이름이 변경되었습니다.
+
+#### 사소한 개선 사항
+
+- Onboarding Party submission 방지: Participant가 onboarding 중인 Party를 대신해 Transaction 또는 Reassignment를 제출하지 못하게 합니다.
+- Netty 4.1.130 CVE인 CVE-2026-33870 및 CVE-2026-33871을 해결하기 위해 gRPC를 1.81.0으로, AWS SDK를 2.44.3으로 upgrade했습니다.
+
+### 새로운 Transaction Hashing Scheme v3
+
+- Transaction의 `max_record_time`을 hash computation에 포함하고 contract key의 새 Transaction node와 field를 포함하는 새 hashing scheme version `HASHING_SCHEME_VERSION_V3`이 도입되었습니다. 이 새 version은 Protocol Version 35부터 사용할 수 있습니다.
+- Update된 version은 [hashing algorithm 문서](https://docs.digitalasset-staging.com/build/3.5/explanations/external-signing/external_signing_hashing_algorithm.html#summary-of-differences-between-v2-and-v3)를 참고하세요.
+- 이제 모든 confirming Participant가 `max_record_time`을 강제합니다.
+- Ledger API 및 Ledger JSON API의 prepare `InteractiveSubmissionService`는 request에서 특정 hashing scheme version을 받도록 수정되었습니다.
+Default hashing scheme은 `HASHING_SCHEME_VERSION_V2`입니다. Integrator는 Protocol Version 35를 사용하는 Synchronizer에서 `HASHING_SCHEME_VERSION_V3`으로 이동하는 것이 좋습니다.
+특히 **contract key**를 사용하려면 `HASHING_SCHEME_VERSION_V3`이 필요합니다. 자세한 내용은 versioning [문서](https://docs.digitalasset-staging.com/build/3.5/explanations/external-signing/external_signing_hashing_algorithm.html#hashing-scheme-version)를 참고하세요.
+
+### Active Contracts Head Snapshot (ACHS)
+
+Active Contracts Head Snapshot인 ACHS는 현재 active contract를 지속적으로 update하는 snapshot을 유지하는 새로운 optional feature입니다. ACHS를 활성화하면 전체 event log를 scan하여 active set을 재구성하는 대신 미리 계산된 snapshot에서 직접 읽을 수 있으므로 `GetActiveContracts` (ACS) query가 빨라집니다.
+
+ACHS는 기본적으로 비활성화되어 있습니다. 활성화하려면 Participant indexer setting 아래에 `achs-config` block을 구성하세요.
+```
+canton.participants.<participant>.parameters.ledger-api-server.indexer.achs-config {
+    valid-at-distance-target = 1000000
+    last-populated-distance-target = 500000
+}
+```
+
+`valid-at-distance-target`은 snapshot의 validity point가 ledger end에서 event sequential ID 기준으로 얼마나 뒤에 유지되는지를 제어합니다. ACHS는 validity point보다 아래인 query를 처리하는 데 사용되지 않으며 INFO level에 "ACHS for &lt;filter&gt; skipped since validAt (...) already surpassed requested activeAt (...)"를 logging합니다. `valid-at-distance-target` value가 너무 작으면 장시간 실행되는 ACS query가 ACHS validity point가 요청 offset을 지나도록 stream 도중 이동하는 것을 관찰할 수 있습니다. 이 경우 stream은 더 느린 filter table query로 fallback하며 INFO level에 "ACHS stream for &lt;filter&gt; fell back to filter tables from (...) since validAt (...) surpassed activeAtEventSeqId (...)"를 logging합니다. Value가 너무 크면 ACHS validity point와 요청 offset 사이인 ACS tail 부분을 filter table에서 resolve해야 하므로 마지막 segment의 비용이 더 커집니다.
+
+위에서 설명한 대로 ACHS validity point가 이동하거나 요청 offset을 지나면 stream이 filter table로 fallback했음을 나타내는 info-level log message가 발생합니다.
+`daml.participant.api.index` 아래에서 대응하는 두 metric인 `achs_skips`와 `achs_midstream_fallbacks`를 사용할 수 있습니다. Operator는 이를 사용해 fallback 빈도를 monitoring하고 그에 맞게 `valid-at-distance-target`을 조정할 수 있습니다.
+
+`last-populated-distance-target`은 오래 유지되는 contract만 저장하기 위해 ACHS population에 event sequential ID 기준 추가 lag를 설정합니다. Value가 클수록 snapshot에 추가되기 전에 생성 및 archive되는 단기 contract를 skip하여 database I/O를 줄입니다. 그러나 너무 크게 설정하면 마지막 populated point와 ACHS validity point 사이의 gap을 메우기 위해 filter table에서 더 많은 data를 가져와야 하므로 남은 ACS tail의 비용이 증가합니다.
+
+추가 tuning parameter는 다음과 같습니다.
+- `population-parallelism`: 정상 operation 중 activation을 ACHS에 추가하는 parallel thread 수입니다.
+- `removal-parallelism`: 정상 operation 중 deactivated activation을 ACHS에서 제거하는 parallel thread 수입니다.
+- `aggregation-threshold`: ACHS maintenance work가 발생하기 전 event sequential ID 기준 최소 batch size입니다.
+- `init-parallelism`: initialization 중 ACHS population 및 removal을 위한 parallel thread 수입니다.
+- `init-aggregation-threshold`: initialization 중 ACHS maintenance를 위한 event sequential ID 기준 최소 batch size입니다.
+- `buffer-size`: indexer pipeline과 ACHS maintenance flow 사이의 internal buffer size입니다.
+
+`daml.participant.api.indexer.deactivation_distances` 아래에서 제공되는 `deactivation_distances` histogram metric은 operator가 contract lifetime 분포, 즉 contract activation과 deactivation 사이의 event sequential ID 거리를 이해하고 적절한 `last-populated-distance-target`을 설정하는 데 도움을 줍니다. 이상적으로 population distance는 대부분의 단기 contract가 이미 deactivated되어 snapshot에 추가되지 않을 만큼 충분히 커야 합니다.
+
+ACHS state를 monitoring하기 위해 `daml.participant.api.indexer` 아래에서 세 가지 gauge metric을 사용할 수 있습니다.
+- `achs_valid_at`: ACHS가 현재 유효한 event sequential ID입니다. 요청 offset이 이 value 이상인 ACS query는 ACHS에서 직접 읽을 수 있습니다.
+- `achs_last_populated`: activation이 ACHS에 추가된 마지막 event sequential ID입니다.
+- `achs_last_removed`: deactivation이 lookup되고 그에 해당하는 activation이 ACHS에서 제거된 마지막 event sequential ID입니다.
+
+### Sequencer Connect Service의 강화된 Error Handling
+
+Information leakage를 완화하기 위해 SequencerConnectService에 엄격한 error sanitization 및 rewording을 구현했습니다. 이제 자세한 internal error message는 client에 전송되기 전에 redact됩니다.
+
+Non-production environment에서 자세한 diagnostics가 필요한 경우 다음과 같이 sanitization을 끌 수 있습니다.
+
+```
+canton.monitoring.sanitize-public-error-messages = false
+```
+
+### Submission request에서 offboard된 Sequencer 무시
+
+Sequencer가 offboard되었지만 online 상태를 유지하고 connectivity configuration에도 남아 있는 경우, member가 여전히 이를 submission request target으로 선택할 수 있었습니다. Submission은 실패하지만 retry가 필요해 member에게 delay가 발생했습니다.
+이 동작이 변경되어 이제 submission request를 보낼 때 offboard된 Sequencer를 무시합니다.
+
+#### API 변경 사항
+
+Response field를 통해 error를 반환하던 기존 방식이 제거되고 canonical gRPC error propagation으로 대체되었습니다.
+이제 다음 field는 obsolete입니다.
+
+- `HandshakeResponse.value.failure`
+- `VerifyActiveResponse.value.failure`
+
+일관되고 안전한 interface를 보장하기 위해 이제 error는 `io.grpc.Status` code를 통해서만 전달됩니다.
+
+Status code는 다음과 같이 변경되었습니다.
+
+- Client가 Sequencer의 protocol version을 지원하지 않으면 SequencerAuthenticationService.challenge가 이제 `FAILED_PRECONDITION` 대신 `INVALID_ARGUMENT`로 실패합니다.
+- Participant가 아닌 node가 연결을 시도하면 SequencerConnectService가 이제 `FAILED_PRECONDITION` 대신 `INVALID_ARGUMENT`로 실패합니다.
+- Dynamic Synchronizer parameter가 없으면 SequencerConnectService.registerOnboardingTopologyTransactions가 이제 `FAILED_PRECONDITIONS` 대신 `INTERNAL`로 실패합니다.
+- Transaction을 Topology state에 추가할 수 없고 error message sanitization이 활성화되어 있으면 SequencerConnectService.registerOnboardingTopologyTransactions가 이제 `FAILED_PRECONDITION`으로 실패합니다.
+
+### Mediator Crash Fault Tolerance
+
+이제 Mediator는 crash fault-tolerant하며 모든 verdict가 최종적으로 저장되고 inspection API에서 제공됨을 보장합니다.
+
+### `GetHighestOffsetByTimestamp` 신뢰성 향상
+
+이전에는 `GetHighestOffsetByTimestamp` RPC 및 `find_highest_offset_by_timestamp` console command가 Participant의 local cache와 아직 sync되지 않은 offset을 반환할 수 있었습니다. 또한 future timestamp로 query를 강제하면 error가 발생했습니다.
+
+구체적인 변경 사항은 다음과 같습니다.
+- 이제 필요한 state를 consistent database snapshot을 통해 atomic하게 가져옵니다.
+- Endpoint에는 이제 offset을 반환하기 전에 local Ledger API cache가 database를 따라잡도록 보장하는 internal barrier가 포함되며 최대 10초간 기다립니다.
+- `force`가 true이면 future timestamp 요청 시 실패하는 대신 현재 ledger end를 정상적으로 반환합니다.
+
+Migration은 필요하지 않습니다.
+
+### ACS stream continuation
+
+`GetActiveContracts` stream request에 optional `stream_continuation_token` field가 추가되어 client가 중단된 ACS stream을 마지막으로 통과한 element부터 계속할 수 있습니다. 중단 전에 받은 마지막 response element의 `stream_continuation_token` field로 이 field를 채울 수 있으며, stream은 그 다음 element부터 계속됩니다.
+
+### ACS Ledger API counting
+
+Participant Node의 active contract 수를 세는 새로운 memory-efficient console command `participant.ledger_api.acs.count()`가 도입되었습니다.
+
+> 참고: 이 command는 현재 Testing feature flag 아래에 있습니다.
+
+### ACS pagination
+
+State Service API에 새로운 `GetActiveContractsPage` endpoint가 추가되었습니다. Client는 `max_page_size`를 지정하여 ACS를 paginated 형식으로 가져올 수 있습니다. `page_token` field를 사용해 page에 순차적으로 접근할 수 있습니다. Token은 마지막 page의 `GetActiveContractsPageResponse`에서 얻을 수 있습니다.
+
+### Event 내림차순 GetUpdates stream
+
+`GetUpdatesRequest` object에 새 optional parameter `descending_order`가 추가되었습니다. 이 parameter가 `true`이면 event가 최신 항목부터 오래된 항목 순으로 stream됩니다. `page_token` field를 사용해 page에 순차적으로 접근할 수 있습니다.
+
+### GetUpdates pagination
+Update Service API에 새 `GetUpdatesPage` endpoint가 추가되었습니다. 이를 통해 stream을 요청하는 대신 update를 paginated 형식으로 가져올 수 있습니다.
+
+### `repair.add` 개선 및 migration 안내
+
+`participant.repair.add` admin command가 새 `ImportAcs` backend를 사용하도록 수정되어 memory performance가 크게 향상되고 default safety validation이 강화되었으며 여러 새 parameter가 추가되었습니다.
+
+#### 중요한 behavior 변경: 기본값이 엄격한 `Validation`
+
+이전에는 `repair.add`가 삽입된 모든 contract를 cryptographic hash를 다시 평가하지 않고 암시적으로 허용했습니다. 우발적인 data corruption을 방지하기 위해 이제 command는 기본적으로 **Validation** mode인 `contractImportMode = ContractImportMode.Validation`을 사용합니다.
+
+- **영향:** Payload가 `ContractId` hash와 엄격히 일치하지 않는, 수동으로 수정되었거나 synthetic이거나 inconsistent한 contract를 삽입하는 기존 script 또는 recovery 절차는 이제 `"Failed to authenticate contract with id"` error와 함께 실패합니다.
+- **Migration:** 이 cryptographic validation을 우회하고 legacy behavior를 복원하려면 command call에서 `Accept` mode를 명시적으로 전달하세요.
+    ```scala
+    participant.repair.add(
+      synchronizerId = mySynchronizer,
+      protocolVersion = myProtocolVersion,
+      contracts = myContracts,
+      contractImportMode = ContractImportMode.Accept // Bypasses strict validation
+    )
+    ```
+
+#### 새 parameter
+
+Command signature가 여러 optional parameter를 지원하도록 확장되었습니다.
+
+- `workflowIdPrefix`: 생성된 workflow ID에 custom prefix를 설정하여 repair Transaction을 쉽게 추적할 수 있습니다. 기본값은 `import-<UUID>`입니다.
+- `contractImportMode`: `Validation` 또는 `Accept` 중에서 선택합니다. `Validation`은 기본값이며 Contract ID가 contract가 할당되는 Synchronizer와 연결된 scheme을 준수하는지 검증합니다. `Accept`는 contract를 그대로 허용하며 무엇을 하는지 알고 있을 때 사용합니다.
+- `representativePackageIdOverride`: Import할 때 contract의 representative package ID를 remap하거나 override할 수 있습니다.
+- `excludedStakeholders`: 정의하면 이러한 Party 중 하나 이상을 stakeholder로 갖는 contract는 추가되지 않습니다.
+
+### Party 및 repair ACS import 개선
+
+Party Replication 및 Participant repair의 ACS import endpoint가 memory-efficient streaming endpoint로 완전히 개편되었습니다.
+
+- Console command `participant.parties.import_party_acs`
+- Console command `participant.repair.import_acs`
+- gRPC RPC `PartyManagementService.ImportPartyAcs`
+- gRPC RPC `ParticipantRepairService.ImportAcs`
+
+이제 endpoint가 전체 ACS snapshot을 한 번에 memory에 load하지 않으므로 이전의 memory 제약이 해결됩니다.
+
+#### 필요한 조치: Breaking API 변경
+
+`synchronizerId`는 이제 `import_party_acs` 및 `import_acs` console command와 이에 해당하는 gRPC endpoint 모두에서 **필수** 첫 번째 parameter입니다. 기존 script를 update해야 합니다.
+
+**`import_party_acs`의 경우:**
+
+- **이전 사용법:** `participant.parties.import_party_acs("canton-acs-export.gz")`
+- **새 사용법:** `participant.parties.import_party_acs(mySynchronizerId, importFilePath = "canton-acs-export.gz")`
+
+**`import_acs`의 경우:**
+
+- **이전 사용법:** `participant.repair.import_acs("canton-acs-export.gz")`
+- **새 사용법:** `participant.repair.import_acs(mySynchronizerId, importFilePath = "canton-acs-export.gz")`
+
+필수 `synchronizerId` parameter 때문에 multi-synchronizer ACS snapshot을 import하려면 Participant가 연결된 각 Synchronizer마다 정확히 같은 snapshot file을 사용해 endpoint를 순차적으로 호출해야 합니다. 다음 import process는 snapshot에서 다른 Synchronizer와 연결된 모든 contract를 무시합니다.
+import process will ignore any contracts in the snapshot that are associated to a different synchronizer.
+
+##### gRPC `ImportAcs` repair endpoint 세부 정보
+
+`ImportAcs` 및 `ImportAcsV2` RPC가 통합되었으며 다음 breaking change 및 migration step이 도입되었습니다.
+
+- **제거된 endpoint:** `ImportAcsV2`와 해당 request/response message가 완전히 제거되었습니다. 모든 client는 표준 `ImportAcs` RPC로 migration해야 합니다.
+- **Request signature 및 type 변경:**
+  - `ImportAcsRequest`의 field `workflow_id_prefix` (2), `contract_import_mode` (3), `representative_package_id_override` (5)가 이제 명시적으로 `optional`입니다.
+  - 새 `optional string synchronizer_id = 6` field가 추가되었습니다.
+  - **Migration (ScalaPB):** `optional`을 추가하면 생성된 code가 base type에서 `Option[T]`로 변경됩니다. 기존 client는 compile에 실패하며 할당 value를 감싸도록 update하고, 예를 들어 `workflowIdPrefix = Some("prefix")`처럼 지정하며 `Option` type read를 명시적으로 처리해야 합니다.
+- **Behavior 변경 (`synchronizer_id`):** Synchronizer로 filtering할 때 일치하지 않는 contract는 이제 무시됩니다. 이는 mismatch 시 import가 엄격히 중단되는 behavior에 의존한 기존 logic을 깨뜨립니다.
+
+##### gRPC `ImportPartyAcs` Party Replication endpoint 세부 정보
+
+`ImportPartyAcs` endpoint에도 `ImportPartyAcsV2` 제거, streaming semantics update, 생성된 code 변경인 ScalaPB `Option[T]`, 일치하지 않는 Synchronizer behavior가 실패 대신 무시로 바뀌는 등 `ImportAcs`와 정확히 같은 통합이 적용되었습니다.
+
+**`ImportPartyAcs`에만 해당하는 주요 차이점:**
+
+- **새 capability (`party_id`):** 새 `optional string party_id = 6` field가 추가되었습니다. Stream의 첫 request에 이를 제공하면 onboarding flag clearance의 자동 crash-resilient scheduling이 활성화됩니다. 생략하면 Participant가 warning을 logging하며 flag를 수동으로 clear해야 합니다.
+
+### Topology-Aware Package Selection (TAPS) 개선
+
+Inconsistent vetting state 처리에 관한 Topology-Aware Package Selection (TAPS)이 개선되었습니다.
+- Algorithm은 이제 interpreted Transaction에서 해당 Party가 요구하는 package에 대해서만 Party의 Package Vetting state를 고려합니다. Command의 root node에서 유도한 최소 restriction set으로 시작하고 구성 가능한 pass 횟수에 걸쳐 점진적으로 더 많은 restriction을 누적합니다. 이 iterative process는 Transaction routing에 유효한 package selection set을 찾을 가능성을 높입니다.
+- TAPS pass의 최대 횟수는 `Commands` 또는 `PrepareSubmissionRequest` message의 optional `taps_max_passes` field를 통해 request level에서 설정할 수 있습니다. 지정하지 않으면 Participant configuration의 `participants.participant.ledger-api.topology-aware-package-selection.max-passes-default`에서 default value를 가져오며 기본값은 `3`입니다. `participants.participant.ledger-api.topology-aware-package-selection.max-passes-limit`이 hard limit을 강제하며 기본값은 `4`입니다.
+- 이제 TAPS는 interpretation에 필요하지 않은 package의 unvetted dependency를 무시하여 Canton protocol의 unvetted dependency 지원을 준수합니다.
+
+### Ledger API 개선
+
+- ApiRequestLogger가 이제 Ledger JSON Api에서도 사용됩니다. 변경 사항은 다음과 같습니다.
+  - 중복 Request TID가 log에서 제거되었습니다.
+  - 추가 CLI option이 도입되었습니다. `--log-access`는 API access log를 별도 file에 capture하며 기본값은 `log/canton_access.log`입니다. `--log-access-errors`는 API access error를 별도 file에 capture하며 기본값은 `log/canton_access_error.log`입니다.
+  - 추가 config option이 도입되었습니다. `debugInProcessRequests`는 in-process gRPC request를 TRACE 대신 DEBUG로 logging하고, `prefixGrpcAddresses`는 gRPC client address에 `grpc:` prefix를 붙이며 기본적으로 활성화됩니다.
+- LedgerAPI ListKnownParties는 optional prefix filter argument filterParty를 지원합니다. 해당 JSON API endpoint는 이제 `filter-party`와 더불어 `identity-provider-id`도 optional argument로 지원합니다.
+- Admin Participant의 self lock-out을 방지합니다. 이제 admin이 자신의 admin right를 제거하거나 자신을 삭제할 수 없습니다.
+- Ledger API interface subscription에서 `CreatedEvent.interface_views`는 이제 특정 interface view를 계산하는 데 사용된 interface implementation이 포함된 package ID를 `InterfaceView.implementation_package_id`로 반환합니다.
+- Open-ended update 또는 completion stream을 요청하면 update가 없어도 항상 OffsetCheckpoint가 생성됩니다. Checkpoint는 stream의 exclusive start와 같은 offset을 가질 수 있어 ledger end에서 시작해도 checkpoint가 표시됩니다. 따라서 client system은 update stream이 비활성 상태여도 ledger end가 진행 중임을 인식할 수 있습니다.
+- Ledger API의 user-id에 허용되는 character 집합이 bracket `()`를 포함하도록 확장되었습니다. JWT token의 `sub` claim에서도 이 character를 사용할 수 있습니다.
+- Internal Party 및 External Party 관리 기능이 개선되어 이전의 비대칭이 제거되었습니다.
+  - Allocation 중 External Party에 user right를 할당할 수 있습니다.
+  - Self-administration mode에서 user가 직접 External Party를 allocate할 수 있습니다. Self-administration mode의 user는 다음 parameter setting에 따라 최대 N개의 Party를 allocate할 수 있습니다.
+  ```
+  canton.participants.<participant-id>.ledger-api.party-management-service.max-self-allocated-parties
+  ```
+  이 parameter의 default value는 0입니다.
+- IDP administrator는 이제 자신의 IDP perimeter에 한정된 Party만 allocate할 수 있습니다.
+
+### LSU 관련 새 metric
+
+LSU status를 monitoring하기 위한 몇 가지 새 metric이 추가되었습니다.
+
+- Sequencer용: [daml.received-lsu-sequencing-test-messages](https://docs.digitalasset.com/operate/3.5/reference/metrics.html#daml-received-lsu-sequencing-test-messages)
+
+  Sender별로 Mediator가 받은 `LsuSequencingTest` message 수를 추적할 수 있습니다.
+
+- Participant용: [daml.participant.lsu_status](https://docs.digitalasset.com/operate/3.5/reference/metrics.html#daml-participant-lsu-status)
+
+  Participant Node에서 LSU status를 노출합니다.
+
+- Sequencer용: [daml.sequencer.public-api.handshakes](https://docs.digitalasset.com/operate/3.5/reference/metrics.html#daml-sequencer-public-api-handshakes)
+
+  Member 및 status별 handshake 수를 노출합니다.
+  Successor와 이미 handshake한 Participant Node 수를 추적하는 데 사용할 수 있습니다.
+
+- Sequencer용: [daml.sequencer.lsu_contact_successor_status](https://docs.digitalasset.com/operate/3.5/reference/metrics.html#daml-sequencer-lsu-contact-successor-status)
+
+  Sequencer와 successor 간 handshake status를 노출합니다.
+
+## Performance 개선
+
+### Session Signing Key
+
+Session signing key를 사용하여 external KMS (Key Management Service) provider 호출 횟수를 줄일 수 있습니다. 활성화하면 session signing key가 생성되어 제한된 duration 동안 local에 cache되고 validity period 중 signing operation에 사용됩니다.
+
+이 feature를 활성화하고 구성하는 방법은 [Session Signing Key](https://docs.digitalasset.com/operate/3.5/howtos/secure/keys/session_signing_keys.html) 문서를 읽어보세요.
+Session signing key는 Protocol Version 35부터만 사용할 수 있으며 기본적으로 활성화되지 않습니다.
+
+### Compatible sibling view compression
+
+Protocol Version 35에서 `TransactionConfirmationRequest`의 각 envelope에는 view마다 하나의 envelope를 두는 대신 recipient별로 group된 여러 view가 포함됩니다.
+Assignment 및 Reassignment도 이 새 형식을 사용하지만 항상 view가 하나입니다.
+
+### External Party를 위한 단일 Topology Transaction
+
+External Party를 위한 여러 Topology Transaction을 이제 단일 `PartyToParticipant` Topology Transaction으로 나타낼 수 있습니다.
+
+Ledger API의 `generateExternalPartyTopology` endpoint는 이제 Party를 onboard하기 위한 단일 `PartyToParticipant` Topology Transaction을 반환합니다.
+Transaction에는 signing threshold와 signing key가 포함됩니다. 이에 따라 `PartyToKeyMapping` 사용은 사실상 deprecated됩니다.
+Signing key가 `PartyToParticipant`와 `PartyToKeyMapping` 모두에 있는 Party에서는 `PartyToParticipant`의 key가 우선합니다.
+
+`PartyToKeyMapping` 사용은 deprecated되었습니다. `PartyToKeyMapping`이 제공하던 기능을 이제 `PartyToParticipant`에서 직접 사용할 수 있습니다.
+새 Transaction에는 `PartyToParticipant`를 사용하세요. `PartyToKeyMapping`은 기존 및 신규 Transaction을 포함해 이 version에서 계속 완전히 지원됩니다.
+향후 version에서는 새 `PartyToKeyMapping` Transaction 생성을 허용하지 않을 수 있습니다.
+
+`TopologyManagerReadService.ListAll`은 inclusion list인 `include_mappings`를 사용하는 `ListAllV2`를 위해 deprecated되었습니다. 이는 오래된 server에 알려지지 않은 mapping code를 전송하지 않도록 합니다. Console method `topology.transactions.list`는 이제 기본적으로 `ListAllV2`를 호출하고 3.4 node를 대상으로 할 때만 `ListAll`로 fallback합니다. `topology.transactions.list`의 `excludeMappings` 및 `protocolVersion` parameter는 deprecated되었으므로 대신 `filterMappings`를 사용하세요.
+
+`TopologyManagerReadService.ExportTopologySnapshot` 및 `TopologyManagerWriteService.ImportTopologySnapshot`과 이에 해당하는 console command `topology.transactions.export_topology_snapshot`, `topology.transactions.import_topology_snapshot`, `topology.transactions.import_topology_snapshot_from`, `topology.transactions.export_identity_transactions`는 deprecated되었습니다.
+대신 update된 internal bytestring format을 사용하는 해당 `V2` variant인 `ExportTopologySnapshotV2` / `ImportTopologySnapshotV2`, `export_topology_snapshotV2`, `import_topology_snapshotV2`, `import_topology_snapshot_fromV2`, `export_identity_transactionsV2`를 사용하세요.
+
+`SequencerInitializationService.InitializeSequencerFromGenesisState`, `SequencerInitializationService.InitializeSequencerFromOnboardingState`, `SequencerAdministrationService.OnboardingState`, `TopologyManagerReadService.GenesisState` 및 이에 해당하는 console command `setup.assign_from_genesis_state`, `setup.assign_from_onboarding_state`, `setup.onboarding_state_for_sequencer`, `setup.onboarding_state_at_timestamp`, `topology.transactions.genesis_state`는 deprecated되었습니다.
+대신 update된 internal bytestring format을 사용하는 해당 `V2` variant인 `InitializeSequencerFromGenesisStateV2`, `InitializeSequencerFromOnboardingStateV2`, `OnboardingStateV2`, `GenesisStateV2`, `assign_from_genesis_stateV2`, `assign_from_onboarding_stateV2`, `onboarding_state_for_sequencerV2`, `onboarding_state_at_timestampV2`, `genesis_stateV2`를 사용하세요. 새 형식은 streaming ingestion을 지원하므로 snapshot export 및 import에 필요한 memory가 크게 줄어듭니다.
+
+### 사소한 Performance 개선
+
+- Indexer의 Postgres connection tuning configuration이 이제 Ledger API server의 configuration인 `canton.participants.<participant>.ledger-api.postgres-data-source`와 분리되었습니다. Indexer의 Postgres connection을 tuning하려면 대신 새 configuration section `canton.participants.<participant>.parameters.ledger-api-server.indexer.postgres-data-source`를 사용해야 합니다.
+- Feature flag `useWeighetdBatching` 아래에 새 indexer pipeline batching strategy가 추가되었습니다. 활성화하면 개별 batch의 limit으로 `submissionBatchInsertionSize`를 사용해 추정 database processing time을 기준으로 batch를 생성합니다.
+- Protocol Version 35용 Sequencer protocol에서 `CompressedBatch` structure가 recipient와 envelope를 별도로 유지하도록 변경되었습니다. 형식은 `gzip(Seq((recp1, payload1), (recp2, payload2)))`에서 `gzip(Seq(recp1, recp2)), Seq(gzip(payload1), gzip(payload2)))`로 바뀌었습니다.
+- Batching configuration은 이제 pruning에 다른 parallelism을 설정할 수 있습니다. 현재는 Sequencer pruning만 해당합니다. 새 option `canton.sequencers.sequencer.parameters.batching.pruning-parallelism`은 기본값 `2`이며 일반 `canton.sequencers.sequencer.parameters.batching.parallelism` setting과 별도로 사용할 수 있습니다.
+- Config option `...topology.use-time-proofs-to-observe-effective-time`이 동작하도록 수정하고 default를 `false`로 변경했습니다. 이 option을 비활성화하면 Sequencer에서 더 robust한 time advancement broadcast mechanism이 활성화되지만, 여전히 crash 또는 block sequencing time의 큰 gap은 견디지 못합니다. Parameter는 Sequencer의 `canton.sequencers.<sequencer>.parameters.time-advancing-topology`에서 구성할 수 있습니다.
+- ACS commitment processor를 위한 추가 metric `daml.participant.sync.commitments.last-incoming-received`, `daml.participant.sync.commitments.last-incoming-processed`, `daml.participant.sync.commitments.last-locally-completed`, `daml.participant.sync.commitments.last-locally-checkpointed`가 추가되었습니다.
+
+## Breaking Change
+
+### Legacy Party Replication repair console macro 제거
+
+Silent Synchronizer에 의존하던 원래 Party Replication 방식은 offline Party Replication process로 대체되었습니다. 따라서 legacy 방식과 관련된 obsolete repair console macro가 제거되었습니다.
+
+구체적으로 다음 macro는 더 이상 사용할 수 없습니다.
+- `step1_hold_and_store_acs`
+- `step2_import_acs`
+
+이전에 _Silent synchronizer replication procedure_에 의존했다면 현재 offline Party Replication process로 전환해야 합니다. 자세한 내용은 [Offline Party Replication 문서](https://docs.digitalasset.com/operate/3.5/howtos/operate/parties/party_replication.html#offline-party-replication)를 참고하세요.
+
+### Deprecated legacy ACS export 및 import endpoint 제거
+
+ACS export 및 import를 위한 legacy repair endpoint가 제거되었습니다.
+
+- Console command `participant.repair.export_acs_old`
+- Console command `participant.repair.import_acs_old`
+- gRPC rpc `ParticipantRepairService.ExportAcsOld`
+- gRPC rpc `ParticipantRepairService.ImportAcsOld`
+
+#### Migration 안내
+
+'old' suffix가 없는 repair endpoint를 사용하세요.
+
+- `participant.repair.export_acs_old`에서 `participant.repair.export_acs`로 migration하세요.
+- `participant.repair.import_acs_old`에서 `participant.repair.import_acs`로 migration하세요.
+- `ParticipantRepairService.ExportAcsOld`에서 `ParticipantRepairService.ExportAcs`로 migration하세요.
+- `ParticipantRepairService.ImportAcsOld`에서 `ParticipantRepairService.ImportAcs`로 migration하세요.
+
+Underlying data format이 완전히 변경되었으므로 legacy endpoint로 이전에 생성한 ACS snapshot은 현재 endpoint로 import할 수 없습니다.
+
+##### export_acs로 migration
+
+가장 중요한 변경 사항은 `timestamp` parameter가 제거되고 필수 `ledgerOffset` parameter로 대체되었다는 점입니다.
+
+**Console parameter 변경:**
+
+- **새 필수 parameter:** `ledgerOffset (Long)`. 이제 snapshot에 `timestamp` 대신 정확한 ledger offset을 지정해야 합니다.
+- **제거된 parameter:** `partiesOffboarding`, `timestamp` (`ledgerOffset`으로 대체), `force`.
+- **이름이 변경된 parameter:** `outputFile`은 이제 `exportFilePath`이며 기본값은 `"canton-acs-export.gz"`입니다. `filterSynchronizerId`는 이제 `synchronizerId`입니다.
+- **새 optional parameter:** `excludedStakeholders`를 사용하면 이러한 Party 중 하나 이상을 stakeholder로 갖는 contract를 생략할 수 있습니다. `contractSynchronizerRenames`를 사용하면 export 중 contract를 한 Synchronizer에서 다른 Synchronizer로 mapping할 수 있습니다.
+
+**`ExportAcsRequest`의 gRPC 변경:**
+
+- **`parties` -> `party_ids`:** 일관성을 위해 field 이름이 변경되었습니다. 비워 두면 endpoint는 wildcard로 동작하며 Participant가 hosting하는 *모든* Party의 ACS를 export합니다.
+- **`timestamp` -> `ledger_offset` (Breaking):** Timestamp 대신 정확한 `int64 ledger_offset`을 제공해야 합니다.
+- **`filter_synchronizer_id` -> `synchronizer_id`:** 일관성을 위해 field 이름이 변경되었습니다.
+- **제거된 field:** `force` 및 `parties_offboarding`이 완전히 제거되었습니다.
+- **새 field:** `contract_synchronizer_renames` 및 `excluded_stakeholder_ids`.
+
+##### import_acs로 migration
+
+Import command의 기본 사용법은 대체로 같지만 advanced validation 및 override를 위한 새 optional parameter와 gRPC의 엄격한 memory-efficient streaming semantics가 도입되었습니다.
+
+**Console parameter 변경:**
+
+- **이름이 변경된 parameter:** `inputFile`은 이제 `importFilePath`이며 기본값은 `"canton-acs-export.gz"`입니다.
+- **새 optional parameter:** `contractImportMode`는 import 시 contract validation을 제어하며 기본값은 `ContractImportMode.Validation`입니다. `representativePackageIdOverride`를 사용하면 import 중 representative package ID를 override할 수 있습니다. `excludedStakeholders`를 사용하면 이러한 Party 중 하나 이상을 stakeholder로 갖는 contract를 생략할 수 있습니다.
+
+**`ImportAcsRequest`의 gRPC 변경:**
+
+- **Streaming Semantics (Breaking):** 새 endpoint에서는 `contract_import_mode`, `synchronizer_id` 같은 metadata field를 stream의 첫 request에만 채워야 합니다. 후속 request에서는 metadata를 생략하고 binary `acs_snapshot` chunk만 포함해야 합니다.
+- **새 필수 field:** `contract_import_mode` 및 `synchronizer_id`를 첫 stream request에 명시적으로 정의해야 합니다.
+- **제거된 field:** `allow_contract_id_suffix_recomputation`이 완전히 제거되었습니다.
+- **새 field:** `excluded_stakeholder_ids` 및 `representative_package_id_override`.
+- **Response update:** `ImportAcsResponse`는 이제 완전히 빈 message입니다. 이전에는 Contract ID mapping을 반환했습니다.
+
+### Ledger API에서는 PackageName만 허용
+
+Ledger query에 package ID를 사용하는 방식은 deprecated되었으며 이제 사용하면 validation이 실패합니다.
+영향을 받는 API는 다음과 같습니다.
+  - GetUpdates
+  - GetUpdateByOffset
+  - GetUpdateById
+  - GetActiveContracts
+  - GetEventsByContractIdRequest
+  - SubmitAndWaitForTransaction (optional `transaction_format`)
+  - SubmitAndWaitForReassignmentRequest
+  - ExecuteSubmissionAndWaitForTransactionRequest
+
+### Externally signed Transaction의 SynchronizerId field update
+
+Protocol Version 35에서 externally signed prepared Transaction metadata의 `synchronizer_id` field는 PV 34처럼 logical Synchronizer ID가 아니라 Transaction이 처리될 Synchronizer의 physical Synchronizer ID로 채워집니다.
+Application은 `synchronizer_id` value 형식에 의존하지 않도록 해야 합니다.
+
+### NonNegativeLong에서 Long으로 변경
+
+Offset에 NonNegativeLong을 사용하는 일부 console command가 Long을 받도록 변경되었습니다.
+마찬가지로 offset을 반환하는 일부 console command는 이제 NonNegativeLong 대신 Long을 반환합니다.
+이는 일관성을 제공하고 `participant.ledger_api.state.end()` output을 전달할 수 있게 합니다.
+
+영향을 받는 command는 다음과 같습니다.
+- `participant.repair.export_acs`
+- `participant.parties.find_party_max_activation_offset`
+- `participant.parties.find_party_max_deactivation_offset`
+- `participant.parties.find_highest_offset_by_timestamp`
+
+### ACS import 시 Contract ID 자동 재계산 제거
+
+ACS import 시 Contract ID를 재계산하는 기능이 제거되었습니다.
+
+### Multi-host name resolution tooling 제거
+
+Multi-host name resolution 지원이 제거되었습니다.
+이는 Synchronizer connectivity가 여러 endpoint를 가진 Sequencer를 정의할 때만 사용되었지만 현재 Sequencer에서는 지원되지 않습니다. 이제 여러 Sequencer가 각각 정확히 하나의 endpoint를 갖습니다.
+
+### Ledger JSON API Spec 수정
+
+Ledger JSON API OpenAPI/AsyncAPI spec이 수정되었습니다.
+- Ledger API `.proto` specification에서 required로 표시되지 않은 field는 이제 OpenAPI/AsyncAPI specification에서도 optional입니다.
+  이전 version의 specification으로 생성된 code를 client code가 사용하면 새 version에서 compile되거나 올바르게 작동하지 않을 수 있습니다. Migration 방법은 다음과 같습니다.
+  - Code를 update하지 않으려면 JSON API server가 backward compatibility를 유지하므로 이전 specification version을 계속 사용하세요.
+  - 새 endpoint 및 feature를 사용하거나 새로 완화된 spec을 활용하려면 다음과 같이 새 OpenAPI/AsyncAPI specification으로 migration하세요.
+    - Java client: `OpenAPI Generator`를 사용한다면 변경할 필요가 없습니다. 다른 code generator에서는 field optionality를 적절히 처리해야 할 수 있습니다.
+    - TypeScript client: 필요에 따라 `!` 또는 `??` operator를 사용해 optional field를 처리하도록 code를 update하세요.
+- Canton 3.5부터 OpenAPI/AsyncAPI specification file에는 Canton version suffix가 붙습니다. 예: `openapi-3.5.0.yaml`.
+- Canton 3.5는 version 3.4.0부터 3.5.0까지의 OpenAPI specification file과 호환됩니다.
+
+- Ledger JSON API server는 이제 Ledger API OpenAPI/AsyncAPI specification에서 required로 표시된 field만 request payload에서 필수로 요구합니다.
+
+### 모든 Docker image에서 grpcurl을 grpc-health-probe로 변경
+
+모든 Docker image의 health check probe에 사용하는 tool이 grpcurl에서 grpc-health-probe로 변경되었습니다.
+
+### 사소한 Breaking Change
+
+- 여러 client service의 expert `keep-alive-client` configuration parameter가 `channel.keep-alive-client`로 이동했습니다.
+- `setBalanceRequestSubmissionWindowSize` 및 `defaultMaxSequencingTimeOffset`의 default를 2분으로 줄였습니다.
+- Trace를 export하기 위해 Canton이 연결하는 default OTLP gRPC port가 4318에서 4317로 변경되었습니다. 이는 Canton의 default configuration을 OpenTelemetry Collector의 default configuration에 맞춥니다. 이 변경은 다음을 통해 OTLP trace export를 구성한 user에게만 영향을 줍니다.
+  ```
+  canton.monitoring.tracing.tracer.exporter.type=otlp
+  ```
+- `LastErrorsAppender`, Admin API endpoint `StatusService.GetLastErrors` 및 `StatusServiceGetLastErrorTrace`, 이에 해당하는 console command `last_errors` 및 `last_error_trace`가 제거되었습니다.
+
+
+## Deprecation
+
+### Scope-based access token deprecate
+- Audience가 지정되지 않은 JWT인 "scope-based" access token이 deprecated되었습니다.
+- `target-audience`를 지정하지 않은 configuration은 node 시작 시 warning을 logging합니다.
+- `target-audience`와 `target-scope`를 모두 지정한 configuration은 이 version에서 지원되지 않으며 node 시작 시 warning을 logging합니다.
+- Canton version 3.7부터 모든 incoming JWT에 유효한 `aud` field를 강제하기 위해 "scope-based" token 지원이 완전히 제거됩니다.
+- 향후 version에서 `scope` field는 fine-grained permission을 위한 추가 optional claim으로만 사용되도록 용도가 변경됩니다.
+
+### 기존 Sequencer connection transport 제거
+
+기존 Sequencer connection transport가 제거되었으며 새 Sequencer connection pool만 남았습니다.
+따라서 configuration `<node>.sequencer-client.use-new-connection-pool`은 deprecated되었고 더 이상 효과가 없습니다.
+
+### Initial protocol version configuration deprecate
+
+Config key `participant.parameters.initial-protocol-version`은 사용되지 않았으며 deprecated로 표시되었습니다.
+
+### Configuration Deprecation
+
+- Configuration parameter `topology.use-new-processor` 및 `topology.use-new-client`는 deprecated되었으며 이제 default가 true입니다. 이 parameter를 false로 구성해도 무시됩니다.
+- Parameter `canton.participants.<participant>.parameters.package-metadata-view.init-takes-too-long-interval`은 이제 무시되며 warning은 주기적으로가 아니라 한 번만 출력됩니다.
+- Parameter `canton.participants.<participant>.parameters.ledger-api-server.indexer.prepare-package-metadata-time-out-warning`은 이제 무시됩니다.
+- OpenTelemetry instrumentation 2.26.0으로 upgrade한 이후 `canton.monitoring.metrics.jvm-metrics`의 개별 JVM metric flag `classes`, `cpu`, `memoryPools`, `threads`, `gc`, `buffers`는 더 이상 지원되지 않습니다. `jvm-metrics.enabled = true`이면 모든 표준 JVM metric인 classes, cpu, memory pool, thread, garbage collector가 이제 항상 활성화됩니다. Experimental JVM metric, 예를 들어 buffer pool을 제어하기 위해 새 `experimental` flag가 추가되었습니다. 이전에 `buffers = true`로 설정한 user는 `experimental = true`로 migration해야 합니다. 자세한 내용은 https://github.com/open-telemetry/opentelemetry-java-instrumentation/pull/16087 을 참고하세요.
+- Zipkin trace exporter configuration `canton.monitoring.tracing.tracer.exporter.type=zipkin`은 OpenTelemetry specification의 Zipkin exporter deprecation에 따라 deprecated됩니다. Zipkin exporter는 향후 release에서 제거됩니다. User는 OTLP exporter로 migration해야 합니다. 자세한 내용은 https://opentelemetry.io/blog/2025/deprecating-zipkin-exporters/ 를 참고하세요.
+- Async writing이 이제 유일하게 지원되는 mode이므로 feature flag `canton.sequencers.<node>.parameters.async-writer.enabled`가 제거되었습니다.
+- `crypto.kms.session-signing-keys` path는 deprecated되었으며 `crypto.session-signing-keys`로 변경되어 session signing key configuration이 KMS와 직접 연결되지 않게 되었습니다. 하지만 session signing key는 KMS provider를 사용하거나 `non-standard-config=true`로 실행할 때만 활성화할 수 있습니다.
+- `caching` configuration의 `package-dependency-cache` field는 deprecated되었습니다. Node configuration에서 안전하게 제거할 수 있습니다.
+
+### Ledger JSON API Package Vetting endpoint
+
+Ledger JSON API `v2/package-vetting` endpoint는 request body를 받는 GET method에서 list 기능을 노출합니다. HTTP specification에서는 이를 권장하지 않으므로 endpoint가 deprecated되었습니다.
+일관성을 위해 같은 endpoint에서 vetting state update에 사용하는 POST method도 deprecated되었습니다.
+
+대신 같은 기능을 제공하는 두 개의 새 endpoint가 구현되었습니다.
+- `v2/package-vetting/list`는 deprecated된 GET `v2/package-vetting` endpoint와 같은 body를 사용하는 POST request를 받고 같은 형식으로 vetted package 목록을 반환합니다.
+- `v2/package-vetting/update`는 deprecated된 POST endpoint `v2/package-vetting`과 같은 body를 사용하는 POST request를 받고 같은 형식으로 package의 update된 vetting state를 반환합니다.
+
+
+### Topology list command의 Protocol version parameter
+
+모든 `<node>.topology.<mapping>.list` console command의 `protocolVersion` parameter는 deprecated되었으며 향후 version에서 제거됩니다.
+
+## 사소한 개선 사항
+
+### Bugfix
+
+- Offline Party Replication 및 repair ACS import의 crash recovery 도중 발생하는 문제를 수정했습니다. 이전에는 Participant Node restart 또는 crash 등으로 ACS import가 중단되면 이후 recovery 시도에서 Ledger API에 contract가 누락될 수 있었습니다. 이제 ACS import를 retry할 때 recovery process가 commit되지 않은 partial state를 올바르게 rollback하므로 recovered contract가 internal storage와 Ledger API 양쪽에서 완전히 synchronize됩니다.
+- Ledger API `PackageService.ListVettedPackages`가 아직 effective하지 않을 수 있는 vetted package state를 반환하던 bug를 수정했습니다. 이제 request 시점에 effective한 vetted package state를 반환합니다.
+- Sequencer health status가 Sequencer UID 대신 Synchronizer UID를 잘못 반환하던 문제를 수정했습니다.
+- `ParticipantRepairService.PurgeContracts` admin command 실행 후 Ledger API가 crash하지 않도록 수정했습니다. Multi-synchronizer 지원이 비활성화된 상태에서 `ParticipantRepairService.PurgeContracts` command를 사용하면 Ledger API event store의 purge contract event에서 `Archive` choice의 choice argument 및 choice result에 malformed Daml value가 생성되던 심각한 문제가 해결되었습니다. 이전에는 생성된 `Archive` event를 읽는 Ledger API stream이 crash했습니다. 이제 repair command는 해당 entry에 올바른 Daml value를 생성하여 Ledger API가 안전하게 전달할 수 있습니다.
+- Repair service의 `changeAssignation`에서 여러 contract를 reassign할 때 repair counter 하나만 할당하여 indexer가 기대하는 monotonicity를 위반하던 bug를 수정했습니다.
+
+### Ledger API Multi-Synchronizer Event Alpha 지원
+
+새 Participant Node parameter `alpha-multi-synchronizer-support` (Boolean)이 추가되었습니다.
+- **Default (`false`):** 표준 **Create** 및 **Archive** event를 사용합니다.
+- **활성화 (`true`):** **Assign** 및 **Unassign** event를 사용합니다.
+
+이 flag는 multi-synchronizer environment에서 contract의 **reassignment counter**를 보존하는 데 필요합니다.
+Default인 Create event를 사용하면 이 counter가 0으로 reset됩니다.
+
+참고: Multi-synchronizer 지원은 현재 Alpha입니다. 대부분의 Ledger API consumer는 아직 Assign/Unassign event와 호환되지 않을 수 있습니다. Application에 0이 아닌 Reassignment counter가 특별히 필요하고 이러한 event type을 처리할 수 있는 경우에만 활성화하세요.
+
+### PostgreSQL table setting 추가 지원
+
+PostgreSQL table setting 추가 지원이 도입되었습니다. Canton 외부에서 제공한 file에 repeatable migration인 Flyway feature를 사용할 수 있습니다.
+  - `canton.<node_type>.<node>.storage.parameters` configuration section 아래의 새 config `repeatable-migrations-paths`를 사용하세요.
+  - Config는 repeatable migration file을 둘 directory 목록을 받으며 Flyway가 인식하도록 path에 `filesystem:` prefix를 붙여야 합니다.
+  - 예: `canton.sequencers.sequencer1.storage.parameters.repeatable-migrations-paths = ["filesystem:community/common/src/test/resources/test_table_settings"]`.
+  - 이 directory에서는 `R__`로 시작하고 `.sql`로 끝나는 filename을 가진 repeatable migration만 허용됩니다.
+  - File은 추가한 뒤 제거할 수 없지만 `V__` versioned schema migration과 달리 수정할 수 있으며 수정 시 Canton을 시작할 때마다 다시 적용됩니다.
+  - File은 lexicographical order로 적용됩니다.
+  - 사용 예: 기존 table에 `autovacuum_*` setting 추가.
+  - Repeatable migration에는 idempotent change만 추가하세요.
+
+### Offline root namespace key script
+
+Offline root namespace key script 변경 사항은 다음과 같습니다.
+- `prepare-certs.sh`의 이름이 `prepare-cert.sh`로 변경되었습니다.
+- `prepare-cert.sh`와 마찬가지로 생성된 certificate에 `.cert` extension을 자동으로 붙이도록 `assemble-certs.sh`가 변경되었습니다.
+- `10-offline-root-namespace-init` example folder가 제거되었습니다. 그 content는 이제 문서화된 how-to인 https://docs.digitalasset.com/operate/3.5/howtos/secure/keys/namespace_key.html 에 통합되었습니다.
+- Script 실행에 필요한 buf image가 repository에 commit되었고 release artifact에서도 제공되어 open source repo에서 더 쉽게 사용할 수 있습니다.
+
+### Reliability 개선
+
+- `ServerConfig`에 field `MaxConcurrentCallsPerConnection`과 이에 해당하는 default `defaultMaxConcurrentCallsPerConnection`이 추가되었으며 값은 100000입니다. 이는 app config의 `max-concurrent-streams-per-connection`에 해당합니다. 예를 들어 `docker/canton/images/canton-sequencer/app.conf`에서 변경할 수 있습니다. 현재 Sequencer의 value는 public API에서 500, Admin API에서 100으로 구성됩니다.
+- Postgres에서 hanging connection을 방지하기 위해 Ledger API server 및 indexer의 DB operation에 network timeout과 client_connection_check_interval이 추가되었습니다. PostgresDataSourceConfig를 참고하세요. Default는 Ledger API server의 network timeout 60초 및 client_connection_check_interval 5초, indexer의 network timeout 20초 및 client_connection_check_interval 5초입니다. 이 value는 Ledger API server network timeout용 새 configuration parameter `canton.participants.<participant>.ledger-api.postgres-data-source.network-timeout`과 indexer client_connection_check_interval용 `canton.participants.<participant>.parameters.ledger-api-server.indexer.postgres-data-source.client-connection-check-interval`을 통해 구성할 수 있습니다.
+- DB locked connection의 PostgreSQL 전용 `client_connection_check_interval` parameter를 구성할 수 있는 `<canton-node>.replication.connection-pool.connection.client-connection-check-interval`이 도입되었습니다. Network issue 발생 시 hanging connection을 방지하는 safety mechanism입니다. Default value는 5초입니다.
+- 이제 Ledger API는 external submission에 제공할 수 있는 Party별 signature 최대 수를 강제합니다. Default value는 50이며 config path `canton.participants.<participant_name>.ledger-api.interactive-submission-service.maximum-number-of-signatures-per-party`에서 변경할 수 있습니다.
+- Request당 contract key lookup으로 반환되는 최대 contract 수를 제한하는 새 configuration parameter `canton.participants.<participant_name>.ledger-api.index-service.max-lookup-limit`이 추가되었습니다. Default value는 1000입니다.
+- AcsCommitmentProcessor가 initialization할 때 모든 stakeholder group을 한 번에 읽는 대신 snapshot에서 `canton.parameters.general.batching.max-stakeholder-groups-batch-size` 크기의 batch로 읽습니다. Default는 1000입니다. 이를 통해 node가 shutdown 중이면 이 initialization을 조기에 종료할 수 있습니다.
+- Release version이 이제 `NodeStatus.NotInitialized`에 노출되어 node가 initialize되기 전에도 node version을 가져올 수 있습니다.
+
+## Compatibility
+
+다음 Canton protocol version이 지원됩니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Canton protocol versions   | 34, 35          |
+
+Canton은 다음 dependency version을 대상으로 test되었습니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Java Runtime               | OpenJDK 64-Bit Server VM (build 21.0.10+7-nixos, mixed mode, sharing)               |
+| Postgres                   | Recommended: PostgreSQL 17.9 (Debian 17.9-1.pgdg13+1) – Also tested: PostgreSQL 14.23 (Debian 14.23-1.pgdg13+1), PostgreSQL 15.18 (Debian 15.18-1.pgdg13+1), PostgreSQL 16.14 (Debian 16.14-1.pgdg13+1)           |

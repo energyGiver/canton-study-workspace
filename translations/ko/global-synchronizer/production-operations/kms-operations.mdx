@@ -1,0 +1,684 @@
+---
+title: "Canton KMS Operations"
+description: "Canton에서 AWS, GCP, driver 기반 KMS를 구성하고 운영하며 mode 선택, migration 및 key rotation을 수행하는 방법"
+source_id: "SRC-9AA0811668"
+source_path: "global-synchronizer/production-operations/kms-operations"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "9324f1e1b45dbfceaa0b8939ba97b014d78345cb401d072030e8e5427c5eeca2"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/kms-operations.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/kms/kms.rst" hash="2df040b5" */}
+{/* DIVERGES FROM SOURCE: removed stale "Enterprise Edition only" gating on AWS/GCP KMS drivers per lessons-learned.md (KMS drivers are now in the community/open-source codebase), related to github.com/canton-network/cf-docs/issues/1027 */}
+
+# Key management service (KMS) configuration
+
+기본적으로 Canton key는 Node 내부에서 생성되어 Node의 primary storage에 저장됩니다. 현재 Canton은 KMS를 사용해 (a) 저장 상태인 Canton private key를 보호하거나, (b) key를 KMS에 저장하여 저장 상태와 사용 중인 상태 모두에서 private key를 보호할 수 있습니다.
+
+이 section에서는 option (a)를 **envelope encryption**, option (b)를 **external keys**라고 부르기도 합니다.
+
+이 key management 기능의 자세한 배경은 Secure cryptographic private key storage에서 확인할 수 있습니다. KMS를 사용하면서도 private key를 Canton 내부에 저장하여 보호하는 방법은 Protect private keys with envelope encryption and a Key Management Service를, private key를 외부 KMS에서 생성하고 저장하도록 Canton을 구성하는 방법은 Externalize private keys with a Key Management Service를 참조하세요.
+
+다음 section은 KMS와 함께 Participant Node를 실행하도록 설정하는 방법을 중심으로 설명하지만, 대부분의 configuration은 Sequencer와 Mediator에도 적용됩니다.
+
+1.  KMS 구성
+
+    현재 다음 세 가지 대안을 지원합니다.
+
+    1.  AWS KMS
+    2.  GCP KMS
+    3.  Driver 기반 KMS를 사용하면 Canton KMS Driver API로 필요한 hook을 구현하여 자체 KMS provider를 통합할 수 있습니다. Canton KMS Driver 구현 방법은 Canton KMS Driver developer guide를 참조하세요.
+
+2.  Operation mode 선택
+
+    다음 중에서 선택할 수 있습니다.
+
+    1.  KMS를 사용한 encrypted private key storage 활성화: *envelope encryption*이라고도 하며, 저장 상태인 Canton private key만 보호합니다.
+    2.  KMS를 사용한 external key storage 활성화: *external KMS keys*라고도 하며, private key가 KMS 내부에서만 생성되고 저장됩니다.
+
+3.  KMS로 migration
+
+    KMS를 사용하지 않는 Node와 사용하는 Node 사이에서 양방향으로 migration하는 방법입니다.
+
+4.  KMS를 사용한 key rotation
+
+    Canton Console Command로 기존 KMS 관리 key를 rotate하는 방법입니다.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/kms/configuration/kms_configuration.rst" hash="cae8f264" */}
+{/* DIVERGES FROM SOURCE: removed stale "Enterprise Edition only" gating on AWS/GCP KMS drivers per lessons-learned.md (KMS drivers are now in the community/open-source codebase), related to github.com/canton-network/cf-docs/issues/1027 */}
+
+# KMS 구성
+
+이 section에서는 Canton에 Key Management System (KMS)을 구성하는 방법을 설명합니다.
+
+현재 세 가지 KMS 대안을 사용할 수 있습니다.
+
+- AWS KMS
+- GCP KMS
+- Driver 기반 KMS를 사용하면 Canton KMS Driver API로 필요한 hook을 구현하여 자체 KMS provider를 통합할 수 있습니다. Canton KMS Driver 구현 방법은 Canton KMS Driver developer guide를 참조하세요.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/kms/mode/kms_mode.rst" hash="218dde7e" */}
+
+# KMS operation mode 선택
+
+Canton은 저장된 private key의 보안을 강화하기 위해 Key Management Service (KMS)를 사용할 수 있습니다. Canton에서 KMS를 실제로 사용하려면 이 service를 사용하는 다음 **두 가지 독립적인 방식** 중 하나를 결정하고 구성해야 합니다.
+
+1.  Encrypted private key storage 활성화
+
+    이 mode에서는 Canton이 private key를 내부에서 생성하고, KMS는 저장 상태인 key만 보호하는 데 사용됩니다. 즉, key는 Canton database에 저장되기 전에 암호화됩니다. 외부에서 key를 생성하지 않고도 추가 보안 layer를 제공합니다.
+
+2.  External key storage 활성화
+
+    이 mode에서는 private key가 KMS 내부에서만 생성되고 저장됩니다. Canton은 raw private key material을 보지 않으며 cryptographic operation을 수행할 때만 KMS와 상호작용합니다.
+
+<Note>
+이 문서에서는 각 mode를 **envelope encryption**과 **external keys**라고 부르기도 합니다.
+</Note>
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/kms/mode/encrypted_key_storage.rst" hash="c49f0964" */}
+
+# KMS를 사용한 encrypted private key storage 활성화
+
+Canton은 KMS를 사용해 저장 상태인 private key를 암호화할 수 있습니다(envelope encryption).
+
+1.  Private key는 Node database에 암호화되어 저장됩니다.
+2.  Startup 시 KMS가 key를 복호화하여 memory에서 사용할 수 있게 합니다.
+
+이 방식은 runtime performance에 영향을 주지 않으면서 보안을 강화합니다. 자세한 내용은 Protect private keys with envelope encryption and a Key Management Service를 참조하세요.
+
+<Note>
+KMS provider가 이미 구성되어 있다고 가정합니다. Configure a KMS를 참조하세요.
+</Note>
+
+## Envelope encryption 활성화
+
+Envelope encryption은 KMS vendor가 일반적으로 선택하는 방식입니다. **wrapper key**라는 symmetric encryption key를 사용하여 저장된 private key를 암호화하고 복호화합니다.
+
+Envelope encryption으로 KMS 기반 encrypted private key storage를 활성화하려면 다음 configuration을 추가하고 Node를 restart해야 합니다.
+
+``` none
+canton.participants.participant1.crypto.private-key-store.encryption.type = kms
+```
+
+새 Node와 기존 Node 모두 이 기능을 사용하도록 구성할 수 있으며 Participant도 포함됩니다.
+
+**두 경우 모두 key는 Canton Node database에 암호화되어 저장됩니다.**
+
+<Warning>
+Database backup을 복구하려면 backup data를 암호화할 때 사용한 wrapper key에 접근할 수 있어야 합니다. Wrapper key를 삭제하면 backup을 사용할 수 없습니다.
+</Warning>
+
+## Wrapper key 수동 생성
+
+기본적으로 Node가 restart되면 Canton이 새 symmetric wrapper key를 자동 생성합니다. 미리 생성한 wrapper key를 사용하려면 다음 requirement를 고려하여 먼저 KMS에 새 wrapper key를 만들고 identifier를 기록해야 합니다.
+
+### AWS KMS wrapper key requirement
+
+
+Wrapper key 식별에 지원되는 값은 다음과 같습니다.
+
+- Key ID: `1234abcd-12ab-34cd-56ef-1234567890ab`
+- Key ARN (Amazon Resource Name): `arn:aws:kms:us-east-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab`
+- Key alias: `alias/test-key`
+
+기존 key를 사용한다면 올바른 scheme을 사용하는 symmetric key여야 합니다. AWS KMS에서는 다음을 의미합니다.
+
+- Key specification: SYMMETRIC_DEFAULT
+- Key usage: ENCRYPT_DECRYPT
+
+### GCP KMS wrapper key requirement
+
+
+Wrapper key 식별에 지원되는 값은 다음과 같습니다.
+
+- Key name: `test-key`
+- Key Resource Name (RN): `projects/gcp-kms-testing/locations/us-east1/keyRings/canton-test-keys/cryptoKeys/test-key/cryptoKeyVersions/1`
+
+기존 key를 사용한다면 다음 attribute로 생성된 key여야 합니다.
+
+- Key algorithm: `GOOGLE_SYMMETRIC_ENCRYPTION`
+- Key purpose: `ENCRYPT_DECRYPT`
+
+### KMS Driver key requirement
+
+Key를 고유하게 식별하는 방식은 driver implementation에 달려 있습니다. 단, 다음 constraint를 준수해야 합니다.
+
+- Key 길이는 **128-bit**여야 하며 **AES-GCM** crypto scheme에서 사용할 수 있어야 합니다.
+
+### 새 wrapper key를 configuration에 추가
+
+Key와 ID를 준비한 후 다음 configuration으로 ID를 명시적으로 추가해야 합니다.
+
+<div id="wrapper_key_config">
+
+``` none
+canton.participants.participant1.crypto.private-key-store.encryption.wrapper-key-id = alias/canton-kms-test-key
+```
+
+</div>
+
+AWS KMS와 수동 생성한 wrapper key를 이용한 envelope encryption을 함께 구성하는 예시는 다음과 같습니다.
+
+``` none
+_shared_aws {
+  # Configure an AWS KMS
+  crypto {
+    kms {
+      type = aws
+      region = us-east-1
+      multi-region-key = false
+      audit-logging = false
+    }
+
+    # Configure an encrypted store with KMS
+    private-key-store {
+      encryption.type = kms
+      # In this example we are using the same wrapper key for all nodes. This is not recommended and you should
+      # either let Canton generate those keys or choose a different one for each node.
+      encryption.wrapper-key-id = alias/canton-kms-test-key
+    }
+  }
+}
+```
+
+이후 restart에서는 operator가 wrapper key identifier를 지정할 필요가 없습니다. Canton이 wrapper key ID를 database에 저장합니다.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/kms/mode/external_key_storage.rst" hash="6faa2738" */}
+
+# KMS를 사용한 external key storage 활성화
+
+이 section에서는 private key가 KMS에서 저장 및 관리되고, 해당 key를 사용하는 모든 cryptographic operation이 KMS를 통하도록 Canton Participant에 external key storage를 활성화하는 방법을 설명합니다.
+
+<Note>
+KMS provider가 이미 구성되어 있다고 가정합니다. Configure a KMS를 참조하세요.
+</Note>
+
+External key storage와 사용을 활성화하려면 새 Participant Node를 처음 bootstrap하기 전에 다음 configuration을 적용하세요. **기존 Participant를 변경하는 경우에는 migration guide를 따라야 합니다.** Migrate to external key storage with a KMS를 참조하세요.
+
+``` none
+canton.participants.participant1.crypto.provider = kms
+```
+
+AWS KMS configuration과 external key storage configuration을 함께 적용한 전체 예시는 다음과 같습니다.
+
+``` none
+canton.participants.participant1.crypto.provider = kms
+canton.participants.participant1.crypto.kms {
+    type = aws
+    region = us-east-1
+    multi-region-key = false # optional, default is false
+    audit-logging = true # optional, default is false
+}
+```
+
+올바른 `type`(AWS, GCP 또는 Driver)을 선택하면 동일한 configuration을 모든 KMS type에 적용할 수 있습니다.
+
+이 configuration은 KMS의 external key를 사용하도록 Canton에 지정합니다. 이 key는 **Participant가 시작될 때 기본적으로 자동 생성되므로 추가 작업이 필요하지 않습니다.** KMS에 이미 저장된 자체 수동 생성 key를 사용하려면 다음 내용을 읽으세요.
+
+## 수동 생성 key로 실행
+
+이 how-to에서는 Canton의 자동 key 생성에 의존하지 않고 KMS에서 수동 생성한 key로 Participant Node를 구성하는 방법을 설명합니다.
+
+첫 단계는 KMS에서 Participant용 새 key를 수동으로 생성하는 것입니다. 필요한 key는 다음과 같습니다.
+
+- (signing) namespace key
+- protocol signing key
+- sequencer authentication key
+- asymmetric encryption key
+
+Table Key configuration for external keys에 표시된 지원 key algorithm과 purpose에 따라 각 key를 KMS에서 생성하고 생성된 key identifier를 기록하세요.
+
+이 key를 사용하려면 Participant에 manual initialization을 구성해야 합니다. 자세한 방법은 Initialize node identity manually에서 설명합니다. 단, 해당 설명과 달리 여기에서는 key를 생성하는 것이 아니라 등록해야 한다는 점에 유의하세요. 각 key에 올바른 usage를 할당해야 합니다(Signing Key Usage 참조).
+
+```scala
+// Register the KMS signing key used to define the node identity.
+val namespaceKey = node.keys.secret
+  .register_kms_signing_key(
+    namespaceKmsKeyId,
+    SigningKeyUsage.NamespaceOnly,
+    name = s"${node.name}-${SigningKeyUsage.Namespace.identifier}",
+  )
+
+// Register the KMS signing key used to authenticate the node toward the Sequencer.
+val sequencerAuthKey = node.keys.secret
+  .register_kms_signing_key(
+    sequencerAuthKmsKeyId,
+    SigningKeyUsage.SequencerAuthenticationOnly,
+    name = s"${node.name}-${SigningKeyUsage.SequencerAuthentication.identifier}",
+  )
+
+// Register the signing key used to sign protocol messages.
+val signingKey = node.keys.secret
+  .register_kms_signing_key(
+    signingKmsKeyId,
+    SigningKeyUsage.ProtocolOnly,
+    name = s"${node.name}-${SigningKeyUsage.Protocol.identifier}",
+  )
+
+// Register the encryption key.
+val encryptionKey = node.keys.secret
+  .register_kms_encryption_key(encryptionKmsKeyId, name = node.name + "-encryption")
+```
+
+여기서 `xyzKmsKeyId`는 특정 key의 KMS key identifier입니다(예: `KMS Key ARN`).
+
+<Note>
+AWS cross-account key를 사용할 때는 key ID를 사용할 수 없으며 key `ARN`을 사용해야 합니다.
+</Note>
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/kms/configuration/kms_aws_config.rst" hash="f7fa51d3" */}
+
+# Amazon Web Services (AWS) KMS 구성
+
+
+다른 Canton 기능과 마찬가지로 AWS KMS configuration은 Canton Node configuration file에서 활성화합니다. AWS KMS는 다음과 같이 구성합니다.
+
+``` none
+canton.participants.participant1.crypto.kms {
+    type = aws
+    region = us-east-1
+    multi-region-key = false # optional, default is false
+    audit-logging = false # optional, default is false
+}
+```
+
+- `type`은 사용할 KMS를 지정합니다.
+- `region`은 AWS KMS가 연결된 region을 지정합니다.
+- `multi-region-key` flag는 AWS KMS가 생성한 key의 replication을 활성화합니다. Replication을 켜면 operator가 한 region의 key를 다른 region으로 replicate할 수 있으며(Canton이 key를 자동으로 replicate하지는 않습니다), 이후 별도의 key rotation 없이 Canton에 구성된 region을 변경할 수 있습니다. **대부분의 scenario에는 표준 single-region 방식이 적합합니다.**
+- `audit-logging` flag는 AWS KMS에 대한 모든 call의 logging을 활성화합니다.
+
+## AWS credential과 permission 구성
+
+Canton은 AWS KMS에 API call을 수행하기 위해 표준 AWS credential access를 사용합니다. 예를 들어 표준 environment variable인 `AWS_ACCESS_KEY_ID`와 `AWS_SECRET_ACCESS_KEY`를 사용할 수 있습니다. 또는 AWS profile file을 지정할 수 있습니다(예: 임시 access profile credential인 `sts` 사용).
+
+AWS credential의 보호와 rotation은 Node operator의 책임입니다.
+
+AWS KMS에 필요한 IAM permission 등의 authorize된 action은 Canton에서 선택한 operation mode에 따라 달라집니다.
+
+### Envelope encryption permission
+
+**Envelope encryption** 사용 시 다음 IAM permission이 필요합니다.
+
+- `kms:CreateKey`
+- `kms:Encrypt`
+- `kms:Decrypt`
+- `kms:DescribeKey`
+
+<Note>
+Cross-account key를 사용하면 `kms:CreateKey` permission이 필요하지 않습니다.
+</Note>
+
+### External KMS permission
+
+Key를 AWS KMS가 완전히 관리하고 직접 사용하는 **external KMS**에서는 다음 IAM permission이 필요합니다.
+
+- `kms:CreateKey`
+- `kms:TagResource`
+- `kms:Decrypt`
+- `kms:Sign`
+- `kms:DescribeKey`
+- `kms:GetPublicKey`
+
+<Note>
+Cross-account key를 사용하면 `kms:CreateKey`와 `kms:TagResource` permission이 필요하지 않습니다.
+</Note>
+
+## Auditability
+
+AWS는 KMS key monitoring tool을 제공합니다. AWS가 external logging을 자동 설정하도록 하려면 AWS 공식 문서를 참조하세요. 여기에는 AWS Cloud Trail 또는 Cloud Watch Alarms를 설정하여 KMS key 사용이나 수행된 crypto operation을 추적하는 방법이 포함됩니다. Canton은 KMS key 사용 중 발생하는 error를 기록합니다.
+
+## Logging
+
+Auditability를 높이기 위해 AWS KMS에 대한 모든 call을 기록하도록 Canton을 구성할 수 있습니다. 이 기능을 활성화하려면 KMS configuration의 `audit-logging` field를 `true`로 설정하세요. File 기반 logging configuration을 사용하는 경우 기본적으로 main Canton log file에 기록됩니다. 전용 log file에 기록하려면 `KMS_LOG_FILE_NAME` environment variable 또는 `--kms-log-file-name` CLI flag에 file path를 설정하세요. 다음 parameter와 기타 parameter는 environment variable 또는 CLI flag로 구성할 수 있습니다.
+
+| Environment variable         | CLI Flag                       | Purpose                                                                      | Default           |
+|------------------------------|--------------------------------|------------------------------------------------------------------------------|-------------------|
+| KMS_LOG_FILE_NAME            | --kms-log-file-name            | 전용 KMS log file path                                                       | 설정되지 않음     |
+| KMS_LOG_IMMEDIATE_FLUSH      | --kms-log-immediate-flush      | true이면 log를 KMS log file에 즉시 flush                                    | true              |
+| KMS_LOG_FILE_ROLLING_PATTERN | --kms-log-file-rolling-pattern | Rolling file strategy에서 KMS log file을 roll할 때 사용할 pattern           | yyyy-MM-dd        |
+| KMS_LOG_FILE_HISTORY         | --kms-log-file-history         | Rolling file strategy 사용 시 보관할 KMS log file 최대 개수                 | 0 (제한 없음)     |
+
+KMS logging configuration
+
+AWS KMS audit log 예시:
+
+``` none
+2023-09-12 15:44:54,426 [env-execution-context-27] INFO  c.d.c.c.k.a.a.AwsRequestResponseLogger:participant=participant1 tid:40d47592f1bd50f37e6804fbdff404dd - Sending request [06cc259e220da647]: DecryptRequest(CiphertextBlob=** Ciphertext placeholder **, KeyId=91c48ce4-ec80-44c1-a219-fdd07f12f002, EncryptionAlgorithm=RSAES_OAEP_SHA_256) to https://kms.us-east-1.amazonaws.com/
+2023-09-12 15:44:54,538 [aws-java-sdk-NettyEventLoop-1-15] INFO  c.d.c.c.k.a.a.AwsRequestResponseLogger:participant=participant1 tid:40d47592f1bd50f37e6804fbdff404dd - Received response [06cc259e220da647]: [Aws-Id: 1836823c-bb8a-44bf-883d-f33d696bf84f] - DecryptResponse(Plaintext=** Redacted plaintext placeholder **, KeyId=arn:aws:kms:us-east-1:724647588434:key/91c48ce4-ec80-44c1-a219-fdd07f12f002, EncryptionAlgorithm=RSAES_OAEP_SHA_256)
+2023-09-12 15:44:54,441 [env-execution-context-138] INFO  c.d.c.c.k.a.a.AwsRequestResponseLogger:participant=participant1 tid:40d47592f1bd50f37e6804fbdff404dd - Sending request [e28450df3a98ea23]: SignRequest(KeyId=f23b5b37-b4e8-494d-b2bc-1fca12308c99, Message=** Sign message text placeholder **, MessageType=RAW, SigningAlgorithm=ECDSA_SHA_256) to https://kms.us-east-1.amazonaws.com/
+2023-09-12 15:44:54,554 [aws-java-sdk-NettyEventLoop-1-2] INFO  c.d.c.c.k.a.a.AwsRequestResponseLogger:participant=participant1 tid:40d47592f1bd50f37e6804fbdff404dd - Received response [e28450df3a98ea23]: [Aws-Id: 7085bcf3-1a36-4048-a38b-014b441afa11] - SignResponse(KeyId=arn:aws:kms:us-east-1:724647588434:key/f23b5b37-b4e8-494d-b2bc-1fca12308c99, Signature=** Signature message text placeholder **, SigningAlgorithm=ECDSA_SHA_256)
+```
+
+민감한 data는 logging 전에 제거됩니다. 일반적인 log format은 다음과 같습니다.
+
+`tid:<canton_trace_id> - Sending request [<canton_kms_request_id>]: <request details>` `tid:<canton_trace_id> - Received response [<canton_kms_request_id>]: [Aws-Id: <aws_request_id>] - <response details>`
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/kms/configuration/kms_gcp_config.rst" hash="e901dae3" */}
+
+# Google Cloud Provider (GCP) KMS 구성
+
+
+다른 Canton 기능과 마찬가지로 GCP KMS configuration은 Canton Node configuration file에서 활성화합니다. GCP KMS는 다음과 같이 구성합니다.
+
+``` none
+canton.participants.participant2.crypto.kms {
+    type = gcp
+    location-id = us-east1
+    project-id = gcp-kms-testing
+    key-ring-id = canton-test-keys-2023
+    audit-logging = false # optional, default is false
+}
+```
+
+- `type`은 사용할 KMS를 지정합니다.
+- `location-id`는 GCP KMS가 연결된 region을 지정합니다.
+- `project-id`는 연결할 project를 지정합니다.
+- `key-ring-id`는 사용할 keyring을 지정합니다. Multi-region key는 keyring 전체에 대해 활성화됩니다. 따라서 KMS operator는 system requirement에 따라 keyring을 올바르게 설정할 책임이 있습니다.
+- `audit-logging` flag는 GCP KMS에 대한 모든 call의 logging을 활성화합니다.
+
+## GCP credential과 permission 구성
+
+Canton은 GCP service account를 사용합니다. 예를 들어 service account용 local Application Default Credentials (ADC) file을 설정한 후 표준 environment variable `GOOGLE_APPLICATION_CREDENTIALS`를 사용할 수 있습니다. GKE와 같은 지원 environment에서는 Canton이 metadata service의 Application Default Credentials에서 credential을 가져올 수 있습니다.
+
+GCP credential의 보호와 rotation은 Node operator의 책임입니다.
+
+GCP KMS에 필요한 IAM permission 등의 authorize된 action은 Canton에서 선택한 operation mode에 따라 달라집니다.
+
+### Envelope encryption permission
+
+**Envelope encryption** 사용 시 다음 IAM permission이 필요합니다.
+
+- `cloudkms.cryptoKeyVersions.create`
+- `cloudkms.cryptoKeyVersions.useToEncrypt`
+- `cloudkms.cryptoKeyVersions.useToDecrypt`
+- `cloudkms.cryptoKeys.get`
+
+<Note>
+Cross-project key를 사용하면 `cloudkms.cryptoKeyVersions.create` permission이 필요하지 않습니다.
+</Note>
+
+### External KMS permission
+
+Key를 GCP KMS가 완전히 관리하고 직접 사용하는 **external KMS**에서는 다음 IAM permission이 필요합니다.
+
+- `cloudkms.cryptoKeyVersions.create`
+- `cloudkms.cryptoKeyVersions.useToDecrypt`
+- `cloudkms.cryptoKeyVersions.useToSign`
+- `cloudkms.cryptoKeyVersions.get`
+- `cloudkms.cryptoKeyVersions.viewPublicKey`
+
+<Note>
+Cross-project key를 사용하면 `cloudkms.cryptoKeyVersions.create` permission이 필요하지 않습니다.
+</Note>
+
+## Auditability
+
+GCP는 KMS key monitoring tool을 제공합니다. GCP logging 정보는 GCP 공식 문서를 참조하세요. Canton은 KMS key 사용 중 발생하는 error를 기록합니다.
+
+## Logging
+
+Auditability를 높이기 위해 GCP KMS에 대한 모든 call을 기록하도록 Canton을 구성할 수 있습니다. 이 기능을 활성화하려면 KMS configuration의 `audit-logging` field를 `true`로 설정하세요. File 기반 logging configuration을 사용하는 경우 기본적으로 main Canton log file에 기록됩니다. 전용 log file에 기록하려면 `KMS_LOG_FILE_NAME` environment variable 또는 `--kms-log-file-name` CLI flag에 file path를 설정하세요. 다음 parameter와 기타 parameter는 environment variable 또는 CLI flag로 구성할 수 있습니다.
+
+| Environment variable         | CLI Flag                       | Purpose                                                                      | Default           |
+|------------------------------|--------------------------------|------------------------------------------------------------------------------|-------------------|
+| KMS_LOG_FILE_NAME            | --kms-log-file-name            | 전용 KMS log file path                                                       | 설정되지 않음     |
+| KMS_LOG_IMMEDIATE_FLUSH      | --kms-log-immediate-flush      | true이면 log를 KMS log file에 즉시 flush                                    | true              |
+| KMS_LOG_FILE_ROLLING_PATTERN | --kms-log-file-rolling-pattern | Rolling file strategy에서 KMS log file을 roll할 때 사용할 pattern           | yyyy-MM-dd        |
+| KMS_LOG_FILE_HISTORY         | --kms-log-file-history         | Rolling file strategy 사용 시 보관할 KMS log file 최대 개수                 | 0 (제한 없음)     |
+
+KMS logging configuration
+
+GCP KMS audit log 예시:
+
+``` none
+2023-09-12 15:44:54,426 [env-execution-context-27] INFO  c.d.c.c.k.g.a.GcpRequestResponseLogger:participant=participant1 tid:40d47592f1bd50f37e6804fbdff404dd - Sending request [67d92ffb-438b-4dd5-8175-7a54ced7ac3a]: DecryptRequest(CiphertextBlob=** Ciphertext placeholder **, KeyId=canton-kms-test-key, EncryptionAlgorithm=RSAES_OAEP_SHA_256).
+2023-09-12 15:44:54,538 [env-execution-context-32] INFO  c.d.c.c.k.g.a.GcpRequestResponseLogger:participant=participant1 tid:40d47592f1bd50f37e6804fbdff404dd - Received response DecryptResponse(Plaintext=** Redacted plaintext placeholder **, KeyId=canton-kms-test-key, EncryptionAlgorithm=RSAES_OAEP_SHA_256). Original request [67d92ffb-438b-4dd5-8175-7a54ced7ac3a]
+2023-09-12 15:44:54,441 [env-execution-context-138] INFO  c.d.c.c.k.g.a.GcpRequestResponseLogger:participant=participant1 tid:40d47592f1bd50f37e6804fbdff404dd - Sending request [b3aa6202-1734-4751-8ae0-55b7d15c2abb]: SignRequest(KeyId=canton-kms-test-key, Message=** Sign message text placeholder **, MessageType=RAW, SigningAlgorithm=ECDSA_SHA_256).
+2023-09-12 15:44:54,554 [env-execution-context-145] INFO  c.d.c.c.k.g.a.GcpRequestResponseLogger:participant=participant1 tid:40d47592f1bd50f37e6804fbdff404dd - Received response SignResponse(KeyId=canton-kms-test-key, Signature=** Signature message text placeholder **, SigningAlgorithm=ECDSA_SHA_256). Original request [b3aa6202-1734-4751-8ae0-55b7d15c2abb]
+```
+
+민감한 data는 logging 전에 제거됩니다. 일반적인 log format은 다음과 같습니다.
+
+`tid:<canton_trace_id> - Sending request [<canton_kms_request_id>]: <request details>` `tid:<canton_trace_id> - Received response <response details>. Original request [<canton_kms_request_id>]`
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/kms/configuration/kms_driver_config.rst" hash="43671b22" */}
+
+# Driver 기반 KMS 구성
+
+Canton은 KMS Driver를 통해 다양한 KMS 및 HSM solution과 통합할 수 있습니다. 이 방식에서는 자체 integration layer를 구축하여 Canton을 external key manager에 연결할 수 있습니다.
+
+KMS Driver로 Canton을 실행하는 configuration은 다른 KMS provider와 유사하며 다음을 지정합니다.
+
+```
+type = driver
+name = <name_of_driver>
+```
+
+예를 들어 이름이 \`participant1\`인 Participant는 다음과 같습니다.
+
+``` none
+canton.participants.participant1.crypto.provider = kms
+canton.participants.participant1.crypto.kms {
+  type = driver
+  name = "aws-kms"
+    config = {
+      region = us-east-1
+      multi-region-key = false
+      audit-logging = true
+    }
+}
+```
+
+- `type`은 사용할 KMS를 지정하며 여기서는 driver입니다.
+- `name`은 driver에 구성된 고유 식별 이름입니다.
+- KMS driver 전용 configuration은 `config` field로 전달할 수 있습니다.
+
+이 configuration과 함께 필요한 API를 구현하고 Canton과 대상 KMS 사이의 bridge 역할을 하는 `.jar` file도 제공해야 합니다.
+
+Driver `.jar`를 class path에 포함하여 Canton을 실행하세요.
+
+`java -cp driver.jar:canton.jar com.digitalasset.canton.CantonCommunityApp -c canton.conf # further canton arguments`
+
+Canton에서 자체 KMS Driver를 개발하고 배포하는 방법은 Canton KMS Driver developer guide를 참조하세요. 이 guide에는 custom driver build 방법, 필요한 API 상세 정보, Canton이 driver를 사용하도록 구성하는 단계가 포함됩니다.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/kms/migration/kms_migration.rst" hash="9a959f23" */}
+
+# KMS로 migration
+
+이 section에서는 KMS를 사용하지 않고 실행 중인 Participant를 KMS가 활성화된 Participant로 migration하는 단계와 KMS 사용 Node 및 비사용 Node 간 interoperability를 설명합니다. Migration 절차는 선택한 operation mode에 따라 달라집니다.
+
+1.  Key Management Service (KMS)를 사용하는 encrypted private key storage로 migration
+
+    이 process에서는 symmetric wrapper key를 사용하도록 Node를 구성해야 합니다. **이 configuration을 적용하면 migration이 자동으로 수행됩니다.**
+
+2.  Key Management Service (KMS)를 사용하는 external key storage로 migration
+
+    이 방식에서는 KMS가 활성화된 새 Participant를 생성하고 기존 Participant Node의 모든 data(예: contract)를 전송합니다. **각 operator가 제공된 script와 function을 사용하여 수동으로 수행해야 합니다.**
+
+    독립적이고 깔끔하게 전환할 수 있지만 namespace 변경과 영향을 받는 모든 Participant Node operator와의 coordination이 필요합니다.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/kms/migration/encrypted_key_storage_migration.rst" hash="76ec659f" */}
+
+# KMS 기반 encrypted private key storage로 migration
+
+암호화되지 않은 key storage에서 외부에 hosting된 symmetric wrapper key를 사용하는 KMS 기반 encrypted private key storage로 migration하려면 여기서 설명한 대로 Participant 또는 다른 Node가 이 mode로 동작하도록 구성하면 됩니다. Process는 중단 없이 진행됩니다. Participant를 restart하면 새 configuration을 읽고 Canton private key를 자동으로 암호화하여 저장합니다.
+
+## Encrypted private key storage 되돌리기
+
+Encrypted private key storage를 암호화되지 않은 storage로 되돌릴 수 있습니다. 실수로 되돌리는 것을 방지하기 위해 `private-key-store` configuration을 삭제하는 것만으로는 암호화되지 않은 storage로 돌아가지 않습니다. 대신 다음 configuration을 추가하고 Node를 restart해야 합니다.
+
+``` none
+canton.participants.participant1.crypto.private-key-store.encryption.reverted = true # default is false
+```
+
+<Warning>
+이 설정은 Canton이 private key를 복호화하여 평문으로 저장하도록 강제하므로 권장하지 않습니다.
+</Warning>
+
+`reverted` field를 삭제하고 KMS를 다시 구성하면 encrypted private key storage를 다시 활성화할 수 있습니다.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/kms/migration/external_key_storage_migration.rst" hash="5cadd54e" */}
+
+# KMS 기반 external key storage로 migration
+
+KMS compatible Synchronizer에 연결되는 올바른 configuration으로 새 Participant를 생성한 후에는 기존 Participant의 모든 Party, active contract 및 DAR를 새 Participant로 전송해야 합니다. 두 Participant의 identity가 다르므로 contract가 새 Party ID를 참조하도록 다시 작성해야 합니다. 이 방법을 사용하면 이전 protocol version으로 실행되는 기존 Participant를 KMS가 활성화되고 더 최신 protocol version을 실행할 수 있는 새 Participant로 쉽게 migration할 수 있습니다. Participant namespace가 변경되므로 기존 Node의 root namespace key를 안전하게 보관할 필요도 없습니다. 다만 이 방법을 사용하려면 단일 operator가 모든 contract를 control하거나 모든 Participant operator가 contract rewrite에 동의해야 합니다.
+
+<Warning>
+이 방법은 단일 operator 환경이거나 다른 모든 Participant operator가 동의하고 같은 단계를 따르는 경우에만 작동합니다.
+</Warning>
+
+먼저 기존 Participant의 모든 Party를 새 Participant에 다시 생성해야 합니다. Display name은 동일하게 유지하지만 새 namespace key 때문에 ID는 달라집니다.
+
+<div className="todo">
+
+\#22917: Fix broken literalinclude literalinclude:: CANTON/enterprise/app/src/test/scala/com/digitalasset/canton/integration/tests/security/kms/KmsMigrationWithNewNamespaceIntegrationTest.scala language: scala start-after: user-manual-entry-begin: KmsRecreatePartiesInNewParticipantNewNs end-before: user-manual-entry-end: KmsRecreatePartiesInNewParticipantNewNs dedent:
+
+</div>
+
+두 번째로 DAR를 새 Participant로 migration해야 합니다.
+
+<div className="todo">
+
+\#22917: Fix broken literalinclude literalinclude:: CANTON/enterprise/app/src/test/scala/com/digitalasset/canton/integration/tests/security/kms/KmsMigrationWithNewNamespaceIntegrationTest.scala language: scala start-after: user-manual-entry-begin: KmsMigrateDarsNewNs end-before: user-manual-entry-end: KmsMigrateDarsNewNs dedent:
+
+</div>
+
+마지막으로 기존 Participant의 모든 Party가 가진 active contract를 새 Participant로 전송하고, contract에 언급된 Party ID를 새 Party ID와 일치하도록 rewrite해야 합니다. 이후 새 Synchronizer에 연결할 수 있습니다.
+
+<div className="todo">
+
+\#22917: Fix broken literalinclude literalinclude:: CANTON/enterprise/app/src/test/scala/com/digitalasset/canton/integration/tests/security/kms/KmsMigrationWithNewNamespaceIntegrationTest.scala language: scala start-after: user-manual-entry-begin: KmsMigrateACSofPartiesNewNs end-before: user-manual-entry-end: KmsMigrateACSofPartiesNewNs dedent:
+
+</div>
+
+결과적으로 key가 KMS에 저장 및 관리되고, 적절한 cryptographic scheme으로 통신할 수 있는 Synchronizer에 연결된 다른 namespace의 새 Participant Node가 만들어집니다.
+
+Participant를 `non-KMS` provider 사용 방식으로 되돌릴 때도 같은 단계를 따라야 합니다.
+
+## 다른 Node와의 interoperability
+
+기본적으로 Canton Node는 `jce` crypto provider를 사용하며, Canton private key를 external KMS provider에 저장하는 다른 Node와 호환됩니다. 기본 `jce` provider를 변경하여 다른 cryptographic scheme을 사용한다면 KMS provider와 동일한 algorithm 및 key scheme을 지원하는지 확인해야 다른 KMS 활성화 Canton Node와 상호 운용할 수 있습니다.
+
+KMS provider가 지원하는 cryptographic scheme과 기본적으로 사용되는 scheme은 [Supported Cryptographic Schemes](/global-synchronizer/reference/crypto-schemes) reference를 참조하세요.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/kms/key_rotation/kms_key_rotation.rst" hash="4c53e617" */}
+
+# KMS를 사용한 key rotation
+
+Canton은 envelope encryption 사용 시 wrapper key rotation과 KMS에 외부 저장된 Canton key rotation을 모두 지원합니다.
+
+원활한 disaster recovery를 위해 Backup and Restore에서 설명한 대로 key rotation 사이에 backup을 수행해야 합니다.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/kms/key_rotation/rotate_wrapper_key.rst" hash="a6ad264d" */}
+
+# Envelope wrapper key rotate
+
+일부 KMS provider(예: AWS)는 symmetric KMS key의 자동 rotation을 제공하며 일반적으로 매년 수행합니다. Canton은 Node administrator가 KMS wrapper key를 수동으로 rotate할 수 있도록 이 기능을 확장합니다.
+
+<Note>
+Wrapper key를 rotate하기 전에 configuration을 변경하여 rotation 중 key specification을 변경할 수 있습니다(예: AWS에서 multi-region 활성화).
+</Note>
+
+Key rotation은 이전 key를 삭제하지 않습니다. 이전 key는 inactive 상태가 되지만 계속 보존됩니다. 이전 key를 영구 삭제하려면 Delete Canton node keys를 참조하세요.
+
+## 자동 생성 key로 rotate
+
+다음 Command를 사용하세요.
+
+```scala
+participant1.keys.secret.rotate_wrapper_key()
+```
+
+Canton은 구성된 KMS를 사용하여 새 wrapper key를 자동으로 생성합니다.
+
+## 수동 생성 key로 rotate
+
+먼저 여기서 설명한 requirement를 충족하는 새 wrapper key를 KMS에 생성해야 합니다. 그런 다음 다음 Command로 해당 key로 rotate할 수 있습니다.
+
+```scala
+participant1.keys.secret.rotate_wrapper_key(newWrapperKeyId)
+```
+
+- \`newWrapperKeyId\`: rotate할 대상 wrapper key의 identifier입니다.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/kms/key_rotation/rotate_external_keys.rst" hash="db2a775a" */}
+
+# External KMS key rotate
+
+Canton key가 KMS에 외부 저장되어 있어도 수동으로 rotate할 수 있습니다. 표준 rotate key Command를 사용하거나, **rotate할 미리 생성된 KMS key가 이미 있다면** 다음 Command를 실행하세요.
+
+```scala
+val newSigningKeyParticipant = participant1.keys.secret
+  .rotate_kms_node_key(
+    keyFingerprint,
+    newKmsKeyId,
+    "kms_key_rotated",
+  )
+```
+
+- `fingerprint` - rotate할 key의 fingerprint입니다.
+- `newKmsKeyId` - 새 KMS key의 ID입니다(예: Resource Name).
+- `name` - 새 key에 사용할 optional name입니다.
+
+현재 asymmetric key의 자동 rotation을 제공하는 KMS service는 없으므로 Node operator가 이 key를 주기적으로 rotate할 책임이 있습니다.
+
+
+{/* COPIED_END */}

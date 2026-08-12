@@ -1,6 +1,6 @@
 ---
-title: "학습 경로 선택하기"
-description: "배경과 목표에 맞는 학습 경로 찾기"
+title: "학습 경로 선택"
+description: "배경 지식과 목표에 맞는 학습 경로 찾기"
 source_id: "SRC-BC077D0611"
 source_path: "appdev/get-started/choose-your-path"
 source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
@@ -14,9 +14,9 @@ reviewed_by: null
   이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/get-started/choose-your-path.md)을 사용하세요.
 </Warning>
 
-blockchain을 처음 접하거나 다른 platform에서 migration하는 경우, 이 guide를 사용해 Canton Network에서 개발을 시작하는 가장 효율적인 경로를 찾을 수 있습니다.
+blockchain을 처음 접하거나 다른 platform에서 이전하는 경우 모두, 이 guide를 통해 Canton Network에서 구축하기 위한 가장 효율적인 학습 경로를 찾을 수 있습니다.
 
-## 빠른 평가
+## 빠른 진단
 
 <AccordionGroup>
 
@@ -31,7 +31,7 @@ blockchain을 처음 접하거나 다른 platform에서 migration하는 경우, 
 
 <Accordion title="Ethereum/Solidity 경험이 있습니다">
 **권장 경로:**
-1. [Ethereum Developer를 위한 Canton](/appdev/modules/m2-canton-for-ethereum-devs) - 기존 지식을 Canton 개념에 대응시킵니다.
+1. [Ethereum Developer를 위한 Canton](/appdev/modules/m2-canton-for-ethereum-devs) - 기존 지식을 Canton concept에 대응시킵니다.
 2. [Privacy Model](/overview/learn/privacy-model) - 핵심 차이를 이해합니다.
 3. [Module 3: Daml Smart Contract](/appdev/modules/m3-dev-environment) - Daml syntax를 학습합니다.
 4. [Module 4: Application 구축](/appdev/modules/m4-building-apps-intro) - full-stack Canton app을 구축하며 실습합니다.
@@ -42,19 +42,19 @@ blockchain을 처음 접하거나 다른 platform에서 migration하는 경우, 
 - privacy가 기본값입니다. 데이터를 숨기는 대신 observer를 선언합니다.
 </Accordion>
 
-<Accordion title="다른 blockchain 경험이 있습니다 (Solana, Cosmos 등)">
+<Accordion title="다른 blockchain 경험이 있습니다(Solana, Cosmos 등)">
 **권장 경로:**
-1. [5분 개요](/overview/understand/five-minute-overview) - Canton의 접근 방식을 살펴봅니다.
-2. [Ethereum Developer를 위한 Canton](/appdev/modules/m2-canton-for-ethereum-devs) - 개념을 대응시킵니다. 다른 blockchain 경험자에게도 유용합니다.
-3. [Architecture 개요](/overview/learn/architecture) - component가 작동하는 방식을 이해합니다.
+1. [5분 개요](/overview/understand/five-minute-overview) - Canton의 접근 방식을 이해합니다.
+2. [Ethereum Developer를 위한 Canton](/appdev/modules/m2-canton-for-ethereum-devs) - concept mapping을 학습합니다. 다른 blockchain 경험자에게도 유용합니다.
+3. [Architecture 개요](/overview/learn/architecture) - component의 작동 방식을 이해합니다.
 4. [Module 3: Daml Smart Contract](/appdev/modules/m3-dev-environment) - coding을 시작합니다.
 </Accordion>
 
-<Accordion title="coding 없이 Canton을 이해하고 싶습니다 (architect/PM)">
+<Accordion title="coding 없이 Canton을 이해하고 싶습니다(architect/PM)">
 **권장 경로:**
 1. [5분 개요](/overview/understand/five-minute-overview)
 2. [Canton이 해결하는 문제](/overview/understand/the-problem)
-3. [Canton의 해결책](/overview/understand/cantons-solution)
+3. [Canton의 해결 방식](/overview/understand/cantons-solution)
 4. [Use Case](/overview/understand/use-cases)
 5. [Architecture 개요](/overview/learn/architecture)
 </Accordion>
@@ -63,15 +63,15 @@ blockchain을 처음 접하거나 다른 platform에서 migration하는 경우, 
 
 ## 학습 Module
 
-developer documentation은 단계적으로 진행되는 Module로 구성되어 있습니다.
+developer documentation은 단계적으로 학습하도록 다음 module로 구성됩니다.
 
-| Module | 중점 내용 | 사전 학습 |
+| Module | 중점 사항 | 사전 요구 사항 |
 |--------|-------|---------------|
 | **Module 1** | Canton 이해하기 | 없음 |
 | **Module 2** | Ethereum Developer를 위한 Canton | Ethereum/blockchain 경험 |
 | **Module 3** | Daml Smart Contract | Module 1 또는 2 |
 | **Module 4** | Application 구축 | Module 3 |
-| **Module 5** | Test & Deployment | Module 4 |
+| **Module 5** | Testing & Deployment | Module 4 |
 | **Module 6** | Smart Contract Upgrade | Module 3-5 |
 | **Module 7** | Production Best Practice | Module 5 |
 
@@ -103,44 +103,44 @@ flowchart TB
 
 ## 사전 요구 사항
 
-개발을 시작하기 전에 다음 사항을 확인하세요.
+개발을 시작하기 전에 다음 사항이 필요합니다.
 
 ### 필수
 
-- 언어와 관계없는 **programming 경험**
-- **Command line** 사용 경험
+- 언어에 관계없는 **programming 경험**
+- **command line** 사용 경험
 - version control을 위한 **Git**
 
-### 도움이 되는 항목 (필수 아님)
+### 있으면 유용하지만 필수는 아님
 
-- **functional programming** 개념 (Haskell, OCaml, F# 또는 유사 언어)
+- **functional programming** concept(Haskell, OCaml, F# 등)
 - local environment 실행을 위한 **Docker**
 - PQS query를 위한 **PostgreSQL**
 
-### 개발 환경
+### Development Environment
 
 <CardGroup cols={2}>
 
 <Card title="Daml SDK" icon="download" href="/sdks-tools/sdks/daml-sdk">
-  Daml compiler와 도구가 포함된 SDK를 설치합니다.
+  Daml compiler 및 tool을 포함한 SDK를 설치합니다.
 </Card>
 
 <Card title="VS Code Extension" icon="code" href="https://marketplace.visualstudio.com/items?itemName=DigitalAssetHoldingsLLC.daml">
-  syntax highlighting과 IDE 지원을 위해 Daml VS Code extension을 설치합니다.
+  syntax highlighting 및 IDE 지원을 위한 Daml VS Code extension을 설치합니다.
 </Card>
 
 </CardGroup>
 
 ## 실습
 
-구축을 시작할 준비가 되었나요? [Module 4: Application 구축](/appdev/modules/m4-building-apps-intro)에서는 사전 요구 사항, demo 실행, backend 및 frontend 개발, JSON Ledger API, observability를 포함한 full-stack Canton Network application을 처음부터 끝까지 구축합니다.
+구축할 준비가 됐다면 [Module 4: Application 구축](/appdev/modules/m4-building-apps-intro)을 따라 full-stack Canton Network application을 end-to-end로 만들어 보세요. 사전 요구 사항, demo 실행, backend 및 frontend 개발, JSON Ledger API 및 observability를 다룹니다.
 
 ## 도움 받기
 
 <CardGroup cols={3}>
 
 <Card title="Community Slack" icon="slack" href="mailto:cf-global-synchronize-aaaapqznpatdmupdm5thaarsly@daholdings.slack.com">
-  app developer Slack channel 가입 요청을 email로 보냅니다.
+  app developer Slack channel에 참여하려면 email로 요청합니다.
 </Card>
 
 <Card title="Forum" icon="comments" href="https://forum.canton.network/">

@@ -1,0 +1,225 @@
+---
+title: "Synchronizer Traffic"
+description: "Global Synchronizer의 traffic accounting, fee 및 monitoring"
+source_id: "SRC-65E743153D"
+source_path: "global-synchronizer/deployment/synchronizer-traffic"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "26560533f249e4c8150db553b857288b8bda5eedc187e7027e88ffba6780035e"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/deployment/synchronizer-traffic.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/deployment/traffic.rst" hash="0e110a7b" */}
+
+Synchronizer 사용은 SV에 operational cost를 발생시킵니다. 이 비용을 amortize하고 SV 운영 incentive를 개선하며 network에 대한 Denial Of Service attack의 매력을 낮추기 위해 일정한 free `base rate` level을 초과하는 synchronizer 사용에는 `Canton Coin`으로 지불하는 `synchronizer fee`가 부과됩니다. 이 기능을 지원하기 위해 sequencer는 각 synchronizer member, 특히 모든 validator participant의 available 및 consumed traffic을 추적합니다. Participant의 free(base rate) traffic과 paid(extra) traffic이 모두 소진되면 sequencer는 write 시도를 거부합니다.
+
+SV, 더 구체적으로 SV participant 및 mediator는 unlimited traffic을 가지므로 synchronizer fee 대상이 아닙니다. 하지만 Global Synchronizer fee configuration이 건전하고 network operational objective와 일치하도록 공동으로 보장하는 것은 SV operator의 책임입니다.
+
+## Traffic accounting: 무엇이 traffic으로 계산되나요?
+
+Sequencer는 validator participant가 사용하는 traffic을 추적합니다. 이 맥락에서 `Traffic`은 `sequence`되어야 하는 participant의 모든 message를 의미합니다. 즉 sequencer group이 order하고 pruning interval까지 persist하며 recipient, 일반적으로 mediator와 다른 participant에게 전달해야 하는 message입니다.
+
+가장 대표적으로 [Canton transaction processing protocol](/overview/learn/how-transactions-work)의 일부인 Daml workflow에 traffic이 사용됩니다. 여기에는 다음이 포함됩니다.
+
+- Confirmation request: participant가 ledger transaction commit을 시작할 때 전송됩니다.
+- Confirmation response: transaction stakeholder를 hosting하는 participant를 위해 전송됩니다.
+
+Custom Daml workflow뿐 아니라 reward collection 같은 automated "built-in" workflow도 traffic spend에 포함됩니다.
+
+Daml workflow 관련 message 외에도 participant는 다음과 같은 작업에 traffic을 사용합니다.
+
+- 새 party allocation 또는 새로 upload한 DAR package vetting 등을 위한 topology transaction submission
+- 서로 synchronize되어 있는지 확인하기 위한 주기적인 `ACS` commitment exchange
+
+내부적으로 sequencer는 다음에 소개하는 보다 쉽게 볼 수 있는 traffic parameter에 대응하는 여러 counter를 validator participant마다 유지합니다. 개괄적으로 sequencer는 다음을 추적합니다.
+
+- Available base rate traffic balance. Base rate는 time window에 대한 burst amount로 정의되므로 완전히 소진되어도 window 길이만큼 inactive한 뒤 available base rate traffic balance가 완전히 회복됩니다.
+- Available extra traffic balance. 비용을 지불한 traffic입니다. Extra traffic balance는 base rate traffic balance가 완전히 소진된 시간에만 사용됩니다. 즉 base rate traffic balance가 항상 먼저 사용됩니다.
+
+Participant가 base rate 및 extra traffic balance를 모두 사용할 수 없으면 sequencer는 base rate traffic balance가 회복되거나 participant의 extra traffic balance가 top up될 때까지 추가 message sequencing submission을 거부합니다. Top-up deadlock을 방지하기 위한 safeguard로 validator app은 traffic balance가 일부 남아 있더라도 특정 조건에서 [ledger submission을 abort](/global-synchronizer/troubleshooting-guide/troubleshooting-methodology)합니다. 이는 validator app 자체의 submission에만 적용됩니다. Validator를 대상으로 다른 application을 실행한다면 traffic balance를 monitoring하고 traffic이 소진되면 해당 app을 pause할 것을 권장합니다.
+
+Traffic accounting은 "participant별"로 수행됩니다. 동일한 participant에서 hosting되는 모든 party가 같은 traffic balance를 공유합니다.
+
+## Traffic parameter
+
+{/* NETWORKVARS_START source="/snippets/networkvars/global-synchronizer/deployment/synchronizer-traffic-1.mdx" */}
+<Tabs>
+
+<Tab title="DevNet (0.7.1)">
+
+현재 synchronizer traffic parameter는 global `AmuletRules` contract에 기록되며 Scan에서 가져올 수 있습니다. Scan UI를 사용하거나 다음과 같은 command로 Scan API를 query할 수 있습니다. [jq](https://jqlang.org/) 설치가 필요합니다.
+
+```bash
+curl -X POST --header "Content-Type: application/json" -d "{}" https://scan.sv-1.dev.global.canton.network.sync.global/api/scan/v0/amulet-rules | jq ".amulet_rules_update.contract.payload.configSchedule.initialValue.decentralizedSynchronizer.fees"
+```
+위 command는 다음과 유사한 JSON object를 반환합니다.
+
+```json
+"fees": {
+  "baseRateTrafficLimits": {
+    "burstAmount": "400000",
+    "burstWindow": {
+      "microseconds": "1200000000"
+    }
+  },
+  "extraTrafficPrice": "60.0",
+  "readVsWriteScalingFactor": "4",
+  "minTopupAmount": "200000"
+}
+```
+이는 `SynchronizerFeesConfig` Daml data type의 encoded instance입니다. Field에 대한 자세한 내용은 Daml API 문서를 참조하세요. 개요는 다음과 같습니다.
+
+- `baseRateTrafficLimits`: synchronizer traffic의 free tier를 정의합니다. Validator는 fee 없이 `burstWindow` time window 내에서 최대 `burstAmount` byte의 traffic을 사용할 수 있습니다. Available free traffic은 주기적으로 복원되며 완전히 inactive한 상태로 `burstWindow` 전체가 지나면 항상 maximum(`burstAmount`)에 도달합니다. Ledger submission을 trigger하지 않아도 participant가 normal operation 중 일부 traffic을 사용할 수 있습니다. 위의 `traffic_accounting`을 참조하세요.
+
+- `extraTrafficPrice`: free tier를 초과하는 extra traffic의 price이며 MB당 USD로 표시됩니다. 현재 USD exchange rate에 따라 `CC`로 부과됩니다. Exchange rate는 SV가 median voting으로 결정하며 Scan에서 가져올 수 있는 current `OpenMiningRound` contract에 기록됩니다. 현재 open mining round에 따른 USD 기준 current CC price를 query하려면 Scan UI를 확인하거나 다음 command를 사용합니다. [jq](https://jqlang.org/) 설치가 필요합니다.
+
+  ```bash
+  curl -X POST --header "Content-Type: application/json" -d "{\"cached_open_mining_round_contract_ids\":[], \"cached_issuing_round_contract_ids\":[]}" https://scan.sv-1.dev.global.canton.network.sync.global/api/scan/v0/open-and-issuing-mining-rounds | jq ".open_mining_rounds | values[] | .contract.payload | {round, amuletPrice}"
+  ```
+- `readVsWriteScalingFactor`: synchronizer message를 각 recipient에게 전달할 때 sender balance에서 추가로 차감하는 traffic의 weight를 지정합니다. Message delivery cost가 ordering 및 persistence cost보다 훨씬 작더라도 SV에는 실제 비용이 발생합니다. `readVsWriteScalingFactor`는 basis point, 즉 10,000분의 1 단위로 지정됩니다. 따라서 값 1은 recipient에게 전달해야 하는 1000 byte마다 traffic 0.1 byte가 부과됨을 의미합니다. 예를 들어 factor 4에서 recipient가 10명인 1MB message는 sending participant의 traffic balance에서 `1,000,000 * (1 + 10 * 0.004) = 1,040,000` byte를 사용합니다.
+
+- `minTopupAmount`: extra traffic 구매 시 반드시 구매해야 하는 minimum traffic amount입니다. 이 값을 합리적으로 높게 유지하면 SV가 top-up operation cost를 amortize할 수 있으며, 매우 작은 top-up 처리로 인한 불균형한 overhead에서 SV를 보호합니다.
+
+`AmuletRulesConfig`의 모든 부분과 마찬가지로 `SynchronizerFeesConfig`는 DSO governance의 일부로 SV의 on-ledger voting을 통해 설정됩니다. [SV operations 문서](/global-synchronizer/deployment/sv-operations)에는 이 parameter 일부의 적절한 값을 결정하는 지침이 있습니다.
+
+</Tab>
+
+<Tab title="TestNet (0.7.0)">
+
+현재 synchronizer traffic parameter는 global `AmuletRules` contract에 기록되며 Scan에서 가져올 수 있습니다. Scan UI를 사용하거나 다음과 같은 command로 Scan API를 query할 수 있습니다. [jq](https://jqlang.org/) 설치가 필요합니다.
+
+```bash
+curl -X POST --header "Content-Type: application/json" -d "{}" https://scan.sv-1.test.global.canton.network.sync.global/api/scan/v0/amulet-rules | jq ".amulet_rules_update.contract.payload.configSchedule.initialValue.decentralizedSynchronizer.fees"
+```
+위 command는 다음과 유사한 JSON object를 반환합니다.
+
+```json
+"fees": {
+  "baseRateTrafficLimits": {
+    "burstAmount": "400000",
+    "burstWindow": {
+      "microseconds": "1200000000"
+    }
+  },
+  "extraTrafficPrice": "60.0",
+  "readVsWriteScalingFactor": "4",
+  "minTopupAmount": "200000"
+}
+```
+이는 `SynchronizerFeesConfig` Daml data type의 encoded instance입니다. Field에 대한 자세한 내용은 Daml API 문서를 참조하세요. 개요는 다음과 같습니다.
+
+- `baseRateTrafficLimits`: synchronizer traffic의 free tier를 정의합니다. Validator는 fee 없이 `burstWindow` time window 내에서 최대 `burstAmount` byte의 traffic을 사용할 수 있습니다. Available free traffic은 주기적으로 복원되며 완전히 inactive한 상태로 `burstWindow` 전체가 지나면 항상 maximum(`burstAmount`)에 도달합니다. Ledger submission을 trigger하지 않아도 participant가 normal operation 중 일부 traffic을 사용할 수 있습니다. 위의 `traffic_accounting`을 참조하세요.
+
+- `extraTrafficPrice`: free tier를 초과하는 extra traffic의 price이며 MB당 USD로 표시됩니다. 현재 USD exchange rate에 따라 `CC`로 부과됩니다. Exchange rate는 SV가 median voting으로 결정하며 Scan에서 가져올 수 있는 current `OpenMiningRound` contract에 기록됩니다. 현재 open mining round에 따른 USD 기준 current CC price를 query하려면 Scan UI를 확인하거나 다음 command를 사용합니다. [jq](https://jqlang.org/) 설치가 필요합니다.
+
+  ```bash
+  curl -X POST --header "Content-Type: application/json" -d "{\"cached_open_mining_round_contract_ids\":[], \"cached_issuing_round_contract_ids\":[]}" https://scan.sv-1.test.global.canton.network.sync.global/api/scan/v0/open-and-issuing-mining-rounds | jq ".open_mining_rounds | values[] | .contract.payload | {round, amuletPrice}"
+  ```
+- `readVsWriteScalingFactor`: synchronizer message를 각 recipient에게 전달할 때 sender balance에서 추가로 차감하는 traffic의 weight를 지정합니다. Message delivery cost가 ordering 및 persistence cost보다 훨씬 작더라도 SV에는 실제 비용이 발생합니다. `readVsWriteScalingFactor`는 basis point, 즉 10,000분의 1 단위로 지정됩니다. 따라서 값 1은 recipient에게 전달해야 하는 1000 byte마다 traffic 0.1 byte가 부과됨을 의미합니다. 예를 들어 factor 4에서 recipient가 10명인 1MB message는 sending participant의 traffic balance에서 `1,000,000 * (1 + 10 * 0.004) = 1,040,000` byte를 사용합니다.
+
+- `minTopupAmount`: extra traffic 구매 시 반드시 구매해야 하는 minimum traffic amount입니다. 이 값을 합리적으로 높게 유지하면 SV가 top-up operation cost를 amortize할 수 있으며, 매우 작은 top-up 처리로 인한 불균형한 overhead에서 SV를 보호합니다.
+
+`AmuletRulesConfig`의 모든 부분과 마찬가지로 `SynchronizerFeesConfig`는 DSO governance의 일부로 SV의 on-ledger voting을 통해 설정됩니다. [SV operations 문서](/global-synchronizer/deployment/sv-operations)에는 이 parameter 일부의 적절한 값을 결정하는 지침이 있습니다.
+
+</Tab>
+
+<Tab title="MainNet (0.6.14)">
+
+현재 synchronizer traffic parameter는 global `AmuletRules` contract에 기록되며 Scan에서 가져올 수 있습니다. Scan UI를 사용하거나 다음과 같은 command로 Scan API를 query할 수 있습니다. [jq](https://jqlang.org/) 설치가 필요합니다.
+
+```bash
+curl -X POST --header "Content-Type: application/json" -d "{}" https://scan.sv-1.global.canton.network.sync.global/api/scan/v0/amulet-rules | jq ".amulet_rules_update.contract.payload.configSchedule.initialValue.decentralizedSynchronizer.fees"
+```
+위 command는 다음과 유사한 JSON object를 반환합니다.
+
+```json
+"fees": {
+  "baseRateTrafficLimits": {
+    "burstAmount": "400000",
+    "burstWindow": {
+      "microseconds": "1200000000"
+    }
+  },
+  "extraTrafficPrice": "60.0",
+  "readVsWriteScalingFactor": "4",
+  "minTopupAmount": "200000"
+}
+```
+이는 `SynchronizerFeesConfig` Daml data type의 encoded instance입니다. Field에 대한 자세한 내용은 Daml API 문서를 참조하세요. 개요는 다음과 같습니다.
+
+- `baseRateTrafficLimits`: synchronizer traffic의 free tier를 정의합니다. Validator는 fee 없이 `burstWindow` time window 내에서 최대 `burstAmount` byte의 traffic을 사용할 수 있습니다. Available free traffic은 주기적으로 복원되며 완전히 inactive한 상태로 `burstWindow` 전체가 지나면 항상 maximum(`burstAmount`)에 도달합니다. Ledger submission을 trigger하지 않아도 participant가 normal operation 중 일부 traffic을 사용할 수 있습니다. 위의 `traffic_accounting`을 참조하세요.
+
+- `extraTrafficPrice`: free tier를 초과하는 extra traffic의 price이며 MB당 USD로 표시됩니다. 현재 USD exchange rate에 따라 `CC`로 부과됩니다. Exchange rate는 SV가 median voting으로 결정하며 Scan에서 가져올 수 있는 current `OpenMiningRound` contract에 기록됩니다. 현재 open mining round에 따른 USD 기준 current CC price를 query하려면 Scan UI를 확인하거나 다음 command를 사용합니다. [jq](https://jqlang.org/) 설치가 필요합니다.
+
+  ```bash
+  curl -X POST --header "Content-Type: application/json" -d "{\"cached_open_mining_round_contract_ids\":[], \"cached_issuing_round_contract_ids\":[]}" https://scan.sv-1.global.canton.network.sync.global/api/scan/v0/open-and-issuing-mining-rounds | jq ".open_mining_rounds | values[] | .contract.payload | {round, amuletPrice}"
+  ```
+- `readVsWriteScalingFactor`: synchronizer message를 각 recipient에게 전달할 때 sender balance에서 추가로 차감하는 traffic의 weight를 지정합니다. Message delivery cost가 ordering 및 persistence cost보다 훨씬 작더라도 SV에는 실제 비용이 발생합니다. `readVsWriteScalingFactor`는 basis point, 즉 10,000분의 1 단위로 지정됩니다. 따라서 값 1은 recipient에게 전달해야 하는 1000 byte마다 traffic 0.1 byte가 부과됨을 의미합니다. 예를 들어 factor 4에서 recipient가 10명인 1MB message는 sending participant의 traffic balance에서 `1,000,000 * (1 + 10 * 0.004) = 1,040,000` byte를 사용합니다.
+
+- `minTopupAmount`: extra traffic 구매 시 반드시 구매해야 하는 minimum traffic amount입니다. 이 값을 합리적으로 높게 유지하면 SV가 top-up operation cost를 amortize할 수 있으며, 매우 작은 top-up 처리로 인한 불균형한 overhead에서 SV를 보호합니다.
+
+`AmuletRulesConfig`의 모든 부분과 마찬가지로 `SynchronizerFeesConfig`는 DSO governance의 일부로 SV의 on-ledger voting을 통해 설정됩니다. [SV operations 문서](/global-synchronizer/deployment/sv-operations)에는 이 parameter 일부의 적절한 값을 결정하는 지침이 있습니다.
+
+</Tab>
+
+</Tabs>
+{/* NETWORKVARS_END */}
+
+## Traffic balance와 transaction submission의 상호작용
+
+Transaction submission에서 실제 traffic accounting이 이루어지는 예는 다음과 같습니다.
+
+1.  Transaction이 제출됩니다.
+2.  Sequencer의 traffic manager가 node의 base rate, 즉 free traffic balance와 구매한 traffic을 확인합니다.
+3.  Base rate traffic에는 마지막 submission 이후 적립된 traffic이 포함됩니다. 이 적립은 시간에 따라 linear하게 계산되며 `burstWindow` 시간 후 `burstAmount`에 도달합니다.
+4.  Base rate traffic이 충분하면 submission이 sequence됩니다. Transaction에 대한 base rate traffic balance가 차감되고 extra traffic balance는 변경되지 않습니다.
+5.  Base rate traffic은 충분하지 않지만 extra traffic으로 차액을 지불할 수 있다면 submission이 sequence됩니다. Base rate traffic balance가 소진되고 나머지는 extra traffic balance에서 차감됩니다.
+6.  위 조건 중 어느 것도 해당하지 않으면 submission이 실패합니다.
+7.  어떤 상황에서도 `burstWindow` 동안 transaction을 제출하지 않으면 base rate traffic balance가 `burstAmount`까지 완전히 보충됩니다. 최소한 traffic을 다시 구매할 수 있으므로 extra traffic top-up에 필요한 traffic조차 부족한 상황에 갇히는 것을 방지합니다.
+
+Sequencing 성공이 반드시 transaction의 완전한 acceptance를 의미하지는 않습니다. 이러한 경우와 최선의 방지 방법은 아래 `traffic_wasted`를 참조하세요.
+
+## Traffic top-up: traffic을 어떻게 "구매"하나요?
+
+"Traffic 구매"는 두 가지 주요 component를 중심으로 이루어집니다.
+
+1.  각 validator의 traffic state를 추적하고 traffic 구매에 CC가 사용될 때마다 atomic하게 update되는 on-ledger `MemberTraffic` contract(Daml API 문서). 가장 중요한 점은 on-ledger `MemberTraffic` contract가 해당 validator를 위해 구매한 extra traffic의 total amount를 추적한다는 것입니다.
+2.  Available 및 spent traffic을 모두 추적하는 in-sequencer traffic state. SV는 ledger에서 관찰하는 `MemberTraffic` state를 기반으로 in-sequencer traffic state를 update하여 paid traffic fee가 실제 traffic balance 증가로 변환되도록 합니다. Sequencer도 traffic이 사용될 때마다 in-sequencer traffic state를 직접 update합니다. `traffic_accounting`을 참조하세요.
+
+Validator app에는 사전 구성된 throughput 요구 사항을 충족하도록 traffic을 자동으로 구매하는 built-in top-up automation이 포함됩니다. Operator는 target throughput(byte/second)과 minimum top-up interval(second)을 구성합니다. Automation은 다음 두 조건이 모두 충족될 때마다 `target throughput × minimum top-up interval` byte를 구매합니다.
+
+- Extra traffic balance가 해당 total top-up amount 아래로 내려갔습니다.
+- 마지막 top-up 이후 최소한 minimum top-up interval이 지났습니다.
+
+두 번째 조건은 safeguard입니다. Bug 또는 attack으로 runaway submission이 발생하여 CC가 빠르게 소비될 때 operator가 개입할 기회를 제공합니다. 이는 operator가 관리해야 할 tradeoff입니다. Interval이 짧으면 top-up 사이에 traffic이 소진될 위험이 줄지만 operator가 이를 알아차릴 시간 전에 CC가 빠르게 사용될 위험이 증가합니다. Interval이 길면 문제를 인지할 시간이 늘지만 traffic이 소진될 위험도 증가합니다. 실제로 두 failure mode 모두 발생합니다. Node는 traffic이 소진되거나 추가 traffic을 구매할 CC가 소진되어 transaction을 중지할 수 있습니다.
+
+또한 이미 소진된 traffic balance 때문에 top-up transaction이 실패하지 않도록 validator app은 [balance가 사전 정의된 amount 아래로 내려가면 ledger submission을 abort](/global-synchronizer/troubleshooting-guide/troubleshooting-methodology)합니다.
+
+Built-in top-up automation configuration은 [Kubernetes validator deployment guide](/global-synchronizer/deployment/validator-kubernetes) 또는 해당 [Docker Compose guide](/global-synchronizer/deployment/validator-docker-compose)를 참조하세요. Third-party service 사용 등 대체 traffic 구매 방법의 configuration은 이 문서의 범위를 벗어납니다.
+
+## Wasted traffic
+
+`Wasted traffic`은 sequence되었지만 recipient에게 전달되지 않는 synchronizer event로 정의됩니다. Traffic fee 대상인 validator에서 wasted traffic은 최종적으로 전달되지 않은 message에 traffic 비용이 부과되었음을 의미합니다. 모든 failed submission이 wasted traffic으로 이어지는 것은 아닙니다. Wasted traffic은 synchronizer event가 sequencing 후 delivery 전에 거부될 때만 발생합니다. 다음과 같은 요인으로 일정 수준의 wasted traffic은 예상되며 피할 수 없습니다.
+
+- Submission request amplification. BFT sequencer connection을 사용하는 participant는 nonresponsive sequencer 상황에서도 빠른 delivery를 보장하기 위해 timeout 후 submission request를 retry합니다. Processing이 평소보다 느렸을 뿐 sequencer가 faulty하지 않았다면 duplicate request는 wasted traffic으로 계산됩니다.
+- 일반적으로 transient networking 문제 또는 load spike와 연관된 ordering layer 내부의 message duplication
+- Backup restore 후 catch up하거나 crash가 발생한 뒤와 같이 participant/app 측의 submission duplication
+
+### Validator 관점
+
+Validator operator는 반복적으로 실패하는 submission의 원인을 조사하는 것이 좋습니다. 위에서 설명했듯 모든 failed submission이 wasted traffic으로 이어지는 것은 아니며 일부 wasted traffic은 피할 수 없습니다. 그러나 특정 시점에 wasted traffic rate가 크게 증가한다면 주의가 필요합니다.
+
+Splice distribution에는 traffic 관련 metric monitoring을 지원하는 `Synchronizer Fees (validator view)` [Grafana dashboard](/global-synchronizer/production-operations/splice-metrics-overview)가 포함되어 있습니다. 이 dashboard의 `Rejected Event Traffic` panel은 wasted traffic rate를 판단하는 데 특히 중요합니다. 표시된 data의 정확한 설명은 panel header의 ⓘ symbol에 hover하세요.
+
+### SV 관점
+
+SV operator는 wasted traffic이 크게 증가하거나 global하게 증가하는 경우를 detect하도록 sequencer [metric](/global-synchronizer/production-operations/splice-metrics-overview) 등으로 보고되는 모든 synchronizer member의 wasted traffic을 monitoring하는 것이 좋습니다. Splice distribution에는 유용한 `Synchronizer Fees (SV view)` Grafana dashboard와 validator participant에 초점을 둔 alert definition이 포함되어 있습니다.
+
+SV component는 unlimited traffic을 가지므로 SV 자체에는 wasted traffic의 관련성이 낮습니다. 또한 SV mediator 및 sequencer는 regular operation의 일부로 traffic을 낭비합니다. 이들은 aggregate submission을 많이 사용하며, sequencer는 sender group의 message를 수집하고 individual submission이 threshold만큼 sequence되면 recipient마다 message 하나만 전달합니다. Aggregation threshold를 초과하여 sequence된 individual submission은 wasted traffic으로 계산됩니다. 그렇더라도 SV component에서 갑자기 wasted traffic이 크게 증가하면 조사해야 할 실제 문제일 가능성이 높습니다.
+
+{/* COPIED_END */}

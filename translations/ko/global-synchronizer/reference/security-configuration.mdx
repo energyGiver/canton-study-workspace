@@ -1,0 +1,362 @@
+---
+title: "Canton Security Configuration"
+description: "Canton node의 TLS, JWT authentication 및 API limit을 구성합니다."
+source_id: "SRC-F1587A27DC"
+source_path: "global-synchronizer/reference/security-configuration"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "fc08599c3e393cb7f206b6014882bc5bc938d00b5926ca2343d31fab61a0aa0d"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalCantonMainCommunityAppSrcTestResourcesDocumentationSnippetsLedgerApiTargetScope from "/snippets/external/canton/main/community/app/src/test/resources/documentation-snippets/ledger-api-target-scope.mdx";
+import ExternalCantonMainCommunityAppSrcTestResourcesDocumentationSnippetsLedgerApiUserList from "/snippets/external/canton/main/community/app/src/test/resources/documentation-snippets/ledger-api-user-list.mdx";
+import ExternalCantonMainCommunityAppSrcTestResourcesDocumentationSnippetsLedgerApiPrivileged from "/snippets/external/canton/main/community/app/src/test/resources/documentation-snippets/ledger-api-privileged.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/reference/security-configuration.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/apis/tls.rst" hash="13141191" */}
+
+# TLS API Configuration
+
+gRPC Ledger API와 Admin API는 모두 동일한 TLS capability를 지원하며 같은 directive를 사용하여 구성할 수 있습니다. TLS는 server와 client 사이에 end-to-end channel encryption을 제공하며, configuration에 따라 server-only authentication 또는 mutual authentication을 enforce할 수 있습니다.
+
+이 section의 example configuration은 Ledger API용이지만 Admin API에서도 동일합니다. 이 how-to에서 언급하는 모든 private key는 PKCS#8 PEM format이어야 합니다.
+
+## Server-side authentication을 위한 TLS 활성화
+
+다음 setting을 사용하면 연결하는 client가 의도한 server와 통신 중인지 검증할 수 있습니다.
+
+``` none
+canton.participants.participant4.ledger-api {
+  address = "127.0.0.1" // IP / DNS must be SAN of certificate to allow local connections from the canton process
+  port = 5041
+  tls {
+    // the certificate to be used by the server
+    cert-chain-file = "./tls/ledger-api.crt"
+    // private key of the server
+    private-key-file = "./tls/ledger-api.pem"
+    // trust collection, which means that all client certificates will be verified using the trusted
+    // certificates in this store. if omitted, the JVM default trust store is used.
+    trust-collection-file = "./tls/root-ca.crt"
+  }
+}
+
+// architecture-handbook-entry-begin: ParticipantTLSApiClient
+canton.participants.participant4.ledger-api.tls.client-auth =
+  {
+    // none, optional and require are supported
+    type = require
+    // If clients are required to authenticate as well, we need to provide a client
+    // certificate and the key, as Canton has internal processes that need to connect to these
+    // APIs. If the server certificate is trusted by the trust-collection, then you can
+    // just use the server certificates. Otherwise, you need to create separate ones.
+    admin-client {
+      cert-chain-file = "./tls/admin-client.crt"
+      private-key-file = "./tls/admin-client.pem"
+    }
+  }
+// architecture-handbook-entry-end: ParticipantTLSApiClient
+
+// architecture-handbook-entry-begin: ParticipantTLSApiRestrict
+// optional, if omitted, defaults to the latest TLS protocol version
+canton.participants.participant4.ledger-api.tls.minimum-server-protocol-version = TLSv1.3
+// optional, if omitted, defaults to the latest supported secure ciphers
+canton.participants.participant4.ledger-api.tls.ciphers =
+  [
+    "TLS_AES_256_GCM_SHA384",
+    "TLS_CHACHA20_POLY1305_SHA256"
+  ]
+// architecture-handbook-entry-end: ParticipantTLSApiRestrict
+
+{/* DIVERGENCE: simplified the example cert path from a leftover "./enterprise/app/src/test/resources/tls/..." to match every other cert-chain-file/private-key-file example on this page ("./tls/..."); upstream docs-website source (docs/replicated/canton/3.5/participant/howtos/secure/apis/tls.rst, hash 13141191) still has the "enterprise/" prefix. Related to issue #615. */}
+
+canton.participants.participant4 {
+  admin-api {
+    address = "localhost"
+    port= 5042
+    tls {
+      cert-chain-file = "./tls/admin-api.crt"
+      private-key-file = "./tls/admin-api.pem"
+    }
+  }
+
+  storage {
+    type = "h2"
+    config = {
+      url = "jdbc:h2:mem:db4;MODE=PostgreSQL;LOCK_TIMEOUT=10000;DB_CLOSE_DELAY=-1"
+      user = "participant4"
+      password = "pwd"
+      driver = org.h2.Driver
+    }
+  }
+}
+```
+
+`trust-collection-file`을 사용하면 file 기반 trust store를 제공할 수 있습니다. 생략하면 system은 built-in `JVM` trust store를 기본으로 사용합니다. Format은 Java 기반 trust store가 아니라 올바른 순서 또는 hierarchy로 구성된 PEM certificate collection입니다.
+
+## Client-side authentication을 위한 TLS 활성화
+
+Client-side authentication은 기본적으로 비활성화되어 있습니다. 활성화하려면 `client-auth.type`을 `require`로 구성해야 합니다.
+
+``` none
+canton.participants.participant4.ledger-api.tls.client-auth =
+  {
+    // none, optional and require are supported
+    type = require
+    // If clients are required to authenticate as well, we need to provide a client
+    // certificate and the key, as Canton has internal processes that need to connect to these
+    // APIs. If the server certificate is trusted by the trust-collection, then you can
+    // just use the server certificates. Otherwise, you need to create separate ones.
+    admin-client {
+      cert-chain-file = "./tls/admin-client.crt"
+      private-key-file = "./tls/admin-client.pem"
+    }
+  }
+```
+
+이 새 `client-auth` setting은 client authentication을 활성화하며, client가 유효한 certificate와 해당 private key를 제시해야 함을 의미합니다.
+
+`trust-collection-file`에는 API 사용을 신뢰하는 모든 client certificate 또는 client certificate signing에 사용된 parent certificate가 포함되어야 합니다. Trust store의 key로 signing된 certificate가 유효합니다.
+
+## TLS cipher 및 protocol 제한
+
+위의 how-to 설명대로 server-side configuration을 완료했다고 가정하면 다음 setting을 사용하여 허용되는 TLS cipher 및 protocol version을 제한할 수 있습니다. 기본적으로 Canton은 JVM 기본값을 사용하지만 `ciphers` 및 `minimum-server-protocol-version` variable로 override할 수 있습니다.
+
+``` none
+// optional, if omitted, defaults to the latest TLS protocol version
+canton.participants.participant4.ledger-api.tls.minimum-server-protocol-version = TLSv1.3
+// optional, if omitted, defaults to the latest supported secure ciphers
+canton.participants.participant4.ledger-api.tls.ciphers =
+  [
+    "TLS_AES_256_GCM_SHA384",
+    "TLS_CHACHA20_POLY1305_SHA256"
+  ]
+```
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/apis/jwt.rst" hash="4de8fc92" */}
+
+# JWT로 API Authentication 및 Authorization 구성
+
+## Authorization service 구성
+
+Ledger API는 Authorization 문서에 설명된 [JWT](https://jwt.io/) 기반 authorization check를 지원합니다.
+
+JWT authorization check를 활성화하기 위한 안전한 configuration option은 다음과 같습니다.
+
+``` none
+_shared {
+  ledger-api {
+    auth-services = [{
+      // type can be
+      //   jwt-rs-256-crt
+      //   jwt-es-256-crt
+      //   jwt-es-512-crt
+      type = jwt-rs-256-crt
+      // we need a certificate file (abcd.cert)
+      certificate = ${JWT_CERTIFICATE_FILE}
+    }]
+  }
+}
+```
+
+- `jwt-rs-256-crt`. Participant는 제공된 X.509 certificate file에서 load한 public key를 사용하여 모든 token이 RS256(SHA-256을 사용하는 RSA Signature)으로 signing되었을 것으로 예상합니다. PEM-encoded certificate, 즉 `-----BEGIN CERTIFICATE-----`로 시작하는 text file과 DER-encoded certificate, 즉 binary file을 모두 지원합니다.
+- `jwt-es-256-crt`. Participant는 제공된 X.509 certificate file에서 load한 public key를 사용하여 모든 token이 ES256(P-256 및 SHA-256을 사용하는 ECDSA)으로 signing되었을 것으로 예상합니다. PEM-encoded certificate와 DER-encoded certificate를 모두 지원합니다.
+- `jwt-es-512-crt`. Participant는 제공된 X.509 certificate file에서 load한 public key를 사용하여 모든 token이 ES512(P-521 및 SHA-512를 사용하는 ECDSA)로 signing되었을 것으로 예상합니다. PEM-encoded certificate와 DER-encoded certificate를 모두 지원합니다.
+- `jwt-jwks`. Certificate path를 지정하는 대신 [JWKS](https://tools.ietf.org/html/rfc7517) URL을 지정할 수 있습니다. 이 경우 Participant Node는 제공된 JWKS URL에서 load한 public key를 사용하여 모든 token이 RS256, ES256 또는 ES512로 signing되었을 것으로 예상합니다.
+
+``` none
+_shared {
+  ledger-api {
+    auth-services = [{
+      type = jwt-jwks
+      // we need a URL to a jwks key, e.g. https://path.to/jwks.key
+      url = ${JWT_URL}
+    }]
+  }
+}
+```
+
+<Warning>
+Testing 목적으로만 shared secret을 지정할 수도 있습니다. 이 경우 Participant Node는 제공된 plaintext secret으로 모든 token이 HMAC256으로 signing되었을 것으로 예상합니다. Production에서는 안전하지 않은 것으로 간주됩니다.
+</Warning>
+
+``` none
+_shared {
+  ledger-api {
+    auth-services = [{
+      type = unsafe-jwt-hmac-256
+      secret = "not-safe-for-production"
+    }]
+  }
+}
+```
+
+<Note>
+Man-in-the-middle attack을 방지하려면 production의 Ledger API로 보내는 모든 request에 `tls-configuration`에서 설명한 server authentication을 사용하는 TLS를 적용할 것을 강력히 권장합니다.
+</Note>
+
+여러 authorization plugin을 정의할 수 있습니다. 두 개 이상 정의하면 system은 Unauthorized를 반환하지 않은 첫 auth plugin의 claim을 사용합니다.
+
+Authorization plugin을 정의하지 않으면 system은 기본 wildcard authorization method를 사용합니다.
+
+## JWT authorization용 leeway parameter 구성
+
+JWT token을 사용하는 authorization에 leeway parameter를 정의할 수 있습니다. Token signing과 verification 사이의 clock skew로 인한 authorization failure는 token을 여전히 유효한 것으로 간주할 leeway window를 지정하여 완화할 수 있습니다. Leeway는 token의 **Expiration Time("exp")**, **Not Before("nbf")**, **Issued At("iat")** claim 각각에 대해 정의하거나 세 항목 모두에 적용되는 기본값으로 정의할 수 있습니다. 세 field별 leeway 값이 있으면 기본값보다 우선합니다. Leeway parameter는 초 단위로 지정하며 다음 example configuration처럼 정의할 수 있습니다.
+
+``` none
+canton.participants.participant.ledger-api.jwt-timestamp-leeway {
+    default = 5
+    expires-at = 10
+    issued-at = 15
+    not-before = 20
+}
+```
+
+## JWT authorization용 target audience 구성
+
+JWT를 사용하여 Ledger API에서 authenticate할 때 audience 기반 token의 `aud` field 기본값은 `https://daml.com/participant/jwt/aud/participant/${participantId}`입니다. Custom target audience configuration option을 사용하여 다른 audience를 명시적으로 구성할 수 있습니다.
+
+<ExternalCantonMainCommunityAppSrcTestResourcesDocumentationSnippetsLedgerApiTargetScope />
+
+## JWT authorization용 target scope 구성
+
+JWT를 사용하여 Ledger API에서 authenticate할 때 scope 기반 access token의 `scope` field 기본값은 `daml_ledger_api`입니다.
+
+Custom target scope configuration option을 사용하여 다른 scope를 명시적으로 구성할 수 있습니다.
+
+<ExternalCantonMainCommunityAppSrcTestResourcesDocumentationSnippetsLedgerApiUserList />
+
+Target scope는 alphanumeric character, hyphen, slash, colon 및 underscore를 포함하는 case-sensitive string일 수 있습니다. `target-scope` 또는 `target-audience` parameter 중 하나를 개별적으로 구성할 수 있지만 둘을 동시에 구성할 수는 없습니다.
+
+## User list가 있는 authorization service 구성
+
+User list가 있는 authorization service는 Participant, Sequencer 및 Mediator Node가 노출하는 Admin API와 Participant Node의 Ledger API에서 구성할 수 있는 JWT Authorization 형태입니다.
+
+허용할 user와 이들이 접근할 수 있는 gRPC service를 지정할 수 있습니다. Ledger API와 Admin API를 모두 구성하는 예는 다음과 같습니다.
+
+<ExternalCantonMainCommunityAppSrcTestResourcesDocumentationSnippetsLedgerApiPrivileged />
+
+Ledger API와 달리 Admin API는 JWT token의 sub-claim에 표시되는 user가 Participant user database에 존재할 것을 요구하지 않습니다. Authorization service config의 user는 Participant Node operator가 임의로 선택할 수 있습니다. 이 user는 JWT token을 발급하는 연결된 IDP system에도 구성해야 합니다.
+
+Configuration에는 client organization의 선호에 따라 target audience 또는 target scope 정의 중 하나를 포함할 수 있습니다. 둘 다 제공하지 않으면 IDP가 mint한 JWT token은 scope claim으로 `daml_ledger_api`를 지정해야 합니다.
+
+Operator가 노출하려는 특정 service와 관계없이 `ServerReflection` service에도 access right를 부여하는 것이 좋은 practice입니다. `grpcurl`이나 `postman` 같은 일부 tool은 request를 구성하기 위해 해당 service에 접근해야 합니다.
+
+## Privileged token 구성
+
+Privileged token은 Participant, Sequencer 및 Mediator Node가 노출하는 Admin API와 Participant Node의 Ledger API에서 구성할 수 있는 또 다른 JWT Authorization 형태입니다. Configuration은 일반 user token과 동일한 pattern을 따르지만 true로 설정된 `privileged`라는 추가 key를 포함합니다.
+
+``` none
+canton {
+  participants {
+    participant {
+      ledger-api {
+        port = 5001
+        auth-services = [{
+          type = jwt-jwks
+          url = "https://target.audience.url/jwks.json"
+          target-audience = "https://rewrite.target.audience.url"
+        }]
+      }
+      admin-api {
+        port = 5002
+        auth-services = [{
+          type = jwt-jwks
+          url = "https://target.audience.url/jwks.json"
+          target-audience = "https://rewrite.target.audience.url"
+          privileged = true
+          access-level = wildcard
+        }]
+      }
+    }
+  }
+}
+```
+
+`access-level` key 정의를 추가하고 각각 `Admin` 또는 `Wildcard`로 설정하여 privileged token 사용 시 `participant_admin` 또는 `wildcard` access level 중 어느 것을 부여할지 결정할 수 있습니다. 기본값은 `Admin`입니다.
+
+## JWKS cache expiration 구성
+
+JWKS cache는 최근에 가져온 public key를 저장하여 JWKS HTTP endpoint에 대한 반복적인 고비용 call의 필요성을 줄입니다. Key는 기본적으로 5분 동안 cache에 유지됩니다. 이 시간이 지나면 key가 evict되고 participant는 최신 key를 가져오기 위해 JWKS address에 다시 연결해야 합니다. 다음을 설정하여 이 동작을 수정할 수 있습니다.
+
+``` none
+canton.participants.participant.ledger-api.jwks-cache-config {
+  cache-expiration = 1.hour
+}
+```
+
+유사한 parameter를 `admin-api`에도 설정할 수 있습니다.
+
+``auto-refresh-after``를 양의 duration, 즉 ``cache-expiration``보다 짧은 값으로 설정하여 cached key의 background refresh를 활성화할 수도 있습니다.
+활성화하면 이 duration이 지난 후 첫 access에서 cache가 background에서 비동기적으로 key를 refresh하므로 client가 cache miss로 인한 latency를 겪지 않습니다. Background refresh가 실패하면
+이전에 cache된 verifier가 ``cache-expiration`` 시점의 hard eviction까지 계속 제공됩니다.
+
+## JWT token의 maximum time-to-live 구성
+
+JWT token 도난 또는 분실에 대한 security를 개선하려면 매우 짧은 expiration time, 이상적으로 5분에서 15분 사이의 token을 사용하는 것이 좋습니다. 자세한 내용은 short-lived token의 중요성에 관한 문서를 참조하세요.
+
+`max-token-lifetime` parameter를 구성하여 participant에 short-lived token policy를 enforce할 수 있습니다. 제시된 token에 `exp`(expiration) field가 없거나 계산된 time-to-live가 구성된 maximum보다 크면 authentication layer가 access를 거부합니다.
+
+``` none
+canton.participants.participant.ledger-api {
+  max-token-lifetime = 10.minutes
+}
+```
+
+유사한 parameter를 `admin-api`에도 설정할 수 있습니다.
+
+<Note>
+거부 여부는 token의 remaining time-to-live만을 기준으로 합니다. 따라서 `max-token-lifetime` setting이 5분이라고 가정할 때 원래 24시간 동안 유효한 token도 lifetime의 마지막 5분 내에 제시하면 성공적으로 사용할 수 있습니다.
+</Note>
+
+## JWT authorization용 remote console 구성
+
+Authorization이 구성된 경우 config에서 JWT token을 console에 제공해야 remote console이 participant에 대해 작동합니다.
+
+``` none
+canton {
+  remote-participants {
+    participant {
+      ledger-api {
+        address = 10.60.12.1
+        port = 10001
+      }
+      admin-api {
+        address = 10.60.12.1
+        port = 10002
+      }
+     token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbGljZSIsInNjb3BlIjoibXktdGFyZ2V0LXNjb3BlIn0.AkbGOfUJwAafV1xCjjRqx3rC5fPoBxgYKPfUc043pts
+    }
+  }
+}
+```
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/secure/apis/limits.rst" hash="7b1a66e6" */}
+
+Admin API와 Ledger API의 gRPC max message size를 다룹니다. Ledger API의 rate limiting을 다룹니다. 추가 protection을 위한 best practice로 API 앞의 load balancer를 논의합니다. Rate limit이 너무 strict할 때 발생할 수 있는 performance impact를 논의합니다. Participant의 resource limit how-to로 연결합니다. Daml 관련 size limit은 "build" site로 연결합니다.
+
+# API Limit 구성
+
+## Max Inbound Message Size
+
+Participant가 노출하는 API(gRPC Ledger API 및 Admin API)와 synchronizer가 노출하는 API(Public API 및 Admin API)에는 incoming message size의 upper limit이 있습니다. 더 큰 payload를 수용하도록 이 limit을 늘리려면 해당 API에서 `max-inbound-message-size` flag를 최대 message size의 **byte** 값으로 설정해야 합니다.
+
+예를 들어 participant의 gRPC Ledger API limit을 20MB로 구성하려면 다음을 사용합니다.
+
+``` none
+canton.participants.participant2.ledger-api {
+  address = "127.0.0.1"
+  port = 5021
+  max-inbound-message-size = 20971520
+}
+```
+
+{/* COPIED_END */}

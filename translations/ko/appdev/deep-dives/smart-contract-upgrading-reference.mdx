@@ -1,0 +1,1748 @@
+---
+title: "Smart Contract Upgrading Reference 상세 규칙"
+description: "Package upload validation과 contract, choice argument, result의 runtime upgrade 및 downgrade 상세 규칙"
+source_id: "SRC-13B75DF5CC"
+source_path: "appdev/deep-dives/smart-contract-upgrading-reference"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "71f798d4d9efd6edcf0cc0b82bc4508768a37a6162b5b9b40ce074d23f9034db"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/appdev/deep-dives/smart-contract-upgrading-reference.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/reference/smart-contract-upgrades.rst" hash="9f2fcd76" */}
+
+이 문서는 upload 시 package validation을 지배하는 규칙과 contract, choice argument, choice result가 runtime에 upgrade 또는 downgrade되는 방식을 자세히 설명합니다. 관련 내용은 대부분 Smart Contract Upgrade에서도 다루며, 이 문서는 상세 reference 역할을 합니다.
+
+## Static Check
+
+DAR가 participant에 upload될 때 다른 validity check와 함께 upgrade static check를 한 번 수행합니다. Upgrade에 유효하지 않다고 판단된 DAR는 거부됩니다.
+
+DAR upgrade check는 package level check로 나뉘며, 다시 module, template, data type level check로 세분됩니다.
+
+### Packages
+
+<div id="upgrades-utility-package">
+
+**정의:** *Utility package*는 template definition, interface definition, exception definition이 없고 [serializable](https://github.com/digital-asset/daml/blob/main/sdk/daml-lf/spec/daml-lf-2.rst#serializable-types)하지 않은 data type definition만 포함하는 package입니다. 일반적으로 helper function과 constant로 구성되며 type definition은 포함하지 않습니다.
+
+</div>
+
+DAR가 participant에 upload되면 이전에 upload된 DAR와 비교해 upgrade validity를 검사합니다. 구체적으로 upload된 DAR에 포함된 이름 *p*, version *v*의 각 package에 대해 다음을 수행합니다.
+
+1.  Participant는 package database에서 *p*의 version *v_prev*와 *v_next*를 조회합니다. *v_prev*는 *v*보다 작은 *p*의 version 중 가장 큰 값이며, *v_next*는 *v*보다 큰 version 중 가장 작은 값입니다. 두 version이 항상 존재하는 것은 아닙니다.
+
+    ![image](/images/docs_website/upgrade-static-checks-order.svg)
+
+2.  *v_prev*가 존재하면 participant는 *p*의 version *v*가 *p*의 version *v_prev*에 대한 valid upgrade인지 검사합니다.
+
+3.  *v_next*가 존재하면 participant는 *p*의 version *v_next*가 *p*의 version *v*에 대한 valid upgrade인지 검사합니다.
+
+따라서 DAR가 "valid upgrade"인지 여부는 context dependent하며 participant에 이미 어떤 package가 upload되어 있는지에 따라 달라집니다. 또한 검사는 package level로 수행되는 *modular* 방식입니다. 새 package version에 old package의 대응 element를 올바르게 upgrade하지 못하는 element가 하나라도 있으면, 다른 element가 올바르더라도 해당 package version은 거부됩니다. 마찬가지로 DAR가 승인되려면 포함된 모든 package가 검사를 통과해야 하며 하나라도 실패하면 전체 DAR가 거부됩니다.
+
+### Modules
+
+새 package version의 module 집합은 이전 version module 집합의 superset이어야 합니다. 새 module을 추가할 수 있지만 기존 module을 삭제하면 validation error가 발생합니다.
+
+**예시**
+
+아래 file tree에서 `v2/A.daml`이 `v1/A.daml`의 valid upgrade라면 package v2는 package v1의 valid upgrade가 될 수 있습니다.
+
+<Tree>
+  <Tree.Folder name="v1" defaultOpen>
+    <Tree.Folder name="daml" defaultOpen>
+      <Tree.File name="A.daml" />
+    </Tree.Folder>
+    <Tree.File name="daml.yaml" />
+  </Tree.Folder>
+  <Tree.Folder name="v2" defaultOpen>
+    <Tree.Folder name="daml" defaultOpen>
+      <Tree.File name="A.daml" />
+      <Tree.File name="B.daml" />
+    </Tree.Folder>
+    <Tree.File name="daml.yaml" />
+  </Tree.Folder>
+</Tree>
+
+아래 file tree에서 package v2는 module `B`를 정의하지 않으므로 v1의 valid upgrade가 될 수 없습니다.
+
+<Tree>
+  <Tree.Folder name="v1" defaultOpen>
+    <Tree.Folder name="daml" defaultOpen>
+      <Tree.File name="A.daml" />
+      <Tree.File name="B.daml" />
+    </Tree.Folder>
+    <Tree.File name="daml.yaml" />
+  </Tree.Folder>
+  <Tree.Folder name="v2" defaultOpen>
+    <Tree.Folder name="daml" defaultOpen>
+      <Tree.File name="A.daml" />
+    </Tree.Folder>
+    <Tree.File name="daml.yaml" />
+  </Tree.Folder>
+</Tree>
+
+### Templates
+
+새 package version의 template 집합은 이전 version template 집합의 superset이어야 합니다. 새 template을 추가할 수 있지만 기존 template을 삭제하면 validation error가 발생합니다.
+
+<div id="examples-1">
+
+**예시**
+
+</div>
+
+아래에서 오른쪽 module은 왼쪽 module의 valid upgrade입니다. 그러나 왼쪽 module에는 template `T2` definition이 없으므로 오른쪽 module의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    module M where
+
+    template T1      
+      with           
+        p : Party    
+      where          
+        signatory p
+    ```
+  </Column>
+  <Column>
+    ```text
+    module M where   
+
+      template T1
+        with
+          p : Party
+        where
+          signatory p
+
+      template T2
+        with
+          p : Party
+        where
+          signatory p
+    ```
+  </Column>
+</Columns>
+
+
+### Template Parameters
+
+새 template version은 이전 template version의 parameter sequence 끝에 새 optional parameter를 추가할 수 있습니다. 새 template과 이전 template이 공통으로 갖는 parameter type은 각각 original type의 valid upgrade여야 합니다.
+
+Parameter를 삭제하면 validation error가 발생합니다.
+
+Parameter sequence 중간에 parameter를 추가하면 validation error가 발생합니다.
+
+위 두 규칙의 특수한 사례로 parameter 이름을 변경해도 validation error가 발생합니다.
+
+Parameter sequence 끝에 non-optional parameter를 추가하면 validation error가 발생합니다.
+
+<div id="examples-2">
+
+**예시**
+
+</div>
+
+아래에서 오른쪽 template은 왼쪽 template의 valid upgrade입니다. Parameter sequence 끝에 optional parameter `x1`을 추가합니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    template T
+        with
+          p : Party
+        where
+          signatory p
+    ```
+  </Column>
+  <Column>
+    ```text
+    template T
+        with
+          p : Party
+          x1 : Optional Int
+        where
+          signatory p
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 template은 parameter sequence 끝이 아니라 `p` 앞에 새 parameter `x1`을 추가하므로 왼쪽 template의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    template T
+      with
+        p : Party
+      where
+        signatory p
+    ```
+  </Column>
+  <Column>
+    ```text
+    template T
+      with
+        x1 : Optional Int
+        p : Party
+      where
+        signatory p
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 template은 parameter `x1`을 제거하므로 왼쪽 template의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    template T
+      with
+        p : Party
+        x1 : Int
+      where
+        signatory p
+    ```
+  </Column>
+  <Column>
+    ```text
+    template T
+      with
+        p : Party
+      where
+        signatory p
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 template은 `x1` type을 `Int`에서 `Text`로 변경하므로 왼쪽 template의 valid upgrade가 **아닙니다**. `Text`는 `Int`의 valid upgrade가 아닙니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    template T
+      with
+        p : Party
+        x1 : Int
+      where
+        signatory p
+    ```
+  </Column>
+  <Column>
+    ```text
+    template T
+      with
+        p : Party
+        x1 : Text
+      where
+        signatory p
+    ```
+  </Column>
+</Columns>
+
+### Template Choices
+
+새 template version의 choice 집합은 이전 template version choice 집합의 superset이어야 합니다. 새 choice를 추가할 수 있지만 기존 choice를 삭제하면 validation error가 발생합니다.
+
+<div id="examples-4">
+
+**예시**
+
+</div>
+
+아래에서 오른쪽 template은 이전 template version에 choice `C`를 추가하므로 왼쪽 template의 valid upgrade입니다. 반대로 왼쪽 template은 choice를 삭제하므로 오른쪽 template의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    template T
+      with
+        p : Party
+      where
+        signatory p
+    ```
+  </Column>
+  <Column>
+    ```text
+    template T
+      with
+        p : Party
+      where
+        signatory p
+
+        choice C : ()
+          controller p
+          do
+            return ()
+    ```
+  </Column>
+</Columns>
+
+### Template Choices - Parameters
+
+Template parameter와 마찬가지로 새 choice version은 이전 choice version의 parameter sequence 끝에 새 optional parameter를 추가할 수 있습니다. 새 choice와 이전 choice가 공통으로 갖는 parameter type은 각각 original type의 valid upgrade여야 합니다.
+
+Parameter를 삭제하면 validation error가 발생합니다.
+
+Parameter sequence 중간에 parameter를 추가하면 validation error가 발생합니다.
+
+위 두 규칙의 특수한 사례로 parameter 이름을 변경해도 validation error가 발생합니다.
+
+Parameter sequence 끝에 non-optional parameter를 추가하면 validation error가 발생합니다.
+
+**예시**
+
+아래에서 오른쪽 choice는 왼쪽 choice의 valid upgrade입니다. Parameter sequence 끝에 optional parameter `x2`를 추가합니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    choice C : ()
+      with
+        x1 : Int
+      controller p
+      do 
+        return ()
+    ```
+  </Column>
+  <Column>
+    ```text
+    choice C : ()
+      with
+        x1 : Int
+        x2 : Optional Text
+      controller p
+      do 
+        return ()
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 choice는 parameter sequence 끝이 아니라 `x1` 앞에 새 parameter `x2`를 추가하므로 왼쪽 choice의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    choice C : ()
+      with
+        x1 : Int
+      controller p
+      do 
+        return ()
+    ```
+  </Column>
+  <Column>
+    ```text
+    choice C : ()
+      with
+        x2 : Optional Text
+        x1 : Int
+      controller p
+      do 
+        return ()
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 choice는 parameter sequence 끝이 아니라 `x1` 앞에 새 field `x2`를 추가하므로 왼쪽 choice의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    choice C : ()
+      with
+        x1 : Int
+      controller p
+      do 
+        return ()
+    ```
+  </Column>
+  <Column>
+    ```text
+    choice C : ()
+      with
+        x2 : Optional Text
+        x1 : Int
+      controller p
+      do 
+        return ()
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 choice는 parameter `x1`을 제거하므로 왼쪽 choice의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    choice C : ()
+      with
+        x1 : Int
+      controller p
+      do 
+        return ()
+    ```
+  </Column>
+  <Column>
+    ```text
+    choice C : ()
+      with
+      controller p
+      do 
+        return ()
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 choice는 `x1` type을 `Int`에서 `Text`로 변경하므로 왼쪽 choice의 valid upgrade가 **아닙니다**. `Text`는 `Int`의 valid upgrade가 아닙니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    choice C : ()
+      with
+        x1 : Int
+      controller p
+      do 
+        return ()
+    ```
+  </Column>
+  <Column>
+    ```text
+    choice C : ()
+      with
+      controller p
+      do 
+        return ()
+    ```
+  </Column>
+</Columns>
+
+### Template Choices - Return Type
+
+새 choice version의 return type은 이전 choice version return type의 valid upgrade여야 합니다.
+
+Choice return type을 valid하지 않은 upgrade로 변경하면 validation error가 발생합니다.
+
+<div id="examples-5">
+
+**예시**
+
+</div>
+
+아래에서 오른쪽 choice는 return type을 `()`에서 `Int`로 변경하므로 왼쪽 choice의 valid upgrade가 **아닙니다**. `Int`는 `()`의 valid upgrade가 아닙니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    choice C : ()
+      controller p
+      do
+        return ()
+    ```
+  </Column>
+  <Column>
+    ```text
+    choice C : Int
+      controller p
+      do
+        return 1
+    ```
+  </Column>
+</Columns>
+
+### Data Types
+
+새 module version의 serializable data type 집합은 이전 package version의 serializable data type 집합의 superset이어야 합니다. 새 data type을 추가할 수 있지만 기존 data type을 삭제하면 validation error가 발생합니다.
+
+Serializable data type의 종류를 변경하면 validation error가 발생합니다. 예를 들어 record type을 variant type으로 변경할 수 없습니다.
+
+Upgrade validity check의 관점에서 non-serializable data type은 존재하지 않습니다. Non-serializable data type을 serializable type으로 전환하는 것은 새 data type을 추가하는 것과 같으므로 유효합니다. 반대로 serializable data type을 non-serializable type으로 전환하는 것은 해당 data type을 삭제하는 것과 같으므로 유효하지 않습니다.
+
+<div id="examples-6">
+
+**예시**
+
+</div>
+
+아래에서 오른쪽 module은 serializable data type `B`를 추가로 정의하므로 왼쪽 module의 valid upgrade입니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    module M where
+
+    data A = A
+    ```
+  </Column>
+  <Column>
+    ```text
+    module M where
+
+    data A = A
+    data B = B
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 module은 non-serializable type `A`를 serializable type으로 전환하므로 왼쪽 module의 valid upgrade입니다. Non-serializable type은 upgrade validity check에서 보이지 않으므로 오른쪽 module에 새 data type을 추가한 것과 같습니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    module M where
+
+    data A = A
+      with 
+        x : Int -> Int
+    ```
+  </Column>
+  <Column>
+    ```text
+    module M where
+
+    data A = A
+      with
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 module은 `A`의 종류를 record type에서 variant type으로 변경하므로 왼쪽 module의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    module M where
+
+    data A = A
+      with
+    ```
+  </Column>
+  <Column>
+    ```text
+    module M where
+
+    data A = A | B
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 module은 serializable data type `A`를 제거하므로 왼쪽 module의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    module M where
+
+    data A = A
+    ```
+  </Column>
+  <Column>
+    ```text
+    module M where
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 module은 record type `A`에 optional field를 추가하지만 동시에 `A`를 non-serializable type으로 전환합니다. Upgrade validity check의 관점에서는 `A`를 삭제하는 것과 같으므로 왼쪽 module의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    module M where
+
+    data A = A
+      with
+    ```
+  </Column>
+  <Column>
+    ```text
+    module M where
+
+    data A = A 
+      with 
+        x : Optional (Int -> Int)
+    ```
+  </Column>
+</Columns>
+
+### Data Types - Records
+
+새 record version은 이전 record version의 field sequence 끝에 새 optional field를 추가할 수 있습니다. 새 record와 이전 record가 공통으로 갖는 field type은 각각 original type의 valid upgrade여야 합니다.
+
+Field를 삭제하면 validation error가 발생합니다.
+
+Field sequence 중간에 field를 추가하면 validation error가 발생합니다.
+
+위 두 규칙의 특수한 사례로 field 이름을 변경해도 validation error가 발생합니다.
+
+Field sequence 끝에 non-optional field를 추가하면 validation error가 발생합니다.
+
+<div id="examples-7">
+
+**예시**
+
+</div>
+
+아래에서 오른쪽 record는 field sequence 끝에 optional field `x2`를 추가하므로 왼쪽 module의 valid upgrade입니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    data T = T with
+      x1 : Int
+    ```
+  </Column>
+  <Column>
+    ```text
+    data T = T with
+     x1 : Int
+     x2 : Optional Text
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 record는 field sequence 끝이 아니라 `x1` 앞에 새 field `x2`를 추가하므로 왼쪽 record의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    data T = T with
+      x1 : Int
+    ```
+  </Column>
+  <Column>
+    ```text
+    data T = T with
+      x2 : Optional Text
+      x1 : Int
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 record는 field `x2`를 제거하므로 왼쪽 record의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    data T = T with
+      x1 : Int
+      x2 : Text
+    ```
+  </Column>
+  <Column>
+    ```text
+    data T = T with
+      x1 : Int
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 record는 `x1` type을 `Int`에서 `Text`로 변경하므로 왼쪽 record의 valid upgrade가 **아닙니다**. `Text`는 `Int`의 valid upgrade가 아닙니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    data T = T with
+      x1 : Int
+    ```
+  </Column>
+  <Column>
+    ```text
+    data T = T with
+      x1 : Text
+    ```
+  </Column>
+</Columns>
+
+### Data Types - Variants
+
+새 variant version은 이전 variant version의 constructor sequence 끝에 새 constructor를 추가할 수 있습니다. 새 variant와 이전 variant가 공통으로 갖는 constructor의 argument type은 각각 original type의 valid upgrade여야 합니다. 이 규칙은 argument가 unnamed record인 constructor에도 적용되며, 이 경우 record upgrade 규칙을 따릅니다.
+
+Argument가 없던 constructor에 argument를 추가하면 validation error가 발생합니다. 특히 이전에 argument가 없던 constructor에 optional field를 추가할 수 없습니다.
+
+Constructor sequence 중간에 constructor를 추가하면 validation error가 발생합니다.
+
+Constructor sequence의 순서 또는 이름을 변경하면 validation error가 발생합니다.
+
+Constructor를 제거하면 validation error가 발생합니다.
+
+Enum은 variant로 upgrade할 수 없습니다. Enum의 constructor sequence 끝에 argument를 갖는 constructor를 추가하면 validation error가 발생합니다.
+
+<div id="examples-8">
+
+**예시**
+
+</div>
+
+아래에서 오른쪽 variant는 constructor sequence 끝에 새 constructor `C`를 추가하므로 왼쪽 variant의 valid upgrade입니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    data T =
+      A Int | B Text
+    ```
+  </Column>
+  <Column>
+    ```text
+    data T = 
+      A Int | B Text | C Bool
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 variant는 constructor `B`에 새 optional field를 추가하므로 왼쪽 variant의 valid upgrade입니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    data T =
+      A | B { x : Int }
+    ```
+  </Column>
+  <Column>
+    ```text
+    data T = 
+      A | B { x : Int, y : Optional Text }
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 variant는 constructor sequence 끝이 아니라 `B` 앞에 새 constructor `C`를 추가하므로 왼쪽 variant의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    data T =
+      A Int | B Text
+    ```
+  </Column>
+  <Column>
+    ```text
+    data T = 
+      A Int | C Bool | B Text
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 variant는 constructor 순서를 변경하므로 왼쪽 variant의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    data T =
+      A Int | B Text
+    ```
+  </Column>
+  <Column>
+    ```text
+    data T = 
+      B Text | A Int
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 variant는 constructor `B`를 제거하므로 왼쪽 variant의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    data T =
+      A Int | B Text
+    ```
+  </Column>
+  <Column>
+    ```text
+    data T = 
+      A Int
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 variant는 `B` argument type을 `Text`에서 `Bool`로 변경하므로 왼쪽 variant의 valid upgrade가 **아닙니다**. `Bool`은 `Text`의 valid upgrade가 아닙니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    data T =
+      A Int | B Text
+    ```
+  </Column>
+  <Column>
+    ```text
+    data T = 
+      A Int | B Bool
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 variant는 이전에 argument가 없던 constructor `B`에 argument를 추가하므로 왼쪽 variant의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    data T =
+      A Int | B
+    ```
+  </Column>
+  <Column>
+    ```text
+    data T = 
+      A Int | B { x : Optional Text }
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 variant는 왼쪽 enum의 valid upgrade가 **아닙니다**. Enum은 variant로 upgrade할 수 없으며, 왼쪽에 정의된 `T`는 어떤 constructor도 argument를 갖지 않으므로 enum입니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    data T =
+      A | B
+    ```
+  </Column>
+  <Column>
+    ```text
+    data T = 
+      A | B | C Int
+    ```
+  </Column>
+</Columns>
+
+### Data Types - Enums
+
+Upgrade validation의 관점에서 enum은 variant의 특수 사례로 취급할 수 있습니다. Constructor argument가 없다는 점을 제외하면 [variant section](#data-types-variants)의 규칙이 적용됩니다.
+
+### Data Types - Type References
+
+Type reference는 type으로 resolve되는 identifier입니다. 예를 들어 서로 다른 두 package의 다음 module definition을 살펴봅니다.
+
+```haskell
+-- In package q
+module Dep where
+
+data U = U with x : Int
+type A = U
+```
+
+```haskell
+-- In package p
+module M where
+import qualified Dep
+
+data T = T with x : Dep.A
+```
+
+`T` definition에서 `Dep.A`는 package `q`의 qualified name `Dep.U`를 갖는 type으로 resolve되는 type reference입니다.
+
+Data type reference *r2*가 data type reference *r1*을 upgrade하는 조건은 다음과 같습니다.
+
+- *r2*는 package *p2*의 qualified name *q2*를 갖는 type *t2*로 resolve됩니다.
+- *r1*은 package *p1*의 qualified name *q1*을 갖는 type *t1*로 resolve됩니다.
+- Qualified name *q2*와 *q1*이 같습니다.
+- Package *p2*가 package *p1*의 valid upgrade입니다.
+
+*t2*가 *t1*을 upgrade하더라도 package *p2* 전체가 package *p1*의 valid upgrade일 때만 *r2*가 *r1*을 upgrade한다는 점에 유의해야 합니다.
+
+<div id="examples-9">
+
+**예시**
+
+</div>
+
+다음 예시에서는 package `q-1.0.0`과 `q-2.0.0`이 존재하며 후자가 전자의 valid upgrade라고 가정합니다.
+
+<Columns cols={2}>
+  <Column>
+    <code>q-1.0.0</code>에서:
+
+    ```text
+    module Dep where
+
+    data U = C1
+    data V = V
+    ```
+  </Column>
+  <Column>
+    <code>q-2.0.0</code>에서:
+
+    ```text
+    module Dep where
+
+    data U = C1 | C2
+    data V = V
+    ```
+  </Column>
+</Columns>
+
+그러면 아래에서 오른쪽 module은 왼쪽 module의 valid upgrade입니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    module Main where
+
+    -- imported from q-1.0.0
+    import qualified Dep
+
+    data T = T Dep.U
+    ```
+  </Column>
+  <Column>
+    ```text
+    module Main where
+
+    -- imported from q-2.0.0
+    import qualified Dep
+
+    data T = T Dep.U
+    ```
+  </Column>
+</Columns>
+
+그러나 아래에서 오른쪽 module의 `Dep.V`는 package `q-1.0.0`에 속하며, 이 package는 package `p-2.0.0`의 valid upgrade가 아닙니다. 따라서 두 `V` definition이 같더라도 오른쪽 module은 왼쪽 module의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    module Main where
+
+    -- imported from q-2.0.0
+    import qualified Dep
+
+    data T = T Dep.V
+    ```
+  </Column>
+  <Column>
+    ```text
+    module Main where
+
+    -- imported from q-1.0.0
+    import qualified Dep
+
+    data T = T Dep.V
+    ```
+  </Column>
+</Columns>
+
+### Data Types - Builtin Types
+
+`Int`, `Text`, `Party` 같은 builtin scalar type은 같은 type으로만 upgrade됩니다. 즉 다른 type으로 대체하는 것은 유효하지 않습니다.
+
+### Data Types - Parameterized Data Types
+
+Parameterized data type의 upgrade validation은 non-parameterized data type과 같은 규칙을 따르지만 type variable도 비교합니다. Type variable의 이름은 변경할 수 있습니다.
+
+**예시**
+
+아래에서 오른쪽 parameterized data type은 왼쪽 parameterized data type의 valid upgrade입니다. 일반 record type에서 허용되는 것처럼 optional field를 추가합니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    data Tree a = 
+      Tree with 
+        label : a
+        children : [Tree a]
+    ```
+  </Column>
+  <Column>
+    ```text
+    data Tree b = 
+      Tree with 
+        label : b
+        children : [Tree b]
+        cachedSize : Optional Int
+    ```
+  </Column>
+</Columns>
+
+### Data Types - Applied Parameterized Data Types
+
+Type constructor application `T' U1' .. Un'`은 `T'`이 `T`를 upgrade하고 각 `Ui'`가 대응하는 `Ui`를 upgrade할 때만 `T U1 .. Un`을 upgrade합니다.
+
+**예시**
+
+아래에서 오른쪽 module은 왼쪽 module의 valid upgrade입니다. 오른쪽 record type `T`가 왼쪽 record type `T`를 upgrade하므로 오른쪽 type constructor application `List T`가 왼쪽 `List T`를 upgrade합니다. `List`와 `Optional`에도 같은 규칙이 적용됩니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    module M where
+
+    data T = T {}
+
+    data Demo = Demo with
+      field1 : List T
+      field2 : Map T T
+      field3 : Optional T
+    ```
+  </Column>
+  <Column>
+    ```text
+    module M where
+
+    data T = T { i : Optional Int }
+
+    data Demo = Demo with
+      field1 : List T
+      field2 : Map T T
+      field3 : Optional T
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 module은 왼쪽 module의 valid upgrade입니다. 오른쪽 parameterized type `C`가 왼쪽 parameterized type `C`를 upgrade하므로 오른쪽 type constructor application `C Int`가 왼쪽 `C Int`를 upgrade합니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    module M where
+
+    data C a = C { x : a }
+
+    data Demo = Demo with
+      field1 : C T
+    ```
+  </Column>
+  <Column>
+    ```text
+    module M where
+
+    data C a = C { x : a, y : Optional Int }
+
+    data Demo = Demo with
+      field1 : C T
+    ```
+  </Column>
+</Columns>
+
+### Interface and Exception Definitions
+
+Interface definition과 exception definition은 upgrade할 수 없습니다. Interface 또는 exception을 template과 함께 정의한 package를 upload하면 해당 template은 향후 smart contract upgrade의 이점을 얻을 수 없으므로 강하게 권장하지 않습니다. 대신 template을 정의하지 않는 별도 package에 interface와 exception을 선언하는 방식을 권장합니다.
+
+### Interface Instances
+
+Interface instance는 upgrade할 수 있습니다. 그러나 method와 view의 type signature는 upgrade할 수 없는 interface definition에 의해 고정되므로 두 instance version 사이에서 변경할 수 없습니다. 따라서 두 instance version 사이에서 변경할 수 있는 것은 method와 view의 body뿐입니다.
+
+Template에 interface instance를 추가할 수 있습니다.
+
+Template에서 interface instance를 삭제하면 validation error가 발생합니다.
+
+**예시**
+
+View type `IView`와 method `m`을 갖는 interface `I`를 가정합니다.
+
+```haskell
+data IView = IView { i : Int }
+
+interface I where
+  viewtype IView
+```
+
+그러면 아래에서 오른쪽 template `T`의 `I` instance는 왼쪽 instance의 valid upgrade입니다. `view` expression과 method `m`의 body를 변경합니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    template T 
+      with
+        p : Party
+        i : Int
+      where
+        signatory p
+
+        interface instance I for T where
+          view = IView i
+          m = i
+    ```
+  </Column>
+  <Column>
+    ```text
+    template T 
+      with
+        p : Party
+        i : Int
+        j : Optional Int
+      where
+        signatory p
+
+        interface instance I for T where
+          view = IView (fromOptional i j)
+          m = fromOptional i j
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 template은 template `T3`에 새 `I` instance를 추가하므로 왼쪽 template의 valid upgrade입니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    template T3 
+      with
+        p : Party
+        i : Int
+      where
+        signatory p
+    ```
+  </Column>
+  <Column>
+    ```text
+    template T3 
+      with
+        p : Party
+        i : Int
+      where
+        signatory p
+
+        interface instance I for T3 where
+          view = IView i
+          m = i
+    ```
+  </Column>
+</Columns>
+
+아래에서 오른쪽 template은 template `T2`의 `I` instance를 제거하므로 왼쪽 template의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    template T2 
+      with
+        p : Party
+        i : Int
+      where
+        signatory p
+
+        interface instance I for T2 where
+          view = IView i
+          m = i
+    ```
+  </Column>
+  <Column>
+    ```text
+    template T2 
+      with
+        p : Party
+        i : Int
+      where
+        signatory p
+    ```
+  </Column>
+</Columns>
+
+## Data Transformation: Runtime Semantics
+
+Contract를 fetch하거나 choice를 exercise하거나 interface value를 template value로 변환할 때마다 아래 규칙에 따라 template version을 선택합니다. 이 template을 target template이라고 합니다.
+
+그런 다음 contract를 target template type에 맞는 value로 변환합니다. 이어서 target template code로 metadata, 즉 signatory와 stakeholder를 다시 계산해 ledger에 저장된 기존 metadata와 비교하며 metadata는 변경될 수 없습니다. Contract의 ensure clause도 다시 evaluate하며 결과는 `True`여야 합니다.
+
+또한 choice를 exercise할 때 argument를 target template에 있는 choice의 type signature에 맞는 value로 변환합니다. 이후 exercise result는 client, 예를 들어 생성된 Java client code에 의해 다른 target type으로 다시 변환될 수 있습니다.
+
+아래에서는 target template selection 규칙, transformation 수행 방식, metadata 재계산 규칙의 순서로 자세히 설명합니다.
+
+### Static Target Template Selection
+
+Choice body가 trigger한 non-interface fetch 또는 exercise에서는 choice를 정의한 package dependency가 target template을 결정합니다. 즉 target template을 statically 알 수 있습니다.
+
+반면 interface fetch와 exercise에는 다음 section의 dynamic target template selection이 적용됩니다. 다만 ID가 아니라 interface *value*에 작용하는 operation은 static하며 동작 방식은 아래와 같습니다.
+
+Daml contract는 runtime에 template value 또는 interface value 중 하나로 표현됩니다.
+
+- Template value는 concrete template type을 statically 알 수 있는 value입니다. Template record를 직접 구성하거나 `fetch`를 호출해 얻으며 runtime에는 단순 record로 표현됩니다.
+
+- Interface value는 특정 interface를 implement한다는 사실 외에는 concrete template type을 statically 완전히 알 수 없는 value입니다. Template value에 `toInterface`를 적용해 얻으며 runtime에는 다음 pair로 표현됩니다.
+
+  > - Record: contract
+  > - Template type: 해당 record의 runtime type
+
+  예를 들어 `c`가 type `T`의 contract이고 `T`가 interface `I`를 implement하면 `toInterface c`는 pair `(c, T)`로 evaluate됩니다.
+
+  Interface value의 type은 opaque라는 점에 유의하세요. Language runtime semantics를 정의할 때 pair로 이해하면 유용하지만 실제 implementation은 달라질 수 있으며 사용자에게 노출되지 않습니다.
+
+Interface value `iv` = `(c, T)`를 가정하면 `fromInterface @U iv`는 다음과 같이 evaluate됩니다.
+
+> - `U`가 `T`를 upgrade하면 `Some c'`로 evaluate됩니다. 여기서 `c'`는 `c`를 type `U`의 value로 변환한 결과입니다.
+> - 그렇지 않으면 `None`으로 evaluate됩니다.
+
+Interface value `iv` = `(c, T)`와 interface type `I`를 가정하면 `create @I iv`는 다음과 같이 evaluate됩니다.
+
+> - `T`가 `I`를 implement하지 않으면 error가 발생합니다.
+> - 그렇지 않으면 `create @T c`를 evaluate합니다.
+
+**예시 1**
+
+Template U와 그 upgrade를 정의하는 dep package의 두 version을 가정합니다.
+
+<Columns cols={2}>
+  <Column>
+    <code>dep-1.0.0</code>에서:
+
+    ```text
+    module Dep where
+
+    template U
+      with
+        p : Party
+      where
+        signatory p
+    ```
+  </Column>
+  <Column>
+    <code>dep-2.0.0</code>에서:
+
+    ```text
+    module Dep where
+
+    template U
+      with
+        p : Party
+        t : Optional Text
+      where
+        signatory p
+    ```
+  </Column>
+</Columns>
+
+이제 `dep` version `1.0.0`에 depend하는 package `q`를 가정합니다.
+
+```yaml
+[...]
+name: q
+version: 1.0.0
+data-dependencies:
+- dep-1.0.0.dar
+```
+
+Package `q`는 type `U`의 contract를 fetch하는 choice를 가진 template `S`를 정의합니다.
+
+```haskell
+import qualified Dep
+
+template S
+  with
+    p : Party
+  where
+    signatory p
+
+    choice GetU : Dep.U 
+      with
+        cid : ContractId Dep.U
+      where
+        controller p
+        do fetch cid
+```
+
+마지막으로 `q`가 작성한 type `S` contract와 `dep-2.0.0`이 작성한 type `U` contract를 포함하는 ledger를 가정합니다.
+
+| Contract ID | Type          | Contract                    |
+|-------------|---------------|-----------------------------|
+| `4321`      | `q:T`         | `T { p = 'Alice' }`         |
+| `8765`      | `dep-2.0.0:U` | `U { p = 'Bob', t = None }` |
+
+Package preference `dep-2.0.0`으로 contract `4321`의 choice `GetU 8765`를 exercise하면 contract `5678` fetch가 trigger됩니다. Package `q`가 `dep` version `1.0.0`에 depend하므로 `U`의 target type은 package `dep-1.0.0`에 정의된 type입니다. 따라서 contract `5678`은 retrieval 시 `U { p = 'Bob'}`로 downgrade됩니다. 여기서는 package `dep` version `2.0.0`에 대한 command preference가 영향을 주지 않습니다.
+
+**예시 2**
+
+View type `IView`와 method `m`을 갖는 interface `I`를 가정합니다.
+
+```haskell
+data IView = IView {}
+
+interface I where
+  viewtype IView
+```
+
+이제 `I`를 implement하는 template `T`의 두 version을 가정합니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    template T 
+      with
+        p : Party
+      where
+        signatory p
+
+        interface instance I for T where
+          view = IView {}
+    ```
+  </Column>
+  <Column>
+    ```text
+    template T 
+      with
+        p : Party
+        i : Optional Int
+      where
+        signatory p
+
+        interface instance I for T where
+          view = IView {}
+    ```
+  </Column>
+</Columns>
+
+마지막으로 `T`의 첫 version을 정의하는 module은 `V1`으로 import되고 두 번째 version `T`를 정의하는 module은 `V2`로 import된다고 가정합니다. Expression `fromInterface @V2.T (toInterface @I (V1.T 'Alice'))`는 다음과 같이 evaluate됩니다.
+
+> - `toInterface @I (@V1.T alice)`는 interface value `(V1.T { p = 'Alice' }, V1.T)`로 evaluate됩니다.
+> - Type `V2.T`가 `V1.T`를 upgrade하므로 `fromInterface`는 `(V1.T { p = 'Alice' })`를 type `V2.T`의 value로 변환합니다.
+> - 따라서 전체 expression은 `V2.T { p = 'Alice', i = None }`으로 evaluate됩니다.
+
+### Dynamic Target Template Selection
+
+Ledger API command가 trigger한 top-level exercise 또는 choice body에서 trigger된 interface fetch/exercise에서는 dynamic package resolution의 package preference 규칙이 runtime에 target template을 결정합니다.
+
+**예시 1**
+
+두 version을 갖는 package `p`를 가정합니다. 새 version은 optional text field를 추가합니다.
+
+<Columns cols={2}>
+  <Column>
+    <code>p-1.0.0</code>에서:
+
+    ```text
+    template T 
+      with
+        p : Party
+      where
+        signatory p
+    ```
+  </Column>
+  <Column>
+    <code>p-2.0.0</code>에서:
+
+    ```text
+    template T 
+      with
+        p : Party
+        t : Optional Text
+      where
+        signatory p
+    ```
+  </Column>
+</Columns>
+
+또한 `p-1.0.0`이 작성한 type `T` contract와 `p-2.0.0`이 작성한 다른 contract를 포함하는 ledger를 가정합니다.
+
+| Contract ID | Type        | Contract                            |
+|-------------|-------------|-------------------------------------|
+| `1234`      | `p-1.0.0:T` | `T { p = 'Alice' }`                 |
+| `5678`      | `p-2.0.0:T` | `T { p = 'Bob', t = Some "Hello" }` |
+
+그러면 다음과 같이 동작합니다.
+
+- Package preference `p-1.0.0`으로 contract `1234`를 fetch하면 contract를 retrieve하고 변경하지 않은 채 `T { p = 'Alice' }`를 return합니다.
+- Package preference `p-2.0.0`으로 contract `1234`를 fetch하면 contract를 retrieve하고 target template type으로 성공적으로 변환해 `T { p = 'Alice', t = None }`을 return합니다.
+- Package preference `p-1.0.0`으로 contract `5678`을 fetch하면 contract를 retrieve하지만 target template type으로 downgrade하지 못해 error를 return합니다.
+- Package preference `p-2.0.0`으로 contract `5678`을 fetch하면 contract를 retrieve하고 변경하지 않은 채 `T { p = 'Bob', t = Some "Hello" }`를 return합니다.
+
+**예시 2**
+
+Choice `GetInt`를 갖는 interface `I`를 가정합니다.
+
+```haskell
+data IView = IView {}
+
+interface I where
+  viewtype IView
+  getInt : Int
+
+  choice GetInt : Int
+    with
+      p : Party
+    controller p
+    do
+      pure (getInt this)
+```
+
+이제 template `Inst`와 그 upgrade를 정의하는 package `inst`의 두 version을 가정합니다. 두 template version 모두 interface `I`를 instantiate하지만 `getInt` method가 서로 다른 value를 return합니다.
+
+<Columns cols={2}>
+  <Column>
+    <code>inst-1.0.0</code>에서:
+
+    ```text
+    template Inst
+      with
+        p : Party
+      where
+        signatory p
+
+        interface instance I for T where
+          view = IView
+          getInt = 1
+    ```
+  </Column>
+  <Column>
+    <code>inst-2.0.0</code>에서:
+
+    ```text
+    template Inst
+      with
+        p : Party
+      where
+        signatory p
+
+        interface instance I for T where
+          view = IView
+          getInt = 2
+    ```
+  </Column>
+</Columns>
+
+이제 choice `Go`가 interface를 통해 choice `GetInt`를 exercise하는 template을 정의하는 package `client`를 가정합니다.
+
+```haskell
+template Client
+  with 
+    p : Party
+    icid : ContractId I
+  where
+    signatory p
+
+    choice Go : Int
+      controller p
+      do
+        exercise icid (GetInt p)
+```
+
+마지막으로 `inst-1.0.0`이 작성한 type `Inst` contract와 `client`가 작성한 type `Client` contract를 포함하는 ledger를 가정합니다.
+
+| Contract ID | Type              | Contract                 |
+|-------------|-------------------|--------------------------|
+| `0123`      | `inst-1.0.0:Inst` | `Inst { p = 'Alice' }`   |
+| `0456`      | `client:Client`   | `Client { p = 'Alice' }` |
+
+그러면 다음과 같이 동작합니다.
+
+- Package preference `inst-1.0.0`으로 contract `0456`의 choice `Go`를 exercise하면 contract `0123`의 interface exercise가 trigger됩니다. `inst-1.0.0`이 preferred version이므로 contract `0123`은 type `inst-1.0.0::Inst` value로 upgrade되고 `getInt` method가 execute됩니다. 따라서 exercise result는 value `1`입니다.
+- 이번에는 package preference `inst-2.0.0`으로 contract `0456`의 choice `Go`를 exercise하면 `inst-2.0.0:Inst`가 `0123`의 target template으로 선택되어 exercise는 value `2`를 return합니다. Ledger에 저장된 exercise의 type이 `inst-1.0.0:Inst`라는 사실은 최종적으로 execute되는 `getInt` method에 영향을 주지 않습니다.
+
+**예시 3**
+
+이제 두 version을 갖는 package `r`을 가정합니다. 두 version은 choice를 갖는 template을 정의하며 version `2.0.0`은 choice parameter에 optional field를 추가합니다. Choice return type도 upgrade됩니다.
+
+<Columns cols={2}>
+  <Column>
+    <code>r-1.0.0</code>에서:
+
+    ```text
+    module M where
+
+    data Ret = Ret with
+
+    template V
+      with
+        p : Party
+      where
+        signatory p
+
+        choice C : Ret
+          with 
+            i : Int
+          controller p
+          do return Ret
+    ```
+  </Column>
+  <Column>
+    <code>r-2.0.0</code>에서:
+
+    ```text
+    module M where
+
+    data Ret = Ret with
+      j : Optional Int
+
+    template V
+      with
+         p : Party
+       where
+         signatory p
+
+         choice C : Ret
+           with 
+             i : Int
+             j : Optional Int
+           controller p
+           do return Ret with j = j
+    ```
+  </Column>
+</Columns>
+
+또한 `r-1.0.0`이 작성한 type `V` contract를 포함하는 ledger를 가정합니다.
+
+| Contract ID | Type        | Contract            |
+|-------------|-------------|---------------------|
+| `9101`      | `r-1.0.0:V` | `V { p = 'Alice' }` |
+
+그러면 다음과 같이 동작합니다.
+
+- Package preference `r-2.0.0`으로 contract `9101`의 `C with i=1`을 exercise하면 `r-2.0.0`에 정의된 `C` code를 execute합니다. Parameter type에 맞추기 위해 parameter sequence `i=1`을 `i=1, j=None`으로 변환합니다. Exercise는 value `Ret with j=None`을 return하며, 이 value를 예상 return type에 맞추는 것은 client code, 예를 들어 Ledger API caller의 책임입니다. Package `r` version `1.0.0`만 아는 client는 type `Ret` value를 예상하므로 `Ret with j=None`을 다시 `Ret`으로 변환합니다.
+- Package preference `r-1.0.0`으로 contract `9101`의 `C with i=1`을 exercise하면 `r-1.0.0`에 정의된 `C` code를 execute합니다. Parameter sequence를 변환할 필요가 없으며 exercise는 value `Ret`을 return합니다.
+- Package preference `r-2.0.0`으로 contract `9101`의 `C with i=1 j=Some 2`를 exercise하면 `r-2.0.0`에 정의된 `C` code를 execute합니다. 이 경우에도 parameter sequence를 변환할 필요가 없으며 exercise는 value `Ret with j=Some 2`를 return합니다.
+- Package preference `r-1.0.0`으로 contract `9101`의 `C with i=1 j=Some 2`를 exercise하면 parameter sequence `i=1 j=Some 2`를 `r-1.0.0`에 정의된 `C`의 parameter sequence로 downgrade할 수 없으므로 runtime error가 발생합니다.
+
+### Transformation Rules
+
+Target type이 결정되면 data transformation 규칙은 [protocol buffer upgrade 규칙](https://protobuf.dev/programming-guides/proto3/#updating)을 따릅니다.
+
+#### Records and Parameters
+
+Record type과 그 upgrade를 각각 `T-v1`, `T-v2`라고 하면 다음과 같습니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    data T = T with
+      x1 : T1
+      ...
+      xn : Tn
+    ```
+  </Column>
+  <Column>
+    ```text
+    data T = T with
+      x1 : T1'
+      ...
+      xn : Tn'
+      y1 : Optional U1
+      ...
+      ym : Optional Um
+    ```
+  </Column>
+</Columns>
+
+- `T-v1` value `T { x1 = v1, ..., xn = vn }`은 추가 field를 None으로 설정하고 `v1...vn`을 recursively upgrade해 `T-v2` value로 변환합니다. Transformation result는 `T { x1 = v1', ..., xn = vn', y1 = None, ..., ym = None }`이며, 여기서 `v1'... vn'`은 `v1...vn`을 `T1' ... Tn'`으로 upgrade한 결과입니다.
+- `T-v2` value `T { x1 = v1, ..., xn = vn, y1 = None, ..., ym = None }`은 추가 field를 제거하고 `v1...vn`을 recursively downgrade해 `T-v1` value로 변환합니다. Transformation result는 `T { x1 = v1', ..., xn = vn' }`이며, 여기서 `v1'... vn'`은 `v1 ... vn`을 `T1 ... Tn`으로 downgrade한 결과입니다.
+- 하나 이상의 `yi`가 `Some _`인 `T-v2` value를 downgrade하려고 하면 runtime error가 발생합니다.
+
+같은 transformation 규칙이 template parameter와 choice parameter에도 적용됩니다.
+
+#### Variants and Enums
+
+Variant type과 그 upgrade를 각각 `V-v1`, `V-v2`라고 하면 다음과 같습니다.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    data V =
+      = C1 T1
+      | ...
+      | Cn Tn
+    ```
+  </Column>
+  <Column>
+    ```text
+    data V =
+      = C1 T1'
+      | ...
+      | Cn Tn'
+      | D1 U1
+      | ...
+      | Dm Um
+    ```
+  </Column>
+</Columns>
+
+- `V-v1` value `Ci vi`는 `vi`를 recursively upgrade해 `V-v2` value로 변환합니다. Transformation result는 value `Ci vi'`이며, 여기서 `vi'`는 `vi`를 `Ti'`로 upgrade한 결과입니다.
+- `V-v2` value `Ci vi`는 `vi`를 recursively downgrade해 `V-v1` value로 변환합니다. Transformation result는 value `Ci vi'`이며, 여기서 `vi'`는 `vi`를 `Ti`로 downgrade한 결과입니다.
+- `Dj vj` 형태의 `V-v2` value를 downgrade하려고 하면 runtime error가 발생합니다.
+
+Constructor argument를 제외하면 같은 transformation 규칙이 enum type에도 적용됩니다.
+
+#### Other Types
+
+Record나 variant가 아닌 type은 upgrade/downgrade transformation에서 "pass-through"로 처리됩니다.
+
+- Scalar type value는 그대로 자기 자신으로 변환됩니다.
+- Optional payload는 recursively 변환됩니다.
+- List element는 recursively 변환됩니다.
+- Map key와 value는 recursively 변환됩니다.
+
+### Metadata
+
+주어진 contract의 metadata는 contract parameter 외에 ledger가 해당 contract에 관해 저장하는 모든 정보입니다. 구체적으로 다음과 같습니다.
+
+- Contract signatory
+- Contract stakeholder, 즉 signatory와 observer의 union
+
+두 contract의 metadata가 equivalent인 조건은 다음과 같습니다.
+
+- Signatory가 같습니다.
+- Stakeholder가 같습니다.
+
+Retrieval과 conversion 후 target template code를 사용해 contract metadata를 다시 계산합니다. 재계산한 metadata가 original contract의 metadata와 equivalent하지 않으면 runtime error가 발생합니다.
+
+**참고:** 결과가 semantically equivalent하다면 implementation은 위 설명과 다른 방식으로 equivalence check를 수행할 수 있습니다.
+
+**예시**
+
+아래에서 오른쪽 template은 왼쪽 template의 valid upgrade입니다.
+
+<Columns cols={2}>
+  <Column>
+    <code>p-1.0.0</code>에서:
+
+    ```text
+    template T 
+      with
+        sig : Party
+      where
+        signatory sig
+    ```
+  </Column>
+  <Column>
+    <code>p-2.0.0</code>에서:
+
+    ```text
+    template T 
+      with
+        sig : Party
+        additionalSig : Optional Party
+      where
+        signatory sig, fromOptional [] additionalSig
+    ```
+  </Column>
+</Columns>
+
+`p-1.0.0`이 작성한 type `T` contract를 포함하는 ledger를 가정합니다.
+
+| Contract ID | Type        | Contract                |
+|-------------|-------------|-------------------------|
+| `1234`      | `p-1.0.0:T` | `T { sig = ['Alice'] }` |
+
+Target type `p-2.0.0:T`로 contract `1234`를 fetch하면 contract를 retrieve하고 type `p-2.0.0:T`의 value `T { sig = 'Alice', additionalSig = None }`으로 성공적으로 변환합니다. 이어서 expression `sig, fromOptional [] additionalSig`로 변환된 contract의 signatory를 계산하면 list `['Alice']`가 됩니다. 이 list를 ledger에 저장된 original contract의 signatory `['Alice']`와 비교하면 일치하므로 upgrade는 유효합니다.
+
+반면 아래에서 오른쪽 template은 왼쪽 template의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    <code>p-1.0.0</code>에서:
+
+    ```text
+    template T 
+      with
+        sig : Party
+      where
+        signatory sig
+    ```
+  </Column>
+  <Column>
+    <code>p-2.0.0</code>에서:
+
+    ```text
+    template T 
+      with
+        sig : Party
+      where
+        signatory sig, sig
+    ```
+  </Column>
+</Columns>
+
+위와 같은 ledger를 가정합니다. Target type `p-2.0.0:T`로 contract `1234`를 fetch하면 contract를 retrieve하고 다시 value `T { sig = 'Alice', additionalSig = None }`으로 성공적으로 변환합니다. 이어서 expression `sig, sig`로 변환된 contract의 signatory를 계산하면 list `['Alice', 'Alice']`가 됩니다. 이 list를 ledger에 저장된 original contract의 signatory `['Alice']`와 비교하면 일치하지 않으므로 runtime에 upgrade가 거부됩니다.
+
+### Ensure Clause
+
+Retrieval과 conversion 후 target template code를 사용해 contract의 ensure clause를 다시 계산합니다. 재계산한 ensure clause가 `False`로 evaluate되면 runtime error가 발생합니다.
+
+**예시**
+
+아래에서 오른쪽 template은 왼쪽 template을 사용해 `n = 0`으로 작성한 contract에 대해 ensure clause가 `False`로 evaluate되므로 왼쪽 template의 valid upgrade가 **아닙니다**.
+
+<Columns cols={2}>
+  <Column>
+    ```text
+    template T 
+      with
+        sig : Party
+        n : Int
+      where
+        signatory sig
+        ensure n >= 0
+    ```
+  </Column>
+  <Column>
+    ```text
+    template T 
+      with
+        sig : Party
+        n : Int
+      where
+        signatory sig
+        ensure n > 0
+    ```
+  </Column>
+</Columns>
+
+### Interface Views
+
+주어진 interface instance의 view는 contract의 두 version 사이에서 변경될 수 있습니다. Contract를 interface로 fetch 또는 exercise하면 target template code에 따라 view를 다시 계산합니다.
+
+**예시**
+
+View type `IView`와 method `m`을 갖는 interface `I`를 가정합니다.
+
+```haskell
+data IView = IView { i : Int }
+
+interface I where
+  viewtype IView
+  m : Int
+```
+
+아래에서 오른쪽 template은 왼쪽 template의 valid upgrade입니다.
+
+<Columns cols={2}>
+  <Column>
+    <code>p-1.0.0</code>에서:
+
+    ```text
+    template T 
+      with
+        p : Party
+        i : Int
+      where
+        signatory p
+
+        interface instance I for T where
+          view = IView i
+          m = i
+    ```
+  </Column>
+  <Column>
+    <code>p-2.0.0</code>에서:
+
+    ```text
+    template T 
+      with
+        p : Party
+        i : Int
+      where
+        signatory p
+
+        interface instance I for T where
+          view = IView (i+1)
+          m = i
+    ```
+  </Column>
+</Columns>
+
+`p-1.0.0`이 작성한 type `T` contract를 포함하는 ledger를 가정합니다.
+
+| Contract ID | Type        | Contract                    |
+|-------------|-------------|-----------------------------|
+| `1234`      | `p-1.0.0:T` | `T { p = 'Alice', i = 42 }` |
+
+Package preference `p-2.0.0`으로 interface를 통해 contract `1234`를 fetch하면 contract를 retrieve하고 type `p-2.0.0:T`의 value `T { sig = 'Alice', i = 42, j = None }`으로 변환합니다. 이어서 `p-2.0.0`에 따라 view를 계산하면 `IView 43`이 됩니다.
+
+{/* COPIED_END */}

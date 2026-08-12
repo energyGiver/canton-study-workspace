@@ -1,0 +1,655 @@
+---
+title: "Canton Identity Management"
+description: "Canton identity architecture, Topology transaction 및 Identity Management cookbook"
+source_id: "SRC-AA41019BDC"
+source_path: "global-synchronizer/deployment/identity-management"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "f63404e9cd199ea69db797f741a7a730aed811f64b663c8dcd3398698656e7c1"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/identity_management-0.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement6 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/identity_management-6.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement7 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/identity_management-7.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement8 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/identity_management-8.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement9 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/identity_management-9.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement11 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/identity_management-11.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement12 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/identity_management-12.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement14 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/identity_management-14.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement20 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/identity_management-20.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/identity_management-1.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement2 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/identity_management-2.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement5 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/identity_management-5.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement13 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/identity_management-13.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement15 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/identity_management-15.mdx";
+import ExternalCantonMainCommunityAppSrcTestResourcesRandomNodeIdentifier from "/snippets/external/canton/main/community/app/src/test/resources/random-node-identifier.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/deployment/identity-management.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/operate/identity_management.rst" hash="b6135af4" */}
+
+이 전체 페이지를 구체적인 how-to별로 나눠야 합니다. High-level 설명은 Overview site에서 다룹니다.
+
+# Identity Management
+
+On-ledger Identity Management는 Canton system entity 전반에 분산된 identity에 초점을 맞추며, User Identity Management는 개별 Participant가 user의 Ledger API access를 관리하는 데 초점을 맞춥니다.
+
+Canton에는 on-ledger identity를 관리하는 built-in Identity Management system이 포함됩니다. 기술 세부 사항은 Architecture section에서 설명하며 여기서는 high-level로 설명합니다.
+
+Identity Management system은 self-contained 방식이며 trusted central entity 또는 미리 정의된 root certificate 없이 구축됩니다. 따라서 central approval이 필요하거나 self-sovereignty를 잃을 위험 없이 누구나 서로 연결할 수 있습니다.
+
+## Introduction
+
+### Canton Identity란 무엇인가
+
+Participant, Synchronizer Topology Manager, Mediator 또는 Sequencer 같은 두 system entity가 통신할 때 asymmetric cryptography를 사용하여 message를 encrypt하고 content에 sign합니다. 따라서 recipient만 content를 decrypt하고 message authenticity를 verify하거나 origin을 증명할 수 있습니다. 그러므로 system entity를 고유하게 식별하고 encryption 및 signing key를 해당 entity와 연결하는 방법이 필요합니다.
+
+또한 Canton은 [Party](/overview/understand/glossary)를 통해 contract ownership 및 right를 표현하는 contract language인 Daml을 사용합니다. 그러나 Party는 Canton synchronization protocol의 primary member가 아닙니다. Party는 Participant가 represent하므로 Party를 고유하게 식별하고 Participant와 연결해야 합니다. 이에 따라 하나의 Participant가 여러 Party를 represent할 수 있고 Canton에서는 하나의 Party를 여러 Participant가 represent할 수도 있습니다.
+
+### Unique Identifier
+
+Canton identity는 random string `X`와 public key fingerprint `N`이라는 두 component로 구성됩니다. 이 조합인 `(X,N)`을 *unique identifier*라고 하며 설계상 globally unique하다고 가정합니다. Canton은 이 unique identifier를 사용하여 특정 Party, Participant 또는 Synchronizer entity를 참조합니다. Party 같은 system entity는 role(Party, Participant, Mediator, Sequencer, Synchronizer Topology Manager)과 unique identifier의 조합으로 표현됩니다.
+
+System entity는 상대 entity가 encryption 및 signing에 사용하는 key 정보를 알아야 합니다. 이 정보는 분산되므로 entity와 key의 특정 association이 올바르고 valid한지 verify하는 방법이 필요합니다. Unique identifier에 포함된 public key fingerprint가 이 역할을 하며 이를 *Namespace*라고 합니다. 뒤에서 설명하듯 해당 Namespace의 secret key는 그 Namespace의 *root of trust* 역할을 합니다.
+
+### Topology Transactions
+
+유연성을 유지하고 key 및 cryptographic algorithm을 변경할 수 있도록 단일 static key로 entity를 식별하지 않습니다. 대신 Participant 또는 Synchronizer entity를 key와, Party를 Participant와 동적으로 연결하는 방법이 필요하며 Topology transaction을 통해 이를 수행합니다.
+
+Topology transaction은 unique identifier와 key 또는 다른 identifier와의 relationship을 설정합니다. 여러 type의 Topology transaction이 있으며 가장 일반적인 것은 name 그대로 key와 unique identifier를 연결하는 `OwnerToKeyMapping`입니다. 이 Topology transaction은 특정 system entity가 특정 목적에 특정 key를 사용한다는 사실을 다른 모든 system entity에 알립니다. 예를 들어 Namespace *12345..*의 Participant *Alice*가 fingerprint *AABBCCDDEE..*로 식별되는 key를 사용하여 message에 sign한다는 내용입니다.
+
+여기서 누가 이 transaction을 authorize하고 누가 distribute하는지라는 두 질문이 생깁니다.
+
+Authorization을 이해하려면 unique identifier의 두 번째 부분인 *Namespace*를 살펴봐야 합니다. 특정 unique identifier를 참조하는 Topology transaction은 해당 Namespace에서 작동하며 serialized Topology transaction의 cryptographic signature를 통해 해당 secret key가 authorize해야 합니다. Namespace secret key가 sign하면 direct authorization이고 delegated key가 sign하면 indirect authorization입니다. Signing right를 다른 key에 delegate하기 위해 *NamespaceDelegation* 또는 *IdentifierDelegation* type의 다른 Topology transaction을 사용할 수 있습니다. Namespace delegation은 전체 Namespace를 특정 key에 delegate합니다. 예를 들어 fingerprint *AABBCCDDEE...*로 식별되는 key가 이제 key *VVWWXXYYZZ...*의 Namespace 안에서 Topology transaction을 authorize할 수 있다고 선언합니다.
+
+Topology transaction signing은 `TopologyManager`에서 수행됩니다. Canton에는 여러 Topology Manager가 있습니다. 모든 Participant Node와 Synchronizer에는 functional capability는 정확히 같지만 영향이 다른 Topology Manager가 있습니다. 이들은 새 key, 새 Namespace, 새 Participant, Party 및 Synchronizer identity를 생성할 수 있습니다. 또한 다른 Topology Manager가 import할 수 있도록 Topology transaction을 export할 수 있습니다. 따라서 Canton identity를 매우 다양한 방식으로 관리할 수 있습니다. Participant가 자체 Topology Manager를 운영하여 Party를 개별적으로 관리할 수 있고, 다른 Topology Manager와 자신을 연결하여 자신이 represent하는 Party 또는 사용하는 key를 관리하도록 할 수도 있습니다. 도입된 delegation 및 association에 따라 그 중간 방식도 가능합니다.
+
+Synchronizer Topology Manager와 Participant Topology Manager의 차이는 Synchronizer Topology Manager가 모든 Synchronizer member가 같은 Topology state를 갖도록 Topology transaction을 distribute하여 특정 Synchronizer의 valid Topology state를 설정한다는 점입니다. 그러나 Synchronizer Topology Manager는 특정 Synchronizer에 누가 참여할 수 있는지를 결정하는 gatekeeper일 뿐이며 실제 topology statement는 다양한 source에서 생성됩니다. 따라서 Synchronizer Topology Manager는 distribution을 차단할 수만 있고 Topology transaction을 위조할 수는 없습니다.
+
+Participant Topology Manager는 isolated Topology state만 관리합니다. 다만 이 Topology Manager에 연결된 dispatcher가 local에 register된 identity를 Synchronizer Topology Manager로 전송하여 remote Synchronizer에 register하려고 시도합니다. 이후 Synchronizer Topology Manager가 포함 여부를 결정합니다.
+
+설명된 identity system에는 전체 system 참여자를 결정하는 단일 root of trust 또는 decision maker가 없습니다. 또한 distributed synchronization을 위한 Topology state는 Synchronizer마다 다르므로 매우 유연한 topology 및 설정이 가능합니다.
+
+### Legal Identities
+
+Canton에서는 system identity와 legal identity를 분리합니다. 위 mechanism은 system entity에 대한 공통되고 verified/authorized된 정보를 설정하지만 특정 unique identifier가 실제 특정 legal identity에 해당한다고 보장하지는 않습니다. Unique identifier는 안정적으로 유지되어도 두 회사가 merger하는 경우처럼 legal identity는 바뀔 수 있습니다. 따라서 Canton은 `participant.parties.set_display_name` command를 사용하여 randomized system identity를 사람이 읽을 수 있는 *display name*과 연결하는 administrative command를 제공합니다.
+
+<Note>
+Party display name은 해당 Participant에 private합니다. 이 name을 Participant 간에 공유해야 한다면 해당 Daml workflow와 automation logic을 구축하여 Daml workflow 결과를 수신하고 이에 따라 display name을 갱신하는 것이 좋습니다.
+</Note>
+
+### Life of a Party
+
+Tutorial에서는 `participant.parties.enable("name")` function을 사용하여 Participant에 Party를 설정합니다. Canton Identity Management system을 이해하려면 새 Party가 추가되는 내부 단계를 살펴보는 것이 좋습니다.
+
+1.  `participant.parties.enable` function이 Participant의 unique identifier인 `participant.id`를 결정합니다.
+2.  Party name은 name:: 형식으로 생성되며 `namespace`에는 Participant의 Namespace를 사용합니다.
+3.  Admin API에서 새 Party-to-Participant mapping을 authorize합니다: `participant.topology.party_to_participant_mappings.authorize(...)`
+4.  GRPC 요청으로 `ParticipantTopologyManager`가 호출되어 새 `SignedTopologyTransaction`을 생성하고 authorization을 local Topology state에 추가할 수 있는지 테스트합니다. 가능하면 새 Topology transaction을 store에 추가합니다.
+5.  `ParticipantTopologyDispatcher`가 새 transaction을 가져와 Sequencer를 통해 Topology Manager에 보내는 `RegisterTopologyTransactionRequest` message로 모든 Synchronizer에 추가를 요청합니다.
+6.  Synchronizer가 요청을 수신하여 open 또는 permissioned policy에 따라 처리합니다. Default 설정은 open입니다.
+7.  승인되면 request service가 새 Topology transaction을 `SynchronizerTopologyManager`에 추가하려고 시도합니다.
+8.  `SynchronizerTopologyManager`가 새 Topology transaction을 Synchronizer Topology state에 추가할 수 있는지 확인합니다. 가능하면 local Topology store에 기록합니다.
+9.  `ParticipantTopologyDispatcher`가 새 transaction을 가져와 Sequencer를 통해 모든 Participant와 자기 자신에게 전송합니다.
+10. Sequencer가 transaction에 timestamp를 부여하고 transaction stream에 포함합니다.
+11. Participant가 transaction을 수신하고 Topology state를 기준으로 integrity 및 correctness를 verify한 후 Sequencer timestamp와 함께 state에 추가합니다. 이에 따라 모두 synchronous Topology state를 갖게 됩니다.
+
+`participant.parties.enable` macro는 Participant가 Namespace key를 직접 보유하거나 `NamespaceDelegation`을 통한 delegation으로 자체 Namespace를 control하는 경우에만 동작합니다.
+
+### Participant Onboarding
+
+Topology flexibility를 지원하려면 Participant를 새 Synchronizer에 쉽게 추가할 수 있어야 합니다. 따라서 새 Participant의 Synchronizer onboarding은 secure하면서 편리해야 합니다. 대부분의 예시에서는 `connect` command를 사용하여 Participant를 Synchronizer에 연결합니다. Connect command는 일련의 Admin API command를 wrapping합니다.
+
+```scala
+val certificates = OptionUtil.emptyStringAsNone(certificatesPath).map { path =>
+  BinaryFileUtil.readByteStringFromFile(path) match {
+    case Left(err) => throw new IllegalArgumentException(s"failed to load $path: $err")
+    case Right(bs) => bs
+  }
+}
+SynchronizerConnectionConfig.tryGrpcSingleConnection(
+  synchronizerAlias,
+  sequencerAlias,
+  connection,
+  manualConnect,
+  physicalSynchronizerId,
+  certificates,
+  priority,
+  initialRetryDelay,
+  maxRetryDelay,
+  timeTrackerConfig,
+)
+```
+
+```scala
+// connect to the new synchronizer
+consoleEnvironment.run {
+  ParticipantCommands.synchronizers.connect(runner, config, validation)
+}
+```
+
+User 관점에서는 기본적으로 connection 정보를 제공하고 Synchronizer가 요구하는 경우 terms of service를 accept하면 새 Synchronizer connection을 설정할 수 있습니다. 별도 onboarding 단계나 대규모 certificate signing 절차는 없으며 첫 connection 시도 중 모든 항목이 설정됩니다. 하지만 내부에서는 여러 단계가 실행되므로 process를 단계별로 간략히 정리합니다.
+
+1.  기존 Participant의 administrator가 새 Synchronizer를 추가하기 위해 `synchronizers.connect_local` command를 호출합니다. Mandatory argument는 특정 connection을 내부에서 참조하는 Synchronizer *alias*와 optional port를 포함하는 Sequencer connection URL인 *http\[s\]://hostname\[:port\]/path*입니다. Custom TLS certificate chain의 certificate path와 Synchronizer의 *Synchronizer ID*는 optional입니다. Certificate path를 제공하지 않으면 default JRE root certificate를 사용합니다. *Synchronizer ID*는 Synchronizer의 unique identifier이며 SSH key fingerprint와 매우 유사하게 man-in-the-middle attack을 방지하도록 정의할 수 있습니다.
+2.  Participant가 `SequencerConnectService`에 GRPC channel을 엽니다.
+3.  Participant가 `SequencerConnectService`에 contact하여 Synchronizer 사용에 특정 terms of service signing이 필요한지 확인합니다. 필요하면 terms of service를 user에게 표시하고 나중에 사용할 approval을 Participant local에 저장합니다. 승인되면 Participant가 Sequencer 연결을 시도합니다.
+4.  Participant가 `SequencerConnectService.handshake`를 사용하여 Remote Synchronizer가 Participant version과 compatible한 protocol version을 실행하는지 verify합니다. Participant가 incompatible protocol version을 실행하면 connection이 실패합니다.
+5.  Participant가 Synchronizer에서 Synchronizer ID를 download하고 verify합니다. Synchronizer ID를 사용하여 Synchronizer entity의 Topology transaction authorization이 올바른지 verify할 수 있습니다. 이전 `synchronizers.connect_local` call 또는 이전 session에서 Synchronizer ID를 제공했다면 두 ID를 비교하고 같지 않으면 connection이 실패합니다. `synchronizers.connect_local` call에서 Synchronizer ID를 제공하지 않았다면 Participant가 download한 ID를 사용하고 저장합니다. 여기서는 올바른 Synchronizer와 통신한다는 점을 확신할 수 있도록 Participant가 secure channel로 Synchronizer ID를 얻는다고 가정합니다. 이 secure channel은 Canton 외부의 방식이거나 Synchronizer에 처음 contact할 때 TLS가 제공할 수 있습니다.
+6.  Participant가 해당 Synchronizer의 transaction protocol에서 사용하는 parameter인 *static Synchronizer parameter*를 download합니다. 여기에는 Synchronizer가 지원하는 cryptographic key 등이 포함됩니다.
+7.  Participant가 처음에는 unauthenticated member로 Sequencer에 연결합니다. 이러한 member는 Synchronizer Topology Manager에만 transaction을 보낼 수 있습니다. 이후 Participant는 자신을 식별하고 사용하는 key를 정의하는 데 필요한 초기 Topology transaction set을 `SynchronizerTopologyManagerRequestService`로 보냅니다. Request service가 transaction validity를 검사하고 구성된 Synchronizer onboarding policy에 따라 결정합니다. 현재 지원되는 policy는 `open`(default) 및 `permissioned`입니다. `open`은 permissionless system과 development에는 편리하지만 모든 새 Participant와 모든 Topology transaction을 accept합니다. `permissioned` policy는 Participant가 미리 allow-list에 추가된 경우에만 onboarding transaction을 accept합니다.
+8.  Request service가 transaction을 Synchronizer Topology Manager로 전달하고, Manager는 transaction을 state에 추가하여 Synchronizer의 다른 member로 distribution하려고 시도합니다. Onboarding request 결과는 unauthenticated member에게 전송되며 member는 response를 받으면 disconnect합니다.
+9.  Onboarding request가 승인되면 Participant가 actual Participant로 Sequencer 연결을 시도합니다.
+10. Participant가 Synchronizer에서 올바르게 enable되고 signing key가 알려지면 identity를 사용하여 `SequencerService`를 subscribe할 수 있습니다. 이를 수행하고 `SequencerService`의 모든 action authorization을 verify하려면 Synchronizer에서 authorization token을 얻어야 합니다. Participant가 Synchronizer에 `Challenge`를 요청하면 Synchronizer는 authentication에 사용할 `nonce`와 key fingerprint를 제공합니다. Participant는 해당 private key를 사용하여 이 nonce와 Synchronizer ID에 sign합니다. Fingerprint가 필요한 이유는 Participant가 Synchronizer Topology state에 정의된 자체 signing key로 token에 sign해야 하기 때문입니다. 그러나 Participant는 `SequencerService`에서 읽은 후에야 실제 Synchronizer Topology state를 알게 되므로 key가 무엇인지 알 수 없습니다. 따라서 Synchronizer는 authorization challenge의 일부로 Synchronizer Topology state의 이 부분을 disclose합니다.
+11. 생성한 authentication token을 사용하여 Participant가 *SequencerService*를 사용하기 시작합니다. Synchronizer 측에서는 token이 예상된 token이고 Participant signing key로 sign되었는지 verify하여 authenticity 및 validity를 확인합니다. Token은 모든 GRPC invocation을 authenticate하는 데 사용되며 정기적으로 renew해야 합니다.
+12. Participant가 `ParticipantTopologyDispatcher`를 설정합니다. 이는 Participant Node의 Topology Manager에서 생성된 모든 Topology transaction을 Synchronizer Topology Manager에 push하려는 process입니다. Participant가 자체 Topology Manager로 identity를 직접 관리하면 이 transaction에는 register된 Party 또는 supported package에 관한 모든 정보가 포함됩니다.
+13. 앞에서 설명했듯 Participant가 Sequencer를 통해 처음 수신하는 message set에는 Synchronizer entity의 signing key를 포함한 Synchronizer Topology state가 들어 있습니다. 이 message는 Sequencer 및 Topology Manager가 sign하며 self-consistent합니다. Participant가 Synchronizer ID를 알고 있다면 예상한 Synchronizer와 통신 중이며 Synchronizer entity key가 Synchronizer ID를 관리하는 key owner에게 authorize되었는지 verify할 수 있습니다.
+14. 초기 Topology transaction을 읽으면 Participant는 transaction processing 및 command 전송 준비를 마칩니다.
+15. Participant가 다시 enable되면 Synchronizer Topology Dispatcher가 Participant가 이전에 놓친 Topology transaction set을 분석합니다. Participant를 공개적으로 enable하기 전에 이 transaction을 Sequencer를 통해 Participant에 전송합니다. 따라서 Participant가 Sequencer message를 읽기 시작할 때 처음 수신하는 message는 Synchronizer Topology state입니다.
+
+### Default Initialization
+
+Participant Node 및 Synchronizer의 default initialization 동작은 자체 Topology Manager를 실행하는 것입니다. 이를 통해 수동 개입 없이 편리한 automated 방식으로 Node를 구성하고 사용할 수 있습니다. 첫 startup **이전**에 `auto-init = false` configuration option을 설정하여 비활성화할 수 있습니다.
+
+Auto initialization 중 다음 단계가 수행됩니다.
+
+1.  Synchronizer에서 네 개의 signing key를 생성합니다. 하나는 Namespace용이고 Sequencer, Mediator 및 Topology Manager용으로 하나씩 생성합니다. Participant에서는 Namespace key, signing key 및 encryption key라는 세 key를 생성합니다.
+2.  Namespace fingerprint를 사용하여 Participant identity를 생성합니다. 이해하기 쉽도록 configuration file에 사용된 Node name을 사용하지만 privacy를 위해 random identifier로 변경됩니다. 생성한 후 `set_id` Admin API call을 사용하여 설정합니다.
+3.  Namespace key를 사용하고 해당 key로 sign하여 `NamespaceDelegation` 형태의 root certificate를 생성합니다.
+4.  그런 다음 Participant 또는 Synchronizer entity의 `OwnerToKeyMapping`을 생성합니다.
+
+`init.identity` object를 설정하여 auto initialization 동작을 control할 수 있습니다. 예를 들어 initialization 중 Node에 부여할 identifier name을 control할 수 있습니다. 가능한 configuration은 세 가지입니다.
+
+1.  Node name을 Node identifier로 사용
+
+``` none
+canton.participants.participant1.init.identity = {
+  type = auto
+  identifier.type = config
+}
+```
+
+2.  Name을 명시적으로 설정
+
+<ExternalCantonMainCommunityAppSrcTestResourcesRandomNodeIdentifier />
+
+3.  Random name 생성
+
+``` none
+canton.participants.participant1.init.identity {
+    type = auto
+    identifier.type = random
+}
+```
+
+### Identity 설정 Guide
+
+앞에서 설명했듯 Canton Node는 기본적으로 자체 Topology Manager를 실행하며 auto-initialize됩니다. 이는 development 및 prototyping에 편리하지만 실제 deployment에는 더 주의해야 하므로 이 section에서 간단한 guideline을 제공합니다.
+
+Canton Topology Manager에는 절대 실패하면 안 되는 중요한 task가 있습니다. Root of trust인 Namespace key에 대한 access 또는 control을 잃지 않는 것입니다. 다른 key 문제는 기존 key를 revoke하고 새 owner-to-key association을 발행하여 복구할 수 있습니다. 따라서 Participant 및 Party를 Namespace의 security와 integrity를 보장할 충분한 운영 설정이 있는 Topology Manager가 관리하는 Namespace와 연결하는 것이 좋습니다.
+
+따라서 Participant 또는 Synchronizer는 다음 방식 중 하나를 사용할 수 있습니다.
+
+1.  Participant Node의 일부로 identity Namespace key와 함께 자체 Topology Manager를 실행합니다.
+2.  Topology transaction을 export하고 CD-ROM 같은 방법으로 해당 Node에 전달하는 자체 구축 설정을 사용하여 분리된 computer에서 자체 Topology Manager를 실행합니다.
+3.  Trusted Topology Manager에 자체 Namespace 안의 identifier set을 delegation 형태로 발행하도록 요청하고 그 delegation을 local Participant Topology Manager로 import합니다.
+4.  Trusted Topology Manager가 모든 Topology state를 대신 관리하도록 합니다.
+
+더 많은 조합과 option이 가능하지만 여기서는 security 및 recoverability 특성이 서로 다른 일반적인 option을 설명합니다.
+
+Namespace key 분실 위험을 줄이기 위해 추가 key를 생성하고 특정 Namespace에서 작동하도록 허용할 수 있습니다. 이 방식을 사용하고 live Node에 root key를 저장하지 않는 것이 좋습니다.
+
+## User Identity Management
+
+지금까지 on-ledger identity 관리 방식을 설명했습니다.
+
+모든 Participant는 local Ledger API access를 관리하고 Application이 Party를 대신하여 API를 read/write할 permission을 부여할 수 있어야 합니다. On-ledger identity는 Party로 represent되지만 Ledger API의 Application은 User로 represent되고 관리됩니다. Ledger API server는 다음을 통해 Application identity를 관리합니다.
+
+- Authentication: Application name과 User name을 matching하여 Application이 어떤 User에 해당하는지 인식합니다.
+- Authorization: Authenticate된 User가 가진 right를 파악하고 해당 right에 따라 Ledger API access를 제한합니다.
+
+Authentication은 JWT를 기반으로 하며 [Authorization deep dive](/appdev/deep-dives/authorization)에서 다룹니다. 관련 Ledger API authorization configuration은 Ledger API JWT configuration section에서 설명합니다.
+
+Authorization은 Ledger API의 User Management Service가 관리합니다. 본질적으로 User는 User name을 read 또는 write permission이 있는 Party set에 mapping한 것입니다. 더 구체적으로 User는 다음 요소로 구성됩니다.
+
+- User ID(User name이라고도 함)
+- Active/deactivated status(User의 Ledger API access를 일시적으로 차단하는 데 사용 가능)
+- Optional primary Party(이 User로 Ledger API command request를 submit할 때 기본적으로 사용할 Party를 나타냄)
+- User right set(User가 Ledger API의 Admin 영역에 access할 수 있는지, 어떤 Party로 act/read할 수 있는지 설명)
+- Custom annotation set(Ledger API server local에 저장되는 string 기반 key-value pair로, 특정 business entity와의 관계 등 이 Party에 추가 정보를 연결하는 데 사용 가능)
+
+User ID를 제외한 모든 property를 수정할 수 있습니다. Annotation에 관한 자세한 내용은 Ledger API Reference 문서를 참고하세요. Ledger API의 UserManagementService 개요는 [Ledger API reference](/sdks-tools/api-reference/ledger-api)를 참고하세요.
+
+Alpha feature인 Canton Console User Management command로 User를 관리할 수 있습니다. 구체적인 User 관리 예시는 아래 cookbook을 참고하세요.
+
+## Cookbook
+
+### Manage Users
+
+이 section에서는 Canton Console command로 Participant User를 관리하는 방법을 설명합니다. 먼저 이후 예시에서 사용할 Party 세 개를 생성합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement0 />
+
+#### 생성
+
+다음으로 `myuser`라는 User를 생성하고 act-as `alice` 및 read-as `bob` permission과 active User status를 부여합니다. 이 User의 primary Party는 `alice`입니다. User는 administrator가 아니며 일부 custom annotation이 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement1 />
+
+Valid annotation key에는 몇 가지 제한이 있습니다. 반면 annotation value의 유일한 constraint는 비어 있으면 안 된다는 것입니다. Annotation에 관한 자세한 내용은 Ledger API Reference 문서를 참고하세요.
+
+#### Update
+
+User의 primary Party, active/deactivated status 및 annotation을 갱신할 수 있습니다. 아래에 설명된 다른 방법으로 User right도 변경할 수 있습니다.
+
+다음 snippet에서는 User primary Party를 unassigned 상태로 변경하고 active/deactivated status는 그대로 유지하며 annotation을 갱신합니다. Annotation에서 `description` key value를 변경하고 `foo` key를 제거한 후 새 `baz` key를 추가합니다. Return value에는 갱신된 User state가 포함됩니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement2 />
+
+User의 Identity Provider ID도 갱신할 수 있습니다. 다음 snippet에서는 User의 Identity Provider ID를 새로 생성한 값으로 변경합니다. 원래 User는 ID가 빈 string `""`으로 표현되는 default Identity Provider에 속해 있었습니다.
+
+``` none
+@ participant1.ledger_api.identity_provider_config.create("idp-id1", isDeactivated = false, jwksUrl = "http://someurl", issuer = "issuer1", audience = None)
+    res4: com.digitalasset.canton.ledger.api.IdentityProviderConfig = IdentityProviderConfig(
+      identityProviderId = Id(value = "idp-id1"),
+      isDeactivated = false,
+      jwksUrl = JwksUrl(value = "http://someurl"),
+      issuer = "issuer1",
+      audience = None
+    )
+```
+
+``` none
+@ participant1.ledger_api.users.update_idp("myuser", sourceIdentityProviderId="", targetIdentityProviderId="idp-id1")
+```
+
+``` none
+@ participant1.ledger_api.users.get("myuser", identityProviderId="idp-id1")
+    res6: User = User(
+      id = "myuser",
+      primaryParty = None,
+      isDeactivated = false,
+      annotations = Map("description" -> "This is a new description", "baz" -> "bar"),
+      identityProviderId = "idp-id1"
+    )
+```
+
+User의 Identity Provider ID를 default 값으로 되돌릴 수 있습니다.
+
+``` none
+@ participant1.ledger_api.users.update_idp("myuser", sourceIdentityProviderId="idp-id1", targetIdentityProviderId="")
+```
+
+``` none
+@ participant1.ledger_api.users.get("myuser", identityProviderId="")
+    res8: User = User(
+      id = "myuser",
+      primaryParty = None,
+      isDeactivated = false,
+      annotations = Map("description" -> "This is a new description", "baz" -> "bar"),
+      identityProviderId = ""
+    )
+```
+
+#### 검사
+
+다음과 같이 User의 현재 state를 가져올 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement5 />
+
+User가 가진 right를 query할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement6 />
+
+추가 right를 grant할 수 있습니다. Return value에는 새로 grant된 right만 포함되며, 이 예시의 read-as `alice` right처럼 User가 이미 가진 right를 다시 grant하려 해도 포함되지 않습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement7 />
+
+User의 right를 revoke할 수 있습니다. 마찬가지로 return value에는 실제 제거된 right만 포함됩니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement8 />
+
+일부 right를 grant하고 revoke했으므로 User의 모든 right를 다시 가져와 확인할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement9 />
+
+여러 User를 동시에 가져올 수도 있습니다. 먼저 `myotheruser`라는 다른 User를 생성한 다음 User name이 `my`로 시작하는 모든 User를 나열합니다.
+
+``` none
+@ participant1.ledger_api.users.create(id = "myotheruser")
+    res14: User = User(
+      id = "myotheruser",
+      primaryParty = None,
+      isDeactivated = false,
+      annotations = Map(),
+      identityProviderId = ""
+    )
+```
+
+``` none
+@ participant1.ledger_api.users.list(filterUser = "my")
+    res15: UsersPage = UsersPage(
+      users = Vector(
+        User(
+          id = "myotheruser",
+          primaryParty = None,
+          isDeactivated = false,
+          annotations = Map(),
+          identityProviderId = ""
+        ),
+        User(
+          id = "myuser",
+          primaryParty = None,
+          isDeactivated = false,
+          annotations = Map("description" -> "This is a new description", "baz" -> "bar"),
+          identityProviderId = ""
+        )
+      ),
+      nextPageToken = ""
+    )
+```
+
+#### 제거
+
+ID로 User를 삭제할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement11 />
+
+예를 들어 User를 나열하여 제거되었는지 확인할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement12 />
+
+User의 Ledger API access를 막으려면 삭제보다 deactivate가 더 적절할 수 있습니다. 삭제된 User는 처음부터 존재하지 않았던 것처럼 다시 생성할 수 있지만, deactivated User가 Ledger API에 다시 access하려면 명시적으로 reactivate해야 합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement13 />
+
+#### Default Participant Admin 구성
+
+새 Participant Node에는 다른 User를 bootstrap하는 데 사용할 수 있는 `participant_admin`이라는 default Participant Admin User가 포함됩니다. Participant startup 시 다른 User ID를 가진 Admin User가 준비되도록 할 수 있습니다. 이 경우 원하는 User ID로 추가 Participant Admin User를 지정할 수 있습니다.
+
+<Note>
+지정한 ID의 User가 이미 존재하면 기존 User가 Admin User가 아니더라도 추가 User를 생성하지 않습니다.
+</Note>
+
+``` none
+canton.participants.myparticipant.ledger-api.user-management-service.additional-admin-user-id = "my-admin-id"
+```
+
+### Participant에 새 Party 추가
+
+가장 단순한 operation은 Participant에 새 Party를 추가하는 것입니다. 일반적으로 default case에서 Participant Node의 일부인 Participant Topology Manager에 추가합니다. Participant가 자체 Topology Manager를 실행 중이라면 특정 Participant에서 Party를 enable하는 간단한 macro가 있습니다.
+
+```scala
+val name = "Gottlieb"
+val partyId = participant1.parties.enable(name)
+```
+
+그러면 Participant Topology Manager의 Namespace에 새 Party가 생성됩니다.
+
+이에 해당하는 disable macro도 있습니다.
+
+```scala
+participant1.parties.disable(partyId)
+```
+
+Macro 자체는 `topology.party_to_participant_mappings.authorize`를 사용하여 새 Party를 생성하지만 `authorize` call의 parameter를 자동으로 결정하는 등의 편의 기능을 추가합니다.
+
+<Note>
+`participant.parties.enable` macro는 Participant와 동일한 Namespace에 Party를 추가합니다. Participant가 root 또는 delegated key를 보유하여 해당 Namespace에 대한 authority를 가진 경우에만 동작합니다.
+</Note>
+
+### Client Controlled Party
+
+Party는 Participant Node와 약하게만 연결됩니다. Party를 자체 Namespace에 allocate한 다음 특정 Participant에 delegate할 수 있습니다. 단순성과 편의를 위해 Participant는 기본적으로 자체 Namespace에 새 Party를 생성하지만 이 방식이 적합하지 않은 경우도 있습니다.
+
+일반적인 scenario는 처음에는 client를 대신하여 Party를 host한 후 나중에 client Node로 Party를 넘기는 것입니다. Default Party allocation을 사용하면 이후에도 client Party를 계속 control하게 됩니다.
+
+이를 방지하려면 client가 자체적으로 새 Party를 생성하고 Party delegation을 export하여 전달해야 합니다. 이 Party delegation을 자신의 Topology state로 import하면 해당 Party를 대신하여 act할 수 있습니다.
+
+이 process에서는 어떤 Synchronizer에도 연결되지 않는 Participant Node를 사용합니다. Full Node가 아니라 Topology Manager만 필요합니다. 먼저 hosting Node의 Participant ID를 확인합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement14 />
+
+이 identifier를 client에 전달해야 하며 `ParticipantId.tryFromProtoPrimitive`를 사용하여 import할 수 있습니다. Client는 먼저 새 key를 생성합니다. 생성된 default key를 사용할 수도 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement15 />
+
+그런 다음 이 key에 적합한 root certificate를 생성합니다.
+
+``` none
+@ val rootCert = client.topology.namespace_delegations.propose_delegation(Namespace(secret.fingerprint), secret, CanSignAllMappings)
+    rootCert : SignedTopologyTransaction[TopologyChangeOp, NamespaceDelegation] = SignedTopologyTransaction(
+      TopologyTransaction(
+        NamespaceDelegation(
+          namespace = 122080c014fb...,
+          target = SigningPublicKey(
+            id = 122080c014fb...,
+            format = DER-encoded X.509 SubjectPublicKeyInfo,
+            keySpec = EC-Curve25519,
+            usage = namespace
+          ),
+          restriction = none
+        ),
+        serial = 1,
+        operation = Replace,
+        hash = SHA-256:08ec1cf92e2a...
+      ),
+      signatures = 122080c014fb...
+    )
+```
+
+이 root certificate를 file로 export해야 합니다.
+
+``` none
+@ import com.digitalasset.canton.util.BinaryFileUtil
+```
+
+``` none
+@ rootCert.writeToFile("rootCert.bin")
+```
+
+생성할 Party의 Party ID를 정의합니다.
+
+``` none
+@ val partyId = PartyId.tryCreate("Client", secret.fingerprint)
+    partyId : PartyId = Client::122080c014fb...
+```
+
+Party-to-Participant delegation을 생성하고 export합니다.
+
+``` none
+@ val partyDelegation = client.topology.party_to_participant_mappings.propose(partyId, Seq((hostingNodeId, ParticipantPermission.Submission)))
+    partyDelegation : SignedTopologyTransaction[TopologyChangeOp, PartyToParticipant] = SignedTopologyTransaction(
+      TopologyTransaction(
+        PartyToParticipant(
+          partyId = Client::122080c014fb...,
+          participants = PAR::participant2::1220a4d7463b... -> Submission
+        ),
+        serial = 1,
+        operation = Replace,
+        hash = SHA-256:90755a224fcb...
+      ),
+      signatures = 122080c014fb...,
+      proposal
+    )
+```
+
+``` none
+@ partyDelegation.writeToFile("partyDelegation.bin")
+```
+
+Client가 `rootCert.bin` 및 `partyDelegation.bin` file을 hosting Node와 공유합니다. Hosting Node는 이를 자체 Topology state로 import합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperateIdentityManagement20 />
+
+마지막으로 hosting Node가 자체 Node에서 Party를 enable하는 해당 Topology transaction을 발행해야 합니다.
+
+``` none
+@ hosting.topology.party_to_participant_mappings.propose(partyId, Seq((hosting.id, ParticipantPermission.Submission)))
+    res10: SignedTopologyTransaction[TopologyChangeOp, PartyToParticipant] = SignedTopologyTransaction(
+      TopologyTransaction(
+        PartyToParticipant(
+          partyId = Client::122080c014fb...,
+          participants = PAR::participant2::1220a4d7463b... -> Submission
+        ),
+        serial = 1,
+        operation = Replace,
+        hash = SHA-256:90755a224fcb...
+      ),
+      signatures = 1220a4d7463b...,
+      proposal
+    )
+```
+
+### 여러 Node의 Party
+
+여러 Participant에서 Party를 host하면 permission에 따라 어느 hosting Participant나 Party를 대신하여 act할 수 있으므로 liveness 및 fault tolerance가 높아집니다. 모든 hosting Participant는 Party contract에 대한 동일한 view를 공유하지만 모든 transaction에도 포함됩니다. 이로 인해 overhead가 발생하여 feature scalability가 제한됩니다. 많은 Participant와 data를 공유할 때는 explicit disclosure가 더 적합합니다.
+
+### Node 수동 Initialize
+
+Node를 자동 initialize하지 않고 initialization의 각 단계를 control해야 하는 경우가 있습니다. 예를 들어 설정의 Node가 자체 identity를 control하지 않거나, security를 위해 Node에 identity key를 저장하지 않으려 하거나, Key Management Service(KMS)에 key를 external storage하는 경우처럼 자체 key를 설정하려는 경우입니다.
+
+다음에서는 Node initialize의 기본 단계를 보여줍니다.
+
+#### Key Initialization
+
+다음 단계에서는 Participant 등에 필요한 Canton key를 수동으로 생성하는 방법을 설명합니다.
+
+```scala
+// Create a signing key used to define the node identity.
+val namespaceKey =
+  node.keys.secret
+    .generate_signing_key(
+      name = node.name + s"-${SigningKeyUsage.Namespace.identifier}",
+      SigningKeyUsage.NamespaceOnly,
+    )
+
+// Create a signing key used to authenticate the node toward the Sequencer.
+val sequencerAuthKey =
+  node.keys.secret.generate_signing_key(
+    name = node.name + s"-${SigningKeyUsage.SequencerAuthentication.identifier}",
+    SigningKeyUsage.SequencerAuthenticationOnly,
+  )
+
+// Create a signing key used to sign protocol messages.
+val signingKey =
+  node.keys.secret
+    .generate_signing_key(
+      name = node.name + s"-${SigningKeyUsage.Protocol.identifier}",
+      SigningKeyUsage.ProtocolOnly,
+    )
+
+// Create the encryption key.
+val encryptionKey =
+  node.keys.secret.generate_encryption_key(name = node.name + "-encryption")
+```
+
+<Note>
+일부 use case에서는 새 key를 생성하는 대신 register해야 할 수 있습니다. 예를 들어 미리 생성된 KMS key를 사용하려는 경우입니다. 자세한 내용은 Key Management Service(KMS)를 통한 External Key Storage를 참고하세요.
+</Note>
+
+전체 manual initialization 절차는 아래 [Initializing node identity manually](#initializing-node-identity-manually)를 참고하세요.
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/operate/identity/manual_identity_init.rst" hash="5389d9f1" */}
+
+# Initializing node identity manually
+
+## Manual 및 automatic identity initialization 비교
+
+Participant Node는 기본적으로 자동 initialize되지만 수동으로 initialize할 수도 있습니다. Manual initialization은 다음 경우에 유용합니다.
+
+1.  Participant Node가 자체 identity를 control하지 않는 경우
+2.  Security를 위해 Participant Node에 identity key를 저장하지 않으려는 경우
+3.  Participant Node가 자동 생성한 key에 의존하지 않고 Participant Node key를 명시적으로 설정하려는 경우
+
+Participant Node의 automatic initialization을 비활성화하려면 configuration에 다음을 추가합니다.
+
+``` none
+canton.participants.participant1.init = {
+    generate-topology-transactions-and-keys = false
+    identity.type = manual
+}
+```
+
+위 configuration 설정으로 Participant Node를 시작합니다.
+
+## Key initialization
+
+Participant Node에는 Namespace key와 signing key 외에도 transaction encrypt/decrypt에 사용하는 asymmetric encryption key가 있습니다. 기본적으로 Participant Node는 key를 자동 생성하지만 수동 설정을 선택했다면 다음 command로 Namespace, signing 및 encryption key를 생성합니다.
+
+```scala
+// Create a signing key used to define the node identity.
+val namespaceKey =
+  node.keys.secret
+    .generate_signing_key(
+      name = node.name + s"-${SigningKeyUsage.Namespace.identifier}",
+      SigningKeyUsage.NamespaceOnly,
+    )
+
+// Create a signing key used to authenticate the node toward the Sequencer.
+val sequencerAuthKey =
+  node.keys.secret.generate_signing_key(
+    name = node.name + s"-${SigningKeyUsage.SequencerAuthentication.identifier}",
+    SigningKeyUsage.SequencerAuthenticationOnly,
+  )
+
+// Create a signing key used to sign protocol messages.
+val signingKey =
+  node.keys.secret
+    .generate_signing_key(
+      name = node.name + s"-${SigningKeyUsage.Protocol.identifier}",
+      SigningKeyUsage.ProtocolOnly,
+    )
+
+// Create the encryption key.
+val encryptionKey =
+  node.keys.secret.generate_encryption_key(name = node.name + "-encryption")
+```
+
+Canton key 관리에 Key Management Service(KMS)를 사용하면서 미리 생성된 key set을 사용하려면 대신 `register_kms_signing_key()` 및 `register_kms_encryption_key()` command를 사용합니다. 자세한 내용은 Key Management Service(KMS)를 통한 External Key Storage를 참고하세요.
+
+## Participant Node manual initialization
+
+Key를 생성했거나 KMS 사용 시 KMS-generated key를 register한 후 다음과 같이 Participant Node를 수동 initialize합니다.
+
+```scala
+// Use the fingerprint of this key for the node identity.
+val namespace = Namespace(namespaceKey.id)
+node.topology.init_id_from_uid(
+  UniqueIdentifier.tryCreate("manual-" + node.name, namespace)
+)
+
+// Wait until the node is ready to receive the node identity.
+node.health.wait_for_ready_for_node_topology()
+
+// Create the self-signed root certificate.
+node.topology.namespace_delegations.propose_delegation(
+  namespace,
+  namespaceKey,
+  CanSignAllMappings,
+)
+
+// Assign the new keys to this node.
+node.topology.owner_to_key_mappings.propose(
+  member = node.id.member,
+  keys = NonEmpty(Seq, sequencerAuthKey, signingKey, encryptionKey),
+  signedBy = Seq(namespaceKey.fingerprint, sequencerAuthKey.fingerprint, signingKey.fingerprint),
+)
+```
+
+Participant Node가 initialize될 때까지 기다립니다.
+
+```scala
+node.health.wait_for_initialized()
+```
+
+이제 새 Participant Node를 사용할 수 있습니다.
+
+{/* COPIED_END */}
+
+{/* COPIED_END */}

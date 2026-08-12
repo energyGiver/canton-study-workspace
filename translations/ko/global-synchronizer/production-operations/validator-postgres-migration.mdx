@@ -1,0 +1,332 @@
+---
+title: "PostgreSQL 14에서 Migration"
+description: "PostgreSQL 14 end-of-life 전에 node database를 이동합니다. Kubernetes에서는 externally provisioned PostgreSQL로, Docker Compose에서는 새 major version으로 이동합니다."
+source_id: "SRC-AB0CAB21DA"
+source_path: "global-synchronizer/production-operations/validator-postgres-migration"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "0fcd6bd65843ff91c88282c1af202d539951402e693be9b85f8539bb731aa271"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/validator-postgres-migration.md)을 사용하세요.
+</Warning>
+
+{/* Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved. — SPDX-License-Identifier: Apache-2.0 */}
+
+현재 모든 Splice deployment option이 제공하는 version인 PostgreSQL 14는
+2026-11-12에 end-of-life에 도달합니다.
+
+Kubernetes deployment에서 `splice-postgres` Helm chart는 deprecated되었으며
+해당 날짜 이후에는 지원되지 않습니다. Publish된 chart version은 계속
+사용할 수 있지만 더 이상 update되지 않습니다. Chart를 database로 사용하는
+node는 해당 날짜 전에 Splice Helm chart 외부에서 provision한 PostgreSQL instance로
+이동해야 합니다. Amazon RDS, Google Cloud SQL 또는 Azure Database for PostgreSQL 같은 managed database service를
+권장합니다. 자체 database team이 운영하는 PostgreSQL
+server에도 동일한 절차가 적용됩니다.
+
+Docker Compose deployment 및 LocalNet은 chart를 사용하지 않고
+`postgres:14` image를 직접 실행합니다. 여기서 migration은 bundled
+instance를 지원되는 major version을 실행하는 instance로 교체하는 것을 의미합니다. Image tag만
+변경해서는 작동하지 않습니다. 새 PostgreSQL server는 이전 major version으로
+initialize된 data directory에서 시작되지 않으므로 동일한 dump 및
+restore 절차로 data를 이동해야 합니다. Externally hosted PostgreSQL로 이동할 때도 같은 방식입니다.
+
+이 guide에서는 planned downtime을 사용하는 one-time migration을 설명합니다. 모든 database를
+`pg_dump` 및 `pg_restore`로 chart-managed instance에서 target instance로
+복사한 다음 Splice application이 target에 연결되도록 구성합니다.
+이 절차는 validator 및 SV node 모두에 적용됩니다. SV node는 install한 각 PostgreSQL release,
+일반적으로 `sequencer-pg`, `mediator-pg`, `participant-pg`, `apps-pg`에 대해
+copy와 reconfiguration을 반복하고, validator node는 일반적으로 `postgres`라는 단일 release를 사용합니다.
+
+Deployment에 맞는 section을 사용하세요.
+
+- Splice Helm chart를 사용하는 Kubernetes deployment: [Kubernetes migration 절차](#migration-procedure-on-kubernetes)를 따릅니다.
+- Docker Compose validator deployment: [Docker Compose deployment](#docker-compose-deployments)를 따릅니다.
+- LocalNet development environment: [LocalNet 참고 사항](#localnet)의 이름 교체를 적용하여 [Docker Compose deployment](#docker-compose-deployments)를 따릅니다.
+
+Application은 전체 copy 동안 중지된 상태로 유지됩니다. 이를 통해 모든
+database가 동일하고 consistent한 시점에 capture되므로 [live backup](/global-synchronizer/production-operations/validator-backups#backups-of-postgres-instances)에 적용되는 ordering constraint가 여기에는 적용되지 않습니다.
+
+Downtime은 database size에 따라 늘어나며 participant database가 대부분을 차지합니다.
+작은 node에서는 몇 분 안에 copy가 완료됩니다. 큰 node의 downtime을 estimate하려면
+migration 전에 data copy를 대상으로 dump 및 restore를 실행하세요.
+
+## Target instance 준비
+
+Downtime window 전에 target PostgreSQL을 provision합니다.
+
+- Splice가 지원하는 PostgreSQL version을 사용하며, latency를 낮추도록 가능하면 cluster와 동일한 region 및 zone에 배치합니다.
+- `cnadmin` user를 생성하고 password를 values file에서 참조하는 Kubernetes secret, 기본 validator setup에서는 `postgres-secrets`에 저장합니다. User는 `CREATEDB` privilege가 있어야 합니다. Splice application chart는 application database가 없을 때 이를 생성하는 init container를 실행합니다.
+- `cantonnet`이라는 database를 생성합니다. 비어 있는 상태로 유지되지만 init container가 maintenance database로 연결합니다.
+- Cluster의 pod에서 instance에 접근할 수 있는지 확인합니다.
+- Target의 connection limit을 검토합니다. Chart는 매우 높은 `max_connections` setting으로 실행되지만 managed service는 instance size에서 limit을 도출합니다. 연결되는 application의 combined pool size를 충분히 초과하도록 instance size를 정하세요. 참고로 기본 setting의 validator node는 약 80개의 connection을 유지합니다.
+
+Dump와 restore 모두에 **target** PostgreSQL major version의 client tool을 사용하세요. `pg_dump`는 이전 major version server의 dump를 지원합니다.
+
+## Kubernetes에서 Migration 절차
+
+아래 command는 `validator` namespace와 기본 release 및 host name `postgres`를 사용합니다. Deployment에 맞게 name, namespace 및 credential을 조정하고 SV node의 각 PostgreSQL instance마다 copy를 반복하세요. 다음 모든 command에서 사용할 connection parameter를 설정합니다.
+
+```bash
+export POSTGRES_PASSWORD=...   # current password, as stored in postgres-secrets
+export TARGET_HOST=...         # hostname or IP of the target instance
+export TARGET_PASSWORD=...     # password of the cnadmin user on the target
+```
+
+아래 `kubectl run` command는 plain client pod를 시작합니다. Cluster에서 pod 실행에 toleration 또는 service-mesh annotation이 필요하다면 `--overrides`로 추가하세요.
+
+1. **Database를 열거합니다.** Chart-managed instance의 모든 database를 복사해야 합니다. Database name은 각 application values file의 `persistence.databaseName`으로 설정합니다. 기본값을 사용하는 validator instance에는 `cantonnet`(maintenance), `cantonnet_validator`, `participant_<migration id>`가 있고 SV instance에는 `cantonnet_sequencer`, `cantonnet_mediator`, `cantonnet_sv`, `cantonnet_scan`이 있습니다. Template과 사용하지 않는 기본 `postgres` database만 제외하고 instance와 목록을 cross-check합니다.
+
+   ```bash
+   kubectl run pg-client --rm -i --restart=Never -n validator \
+     --image=postgres:17 --env=PGPASSWORD=${POSTGRES_PASSWORD} -- \
+     psql -h postgres -U cnadmin -d cantonnet -tA \
+     -c "SELECT datname FROM pg_database WHERE NOT datistemplate AND datname <> 'postgres'" \
+     | grep -vE '^$|^pod ' > dbs.txt
+   cat dbs.txt
+   ```
+
+   Output의 모든 name은 values file 중 하나에 대응해야 합니다. `persistence.databaseName`을 override한 deployment는 기본값 대신 해당 name을 표시합니다. 이전 migration ID에서 남은 database도 표시됩니다. 의도적으로 retire하지 않았다면 복사하세요.
+
+2. **Application을 중지합니다.** Namespace의 모든 Splice application replica를 0으로 scale합니다. PostgreSQL chart는 StatefulSet으로 실행되므로 계속 작동합니다.
+
+   ```bash
+   kubectl scale deployment --all --replicas=0 -n validator
+   kubectl get pods -n validator   # wait until only postgres pods remain
+   ```
+
+   Copy가 끝날 때까지 application을 restart하지 마세요. Application 실행 중 생성한 dump는 database 간에 consistent하지 않으며 restore 전에 target에 연결된 application은 빈 database에 write하여 restore를 실패하게 만듭니다.
+
+   `--all`을 사용한 scaling은 monitoring agent처럼 Splice Helm release에 속하지 않는 namespace의 deployment도 중지합니다. 6단계에서는 이를 restore하지 않으므로 이후 직접 scale up하세요.
+
+3. **Target에 database를 생성합니다.** `cantonnet`은 건너뜁니다. 위 설명에 따라 준비한 target에 이미 존재합니다.
+
+   ```bash
+   while read -r db; do
+     [ "$db" = "cantonnet" ] && continue
+     kubectl run pg-client --rm -i --restart=Never -n validator \
+       --image=postgres:17 --env=PGPASSWORD=${TARGET_PASSWORD} -- \
+       psql -h ${TARGET_HOST} -U cnadmin -d cantonnet \
+       -c "CREATE DATABASE \"${db}\"" < /dev/null
+   done < dbs.txt
+   ```
+
+   여기와 다음 단계에서 `< /dev/null`이 중요합니다. 연결된 `kubectl run` pod는 그렇지 않으면 loop input을 consume하여 database를 조용히 건너뜁니다.
+
+4. **각 database를 복사합니다.** Intermediate storage를 피하도록 dump를 target으로 직접 stream합니다.
+
+   ```bash
+   while read -r db; do
+     kubectl run pg-migrate --rm -i --restart=Never -n validator \
+       --image=postgres:17 \
+       --env=SOURCE_PGPASSWORD=${POSTGRES_PASSWORD} \
+       --env=TARGET_PGPASSWORD=${TARGET_PASSWORD} -- \
+       bash -c "PGPASSWORD=\$SOURCE_PGPASSWORD pg_dump -h postgres -U cnadmin -Fc '${db}' \
+         | PGPASSWORD=\$TARGET_PGPASSWORD pg_restore -h ${TARGET_HOST} -U cnadmin \
+             --no-owner --no-privileges --exit-on-error -d '${db}'" < /dev/null \
+       || { echo "copy failed: ${db}"; break; }
+   done < dbs.txt
+   ```
+
+   Target user에게 superuser right가 없을 때 `--no-owner --no-privileges` flag가 필요하며 모든 managed database service가 여기에 해당합니다. 추가 safety artifact로 dump file을 유지하려면 먼저 volume에 `pg_dump` output을 쓰고 여기서 `pg_restore`를 실행합니다. Flag는 동일합니다.
+
+   Restore에는 빈 target database가 필요합니다. ``schema "debug" already exists`` 같은 error는 application이 너무 일찍 시작되었거나 중단된 restore attempt 때문에 target database에 이미 write가 발생했음을 의미합니다. Target에서 해당 database를 drop하고 다시 생성한 다음 copy를 반복합니다.
+
+   ```bash
+   db=<affected database>
+   kubectl run pg-client --rm -i --restart=Never -n validator \
+     --image=postgres:17 --env=PGPASSWORD=${TARGET_PASSWORD} -- \
+     psql -h ${TARGET_HOST} -U cnadmin -d cantonnet \
+     -c "DROP DATABASE \"${db}\" WITH (FORCE)" \
+     -c "CREATE DATABASE \"${db}\""
+   ```
+
+5. **Application이 target을 가리키게 합니다.** Password secret을 target credential로 update합니다.
+
+   ```bash
+   kubectl create secret generic postgres-secrets \
+     --from-literal=postgresPassword=${TARGET_PASSWORD} \
+     -n validator --dry-run=client -o yaml | kubectl apply -f -
+   ```
+
+   SV node는 대신 migrated instance에 속하는 secret, 예를 들어 `apps-pg-secret`, `sequencer-pg-secret`을 update합니다.
+
+   `helm list -n validator`로 application release를 나열합니다. 원래 values file이 없다면 `helm get values \<release\> -n validator`로 각 release의 current values를 복구합니다. 복구된 values에는 host가 `postgres.validator.svc.cluster.local` 같은 cluster-internal FQDN으로 표시될 수 있습니다. Source instance로 resolve되는 host는 모두 아래 변경 대상입니다.
+
+   이전 instance를 참조하는 `persistence` section이 포함된 모든 values file에서 target connection을 설정합니다.
+
+   ```yaml
+   persistence:
+     host: <target host or IP>
+     port: 5432
+   ```
+
+6. **Restart하고 검증합니다.** Update된 values file을 사용하여 original installation과 동일한 순서로 각 application release에 `helm upgrade`를 실행합니다.
+
+   ```
+   helm upgrade participant oci://ghcr.io/digital-asset/decentralized-canton-sync/helm/splice-participant --version ${CHART_VERSION} -f participant-values.yaml -n validator --wait
+   helm upgrade validator oci://ghcr.io/digital-asset/decentralized-canton-sync/helm/splice-validator --version ${CHART_VERSION} -f validator-values.yaml -n validator --wait
+   ```
+
+   `helm list`의 release name과 node에서 이미 실행 중인 chart version을 사용합니다. 이렇게 하면 deployment를 다시 생성하고 scale up합니다. 그런 다음 다음을 검증합니다.
+
+   - 모든 pod가 `Running` state에 도달하고 readiness check가 통과합니다.
+   - Wallet UI에 예상 balance가 표시됩니다.
+   - Transfer 같은 작은 transaction이 성공적으로 완료됩니다.
+   - Application이 target에 연결되며 이전 instance가 idle 상태입니다.
+
+     ```bash
+     kubectl run pg-client --rm -i --restart=Never -n validator \
+       --image=postgres:17 --env=PGPASSWORD=${TARGET_PASSWORD} -- \
+       psql -h ${TARGET_HOST} -U cnadmin -d cantonnet \
+       -c "SHOW server_version" \
+       -c "SELECT datname, count(*) FROM pg_stat_activity WHERE datname <> 'cantonnet' GROUP BY 1"
+     ```
+
+     여기에서 application database에 active connection이 표시되어야 하며 이전 instance에서 동일한 query를 실행하면 connection이 없어야 합니다.
+
+7. **Chart를 decommission합니다.** Node를 검증한 뒤 이전 instance와 storage를 제거합니다.
+
+   ```bash
+   helm uninstall postgres -n validator
+   kubectl get pvc -n validator    # identify the postgres volume claims
+   kubectl delete pvc <postgres-pvc-name> -n validator
+   ```
+
+   이 단계 전까지 source instance는 변경되지 않으므로 rollback하려면 secret 및 values 변경을 되돌리고 `helm upgrade`를 다시 실행하기만 하면 됩니다.
+
+## Docker Compose deployment
+
+Docker Compose deployment는 `.env`의 `SPLICE_POSTGRES_VERSION`으로 pin된 official `postgres` image를 사용하는 `postgres-splice` service로 PostgreSQL을 실행합니다. PostgreSQL server는 이전 major version으로 initialize된 data directory에서 시작되지 않으므로 해당 image의 major version upgrade에도 동일한 dump 및 restore 절차가 필요합니다. 아래 command는 validator node를 PostgreSQL 14에서 17로 in-place upgrade합니다. 대신 externally hosted PostgreSQL에 연결할 때도 `.env`의 `SPLICE_DB_SERVER`, `SPLICE_DB_PORT`, `SPLICE_DB_USER`, `SPLICE_DB_PASSWORD`가 external instance를 가리키도록 하면 동일하게 작동합니다.
+
+Deployment directory, 즉 `compose.yaml`과 `.env`가 있는 directory에서 deployment variable을 shell에 load한 상태로 모든 command를 실행합니다.
+
+```bash
+set -a; source .env; set +a
+```
+
+LocalNet에서는 먼저 아래 [LocalNet 참고 사항](#localnet)을 읽으세요. 이름이 다르며 source할 `.env` file이 없습니다.
+
+1. 모든 service를 중지한 다음 PostgreSQL만 다시 시작합니다. Command를 compose project로 제한하여 host의 관련 없는 container는 건드리지 않습니다.
+
+   ```bash
+   docker compose -p splice-validator stop
+   docker compose -p splice-validator start postgres-splice
+   docker ps --format '{{.Names}}'   # only the postgres container may remain
+   ```
+
+   Application 실행 중 생성한 dump는 database 간에 consistent하지 않습니다. PostgreSQL을 제외한 모든 항목이 중지될 때까지 진행하지 마세요.
+
+2. Target version의 client tool을 사용하여 모든 database를 dump합니다.
+
+   ```bash
+   rm -rf dumps && mkdir dumps   # start from an empty dump directory
+   docker exec splice-validator-postgres-splice-1 \
+     psql -U cnadmin -d postgres -tA \
+     -c "SELECT datname FROM pg_database WHERE NOT datistemplate AND datname <> 'postgres'" > dumps/dblist.txt
+   cat dumps/dblist.txt
+   while read -r db; do
+     docker run --rm --network splice-validator_splice_validator -e PGPASSWORD=${SPLICE_DB_PASSWORD} \
+       -v "$PWD/dumps":/dumps postgres:17 \
+       pg_dump -h postgres-splice -U cnadmin -Fc -f "/dumps/${db}.dump" "${db}"
+   done < dumps/dblist.txt
+   ```
+
+3. PostgreSQL container를 중지하고 이전 data volume을 별도로 보관합니다. Kubernetes 절차가 7단계까지 이전 instance를 install 상태로 두는 것처럼 migration을 검증할 때까지 pre-migration data directory를 유지합니다.
+
+   ```bash
+   docker stop splice-validator-postgres-splice-1
+   docker rm splice-validator-postgres-splice-1
+   docker volume create splice-validator_postgres-splice-pg14
+   docker run --rm \
+     -v splice-validator_postgres-splice:/from:ro \
+     -v splice-validator_postgres-splice-pg14:/to \
+     alpine sh -c 'cp -a /from/. /to/'
+   docker volume rm splice-validator_postgres-splice
+   ```
+
+4. `.env`에서 `SPLICE_POSTGRES_VERSION=17`을 설정하고 PostgreSQL service만 시작합니다. Shell에서 override하지 말고 file의 값을 편집하세요. 나중에 새 shell에서 restart하면 이전 version으로 fallback하며 server는 migrated data directory에서 시작되지 않습니다. 편집 후 file을 다시 load합니다(`set -a; source .env; set +a`). 이전에 source한 값은 여전히 shell에 export되어 file보다 우선합니다. 계속하기 전에 `echo $SPLICE_POSTGRES_VERSION`으로 확인하고 아래 version check를 gate로 사용하세요. 새 version을 출력할 때만 진행합니다.
+
+   ```bash
+   PARTICIPANT_DB_NAME=$(grep -m1 '^participant' dumps/dblist.txt) \
+     docker compose -f compose.yaml up -d postgres-splice
+   docker ps --filter name=postgres          # wait for "(healthy)"
+   docker exec splice-validator-postgres-splice-1 postgres --version
+   ```
+
+   `PARTICIPANT_DB_NAME`은 일반적으로 `start.sh`가 inject하며 여기에서 제공해야 합니다. 그렇지 않으면 empty `CREATE DATABASE` statement에서 entrypoint가 실패하고 container가 loop로 restart됩니다. 설정되지 않은 다른 variable에 관한 warning은 무시할 수 있습니다. 시작하지 않은 service에 속합니다.
+
+   Container가 잘못된 version으로 또는 `PARTICIPANT_DB_NAME` 없이 시작되었다면 fresh volume이 이미 initialize되었으므로 다시 시도하기 전에 다시 제거해야 합니다(``docker rm -f splice-validator-postgres-splice-1 && docker volume rm splice-validator_postgres-splice``). 3단계에서 별도로 보관한 volume은 영향을 받지 않습니다.
+
+   Entrypoint는 fresh data directory를 initialize하고 environment의 `CREATE_DATABASE_*` variable에 대해 empty database를 생성합니다. Restore하기 전에 목록에 있으며 아직 존재하지 않는 모든 database를 생성합니다.
+
+   ```bash
+   while read -r db; do
+     docker exec splice-validator-postgres-splice-1 psql -U cnadmin -d postgres \
+       -c "CREATE DATABASE \"${db}\"" 2>/dev/null || true   # existing databases are skipped
+   done < dumps/dblist.txt
+   ```
+
+5. 모든 dump를 restore합니다.
+
+   ```bash
+   while read -r db; do
+     docker run --rm --network splice-validator_splice_validator -e PGPASSWORD=${SPLICE_DB_PASSWORD} \
+       -v "$PWD/dumps":/dumps:ro postgres:17 \
+       pg_restore -h postgres-splice -U cnadmin \
+         --no-owner --no-privileges --exit-on-error -d "${db}" "/dumps/${db}.dump"
+   done < dumps/dblist.txt
+   ```
+
+   Kubernetes 절차 4단계와 마찬가지로 restore에는 빈 target database가 필요합니다. 너무 일찍 application을 시작했거나 restore가 중단되어 database에 write가 발생했다면 drop하고 다시 생성한 다음 restore합니다. `could not translate host name` error는 4단계의 PostgreSQL service가 실행 중이지 않음을 의미합니다.
+
+6. 평소처럼 deployment를 시작한 다음 Kubernetes 절차 6단계와 같이 검증합니다. 검증 후 3단계에서 별도로 보관한 volume과 dump file을 삭제합니다.
+
+이전 volume을 삭제하기 전에 rollback하려면 새 volume 위에 이전 volume을 다시 복사하고, 즉 3단계를 반대로 수행하고 `.env`의 `SPLICE_POSTGRES_VERSION`을 되돌린 다음 평소처럼 deployment를 시작합니다. 정기 [backup](/global-synchronizer/production-operations/validator-backups)은 migration window 이후 모든 상황을 위한 safety net으로 유지됩니다.
+
+##### LocalNet
+
+LocalNet development environment는 다음 name 교체를 적용하여 동일한 단계를 따릅니다.
+
+| \ | Validator deployment | LocalNet |
+| --- | --- | --- |
+| Compose project (`-p`) | `splice-validator` | `localnet` |
+| PostgreSQL container | `splice-validator-postgres-splice-1` | `postgres` |
+| PostgreSQL service | `postgres-splice` | `postgres` |
+| Docker network | `splice-validator_splice_validator` | `localnet` |
+| Data volume | `splice-validator_postgres-splice` | `localnet_postgres` |
+| Database password | `.env`의 `SPLICE_DB_PASSWORD` | `supersafe` (`DB_PASSWORD`) |
+| PostgreSQL version setting | `.env`의 `SPLICE_POSTGRES_VERSION` | `POSTGRES_VERSION` env var |
+
+LocalNet에는 `.env` file이 없습니다. 위 command가 그대로 작동하도록 file을 source하는 대신 password를 한 번 export합니다.
+
+```bash
+export SPLICE_DB_PASSWORD=supersafe
+```
+
+절차에서 `-f compose.yaml`을 사용하여 `docker compose`를 호출하는 모든 곳에서는 대신 LocalNet을 시작할 때 사용하는 전체 command를 사용하세요. Environment file은 `PARTY_HINT` 같은 필수 variable을 제공하며 `POSTGRES_VERSION`은 shell에서 가져옵니다.
+
+```bash
+export POSTGRES_VERSION=17
+docker compose --env-file $LOCALNET_DIR/compose.env \
+               --env-file $LOCALNET_DIR/env/common.env \
+               -f $LOCALNET_DIR/compose.yaml \
+               -f $LOCALNET_DIR/resource-constraints.yaml \
+               --profile sv --profile app-provider --profile app-user \
+               up -d postgres
+```
+
+LocalNet data는 disposable하므로 `down -v`로 environment를 철거하고 새 version에서 fresh start하는 것이 일반적으로 더 간단합니다. Verification을 포함한 LocalNet migration의 executable end-to-end version은 Splice repository의 `scripts/test-postgres-migration.py`에서 유지됩니다.
+
+## Managed database service 참고 사항
+
+- Managed service는 superuser access를 부여하지 않습니다. 따라서 `pg_restore`의 ``--no-owner --no-privileges`` flag는 필수이며 restored object를 소유하도록 application과 동일한 user(`cnadmin`)로 restore를 실행해야 합니다.
+- Splice application schema는 각 database 내부의 application별 schema, 예를 들어 participant database의 `participant` 및 `debug`에 있습니다. `pg_dump`가 이를 자동으로 포함하므로 schema별 flag가 필요하지 않습니다.
+- Amazon RDS: `cnadmin` master user로 instance를 생성합니다. `--exit-on-error`를 사용한 restore는 permission 문제를 즉시 표시합니다.
+- Google Cloud SQL: Cloud SQL API 또는 console을 통해 `cnadmin`을 생성하여 `cloudsqlsuperuser` role을 부여하고 private IP 또는 Cloud SQL Auth Proxy sidecar를 통해 연결합니다.
+- 첫 restart 전에 instance의 `max_connections`가 모든 application을 수용하는지 확인합니다. Connection exhaustion은 migration 후 application readiness check failure로 나타납니다.
+
+{/* COPIED_END */}

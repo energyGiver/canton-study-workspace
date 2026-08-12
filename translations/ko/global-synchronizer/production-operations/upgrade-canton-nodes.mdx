@@ -1,0 +1,333 @@
+---
+title: "Canton Node Upgrade"
+description: "Canton participant 및 synchronizer binary를 upgrade하고 Canton protocol version을 변경합니다."
+source_id: "SRC-3BD2EAFA82"
+source_path: "global-synchronizer/production-operations/upgrade-canton-nodes"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "b342738f8bdc7331883d276a55c465ad3a1831ff737df1951f081bf93f33f8fd"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/upgrade/index-1.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex2 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/upgrade/index-2.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex3 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/upgrade/index-3.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex7 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/upgrade/index-7.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex8 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/upgrade/index-8.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex9 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/upgrade/index-9.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex10 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/upgrade/index-10.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex12 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/upgrade/index-12.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex15 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/upgrade/index-15.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex17 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/upgrade/index-17.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex18 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/upgrade/index-18.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex19 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/upgrade/index-19.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex13 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/upgrade/index-13.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/upgrade-canton-nodes.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/upgrade/index.rst" hash="8162086c" */}
+
+# 새 Release로 Upgrade
+
+이 section에서는 Canton participant node 및 synchronizer를 upgrade하는 process를 설명합니다. Daml application upgrade는 다른 곳에서 다룹니다.
+
+Versioning guide에서 자세히 설명한 것처럼 새 feature, improvement 및 fix가 정기적으로 release됩니다. 이러한 변경의 이점을 얻으려면 Canton 기반 system을 upgrade해야 합니다.
+
+System upgrade 시 해결해야 할 두 가지 핵심 측면이 있습니다.
+
+- Node 실행에 사용되는 Canton binary upgrade
+- Node가 서로 상호작용하는 방식을 정의하는 protocol version upgrade
+
+Canton은 단일 operator가 모든 node를 제어하지 않는 distributed system입니다. 따라서 network 내 synchronized action을 최소한으로 요구하면서 node를 개별적으로 upgrade하는 안전한 upgrade mechanism을 지원해야 합니다.
+
+Canton binary는 여러 protocol version을 지원하며 새 protocol version은 새 binary와 backward-compatible한 방식으로 도입됩니다. Version table을 참조하세요. 따라서 distributed Canton network에서 사용하는 protocol의 upgrade는 모든 binary를 개별적으로 upgrade한 다음 node 간 사용 protocol version을 원하는 version으로 변경하여 수행합니다.
+
+다음은 일반적인 guide입니다. 특정 version으로 upgrade하기 전에 각 version의 개별 note를 확인하세요.
+
+이 guide에서는 upgrade가 minor 또는 patch release라고 가정합니다. Major release upgrade는 다를 수 있으며 필요한 경우 별도로 설명합니다.
+
+<Warning>
+Upgrade에는 주의와 준비가 필요합니다.
+- **모든 upgrade 전에 data를 backup하세요.**
+
+  Backup 순서가 중요합니다.
+
+- **Production system을 upgrade하기 전에 upgrade를 철저히 테스트하세요.**
+
+- **Migration을 시작한 뒤에는 중단하거나 rollback할 수 없습니다.**
+
+  문제가 발생하면 backup을 사용하여 이전 version을 restore해야 합니다.
+</Warning>
+
+## Canton Binary Upgrade
+
+Canton node는 하나 이상의 process로 구성되며 각 process는 다음으로 정의됩니다.
+
+- Versioned Canton JAR를 실행하는 Java Virtual Machine application
+- 실행되는 node를 설명하는 configuration file 집합
+- Startup 시 실행되며 `--boostrap`을 통해 전달되는 선택적 bootstrap script
+- Node data를 보유하는 특정 schema의 database
+
+Node를 upgrade하려면 다음을 수행합니다.
+
+1.  Canton JAR가 포함된 Canton binary를 교체합니다.
+2.  새 process에서 configuration file을 여전히 parse할 수 있는지 테스트합니다.
+3.  사용 중인 bootstrap script가 여전히 작동하는지 테스트합니다.
+4.  Database schema를 upgrade합니다.
+
+일반적으로 configuration file의 모든 변경은 backward-compatible해야 하므로 upgrade process의 영향을 받지 않습니다. 드물게 upgrade process를 지원하기 위해 configuration file을 약간 변경해야 할 수 있습니다. 때로는 중요한 bug를 수정하기 위해 API에 사소한 breaking change가 필요할 수 있습니다. Canton script에도 동일하게 적용됩니다.
+
+Database schema는 versioning되며 Flyway를 사용하여 관리됩니다. Canton은 해당 library를 사용하여 변경을 detect하고 적용합니다. 이 배경을 이해하면 문제 troubleshooting에 도움이 될 수 있습니다.
+
+### 준비
+
+먼저 upgrade할 새 Canton binary를 download하여 upgrade process를 테스트할 test system에 저장하세요.
+
+그런 다음 node database의 최근 backup을 가져와 편리한 database server에 배포하여 **production system에 영향을 주지 않고 upgrade process를 테스트할 수 있도록** 합니다. Canton은 upgrade process를 광범위하게 테스트하지만 예상하지 못한 방식으로 system을 사용하고 있을 가능성을 배제할 수 없습니다. Testing은 번거롭지만 production system을 손상시키는 것보다 낫습니다.
+
+Participant를 upgrade한다면 participant upgrade가 작동하는지 테스트한 뒤 철거할 수 있는 in-memory synchronizer도 사용하는 것이 좋습니다. Participant configuration에 간단한 synchronizer definition을 configuration mixin으로 추가할 수 있습니다.
+
+일반적으로 high-availability setup을 실행 중이라면 upgrade를 수행하기 전에 모든 node를 offline으로 전환하세요. Update에 database migration이 필요하다면 release note를 확인하고, 이전 binary와 새 binary가 서로 다른 database layout을 예상할 수 있으므로 replicated setup에서 함께 실행하지 마세요.
+
+동일한 database에 접근하는 node binary를 동시에 upgrade하는 한 microservice 기반 synchronizer의 binary는 어떤 순서로든 upgrade할 수 있습니다. 예를 들어 한 주말에는 replicated mediator node의 binary를, 다른 주말에는 active-active database sequencer를 upgrade할 수 있습니다.
+
+### Database Backup
+
+Database와 binary를 upgrade하기 전에 문제가 발생했을 때 이전 version으로 rollback할 수 있도록 data를 backup했는지 확인하세요. Clone하여 data를 backup할 수 있습니다. PostgreSQL command는 다음과 같습니다.
+
+```sql
+CREATE DATABASE newdb WITH TEMPLATE originaldb OWNER dbuser;
+```
+
+이 작업을 수행할 때 위 command의 database name과 user name을 setup에 맞게 변경해야 합니다.
+
+### Configuration 테스트
+
+Configuration이 여전히 작동하는지 테스트합니다.
+
+```bash
+./bin/canton -v -c storage-for-upgrade-testing.conf -c mynode.conf --manual-start
+```
+
+여기서 `storage-for-upgrade-testing.conf` 및 `mynode.conf` file을 상황에 맞게 조정해야 합니다.
+
+Canton이 시작되고 console command prompt가 표시되면 configuration이 성공적으로 parse된 것입니다.
+
+먼저 database를 migrate해야 하므로 command line option `--manual-start`는 node가 자동으로 startup되는 것을 방지합니다.
+
+### Database Migration
+
+Canton은 database migration을 자동으로 수행하지 않습니다. Migration은 강제로 실행해야 합니다. Database migration이 필요한 node를 시작하면 다음 Flyway error가 표시됩니다.
+
+``` none
+@ participant.start()
+    ERROR com.digitalasset.canton.integration.EnvironmentDefinition$$anon$3:UpgradingDocumentationIntegrationTest - failed to initialize participant: There are 5 pending migrations to get to database schema version 4.0. Currently on version 1.1. Please run `participant.db.migrate` to apply pending migrations
+      Command LocalParticipantReference.start invoked from cmd10000002.sc:1
+```
+
+Database schema definition은 versioning되고 hash됩니다. 이 error는 현재 database schema version과 적용해야 할 migration 수를 알려 줍니다. 이 check는 startup 시 실행되므로 node가 시작되면 migration이 성공한 것입니다.
+
+이제 다음을 사용하여 새 schema로 migration을 강제할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex1 />
+
+Migration을 자동으로 적용하도록 구성할 수도 있습니다. Node가 database에 접근할 때 사용하는 user account에 database schema 변경 권한이 있는지 확인해야 합니다. Migration에 걸리는 시간은 binary version(migration note 참조), database size 및 database server performance에 따라 달라집니다.
+
+Node를 시작하기 전에 database를 정리하는 것이 좋습니다. PostgreSQL에서 다음을 실행합니다.
+
+```sql
+VACUUM FULL;
+```
+
+그렇지 않으면 database 자체 cleanup으로 인해 restart에 오랜 시간이 걸릴 수 있습니다.
+
+그런 다음 node를 성공적으로 시작할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex2 />
+
+여기서는 participant node를 예로 사용하지만 다른 모든 node type에서도 절차는 동일합니다.
+
+### Upgrade 테스트
+
+Node가 실행되면 ping을 실행하여 테스트할 수 있습니다. Participant node upgrade를 테스트하는 경우 test synchronizer에 연결할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex3 />
+
+Production instance의 실제 upgrade를 수행했다면 ping을 실행하기 전에 current synchronizer에 다시 연결합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex13 />
+
+다음을 사용하여 synchronizer가 실행 중인지 확인할 수 있습니다.
+
+``` none
+@ participant.synchronizers.list_connected()
+    res5: Seq[ListConnectedSynchronizersResult] = Vector(
+      ListConnectedSynchronizersResult(
+        synchronizerAlias = Synchronizer 'testsynchronizer',
+        physicalSynchronizerId = testdomain::1220f136debd...::34-0,
+        healthy = true
+      )
+    )
+```
+
+마지막으로 participant를 ping하여 system이 operational한지 확인할 수 있습니다.
+
+``` none
+@ participant.health.ping(participant)
+    res6: Duration = 1404 milliseconds
+```
+
+Ping command는 admin party 사이에 두 contract를 생성한 다음 exercise하고 archive하여 ledger functionality의 end-to-end test를 제공합니다.
+
+### Version별 참고 사항
+
+현재는 없습니다.
+
+## Canton Protocol Version 변경
+
+Canton protocol은 node가 서로 통신하는 데 사용하는 semantics 및 wire format으로 정의됩니다. Transaction을 처리하려면 모든 node가 동일한 protocol을 이해하고 사용할 수 있어야 합니다.
+
+따라서 모든 node가 해당 version을 실행할 수 있는 binary로 upgrade된 후에만 새 protocol을 도입할 수 있습니다.
+
+### Synchronizer를 새 Protocol Version으로 Upgrade
+
+Synchronizer는 protocol version에 연결됩니다. 이 protocol version은 synchronizer initialization 시 구성되며 이후 변경할 수 없습니다. 따라서 **synchronizer의 protocol version은 upgrade할 수 없습니다**. 대신 이전 synchronizer process와 나란히 새 synchronizer를 배포합니다.
+
+이는 sequencer, mediator 또는 topology manager 등 모든 synchronizer service에 적용됩니다.
+
+현재 upgrade 중에는 synchronizer ID를 보존할 수 없습니다. Participant는 synchronizer connection을 synchronizer ID와 연결하며 그 association이 unique해야 하므로 새 synchronizer는 다른 synchronizer ID를 가져야 합니다.
+
+따라서 protocol upgrade process는 다음과 같습니다.
+
+- 이전 synchronizer 옆에 새 synchronizer를 배포합니다. 새 synchronizer가 원하는 protocol version을 사용하는지 확인하세요. 또한 synchronizer service, 즉 mediator, sequencer node 및 topology manager마다 서로 다른 database 또는 최소한 동일한 database의 서로 다른 schema, channel name, smart contract address 등을 사용해야 합니다. 새 synchronizer는 완전히 분리되어야 하지만 서로 다른 sequencer contract address 또는 Fabric channel을 사용한다면 DLT backend를 재사용할 수 있습니다.
+- Hard synchronizer migration을 사용하여 participant가 새 synchronizer를 사용하도록 개별적으로 지시합니다.
+
+참고: 이전 synchronizer와 새 synchronizer에 서로 다른 schema를 사용하는 동일한 database를 사용하려면 JDBC URL 또는 `storage.config.properties`의 parameter로 `currentSchema`를 설정합니다.
+
+### Hard Synchronizer Connection Upgrade
+
+각 migration command를 사용하여 hard synchronizer connection upgrade를 수행할 수 있습니다. 적절한 backup이 준비되어 있고 production system에 적용하기 전에 이 절차를 테스트했는지 다시 확인하세요. 특수 config switch를 사용하여 이러한 command를 활성화해야 합니다.
+
+``` text
+canton.features.enable-repair-commands=yes
+```
+
+여러 participant가 모두 `oldsynchronizer`라는 synchronizer에 연결되어 있다고 가정하고 pending transaction이 없는지 확인합니다. Application을 제어하거나 모든 participant에서 resource limit을 0으로 설정할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex7 />
+
+이렇게 하면 새 command를 거부하고 pending command의 처리를 완료합니다. Participant node가 idle 상태인지 확인한 뒤 이전 synchronizer에서 participant node의 연결을 끊습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex8 />
+
+Active connection list를 확인하여 synchronizer 연결이 끊겼는지 테스트합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex9 />
+
+계속 진행하기 전에 database를 backup하기 좋은 시점입니다.
+
+```sql
+CREATE DATABASE newdb WITH TEMPLATE originaldb OWNER dbuser;
+```
+
+다음으로 migration step을 실행합니다. 이를 위해 `repair.migrate_synchronizer` command를 실행해야 합니다. Command는 source synchronizer alias와 새 synchronizer를 설명하는 synchronizer connection configuration이라는 두 input argument를 받습니다.
+
+Synchronizer connection config를 build하려면 다음을 입력합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex10 />
+
+여기서 URL은 올바른 synchronizer를 가리켜야 합니다. `newsynchronizer`라는 target synchronizer를 사용하는 단일 Canton process에서 upgrade process를 local로 테스트하는 경우, 이 example처럼 다음을 사용하여 connection detail을 가져올 수 있습니다.
+
+``` none
+@ val config = SynchronizerConnectionConfig("newsynchronizer", SequencerConnections.single(sequencer3.sequencerConnection))
+    config : SynchronizerConnectionConfig = SynchronizerConnectionConfig(
+      synchronizer = Synchronizer 'newsynchronizer',
+      sequencerConnections = SequencerConnections(
+        connections = Sequencer 'DefaultSequencer' -> GrpcSequencerConnection(
+          sequencerAlias = Sequencer 'DefaultSequencer',
+    ..
+```
+
+이제 이 configuration object를 사용하여 hard synchronizer connection migration을 trigger할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex12 />
+
+이 command는 새 synchronizer를 등록하고 `oldsynchronizer`에 연결된 contract를 새 synchronizer에 다시 연결합니다.
+
+모든 participant가 migration을 수행한 뒤 synchronizer에 다시 연결할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex13 />
+
+이제 새 synchronizer가 연결되어 있어야 합니다.
+
+``` none
+@ participant.synchronizers.list_connected()
+    res8: Seq[ListConnectedSynchronizersResult] = Vector(
+      ListConnectedSynchronizersResult(
+        synchronizerAlias = Synchronizer 'newsynchronizer',
+        physicalSynchronizerId = newdomain::1220eecef286...::34-0,
+        healthy = true
+      )
+    )
+```
+
+이전에 resource limit을 0으로 설정했으므로 다시 reset해야 합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex15 />
+
+마지막으로 새 synchronizer에서 ping을 실행하여 participant가 transaction을 처리할 수 있는지 테스트합니다.
+
+``` none
+@ participant.health.ping(participant)
+    res10: Duration = 1256 milliseconds
+```
+
+<Note>
+현재 hard migration은 production system을 migrate하는 유일하게 지원되는 방법입니다. Unique contract key가 단일 synchronizer로 제한되기 때문입니다.
+</Note>
+
+Synchronizer migration command는 주로 upgrade에 사용되지만 손상된 synchronizer와 연결된 contract를 recovery하는 데도 사용할 수 있습니다. Synchronizer migration은 앞뒤 방향으로 수행할 수 있으므로 문제가 발생하면 rollback할 수 있습니다.
+
+Upgrade 후 participant는 첫 commitment exchange 중 서로 다른 시점에 migration을 수행했을 수 있어 commitment mismatch를 보고할 수 있습니다. 모든 participant가 다시 실행되어 연결되면 warning은 결국 중지되어야 합니다.
+
+### 예상 Performance
+
+Performance 측면에서 contract를 migrate할 때 respective event log에 직접 write합니다. 즉 source synchronizer에는 transfer-out을 insert하고 target synchronizer에는 transfer-in과 contract를 write합니다. 이 information을 write하는 것은 어떤 transaction processing보다도 상당히 빠릅니다. 단일 CPU/16-core test server에서 초당 수천 건의 migration을 처리합니다. 하지만 dataset이 매우 크면 process에 여전히 상당한 시간이 걸릴 수 있습니다. 따라서 upgrade test 중 migration 소요 시간을 측정하여 migration에 필요한 downtime을 파악하는 것이 좋습니다.
+
+또한 reconnect할 때 participant가 새 commitment set을 recompute해야 합니다. Contract가 많으면 시간이 걸릴 수 있습니다.
+
+### Soft Synchronizer Connection Upgrade
+
+> Soft synchronizer connection upgrade는 현재 alpha 기능으로만 지원됩니다.
+
+Hard synchronizer connection upgrade에는 network의 모든 participant 간 coordination이 필요합니다. Soft synchronizer connection upgrade는 operational 측면에서 훨씬 간단하며 multi-synchronizer support를 활용할 수 있습니다. 현재는 pre-alpha 기능으로만 존재합니다. Non-unique contract key를 끄면 participant가 여러 synchronizer에 연결하고 synchronizer 간 contract를 transfer할 수 있습니다. 이를 통해 `repair.migrate_synchronizer` step을 사용하지 않아도 됩니다.
+
+이전과 동일하게 participant가 이전 synchronizer에 연결된 setup을 가정하면 새 synchronizer에 연결하기만 하면 됩니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex17 />
+
+새 synchronizer connection의 `priority` flag를 변경하여 이전 connection보다 우선하게 합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex18 />
+
+다음을 사용하여 synchronizer priority setting을 확인할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosUpgradeIndex19 />
+
+기존 contract는 새 synchronizer로 자동 이동하지 않습니다. Synchronizer router는 transfer 수와 priority를 최소화하여 synchronizer를 선택합니다. 따라서 추가 action이 없으면 대부분의 contract는 이전 synchronizer에 남습니다. 그러나 다음을 사용하면
+
+<div className="todo">
+
+\#22917: 깨진 ref ref:transfer command 수정
+
+</div>
+
+contract를 새 synchronizer로 하나씩 이동하여 결국 모든 contract를 새 synchronizer와 연결할 수 있으며 이전 synchronizer를 decommission하고 끌 수 있습니다.
+
+Soft upgrade path는 모든 participant에서 synchronizer connection의 hard migration을 조율할 필요가 없는 원활한 user experience를 제공합니다. 대신 participant는 준비되었을 때 개별적으로 upgrade하며 필요한 경우 process를 reverse할 수 있습니다.
+
+
+{/* COPIED_END */}

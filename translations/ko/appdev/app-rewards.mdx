@@ -1,6 +1,6 @@
 ---
 title: "App Rewards"
-description: "애플리케이션이 featured app 활동과 reward coupon을 통해 Canton Network에서 Canton Coin 보상을 받는 방법"
+description: "featured app 활동과 reward coupon을 통해 application이 Canton Network에서 Canton Coin 보상을 받는 방식"
 source_id: "SRC-EBE66360C1"
 source_path: "appdev/app-rewards"
 source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
@@ -14,59 +14,57 @@ reviewed_by: null
   이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/app-rewards.md)을 사용하세요.
 </Warning>
 
-Canton Network는 network activity와 연계된 보상 시스템을 통해 application provider에게 인센티브를 제공합니다. network에서 가치를 창출하는 application은 Canton Coin (CC)을 보상으로 받을 수 있습니다.
+Canton Network는 network activity와 연계된 보상 체계를 통해 application provider에게 인센티브를 제공합니다. network에서 가치를 창출하는 application은 Canton Coin(CC)을 보상으로 받을 수 있습니다.
 
-network는 [CIP-0104](https://github.com/global-synchronizer-foundation/cips/blob/main/cip-0104/cip-0104.md)에 따라 on-ledger activity marker에서 [traffic 기반 app rewards](/global-synchronizer/splice-fundamentals/traffic-based-app-rewards)로 전환하고 있습니다. 두 메커니즘 모두 application이 [featured](#getting-featured) 상태여야 합니다.
+network는 ledger에 기록되는 activity marker 방식에서 [traffic 기반 app rewards](/global-synchronizer/splice-fundamentals/traffic-based-app-rewards) 방식으로 전환하고 있으며, 이는 [CIP-0104](https://github.com/global-synchronizer-foundation/cips/blob/main/cip-0104/cip-0104.md)에 정의되어 있습니다. 두 방식 모두 application이 [featured 상태](#getting-featured)여야 합니다.
 
-## Traffic 기반 App Rewards (CIP-0104)
+## Traffic-Based App Rewards (CIP-0104)
 
-traffic 기반 app rewards가 활성화되면 featured app provider는 실제 network traffic에 따라 자동으로 보상을 받으며, application code를 변경할 필요가 없습니다. traffic 기반 보상이 활성화된 후에는 app provider가 traffic 비용을 절약하기 위해 `FeaturedAppActivityMarker` contract를 생성하는 호출을 제거할 수 있습니다.
+traffic 기반 app rewards가 활성화되면 featured app provider는 실제 network traffic을 기준으로 자동으로 보상을 받습니다. application code를 변경할 필요는 없습니다. traffic 기반 보상이 활성화된 뒤에는 app provider가 traffic 비용을 줄이기 위해 `FeaturedAppActivityMarker` contract를 생성하는 호출을 제거할 수 있습니다.
 
 traffic 기반 보상은 minting 전에 beneficiary와 공유할 수 있습니다. 자세한 내용은 [Reward Sharing](/global-synchronizer/splice-fundamentals/reward-sharing)을 참고하세요.
 
-traffic 기반 app rewards 계산 방법은 [Traffic-Based App Rewards](/global-synchronizer/splice-fundamentals/traffic-based-app-rewards)를 참고하세요.
+traffic 기반 app rewards의 계산 방식은 [Traffic-Based App Rewards](/global-synchronizer/splice-fundamentals/traffic-based-app-rewards)를 참고하세요.
 
-<a id="getting-featured"></a>
-
-## Featured App으로 등록하기
+## Getting Featured
 
 traffic 기반 보상과 activity marker 중 어느 방식을 사용하든 **featured application**만 app rewards를 받을 수 있습니다. [CIP-0078](https://github.com/canton-foundation/cips/blob/main/cip-0078/cip-0078.md)을 참고하세요.
 
 application을 featured 상태로 등록하려면 다음 절차를 따릅니다.
 
-1. Canton Network (DevNet, TestNet 또는 MainNet)에 application을 배포합니다.
+1. Canton Network(DevNet, TestNet 또는 MainNet)에 application을 배포합니다.
 2. [application process](https://sync.global/)를 통해 Canton Foundation에 요청을 제출합니다.
 3. tokenomics committee가 제출 내용을 검토하고 application이 network에 기여하는 정도를 평가합니다.
 4. 승인을 받으면 SV governance vote를 통해 application이 featured 상태로 등록됩니다.
 
-## DevNet에서 Self-Featuring 사용하기
+## Self-Featuring on DevNet
 
 DevNet에서는 테스트 목적으로 application을 self-featured 상태로 등록할 수 있습니다. 이를 통해 TestNet 또는 MainNet의 정식 featuring process를 진행하기 전에 보상 획득 logic이 올바르게 작동하는지 확인할 수 있습니다.
 
-DevNet의 self-featuring에는 CF 승인이 필요하지 않습니다. 이 기능은 보상 흐름의 개발 및 integration test만을 위한 것입니다.
+DevNet의 self-featuring에는 CF 승인이 필요하지 않습니다. 이는 reward flow의 개발 및 integration testing만을 위한 기능입니다.
 
-## Activity Marker (Legacy)
+## Activity Markers (Legacy)
 
-CIP-0104 이전에는 application rewards에 on-ledger `FeaturedAppActivityMarker` contract를 사용했습니다. 이 메커니즘은 전환 기간에도 계속 활성화됩니다.
+CIP-0104 이전에는 application rewards가 ledger에 기록되는 `FeaturedAppActivityMarker` contract를 사용했습니다. 이 방식은 전환 기간 동안 계속 활성화됩니다.
 
 흐름은 다음과 같습니다.
 
-1. application이 Global Synchronizer에서 Transaction을 생성합니다. 예를 들어 user가 choice를 exercise하거나 contract를 생성합니다.
+1. application이 Global Synchronizer에서 transaction을 생성합니다. 예를 들어 사용자가 choice를 exercise하거나 contract를 생성합니다.
 2. app automation이 해당 activity를 참조하는 `FeaturedAppActivityMarker`를 생성합니다.
 3. SV automation이 marker를 검증하고 `AppRewardCoupon`을 생성합니다.
 4. reward round가 끝나면 coupon이 CC minting 계산에 포함됩니다.
-5. application provider Party는 activity에 비례해 CC를 받습니다.
+5. application provider party가 activity에 비례한 CC를 받습니다.
 
 ## Minting Delegation
 
-application이 External Party를 대신해 activity를 생성하는 경우, 예를 들어 end user가 platform을 통해 상호 작용하는 경우에는 minting 권한을 위임할 수 있습니다. Minting delegation을 사용하면 Validator가 다른 Party를 대신해 보상을 mint할 수 있습니다. 이는 application에서 Transaction을 제출하는 Validator와 보상을 받아야 하는 Party가 다를 때 유용합니다.
+application이 external party를 대신해 activity를 생성한다면, 예를 들어 end user가 platform을 통해 상호작용한다면 minting 권한을 위임할 수 있습니다. minting delegation을 사용하면 validator가 다른 party를 대신해 보상을 mint할 수 있습니다. 이는 application transaction을 제출하는 validator와 보상을 받아야 하는 party가 서로 다를 때 유용합니다.
 
-## 수수료 구조
+## Fee Structure
 
-Canton Network는 Party 간 CC transfer에 수수료를 부과하지 않습니다. network 사용과 관련된 유일한 비용은 traffic, 즉 제출하는 Validator가 지불하는 Transaction 수수료입니다. Application rewards는 traffic 비용과 별개로, network activity를 생성한 app provider에게 보상하는 독립적인 메커니즘입니다.
+Canton Network는 party 사이의 CC transfer에 수수료를 부과하지 않습니다. network 사용과 관련된 유일한 비용은 transaction을 제출하는 validator가 내는 transaction fee인 traffic입니다. Application rewards는 network activity를 생성한 app provider를 보상하는 별도 방식이며 traffic 비용과 독립적입니다.
 
-## 더 읽어보기
+## Further Reading
 
-- [Canton Coin and Traffic](/appdev/modules/m4-canton-coin) -- application developer를 위한 Traffic Credit 및 CC 작동 방식
-- [Getting Your App Featured](/overview/understand/getting-app-featured) -- Canton Network에서 이용할 수 있는 promotion 기회
-- [Canton Coin overview](/overview/understand/canton-coin) -- tokenomics, Validator 보상 및 governance
+- [Canton Coin and Traffic](/appdev/modules/m4-canton-coin) -- application developer를 위한 traffic credit 및 CC 작동 방식
+- [Getting Your App Featured](/overview/understand/getting-app-featured) -- Canton Network의 promotion 기회
+- [Canton Coin overview](/overview/understand/canton-coin) -- tokenomics, validator rewards 및 governance

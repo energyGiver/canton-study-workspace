@@ -1,0 +1,526 @@
+---
+title: "SV 운영 개요"
+description: "Super Validator Node operator를 위한 운영 절차"
+source_id: "SRC-830F3E8610"
+source_path: "global-synchronizer/deployment/sv-operations"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "84da25210a39a61e8d7bd570907809fc074e6b9633883c1119022301ac6d263a"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsYaml296 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-yaml-296.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsYaml309 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-yaml-309.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsSql344 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-sql-344.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsSql359 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-sql-359.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsBash482 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-bash-482.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsBash507 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-bash-507.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsBash538 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-bash-538.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsBash564 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-bash-564.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsBash683 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-bash-683.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsParsedLiteral222 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-parsed-literal-222.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsParsedLiteral204 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-parsed-literal-204.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsParsedLiteral193 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-parsed-literal-193.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsParsedLiteral171 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-parsed-literal-171.mdx";
+import ExternalSpliceMainSpliceRstFullDocsSrcCommonSvExtraDarsNotice from '/snippets/internal/splice/main/splice-rst-full-docs-src-common-sv-extra-dars-notice.mdx';
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsYaml821 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-yaml-821.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsYaml829 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-yaml-829.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsYaml838 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-yaml-838.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsYaml846 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-yaml-846.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsYaml865 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-yaml-865.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsYaml889 from "/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-operations-yaml-889.mdx";
+
+{/* COPIED_START source="splice:docs/src/sv_operator/sv_operations.rst" hash="0dfdcb2d" */}
+
+이 section에서는 SV Node를 통해 활성화되는 일부 기능과 SV Node operator에게 유용한 일반 정보를 개괄합니다.
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/deployment/sv-operations.md)을 사용하세요.
+</Warning>
+
+<ExternalSpliceMainSpliceRstFullDocsSrcCommonSvExtraDarsNotice />
+
+## Security 안내
+
+SV Node hardening에 관한 자세한 내용은 [SV security](/global-synchronizer/production-operations/sv-security)를 참고하세요.
+
+## Validator onboarding secret 생성
+
+새 Validator를 onboard하려면 SV web UI에서 일회용 onboarding secret을 직접 얻을 수 있습니다.
+
+Onboarding secret은 48시간 후 만료됩니다.
+
+이 key를 생성하려면 [SV web UI에 login](/global-synchronizer/deployment/kubernetes-deployment)하고 `Validator Onboarding` tab으로 이동합니다. 해당 tab에서 secret 생성 button을 click하고 마지막으로 생성된 `onboarding secret`을 복사합니다.
+
+<img src="/images/splice/create-onboarding-secret.png" width="600" alt="Generate an onboarding secret in the SV UI." />
+
+Validator operator는 이 secret을 사용하여 [Validator onboarding 준비 안내](/global-synchronizer/deployment/validator-kubernetes)를 따라 할 수 있습니다.
+
+## 서로 다른 layer에서 SV Node가 사용하는 identity
+
+이 section에서는 단일 SV Node와 연관된 주요 identity를 간략히 설명합니다. 각 identity type의 역할과 quorum 관련성, 재사용할 수 있는 조건, 관련 cryptographic key의 분실 또는 compromise 등으로 identity를 잃었을 때의 영향을 다룹니다.
+
+각 identity는 Canton 및 Global Synchronizer software stack의 서로 다른 layer 또는 subsystem과 관련됩니다. 일반적으로 identity를 서로 독립적으로 rotate할 수 있도록 layer 간 coupling을 줄이는 것을 목표로 합니다.
+
+### SV identity
+
+- System에 onboard되기 *전* Node를 식별하는 데 사용됩니다. [SV identity](/global-synchronizer/deployment/kubernetes-deployment)를 참고하세요.
+- 기존 SV는 승인된 SV identity를 기준으로 자신을 authenticate할 수 있는 SV의 onboarding 요청을 confirm합니다.
+- 기존 SV quorum의 승인을 받고, DevNet이 아닌 cluster에서는 같은 name의 SV가 아직 onboard되지 않은 경우 SV identity를 여러 onboarding에 재사용할 수 있습니다.
+- SV identity에 대한 control을 잃은 operator는 기존 SV operator quorum이 해당 operator가 control하는 새 identity를 승인할 때까지 SV를 onboard할 수 없습니다.
+
+### Participant identities
+
+- Daml workflow를 보호하고 SV의 `svPartyId`를 결정하는 데 사용됩니다. 이 ID는 다양한 DSO governance flow와 SV reward 수령에 사용됩니다. Canton 및 Daml identity에 관한 일반 정보는 [Canton Identity Management 문서](/sdks-tools/api-reference/ledger-api-services#user-management-service)를 참고하세요.
+- Participant identity는 여러 type의 quorum에서 중요합니다.
+  - DSO Party로 Daml transaction을 confirm하는 quorum(onboard된 SV의 \>⅓)
+  - DSO Party를 대신하여 Synchronizer topology를 관리하는 quorum(활성화 후 onboard된 SV의 \>⅔)
+  - Confirmation 기반 DSO Daml workflow의 quorum(onboard된 SV의 \>⅔, DevNet에서는 일반적으로 \>½)
+- 일반적으로 Participant identity는 network를 reset/redeploy하지 않고 같은 Global Synchronizer에서 재사용할 수 *없습니다*.
+- Participant namespace에 대한 control을 잃으면 해당 namespace 아래에서 host되는 모든 Party의 coin balance에 대한 control을 잃습니다. Network level에서 Participant namespace 분실은 SV failure에 해당하며, 해당 SV가 DSO에서 offboard될 때까지 전체 fault tolerance buffer를 줄입니다.
+
+### CometBFT node identities
+
+- Global Synchronizer를 운영하기 위해 SV가 구성한 CometBFT network 안에서 사용됩니다. [CometBFT identity](/global-synchronizer/deployment/kubernetes-deployment)를 참고하세요.
+- CometBFT validator key는 CometBFT blockchain을 진행하고 CometBFT configuration 및 validator set을 변경하는 데 필요한 CometBFT quorum(SV의 \>⅔)에 사용됩니다.
+- CometBFT Node identity를 재사용하면 CometBFT network에 일시적인 instability가 발생할 수 있으므로 권장하지 않습니다.
+- CometBFT key material compromise는 SV failure에 해당하며 전체 fault tolerance buffer를 줄입니다. 복구하려면 SV operator가 새 identity로 새 CometBFT Node를 설정하고 SV app backend에서 올바르게 register되었는지 확인하면 됩니다. 예를 들어 SV app backend configuration을 수정하고 restart합니다.
+
+## SV reward weight 갱신
+
+SV reward weight를 갱신하려면 다음 단계가 필요합니다.
+
+1.  SV owner가 합의한 SV weight update를 전달받습니다.
+2.  Weight를 조정하는 SV가 [SV Helm](/global-synchronizer/deployment/kubernetes-deployment)에 설명된 `extraBeneficiaries`를 정의했다면 이에 맞게 갱신해야 합니다.
+    - Weight를 늘릴 때는 추가 weight를 가진 새 entry를 추가해야 합니다. 그렇지 않으면 남은 부분은 SV Party에 할당됩니다.
+    - Weight를 줄일 때는 마지막 extra beneficiary의 weight에 cap이 적용됩니다.
+3.  Weight 변경이 적용되기 전에 extra-beneficiaries config를 갱신할 수 있고 일반적으로 갱신해야 합니다. 끝에 있는 추가 entry는 무시됩니다.
+4.  Governance vote를 시작합니다. SV web UI의 `Governance` tab에서 새 vote request를 생성합니다. "Update SV Reward Weight" name을 선택하고 SV member와 새 reward weight를 지정합니다.
+5.  Vote request가 승인되고 execute될 때까지 기다립니다. 완료되면 DSO info tab에 갱신된 reward weight가 표시되고 이후 SV는 새 weight에 따라 reward를 얻습니다.
+6.  변경된 reward가 [config repository](https://github.com/global-synchronizer-foundation/configs)에도 반영되었는지 확인합니다. 그렇지 않으면 onboarding 또는 reonboarding 시 이전 value가 다시 적용됩니다.
+
+## Traffic-Based App Reward 활성화
+
+Traffic-based app reward를 control하는 `rewardConfig` field는 network의 `AmuletConfig`에 있습니다. SV는 standard governance process를 사용하여 reward configuration 변경을 vote합니다.
+
+`RewardVersion_FeaturedAppMarkers`에서 `RewardVersion_TrafficBasedAppRewards`로의 전환은 network별 일회성 migration입니다. 활성화되면 traffic-based reward가 on-ledger activity marker mechanism을 영구적으로 대체합니다.
+
+### 권장 Migration 절차
+
+Live network에서 reward 계산에 예기치 않은 문제가 발생할 위험을 줄이기 위해 SV는 traffic-based app reward를 활성화하기 전에 dry-run mode를 사용할 수 있습니다.
+
+1. **Dry-run 활성화**: `rewardConfigDryRunVersion`을 `RewardVersion_TrafficBasedAppRewards`로 설정하고 `rewardConfigMintingVersion`은 `RewardVersion_FeaturedAppMarkers`로 유지하도록 vote합니다. 그러면 최종 coupon 생성을 제외한 모든 단계에서 traffic-based 계산을 병렬로 실행합니다. 기존 activity marker mechanism은 계속 실제 reward를 생성합니다.
+
+2. **검증**: Dry-run을 monitoring하여 모든 SV Node에서 traffic-based 계산이 성공적으로 완료되는지 확인합니다.
+
+3. **실제 traffic-based app reward로 전환**: 결과를 확인한 후 `rewardConfigMintingVersion`을 `RewardVersion_TrafficBasedAppRewards`로 설정하도록 vote합니다. 선택적으로 `rewardConfigDryRunVersion`을 clear하여 dry-run을 비활성화합니다.
+
+구성 가능한 모든 field의 전체 설명은 [RewardConfig](/global-synchronizer/splice-fundamentals/traffic-based-app-rewards#rewardconfig)를 참고하세요.
+
+### 활성화 효과
+
+`rewardConfigMintingVersion`을 `RewardVersion_TrafficBasedAppRewards`로 설정하면 다음 변화가 발생합니다.
+
+- CC transfer는 `Splice.Amulet.FeaturedAppActivityMarker` contract 생성을 중단합니다. Transition period에 생성된 기존 marker는 SV automation이 자동으로 archive합니다.
+- Scan app은 각 round에 Sequencer 및 Mediator Node에서 ingest한 traffic data로 activity record와 reward total을 계산합니다.
+- Eligible featured app provider를 위해 각 round마다 `Splice.Amulet.RewardCouponV2` contract를 생성합니다.
+
+<Note>
+External Party configuration state update의 propagation delay로 인해 token standard CC transfer가 여전히 `Splice.Amulet.FeaturedAppActivityMarker` contract를 생성할 수 있는 짧은 transition phase가 있습니다. Traffic-based reward가 적용되면 이 contract는 자동으로 archive됩니다. Reward가 double-minting되지는 않습니다.
+</Note>
+
+Traffic-based reward의 동작 방식은 [Traffic-Based App Reward](/global-synchronizer/splice-fundamentals/traffic-based-app-rewards)를 참고하세요.
+
+## 적절한 [Synchronizer traffic parameter](/global-synchronizer/deployment/synchronizer-traffic) 결정
+
+SV는 적절한 Synchronizer traffic parameter를 결정할 책임이 있습니다. 아래에서는 이 parameter 중 일부에 적절한 value를 결정하는 방법을 설명합니다.
+
+### 단일 CC transfer 비용 결정
+
+Canton Improvement Proposal [CIP-0042](https://github.com/canton-foundation/cips)에 따라 standard CC transfer 비용이 1 USD가 되도록 `extraTrafficPrice`를 설정해야 합니다. 실제 traffic 비용은 DSO size(SV 수)와 Canton protocol version 같은 factor에 따라 달라지며 protocol upgrade 시에도 바뀔 수 있습니다. 따라서 SV가 현재 비용을 주기적으로 측정하고 이에 맞게 traffic parameter를 조정하는 것이 좋습니다.
+
+CC transfer의 현재 [traffic consumption](/global-synchronizer/deployment/synchronizer-traffic)을 byte 단위로 확인하는 한 가지 방법은 CC transfer를 시작하고 이에 해당하는 Sequencer log를 관찰하는 것입니다. TestNet이 MainNet과 동일한 configuration 및 DSO size를 갖는다고 가정하면 TestNet에서 측정하는 것으로 충분합니다. 권장하는 구체적인 단계는 다음과 같습니다.
+
+1.  자신이 control하는 non-SV Validator 두 개를 선택합니다. 하나는 sending Party를, 다른 하나는 receiving Party를 host합니다. 측정 결과가 왜곡되지 않도록 서로 다른 Validator여야 합니다. Recipient에 대한 control은 transfer accept에만 필요합니다.
+
+2.  선택한 sender Validator에서 host되는 Party로부터 선택한 receiver Validator에서 host되는 단일 receiver Party로 CC transfer를 시작합니다. Receiver 측에서 transfer를 accept합니다.
+
+3.  `validator-app`의 `sender` 측 log를 확인하여 transfer의 최종 transaction이 다음 조건을 충족하는지 확인합니다.
+
+    1)  다른 coin operation과 함께 batch되지 않았으며
+
+    \(b\) 단일 coin input을 사용합니다. 다음 형식의 일치하는 log entry를 통해 두 조건을 확인할 수 있습니다.
+
+    <ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsParsedLiteral171 />
+
+    이 log entry가 해당 transfer와 일치하는지 확인하려면 log entry metadata의 `trace-id`를 사용합니다. 여기 보이는 `tid`가 아니라 log entry JSON의 전용 `trace-id` field를 사용해야 합니다. 예를 들어 `trace-id`로 log를 검색하여 전체 `AcceptedTransferOffer`가 포함된 entry를 찾습니다. 이 예시에서는 (a) execute된 batch에 operation이 하나 있고 (b) 해당 operation의 input이 하나입니다. 시작한 transfer가 이 조건을 충족하지 않으면 step 2로 돌아가 새 transfer를 시작하세요. Batching 또는 multi-input transfer는 측정 결과를 왜곡합니다.
+
+4.  `validator-app` log의 `sender` 측에서 이전 단계에 표시된 `trace-id`를 검색합니다. 여기의 action을 Canton 측 `trace-id`에 연결하는 것이 목적입니다. 다음 형식의 log entry를 검색합니다.
+
+    <ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsParsedLiteral193 />
+
+    이 log entry의 `tid`가 찾으려는 `trace-id`입니다. 이 값은 위에 표시된 transfer operation에 이 log entry를 연결할 때 사용한 log entry metadata의 `trace-id`와 다릅니다.
+
+5.  SV의 `sequencer` log에서 이전 단계의 `trace-id`를 검색합니다. 다음과 같은 log filter를 사용하며 모든 rule은 logical "AND"로 연결해야 합니다.
+
+    <ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsParsedLiteral204 />
+
+6.  결과 log line에는 sender 및 receiver Participant뿐 아니라 모든 SV Participant의 traffic consumption 정보도 포함됩니다. SV Participant는 모든 CC transfer의 stakeholder입니다. Sender 및 receiver Participant의 traffic consumption만 확인하려면 sender 및 receiver의 Participant ID로 filter해야 합니다. Party suffix(namespace)는 일반적으로 해당 Party를 host하는 Participant의 suffix와 같으므로 sender 및 receiver Party suffix 일부로 filter하는 것이 간단한 방법입니다. 결과 log line을 sender 및 receiver에 해당하는 Participant ID로 filter하면 다음과 유사한 log line을 얻습니다.
+
+    <ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsParsedLiteral222 />
+
+7.  Log line의 숫자를 합하여 CC transfer 마지막 leg에서 소비된 전체 traffic을 구합니다. 이 예시에서 전체 traffic consumption은 sender가 17,597 byte이고 receiver가 711 byte입니다.
+
+8.  CIP-0042에 따라 이 CC transfer에 발생해야 하는 USD fee를 구하려면 1 MB를 sender의 전체 traffic consumption으로 나눕니다. 이 예시에서는 비용을 `1,000,000 / 6344 = 56.83` USD/MB, 즉 `extraTrafficPrice = 56.83`으로 구성해야 합니다.
+
+### Read scaling factor 고려 사항
+
+`readVsWriteScalingFactor`의 적절한 value를 결정할 때 다음 constraint를 고려하세요.
+
+#### Lower bound
+
+Read traffic에 부과하는 가격은 message delivery에 발생하는 Internet egress 및 compute 비용을 충당해야 합니다. 다음 계산 예시를 고려하세요.
+
+- 주요 cloud provider의 egress 비용을 검토한 결과를 바탕으로 평균 비용을 0.10 USD/GB로 가정합니다.
+- Compute 비용은 egress 비용의 10배로 충당한다고 가정합니다. 따라서 compute는 1 USD/GB이고 전체는 1.1 USD/GB입니다.
+- Validator는 Sequencer에서 `BFT` 방식으로 읽습니다. SV가 `n`개이고 정상 조건이라면 `2f+1 = 2 * floor((n-1)/3) + 1`개의 Sequencer가 같은 message를 같은 Validator recipient에 전달합니다. Synchronizer size를 SV `n = 16`개로 가정하면 read amplification factor는 11이고 단일 recipient에 대한 message delivery 비용은 12.1 USD/GB입니다.
+- 현재 `extraTrafficPrice`가 60.0 USD/MB, 즉 60,000 USD/GB라고 가정합니다.
+- 비용을 충당하려면 `readVsWriteScalingFactor`를 최소 `12.1 / 60,000`, 즉 약 2 basis point로 설정해야 합니다. 다시 말해 `readVsWriteScalingFactor >= 2`입니다.
+
+단순화를 위해 모든 recipient가 default BFT 방식으로 Sequencer를 사용하는 Validator Participant라고 가정했습니다. 또한 message를 recipient에게 한 번만 전달하면 된다고 가정합니다. 이 가정은 Validator 및 SV에 fault가 없고 recipient가 일부 message replay를 필요로 하는 backup 복구 중이 아닌 한 성립합니다.
+
+#### Upper bound
+
+Message delivery는 ordering 및 persistence보다 비용이 확실히 낮으므로 `readVsWriteScalingFactor`는 100%보다 명확히 낮아야 합니다. Message delivery에 지나치게 높은 비용을 부과할 이유는 없습니다.
+
+## Reward expiry automation에서 오래된 Validator의 Party ID 무시
+
+<Note>
+이 section에서는 Canton 3.4(Splice \> 0.4)에 포함된 개선 사항으로 불필요해질 것으로 예상되는 workaround를 설명합니다.
+</Note>
+
+현재 limitation으로 인해 다음 조건이 적용되면 SV app의 reward expiry automation, 더 구체적으로 `ExpireRewardCouponsTrigger`에 fault가 발생할 수 있습니다. Log warning 또는 error가 발생하거나 reward expiry가 진행되지 않을 수 있습니다.
+
+- 최근 core Daml package, 특히 `amulet`이 upgrade되었습니다.
+- 일부 Validator가 충분히 최신 Splice version으로 upgrade하지 않아 Daml upgrade를 local에 적용하고 새 package version을 vet할 수 없습니다.
+
+요약하면 이 scenario에서 expiry automation은 오래된 Validator에서 host되는 Party와 연결된 reward를 expire하지 못합니다. 이 문제를 해결하기 위해 현재 **각** SV operator는 network의 **각 Daml upgrade**마다 다음 단계를 수행해야 합니다. 이 절차는 문제의 근본적인 limitation이 Splice에서 해결될 때까지 필요하며 Canton 3.4 upgrade에서 해결될 것으로 예상됩니다.
+
+1.  Daml upgrade가 적용되기 직전: 각 SV는 `ExpireRewardCouponsTrigger` trigger를 pause하기 위해 `.additionalEnvVars`를 `sv-values.yaml`에서 다음과 같이 확장합니다.
+
+    <ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsYaml296 />
+
+2.  Daml upgrade가 적용된 직후: SV operator 한 명이 [Party exclusion config를 구성](/global-synchronizer/deployment/sv-operations)하고 정확성을 확인한 후 모든 operator group과 공유합니다.
+
+3.  각 SV operator는 Party exclusion config를 적용하고 step 1의 변경을 revert하여 `ExpireRewardCouponsTrigger` trigger를 resume합니다. Step 1 이전에 `.additionalEnvVars`가 `sv-values.yaml`에서 비어 있었다면 이제 다음과 유사한 형태가 됩니다.
+
+    <ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsYaml309 />
+
+기존에 오래된 상태였던 Validator가 충분히 최신 Splice version으로 upgrade하는 경우 등에는 이후 Party exclusion config를 갱신할 수 있습니다.
+
+### 무시할 Party 결정
+
+무시할 적절한 Party를 결정하는 process는 고급 작업이며 일부 시행착오가 필요할 수 있습니다. Operator 한 명이 이 작업을 수행하여 적절한 config를 만들면 충분합니다.
+
+아래에서는 Party 목록을 구성하는 보완적인 접근 방식을 나열합니다.
+
+Prerequisite 단계:
+
+1.  새 Daml upgrade가 적용될 때까지 기다립니다.
+2.  Database query를 지원하기 위해 Daml upgrade 적용 직후 open 상태였던 round를 선택합니다. 아래에서는 이 round를 `UPGRADE_ROUND`라고 합니다.
+3.  Ignore 목록을 완료할 때까지 실패할 수 있음을 감수하고 expiry trigger를 resume합니다.
+4.  `delegatelessAutomationExpiredRewardCouponBatchSize: 1`을 `sv-values.yaml`에서 설정합니다.
+
+이후 다음 방식을 사용합니다.
+
+- Trigger가 실패할 때까지 기다린 다음 실패한 transaction에 관련된 Party를 조사하여 무시할 Party set에 추가할 수 있습니다.
+
+- 더 빠른 feedback loop를 위해 SV app(Postgres) database에 query할 수 있습니다. 예를 들어 Daml upgrade 이후 expire되지 않은 reward의 receiver를 나열할 수 있습니다.
+
+  <ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsSql344 />
+
+  다만 이 query는 무시할 Party set을 과도하게 추정하므로 일부 Party를 나중에 다시 제거해야 할 수 있습니다.
+
+- 무시하려는 Party 중 하나가 SV라면 대신 해당 SV의 beneficiary를 무시하는 것이 일반적입니다. 더 좋은 방법은 SV operator와 협의하여 beneficiary가 더 최신 version으로 upgrade하도록 하는 것입니다.
+
+- 무시할 Party set을 확정한 후 `delegatelessAutomationExpiredRewardCouponBatchSize` override를 제거하고 trigger의 success rate가 100%이며 warning 또는 error를 log하지 않는지 확인합니다.
+
+- 오래된 Validator가 나중에 upgrade하면 해당 Party를 ignore 목록에서 다시 제거해야 합니다. 그래야 이전 및 새 expired reward를 archive하고 closed mining round의 archive가 차단되는 것을 방지할 수 있습니다. 다음 database query는 Daml upgrade *이후* 생성된 expired reward를 보여줍니다. 이는 host하는 Validator가 upgrade되어 해당 Party를 더 이상 무시하지 않아야 한다는 지표입니다.
+
+  <ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsSql359 />
+
+## CIP-66 flow의 expired SV reward 결정
+
+[CIP-0066, Unminted/Unclaimed Pool에서 Canton Coin Mint](https://github.com/canton-foundation/cips/blob/main/cip-0066/cip-0066.md)의 맥락에서 SV는 특정 time range 안에 claim되지 않아 expire된 SV reward의 total amount를 결정해야 합니다. 이 expired reward는 이후 CIP-66 governance process를 통해 unclaimed rewards pool에서 mint할 수 있는 amount의 근거가 됩니다.
+
+`unclaimed_sv_rewards.py` utility는 Splice Scan API를 통해 expose되는 transaction log를 분석하고, beneficiary를 위해 발행된 후 구성된 interval 안에서 expire된 모든 reward coupon을 식별합니다. 그런 다음 해당 reward amount를 aggregate하여 CIP-66 계산에 필요한 total expired amount를 산출합니다.
+
+이 aggregation 외에도 script는 검사한 coupon 중 claim된 것이 있는지 검증합니다. CF가 운영하는 의도된 multi-tenant escrow 설정에서는 이 coupon이 claim되면 안 됩니다. 따라서 0이 아닌 claimed amount는 CF가 운영하는 multi-tenant SV Node의 misconfiguration을 나타내며, CIP-0066 minting proposal을 시작하기 전에 조사해야 합니다.
+
+이 script는 Splice repository에 포함됩니다.
+
+[unclaimed_sv_rewards.py](https://github.com/canton-network/splice/blob/main/scripts/scan-txlog/unclaimed_sv_rewards.py)
+
+`unclaimed_sv_rewards.py`는 SV Node operator의 운영 용도로 만들어졌습니다. On-ledger state를 수정하지 않고 Scan API에서 읽어 검사한 time range의 expired SV reward에 대한 deterministic하고 reproducible한 summary를 생성합니다.
+
+### Prerequisite
+
+- 접근할 수 있고 최신 상태인 Splice Scan API endpoint
+- Expired reward를 평가할 beneficiary Party. Operator는 관련 reward period에 사용된 정확한 beneficiary Party ID를 알아야 합니다.
+- CIP-0066에 따라 검증하는 milestone에 해당하는 정확한 record-time interval
+- `begin-record-time`에 활성 상태였던 migration ID
+- Python 3
+
+### Input
+
+`unclaimed_sv_rewards.py` script는 다음 input을 받습니다.
+
+- `scan_urls`: Splice Scan server의 address입니다. 각 chunk가 다른 URL을 선택하여 concurrency를 최대화하므로 여러 URL을 사용하면 round-robin failover를 통한 resilience와 throughput이 향상됩니다. 최상의 performance를 위해 가능한 많은 Scan endpoint를 제공하는 것이 좋습니다.
+- `--beneficiary`: Expired reward를 평가할 Party입니다.
+- `--begin-record-time`: 검사할 record-time interval의 exclusive start입니다.
+- `--begin-record-time`: 검사할 record-time interval의 exclusive start입니다. 예를 들어 `2025-07-01T10:30:00Z` 같은 ISO format을 사용해야 합니다.
+- `--end-record-time`: 검사할 record-time interval의 inclusive end입니다. 예를 들어 `2025-07-01T12:30:00Z` 같은 ISO format을 사용해야 합니다.
+- `--weight`: 각 coupon과 연관된 amount를 계산할 때 적용할 weight입니다. CIP에서 weight는 0.5, 1, 2 같은 value로 표시됩니다. Script에서는 CIP weight에 10,000을 곱해 basis point로 표현합니다. 예를 들어 0.5 → 5,000, 1 → 10,000, 2 → 20,000입니다.
+- `--already-minted-weight`: 같은 interval에 대해 이미 mint된 weight amount입니다. `--weight`와 동일한 scale을 사용합니다.
+
+선택적 input:
+
+- `--page-size`(default: `100`): Scan API 요청당 가져올 transaction update 수입니다.
+- `--loglevel`(default: `INFO`): Logging level입니다.
+- `--log-file-path`(default: `log/unclaimed_sv_rewards.log`): Application log를 저장할 file path입니다.
+- `--grace-period-for-mining-rounds-in-minutes`(default: `60`): Mining round를 가져올 때 `end-record-time`에 추가하는 시간입니다. Mining round에는 최종 reward amount 계산에 필요한 issuance 정보가 포함됩니다. Interval을 확장하면 coupon 생성 직후 생성된 round가 누락되지 않습니다.
+- `--concurrency`(default: 130): Concurrent chunk worker의 최대 수입니다.
+- `chunk-size-in-hours`(default: 0.1): 각 processing chunk의 size를 hour 단위로 나타냅니다. 예: 0.5, 1, 24.
+- `--cache-file-path`: Internal state를 지정된 file에 persist하여 resumable execution을 활성화합니다.
+- `--rebuild-cache`: 기존 cache file을 무시하고 처음부터 processing을 시작합니다.
+
+### Script 실행
+
+`unclaimed_sv_rewards.py` script는 standalone Python program으로 실행합니다.
+
+Default optional parameter를 사용하는 예시:
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsBash482 />
+
+Optional parameter를 사용하는 예시:
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsBash507 />
+
+Cache 사용:
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsBash538 />
+
+Cache rebuild:
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsBash564 />
+
+Cache 동작에 관한 운영 세부 정보는 [Cache mechanism](/global-synchronizer/deployment/sv-operations)을 참고하세요.
+
+### Output
+
+실행이 끝나면 script는 검사한 record-time interval 안에서 식별한 SV reward의 summary를 log합니다. 다음 field를 보고합니다.
+
+- `reward_expired_count`: Claim되지 않아 expire된 SV reward coupon 수입니다.
+- `reward_expired_total_amount`: Expired SV reward coupon에 해당하는 total amount입니다.
+- `reward_claimed_count`: Claim된 SV reward coupon 수입니다. 예상되는 CF multi-tenant escrow 설정에서 이 value는 항상 `0`이어야 합니다. 0이 아닌 value는 configuration issue를 나타내며 CIP-0066 governance proposal을 시작하기 전에 조사해야 합니다.
+- `reward_claimed_total_amount`: Claimed SV reward coupon에 해당하는 total amount입니다. 이 value 역시 `0`이어야 합니다. 0이 아닌 amount는 위에서 설명한 동일한 configuration issue를 나타내며 CIP-0066 governance proposal을 시작하기 전에 조사해야 합니다.
+- `reward_unclaimed_count`: Processing 후에도 active 상태로 남은 SV reward coupon 수입니다. 의도된 설정에서는 모든 coupon이 expire되었거나 예기치 않게 claim되었어야 합니다. 0이 아닌 value가 있으면 script가 assertion error로 중단됩니다. 이는 grace period를 포함한 검사 interval이 관련 coupon의 전체 lifecycle을 포함하지 않거나 input parameter를 검토해야 함을 나타냅니다.
+
+### Cache mechanism
+
+`unclaimed_sv_rewards.py` script는 optional cache file을 통한 resumable execution을 지원합니다. 활성화하면 script가 internal state를 persist하여 실행이 중단되었을 때 마지막으로 완료된 batch부터 processing을 resume할 수 있습니다.
+
+Reward classification에 영향을 주는 input parameter가 변경되면 cache file을 자동으로 무시합니다. 다음 argument는 cache validity를 결정하는 fingerprint에 포함됩니다.
+
+- `--beneficiary`
+- `--begin-record-time`
+- `--end-record-time`
+- `--begin-migration-id`
+- `--weight`
+- `--already-minted-weight`
+
+이 value 중 하나라도 변경되면 script는 기존 cache를 무시하고 새 실행을 시작합니다.
+
+Cache는 다음 option으로 control할 수 있습니다.
+
+- `--cache-file-path`: Cache mechanism을 활성화하고 state를 기록할 위치를 지정합니다.
+- `--rebuild-cache`: 기존 file을 무시하고 cache를 처음부터 다시 생성하도록 script에 강제합니다.
+
+### 예시: 여러 milestone에 걸친 reward 계산
+
+이 예시는 milestone 달성에 따라 감소하는 escrowed reward weight를 SV가 받는 milestone 기반 설정에서 `unclaimed_sv_rewards.py` script를 사용하는 방법을 보여줍니다. 각 milestone의 목표는 CIP-0066에 따라 고려할 수 있는 expired SV reward amount를 결정하는 것입니다.
+
+Beneficiary의 escrowed reward weight는 다음과 같이 변화합니다.
+
+``` text
+t0                   t1                 t2                     t3
+| m₁ (w=10K)         | m₂ (w=10K)       | m₃ (w=20K)           |
+---------------------------------------------------------------------------
+|         40K        |        30K       |         20K          |   0 ...
+```
+
+**단계**
+
+- t0 시점
+
+  - CF가 `Ghost-party-A` weight를 40K로 설정합니다.
+
+- t1 시점(Milestone 1 완료)
+
+  - CF가 weight를 30K로 설정합니다.
+  - CF가 `(t0, t1]`에 대해 script를 한 번 실행합니다.
+
+  <ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsBash683 />
+
+  - **m₁**에 대한 vote를 시작합니다.
+
+- t2 시점(Milestone 2 완료)
+
+  - CF가 weight를 20K로 설정합니다.
+
+  - CF가 script를 두 번 실행합니다.
+
+    - `(t0, t1]`의 남은 부분:
+
+    ```bash
+    --begin-record-time=t0 --end-record-time=t1 \
+    --weight=10000 --already-minted-weight=10000
+    ```
+
+    - `(t1, t2]`:
+
+    ```bash
+    --begin-record-time=t1 --end-record-time=t2 \
+    --weight=10000 --already-minted-weight=0
+    ```
+
+  - **m₂**에 대한 vote를 시작합니다.
+
+- t3 시점(Milestone 3 완료)
+
+  - CF가 weight를 0으로 설정합니다(Party 제거).
+
+  - CF가 script를 세 번 실행합니다.
+
+    - `(t0, t1]`의 남은 부분:
+
+    ```bash
+    --begin-record-time=t0 --end-record-time=t1 \
+    --weight=20000 --already-minted-weight=20000
+    ```
+
+    - `(t1, t2]`의 남은 부분:
+
+    ```bash
+    --begin-record-time=t1 --end-record-time=t2 \
+    --weight=20000 --already-minted-weight=10000
+    ```
+
+    - `(t2, t3]`:
+
+    ```bash
+    --begin-record-time=t2 --end-record-time=t3 \
+    --weight=20000 --already-minted-weight=0
+    ```
+
+  - **m₃**에 대한 vote를 시작합니다.
+
+### 운영 참고 사항
+
+CIP-0066 reward 계산에 `unclaimed_sv_rewards.py` script를 사용할 때 SV operator는 다음 사항을 고려해야 합니다.
+
+- **Expiration과 claiming 비교.** 의도된 escrow 설정에서 beneficiary의 SV reward coupon은 항상 expire해야 합니다. Claim된 coupon은 CF가 운영하는 SV Node의 configuration issue를 나타내며 CIP-0066 governance proposal을 진행하기 전에 조사해야 합니다.
+- **CIP weight와 script weight 비교.** CIP에 표시되는 weight(예: 0.5, 1, 2)는 script에 전달할 때 10,000을 곱해야 합니다. 예: 0.5 → 5,000, 1 → 10,000, 2 → 20,000.
+- **\`\`already-minted-weight\`\` 사용.** 이 argument는 같은 interval의 이전 milestone 계산에 이미 사용된 configured weight amount를 나타냅니다. Script는 이 value를 각 reward coupon의 weight와 비교하여 검증하고 제공된 value가 너무 높으면 계산을 자동으로 조정합니다. 따라서 잘못된 input이 double-counting 또는 잘못된 reward amount로 이어지지는 않지만 script가 warning을 emit합니다.
+- **Mining round의 grace period.** Mining round에는 각 expired reward와 연관된 amount 계산에 필요한 issuance 정보가 포함됩니다. Default grace period인 60분이면 일반적으로 충분합니다. Script가 누락된 round 정보를 보고하면 coupon 생성 직후 만들어진 round가 포함되도록 grace period를 늘리세요.
+- **Active coupon 처리.** 0이 아닌 `reward_unclaimed_count`는 일부 SV reward coupon이 active 상태로 남아 있음을 의미합니다. 이는 해당 lifecycle(expire 또는 claim)이 검사 interval에 포함되지 않았음을 나타냅니다. Script는 불완전한 결과 생성을 방지하기 위해 중단됩니다.
+- **Ledger state를 수정하지 않음.** Script는 read-only이며 Scan API가 반환한 data만 사용합니다. 모든 output은 주어진 input set에 대해 deterministic합니다.
+- **Weight 변경 적용.** Milestone 기반 flow에서 reward attribution의 race condition을 방지하려면 SV가 새 weight로 mint를 시작한 후에만 CF가 beneficiary의 configured weight를 줄여야 합니다.
+- **Concurrency 및 Scan server 사용.** 큰 time range에서는 workload가 Scan server에 분산되는 방식에 performance가 크게 좌우됩니다. Throughput을 최대화하려면 다음을 수행합니다.
+  - 가능한 많은 Scan URL을 제공합니다. 각 chunk가 서로 다른 Scan server에서 시작하므로 parallelism이 향상되고 server별 load가 줄어듭니다.
+  - Load balancing 및 retry 동작을 개선하려면 비교적 작은 chunk size, 예를 들어 `0.1`–`0.2` hour를 사용합니다.
+  - 매우 큰 page size를 피합니다. 약 100의 중간 value가 더 나은 latency와 예측 가능한 performance를 제공하는 경향이 있습니다.
+  - `--concurrency`를 Scan server 수의 배수로 설정합니다. 실제로 제공된 Scan URL 수의 약 5배에서 10배인 value가 좋은 결과를 보였습니다.
+
+## Scan Store re-ingestion trigger
+
+Scan App은 Store Descriptor를 사용하여 database store(ACS store 및 TxLog store)의 version을 추적합니다. Scan App binary의 Store Descriptor를 database에 저장된 Store Descriptor와 비교합니다. Descriptor가 다르면 Scan App은 database의 descriptor를 갱신하고 모든 data를 새 store에 re-ingest합니다. 이를 통해 후속 Splice Release에서 예기치 않은 parsing 또는 storage bug를 수정할 수 있습니다.
+
+SV operator는 새 Splice Release 없이 store re-ingestion을 trigger할 수 있습니다. Helm chart value를 통해 Store Descriptor에 `user version`을 설정하면 됩니다. `user version`을 설정하면 Store Descriptor의 일부로 비교되고 database에 저장됩니다.
+
+User version은 기본적으로 설정되지 않는 optional `Long` parameter입니다. 이를 설정하면 re-ingestion을 trigger합니다. User version은 Helm chart value를 통해 제공할 수 있습니다. User version은 `1`부터 시작해야 하며 re-ingestion이 필요할 때마다 1씩만 증가시켜야 합니다. User version을 설정한 후에는 원하지 않는 re-ingestion을 방지하기 위해 이후 모든 Helm chart deployment에서 해당 value를 유지해야 합니다.
+
+`ScanAppBackendConfig`에는 ACS store와 TxLog store의 user version을 위한 field가 있습니다. ACS store에는 `acsStoreDescriptorUserVersion`, TxLog store에는 `txLogStoreDescriptorUserVersion`을 사용합니다.
+
+Helm chart value `acsStoreDescriptorUserVersion`은 ACS store의 `user version`을 설정하며 예시는 다음과 같습니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsYaml821 />
+
+다음 예시처럼 value를 증가시키면 후속 re-ingestion을 trigger할 수 있습니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsYaml829 />
+
+Helm chart value `txLogStoreDescriptorUserVersion`은 TxLog store의 `user version`을 설정하며 예시는 다음과 같습니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsYaml838 />
+
+다음 예시처럼 value를 증가시키면 후속 re-ingestion을 trigger할 수 있습니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsYaml846 />
+
+`activityIngestionUserVersion` field는 activity record ingestion version을 control합니다. 이 value를 증가시키면 Scan app이 새 app activity record completeness lower bound를 기록합니다. 해당 activity record는 보존되지만 reward accounting에서는 이 boundary 이전 round를 제외합니다. 따라서 user version을 올리면 증가 시점 이후부터 app activity record 계산을 다시 initialize하는 것과 같은 효과가 있습니다.
+
+User version 증가의 결과:
+
+- Reward accounting에서는 새 boundary 이전 round를 제외합니다. 따라서 SV Node에 complete activity record가 없는 round의 data를 다른 SV Node에 요청하여 reward 계산에 참여할 수 있습니다.
+- Scan은 user version을 올리기 전에 ingest한 activity record를 serve하지 않습니다. 따라서 이 SV Node의 `v0/events` Scan API 결과에는 다른 Scan API response와 비교할 때 일부 activity record가 누락될 수 있습니다.
+
+이는 historical data를 reprocess하지 않고 예기치 않은 ingestion 또는 reward processing error에서 복구할 때 유용합니다.
+
+User version은 절대 감소하면 안 됩니다. 이전에 저장된 value보다 낮은 value를 사용하면 data corruption을 방지하기 위해 Scan app이 종료됩니다.
+
+HOCON configuration key는 `canton.scan-apps.scan-app.activity-ingestion-user-version`입니다. `ADDITIONAL_CONFIG` environment variable을 통해 설정할 수 있습니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsYaml865 />
+
+`activityIngestionUserVersion` field는 activity record ingestion version을 control합니다. 이 value를 증가시키면 Scan app이 새 app activity record completeness lower bound를 기록합니다. 해당 activity record는 보존되지만 reward accounting에서는 이 boundary 이전 round를 제외합니다. 따라서 user version을 올리면 증가 시점 이후부터 app activity record 계산을 다시 initialize하는 것과 같은 효과가 있습니다.
+
+User version 증가의 결과:
+
+- Reward accounting에서는 새 boundary 이전 round를 제외합니다. 따라서 SV Node에 complete activity record가 없는 round의 data를 다른 SV Node에 요청하여 reward 계산에 참여할 수 있습니다.
+- Scan은 user version을 올리기 전에 ingest한 activity record를 serve하지 않습니다. 따라서 이 SV Node의 `v0/events` Scan API 결과에는 다른 Scan API response와 비교할 때 일부 activity record가 누락될 수 있습니다.
+
+이는 historical data를 reprocess하지 않고 예기치 않은 ingestion 또는 reward processing error에서 복구할 때 유용합니다.
+
+User version은 절대 감소하면 안 됩니다. 이전에 저장된 value보다 낮은 value를 사용하면 data corruption을 방지하기 위해 Scan app이 종료됩니다.
+
+HOCON configuration key는 `canton.scan-apps.scan-app.activity-ingestion-user-version`입니다. `ADDITIONAL_CONFIG` environment variable을 통해 설정할 수 있습니다.
+
+> ```yaml
+> # Example to reset the activity ingestion completeness boundary
+> additionalEnvVars:
+>   - name: ADDITIONAL_CONFIG_ACTIVITY_INGESTION_USER_VERSION
+>     value: canton.scan-apps.scan-app.activity-ingestion-user-version = 1
+> ```
+
+## 안전하지 않은 package version unvet
+
+<Warning>
+이 configuration이 필요하다는 데 **SV의 최소 2/3가 합의한 후에만** 설정하세요. DSO Party를 위한 vetting에는 모든 SV의 vetting이 필요하므로 SV 하나가 package를 unvet하면 사용할 수 없게 됩니다. 따라서 합의 없이 수행하면 안 됩니다. 이 configuration에 포함되지 않은 모든 supported package는 vet됩니다.
+</Warning>
+
+이 mechanism은 주로 중대한 issue가 발생했을 때 bug가 있거나 안전하지 않은 version을 unvet하는 데 사용됩니다.
+
+Supported package를 unvet하려면 regular Validator가 아닌 SV가 SV 및 Validator configuration에 다음 environment variable을 설정해야 합니다.
+
+다음은 특정 package version을 unvet하는 예시입니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvOperationsYaml889 />
+
+<Note>
+Unvetting은 SV 및 SV Validator에만 지원되며 현재는 dependency를 unvet하지 않습니다.
+</Note>
+
+
+{/* COPIED_END */}

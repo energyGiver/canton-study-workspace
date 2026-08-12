@@ -1,0 +1,1218 @@
+---
+title: "Kubernetes Validator 배포"
+description: "Helm chart를 사용한 Kubernetes Canton Network validator 배포 안내"
+source_id: "SRC-0CC4127D75"
+source_path: "global-synchronizer/deployment/validator-kubernetes"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "a2255a71845f3b18475486d20958c3cb00e3de0a854fcfe797d974461f752db1"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmBash65 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-helm-bash-65.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmYaml82 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-helm-yaml-82.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmBash145 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-helm-bash-145.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmBash158 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-helm-bash-158.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmBash352 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-helm-bash-352.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmBash364 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-helm-bash-364.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmBash545 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-helm-bash-545.mdx";
+
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmYaml787 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-helm-yaml-787.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmYaml815 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-helm-yaml-815.mdx";
+
+import ExternalSpliceMainSpliceRstFullDocsSrcCommonTrafficTopups from '/snippets/internal/splice/main/splice-rst-full-docs-src-common-traffic-topups.mdx';
+import ExternalSpliceMainSpliceRstFullDocsSrcCommonWalletSweeps from '/snippets/internal/splice/main/splice-rst-full-docs-src-common-wallet-sweeps.mdx';
+import ExternalSpliceMainSpliceRstLiteralMarkerAppsAppSrcPackExamplesSvHelmStandaloneValidatorValuesConfiguringTopupStart from '/snippets/external/splice/main/splice-literal-marker-apps-app-src-pack-examples-sv-helm-standalone-validator-values-configuring-topup-start.mdx';
+
+import ExternalSpliceMainSpliceRstLiteralMarkerAppsAppSrcPackExamplesSvHelmValidatorValuesSweepStart from '/snippets/external/splice/main/splice-literal-marker-apps-app-src-pack-examples-sv-helm-validator-values-sweep-start.mdx';
+import ExternalSpliceMainSpliceRstLiteralMarkerAppsAppSrcPackExamplesSvHelmValidatorValuesAutoAcceptStart from '/snippets/external/splice/main/splice-literal-marker-apps-app-src-pack-examples-sv-helm-validator-values-auto-accept-start.mdx';
+import ExternalSpliceMainSpliceRstLiteralMarkerAppsAppSrcPackExamplesSvHelmValidatorValuesParticipantPruningScheduleStart from '/snippets/external/splice/main/splice-literal-marker-apps-app-src-pack-examples-sv-helm-validator-values-participant-pruning-schedule-start.mdx';
+
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmYaml127 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-helm-yaml-127.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/deployment/validator-kubernetes.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/validator_operator/validator_helm.rst" hash="b0bc851d" */}
+
+이 section에서는 Helm chart를 사용해 standalone validator node를 Kubernetes에 배포하는 방법을 설명합니다. Helm chart는 관련 wallet/CNS UI와 함께 validator node를 배포하고 global synchronizer에 연결합니다.
+
+## 요구 사항
+
+{/* NETWORKVARS_START source="/snippets/networkvars/global-synchronizer/deployment/validator-kubernetes-1.mdx" */}
+<Tabs>
+
+<Tab title="DevNet (0.7.1)">
+
+1)  Namespace를 생성하고 관리할 administrator access가 있는 실행 중인 Kubernetes cluster
+
+2)  다음 항목을 갖춘 development workstation
+
+    > 1.  `kubectl` - v1.26.1 이상
+    > 2.  `helm` - v3.11.1 이상
+
+3)  Cluster에는 static egress IP가 필요합니다. IP를 확보한 뒤 SV sponsor에게 전달하면 sponsor가 다른 SV의 IP allowlist에 추가하도록 propose합니다.
+
+4)  Sample Helm value file이 포함된 release artifact를 <a href="https://github.com/digital-asset/decentralized-canton-sync/releases/download/v0.7.1/0.7.1_splice-node.tar.gz">Download Bundle (DevNet 0.7.1)</a>에서 download하고 bundle을 압축 해제합니다.
+
+```bash
+tar xzvf 0.7.1_splice-node.tar.gz
+```
+
+<Warning>
+
+**Key를 잃으면 coin에 대한 access도 잃습니다.** 정기 backup이 node 실행에 필수는 아니지만
+
+recovery를 위해 **강력히** 권장합니다.
+
+Deployment의 모든 database를 정기적으로 backup하고 항상 최신 identities backup을 보유해야 합니다.
+
+Super Validator는 identities backup에서 Canton Coin을 recover하는 데 필요한 정보를 보관합니다.
+
+반면 Super Validator는 자신이 관여하지 않은 application의 transaction detail을 보관하지 **않습니다.**
+
+따라서 다른 application을 설치했다면 Super Validator는 해당 app의 data recovery를 지원할 수 없으며
+
+자체 backup에만 의존해야 합니다.
+
+자세한 내용은 [Validator backup section](/global-synchronizer/production-operations/validator-backups) 또는 [SV backup section](/global-synchronizer/production-operations/sv-backup)을 참조하세요.
+
+</Warning>
+`MIGRATION_ID`, `SPONSOR_SV_URL`, `ONBOARDING_SECRET`의 의미와 확인 위치는 [Required Network Parameters](/global-synchronizer/deployment/required-network-parameters)를 참조하세요.
+
+해당 page는 DevNet onboarding secret을 자동으로 얻는 방법도 다룹니다.
+
+Kubernetes deployment에는 다음 항목도 필요합니다.
+
+- **TRUSTED_SCAN_URL** — Validator가 접근할 수 있고 신뢰하는 SV의 Scan URL이며 일반적으로 SV sponsor의 URL입니다. <a href="https://scan.sv-1.dev.global.canton.network.YOUR_SV_SPONSOR">https://scan.sv-1.dev.global.canton.network.YOUR_SV_SPONSOR</a> 형식이어야 합니다. 예를 들어 Global Synchronizer Foundation SV는 <a href="https://scan.sv-1.dev.global.canton.network.sync.global">https://scan.sv-1.dev.global.canton.network.sync.global</a>입니다.
+
+Network connection이 아닌 자체 설정을 설명하는 추가 parameter는 아래에서 다룹니다.
+
+</Tab>
+
+<Tab title="TestNet (0.7.0)">
+
+1)  Namespace를 생성하고 관리할 administrator access가 있는 실행 중인 Kubernetes cluster
+
+2)  다음 항목을 갖춘 development workstation
+
+    > 1.  `kubectl` - v1.26.1 이상
+    > 2.  `helm` - v3.11.1 이상
+
+3)  Cluster에는 static egress IP가 필요합니다. IP를 확보한 뒤 SV sponsor에게 전달하면 sponsor가 다른 SV의 IP allowlist에 추가하도록 propose합니다.
+
+4)  Sample Helm value file이 포함된 release artifact를 <a href="https://github.com/digital-asset/decentralized-canton-sync/releases/download/v0.7.0/0.7.0_splice-node.tar.gz">Download Bundle (TestNet 0.7.0)</a>에서 download하고 bundle을 압축 해제합니다.
+
+```bash
+tar xzvf 0.7.0_splice-node.tar.gz
+```
+
+<Warning>
+
+**Key를 잃으면 coin에 대한 access도 잃습니다.** 정기 backup이 node 실행에 필수는 아니지만
+
+recovery를 위해 **강력히** 권장합니다.
+
+Deployment의 모든 database를 정기적으로 backup하고 항상 최신 identities backup을 보유해야 합니다.
+
+Super Validator는 identities backup에서 Canton Coin을 recover하는 데 필요한 정보를 보관합니다.
+
+반면 Super Validator는 자신이 관여하지 않은 application의 transaction detail을 보관하지 **않습니다.**
+
+따라서 다른 application을 설치했다면 Super Validator는 해당 app의 data recovery를 지원할 수 없으며
+
+자체 backup에만 의존해야 합니다.
+
+자세한 내용은 [Validator backup section](/global-synchronizer/production-operations/validator-backups) 또는 [SV backup section](/global-synchronizer/production-operations/sv-backup)을 참조하세요.
+
+</Warning>
+`MIGRATION_ID`, `SPONSOR_SV_URL`, `ONBOARDING_SECRET`의 의미와 확인 위치는 [Required Network Parameters](/global-synchronizer/deployment/required-network-parameters)를 참조하세요.
+
+Kubernetes deployment에는 다음 항목도 필요합니다.
+
+- **TRUSTED_SCAN_URL** — Validator가 접근할 수 있고 신뢰하는 SV의 Scan URL이며 일반적으로 SV sponsor의 URL입니다. <a href="https://scan.sv-1.test.global.canton.network.YOUR_SV_SPONSOR">https://scan.sv-1.test.global.canton.network.YOUR_SV_SPONSOR</a> 형식이어야 합니다. 예를 들어 Global Synchronizer Foundation SV는 <a href="https://scan.sv-1.test.global.canton.network.sync.global">https://scan.sv-1.test.global.canton.network.sync.global</a>입니다.
+
+Network connection이 아닌 자체 설정을 설명하는 추가 parameter는 아래에서 다룹니다.
+
+</Tab>
+
+<Tab title="MainNet (0.6.14)">
+
+1)  Namespace를 생성하고 관리할 administrator access가 있는 실행 중인 Kubernetes cluster
+
+2)  다음 항목을 갖춘 development workstation
+
+    > 1.  `kubectl` - v1.26.1 이상
+    > 2.  `helm` - v3.11.1 이상
+
+3)  Cluster에는 static egress IP가 필요합니다. IP를 확보한 뒤 SV sponsor에게 전달하면 sponsor가 다른 SV의 IP allowlist에 추가하도록 propose합니다.
+
+4)  Sample Helm value file이 포함된 release artifact를 <a href="https://github.com/digital-asset/decentralized-canton-sync/releases/download/v0.6.14/0.6.14_splice-node.tar.gz">Download Bundle (MainNet 0.6.14)</a>에서 download하고 bundle을 압축 해제합니다.
+
+```bash
+tar xzvf 0.6.14_splice-node.tar.gz
+```
+
+<Warning>
+
+**Key를 잃으면 coin에 대한 access도 잃습니다.** 정기 backup이 node 실행에 필수는 아니지만
+
+recovery를 위해 **강력히** 권장합니다.
+
+Deployment의 모든 database를 정기적으로 backup하고 항상 최신 identities backup을 보유해야 합니다.
+
+Super Validator는 identities backup에서 Canton Coin을 recover하는 데 필요한 정보를 보관합니다.
+
+반면 Super Validator는 자신이 관여하지 않은 application의 transaction detail을 보관하지 **않습니다.**
+
+따라서 다른 application을 설치했다면 Super Validator는 해당 app의 data recovery를 지원할 수 없으며
+
+자체 backup에만 의존해야 합니다.
+
+자세한 내용은 [Validator backup section](/global-synchronizer/production-operations/validator-backups) 또는 [SV backup section](/global-synchronizer/production-operations/sv-backup)을 참조하세요.
+
+</Warning>
+`MIGRATION_ID`, `SPONSOR_SV_URL`, `ONBOARDING_SECRET`의 의미와 확인 위치는 [Required Network Parameters](/global-synchronizer/deployment/required-network-parameters)를 참조하세요.
+
+Kubernetes deployment에는 다음 항목도 필요합니다.
+
+- **TRUSTED_SCAN_URL** — Validator가 접근할 수 있고 신뢰하는 SV의 Scan URL이며 일반적으로 SV sponsor의 URL입니다. <a href="https://scan.sv-1.global.canton.network.YOUR_SV_SPONSOR">https://scan.sv-1.global.canton.network.YOUR_SV_SPONSOR</a> 형식이어야 합니다. 예를 들어 Global Synchronizer Foundation SV는 <a href="https://scan.sv-1.global.canton.network.sync.global">https://scan.sv-1.global.canton.network.sync.global</a>입니다.
+
+Network connection이 아닌 자체 설정을 설명하는 추가 parameter는 아래에서 다룹니다.
+
+</Tab>
+
+</Tabs>
+{/* NETWORKVARS_END */}
+
+## Validator Network Diagram
+
+<img src="/images/splice/validator-network-diagram.png" width="600" alt="Validator Network Diagram" />
+
+## 설치를 위한 Cluster 준비
+
+Kubernetes에 application namespace를 생성합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmBash65 />
+
+<Note>
+Validator deployment는 namespace당 validator 하나를 가정합니다. 같은 cluster에서 여러 validator를 실행하려면 각각 별도 namespace를 생성하세요.
+</Note>
+
+## HTTP Proxy Configuration
+
+Environment의 egress에 HTTP forward proxy가 필요하면 `https.proxyHost`와 `https.proxyPort`를 validator/participant Helm chart의 `additionalJvmOptions`에 설정해 outgoing connection에 HTTP proxy를 사용합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmYaml82 />
+
+`your.proxy.host`와 `your_proxy_port`를 HTTP proxy의 실제 host와 port로 바꾸세요. 현재 proxy authentication은 지원하지 않습니다.
+
+### 특정 Host의 Proxy 우회
+
+<Note>
+`http.nonProxyHosts` 설정은 다음 항목에 영향을 줍니다.
+
+- CN app(Validator, Scan, SV, Wallet)이 사용하는 HTTP client
+- 같은 JVM의 JDK-level HTTP client. 기본 `ProxySelector`를 사용하며 CN app과 Canton participant가 JWKS/OIDC discovery에 사용하는 Auth0 JWK library 및 `java.net.HttpURLConnection`을 사용하는 file download를 포함합니다.
+- 다른 component의 gRPC egress. gRPC Netty transport가 proxy 결정을 기본 JDK `ProxySelector`에 위임하기 때문입니다.
+</Note>
+
+`http.nonProxyHosts`를 설정해 특정 target host의 proxy를 우회할 수 있습니다. 일치하는 host에는 설정된 proxy 대신 직접 연결합니다. Cluster 내부 Scan instance나 internal monitoring endpoint처럼 local network에서 접근 가능한 service에 유용합니다.
+
+Value는 `|`로 구분된 pattern list이며 표준 Java `nonProxyHosts` grammar를 따릅니다.
+
+- Pattern은 request host name과 대소문자 구분 없이 match합니다.
+- `*`는 wildcard이며 일반적으로 pattern 시작(`*.internal`) 또는 끝(`10.*`)에 사용합니다.
+- Request URI의 raw host string으로 match하며 DNS resolution은 수행하지 않습니다. 따라서 `localhost`와 `127.0.0.1`을 모두 나열하지 않으면 서로 다른 이름으로 취급합니다.
+- 빈 value(예: `-Dhttp.nonProxyHosts=`)는 "우회 pattern 없음"을 의미합니다.
+
+Validator Helm chart의 `additionalJvmOptions` 예제입니다. External [traffic](/global-synchronizer/deployment/synchronizer-traffic)은 proxy로 보내되 `localhost`/`127.0.0.1`, `.internal` domain의 모든 host, literal string이 `10.`으로 시작하는 모든 IPv4 address는 우회합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmYaml127 />
+
+## PostgreSQL Authentication 설정
+
+Helm chart가 생성하는 PostgreSQL instance와 이에 의존하는 모든 app은 Kubernetes secret으로 user password를 설정해야 합니다. 현재 모든 app은 Postgres user `cnadmin`을 사용합니다. Environment variable `POSTGRES_PASSWORD`를 안전한 값으로 설정했다고 가정하고 다음 command로 password를 설정할 수 있습니다.
+
+<div className="todo">
+
+Managed Postgres instance 사용 option을 명시
+
+</div>
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmBash145 />
+
+## Validator Onboarding 준비
+
+앞서 생성한 namespace에 validator onboarding secret `ONBOARDING_SECRET`이 설정되어 있는지 확인합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmBash158 />
+
+## Authentication 설정
+
+Security를 위해 Validator node를 구성하는 여러 component는 서로를 authenticate하고 external UI/API user도 authenticate할 수 있어야 합니다. Authentication에는 JWT access token을 사용하며 external [OpenID Connect](https://openid.net/connect/)(OIDC) provider가 token을 발급한다고 가정합니다. 다음 작업이 필요합니다.
+
+1.  Backend와 web UI user가 지원되는 형식의 JWT를 얻을 수 있도록 OIDC provider 설정
+2.  해당 OIDC provider를 사용하도록 backend 설정
+
+Validator는 authentication이 없는 deployment도 지원하지만 production deployment에서는 강력히 권장하지 않습니다. Authentication 없이 실행하려면 `helm-validator-no-auth`의 참고 사항을 확인하세요.
+
+### OIDC Provider 요구 사항
+
+이 section에서는 Validator node에서 사용할 OIDC provider 설정 지침을 제공합니다. Validator node authentication에 [Auth0](https://auth0.com)를 사용할 계획이라면 `helm-validator-auth0`로 바로 이동해도 됩니다.
+
+이 문서는 Auth0에 중점을 두며 지속적으로 test하고 maintain합니다. 다른 OIDC provider도 사용할 수 있으며 여러 community member가 실제로 사용하고 Okta/Keycloak community example에 참고 사항과 예제를 기여했습니다.
+
+OIDC provider는 well-known HTTPS URL에서 접근 가능해야 합니다[^1]. 이하에서는 이 URL을 `OIDC_AUTHORITY_URL`이라고 합니다. Validator node와 해당 node에 연결된 web UI에서 authenticate하려는 모든 user가 `OIDC_AUTHORITY_URL`에 접근할 수 있어야 합니다. OIDC provider는 `OIDC_AUTHORITY_URL/.well-known/openid-configuration`에 [discovery document](https://openid.net/specs/openid-connect-discovery-1_0.html)를 제공하고 [JWK Set](https://datatracker.ietf.org/doc/html/rfc7517) document를 노출해야 합니다. 이 문서에서는 JWK Set이 `OIDC_AUTHORITY_URL/.well-known/jwks.json`에 있다고 가정합니다.
+
+Machine-to-machine, 즉 Validator node component 사이 authentication을 위해 OIDC provider는 [OAuth 2.0 Client Credentials Grant](https://tools.ietf.org/html/rfc6749#section-4.4) flow를 지원해야 합니다. 다른 component에 authenticate해야 하는 모든 Validator node component에 (`CLIENT_ID`, `CLIENT_SECRET`) pair를 설정할 수 있어야 합니다. 현재 대상은 Validator node의 Canton participant에 authenticate해야 하는 validator app backend입니다. 이 flow로 발급한 JWT의 `sub` field는 `ledger-api-user`로 설정한 user ID와 일치해야 하며 이 설정은 `helm-validator-auth-secrets-config`에 있습니다. 이 문서에서는 JWT의 `sub` field가 `CLIENT_ID@clients` 형식이라고 가정합니다. OIDC provider가 다르게 구성한다면 아래 `ledger-api-user` 값을 설정할 때 특히 주의하세요.
+
+User가 Validator node에 host된 여러 web UI에 접근하게 하는 user-facing authentication을 위해 OIDC provider는 [OAuth 2.0 Authorization Code Grant](https://datatracker.ietf.org/doc/html/rfc6749#section-4.1) flow를 지원해야 합니다. 또한 Validator node가 host할 Wallet web UI와 CNS web UI의 client identifier를 발급할 수 있어야 합니다. OIDC provider에서 "Allowed Callback URLs", "Allowed Logout URLs", "Allowed Web Origins", "Allowed Origins (CORS)" 같은 URL을 allowlist에 추가해야 할 수 있습니다. 이 runbook의 ingress configuration을 사용한다면 Wallet web UI에는 `https://wallet.validator.YOUR_HOSTNAME`, CNS web UI에는 `https://cns.validator.YOUR_HOSTNAME`을 설정합니다.
+
+`YOUR_HOSTNAME`은 service를 host하는 server의 실제 domain name 또는 IP address로 바꿔야 하는 placeholder입니다.
+
+발급된 JWT의 `sub` field에는 user에게 고유한 identifier를 설정해야 합니다. 경우에 따라 이 identifier는 Validator node의 Canton participant에서 해당 user의 user name으로 사용됩니다. `helm-validator-install`에서는 user identifier를 `validatorWalletUser`로 설정해야 하므로, 이 값이 해당 user에게 발급된 JWT의 `sub` field와 일치하는지 확인하세요.
+
+Validator node에서 사용하도록 발급된 *모든* JWT는 다음 조건을 충족해야 합니다.
+
+- RS256 signing algorithm으로 서명
+
+향후 OIDC provider는 OAuth 2.0 authorization code flow의 일부로 요청받을 때 `scope`가 `daml_ledger_api`로 명시된 JWT도 발급해야 할 수 있습니다.
+
+요약하면 OIDC provider 설정은 다음 configuration value를 제공해야 합니다.
+
+| 이름                    | 값                                                                                   |
+|-------------------------|-----------------------------------------------------------------------------------------|
+| OIDC_AUTHORITY_URL      | `openid-configuration`과 `jwks.json`을 가져올 OIDC provider URL |
+| VALIDATOR_CLIENT_ID     | Validator app backend용 OIDC provider client ID                      |
+| VALIDATOR_CLIENT_SECRET | Validator app backend용 OIDC provider client secret                  |
+| WALLET_UI_CLIENT_ID     | Wallet UI용 OIDC provider client ID                                  |
+| CNS_UI_CLIENT_ID        | CNS UI용 OIDC provider client ID                                     |
+
+이 value를 `Name` column과 같은 이름의 environment variable로 export해 `helm-validator-auth-secrets-config`와 `helm-validator-install`에서 사용합니다.
+
+처음에는 아래 두 JWT token audience를 같은 값인 `https://canton.network.global`로 설정하는 것을 권장합니다.
+
+이 간단한 기본값으로 설정이 올바르게 동작하는지 확인한 뒤에는 deployment와 URL에 맞는 전용 audience value를 설정하는 것이 좋습니다. 한 network의 validator token이 다른 network의 validator에서 사용되지 않게 하는 중요한 security 설정입니다. Participant Ledger API와 validator backend API에 원하는 audience를 설정할 수 있으며 다음 configuration value로 지칭합니다.
+
+| 이름                               | 값                                                                                |
+|------------------------------------|--------------------------------------------------------------------------------------|
+| OIDC_AUTHORITY_LEDGER_API_AUDIENCE | Participant Ledger API의 audience. 예: `https://ledger_api.example.com`   |
+| OIDC_AUTHORITY_VALIDATOR_AUDIENCE  | Validator backend API의 audience. 예: `https://validator.example.com/api` |
+
+Validator backend가 Ledger API token을 요청할 때 IAM에서 scope 지정을 요구할 수도 있습니다. 이를 다음 configuration value로 지칭합니다.
+
+| 이름                            | 값                                              |
+|---------------------------------|----------------------------------------------------|
+| OIDC_AUTHORITY_LEDGER_API_SCOPE | Participant Ledger API의 선택적 scope |
+
+Auth0가 아닌 OIDC provider 설정에 문제가 있다면 `helm-validator-auth0` 지침도 살펴보며 누락된 기능이나 configuration detail을 확인하는 것이 유용합니다.
+
+### Auth0 Tenant 설정
+
+[Auth0](https://auth0.com)를 validator의 OIDC provider로 설정하려면 다음을 수행합니다.
+
+1.  Validator용 Auth0 tenant를 생성합니다.
+
+2.  Ledger API access를 제어하는 Auth0 API를 생성합니다.
+
+    > 1.  Applications \> APIs로 이동해 "Create API"를 누릅니다. 이름은 `Daml Ledger API`, identifier는 `https://canton.network.global`로 설정합니다. 자체 audience를 설정하려면 identifier를 예를 들어 `https://ledger_api.example.com`로 지정할 수 있습니다.
+    > 2.  새 API의 Permissions tab에서 scope가 `daml_ledger_api`인 permission과 원하는 description을 추가합니다.
+    > 3.  Settings tab의 "Access Settings"에서 automatic token refresh를 위해 "Allow Offline Access"를 활성화합니다.
+
+3.  선택 사항으로 API에 다른 audience를 설정하려면 원하는 audience를 identifier로 지정한 새 Auth0 API를 생성합니다. 예를 들면 다음과 같습니다.
+
+    > 1.  이름이 `Validator App API`인 API를 하나 더 만들고 Validator backend app의 identifier를 예를 들어 `https://validator.example.com/api`로 설정합니다.
+
+4.  Validator backend용 Auth0 Application을 생성합니다.
+
+    > 1.  Auth0에서 Applications -\> Applications로 이동해 "Create Application"을 누릅니다.
+    > 2.  이름을 `Validator app backend`로 지정하고 "Machine to Machine Applications"를 선택한 뒤 Create를 누릅니다.
+    > 3.  "Authorize Machine to Machine Application" dialog에서 2단계에 생성한 `Daml Ledger API` API를 선택하고 Authorize를 누릅니다.
+
+5.  Wallet web UI용 Auth0 Application을 생성합니다.
+
+    > 1.  Auth0에서 Applications -\> Applications로 이동해 "Create Application"을 누릅니다.
+    > 2.  "Single Page Web Applications"를 선택하고 이름을 `Wallet web UI`로 지정한 뒤 Create를 누릅니다.
+    > 3.  Validator wallet UI의 URL을 결정합니다. 이 runbook의 ingress configuration을 사용한다면 `https://wallet.validator.YOUR_HOSTNAME`입니다.
+    > 4.  Auth0 application setting의 다음 항목에 validator wallet URL을 추가합니다.
+    >     - "Allowed Callback URLs"
+    >     - "Allowed Logout URLs"
+    >     - "Allowed Web Origins"
+    >     - "Allowed Origins (CORS)"
+    > 5.  Application setting을 저장합니다.
+
+6.  CNS web UI용 Auth0 Application을 생성합니다. 5단계의 모든 절차를 다음과 같이 변경해 반복합니다.
+
+    - b단계에서 application 이름으로 `CNS web UI`를 사용합니다.
+    - c/d단계에서는 validator의 *CNS* UI URL을 사용합니다. 이 runbook의 ingress configuration을 사용한다면 `https://cns.validator.YOUR_HOSTNAME`입니다.
+
+생성한 두 web UI application의 end-user account 설정 방법은 Auth0의 [user management 문서](https://auth0.com/docs/manage-users)를 참조하세요. `helm-validator-install` 단계를 완료하고 Validator node administrator로 login하려면 이러한 user account가 하나 이상 필요합니다. 해당 account의 user identifier도 확인해야 합니다. Auth0 interface의 User Management -\> Users -\> user 이름 -\> user_id에서 찾을 수 있습니다. user_id는 화면 상단 user 이름 바로 아래 field입니다.
+
+아래 table의 environment variable로 Auth0 configuration 항목을 지칭합니다.
+
+| 이름                               | 값                                                                                      |
+|------------------------------------|--------------------------------------------------------------------------------------------|
+| OIDC_AUTHORITY_URL                 | `https://AUTH0_TENANT_NAME.us.auth0.com`                                                   |
+| OIDC_AUTHORITY_LEDGER_API_AUDIENCE | Ledger API에 사용할 선택적 audience. 예: `https://ledger_api.example.com` |
+| VALIDATOR_CLIENT_ID                | Validator app backend용 Auth0 app의 client ID                               |
+| VALIDATOR_CLIENT_SECRET            | Validator app backend용 Auth0 app의 client secret                           |
+| WALLET_UI_CLIENT_ID                | Wallet UI용 Auth0 app의 client ID                                           |
+| CNS_UI_CLIENT_ID                   | CNS UI용 Auth0 app의 client ID                                              |
+
+`AUTH0_TENANT_NAME`은 Auth0 project 왼쪽 상단에 표시되는 Auth0 tenant 이름입니다. 각 Auth0 app의 setting page에서 client ID와 secret을 확인할 수 있습니다.
+
+### Validator Authentication 설정
+
+이제 `helm-validator-auth-requirements` 또는 `helm-validator-auth0` 마지막에 environment variable로 export한 OIDC provider configuration value를 기반으로 Validator node software를 설정합니다. 일부 authentication 관련 configuration 단계는 `helm-validator-install`에도 포함되어 있습니다.
+
+Validator app backend에는 다음 secret이 필요합니다. 설정에 scope가 필요하지 않다면 생략하세요.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmBash352 />
+
+Wallet/CNS UI를 설정하려면 다음 두 secret을 생성합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmBash364 />
+
+기본적으로 client ID와 secret은 request body에 전달됩니다. IAM이 HTTP Basic Authentication을 요구한다면 [Ad-Hoc Configuration](./configuration)으로 environment variable을 설정할 수 있습니다. 이 option은 Splice 0.6.10 이상에서만 사용할 수 있습니다.
+
+```
+ADDITIONAL_CONFIG_HTTP_BASIC_AUTH=canton.validator-apps.validator_backend.participant-client.ledger-api.auth-config.http-basic-auth = true
+```
+
+### Authentication 없이 실행
+
+<Warning>
+Authentication 없이 실행하는 것은 매우 위험합니다. Wallet UI 또는 다른 방식으로 validator에 접근한 누구든 원하는 user로 wallet에 login하거나 사용자를 대신해 on-ledger transaction을 수행할 수 있습니다. Production에서는 위 section의 설명대로 올바른 authentication을 설정해야 합니다.
+</Warning>
+
+Authentication 없이 validator를 실행하려면 `disableAuth: true`를 `splice-node/examples/sv-helm/validator-values.yaml`과 `splice-node/examples/sv-helm/participant-values.yaml` 모두에 추가합니다. 두 위치에서 모두 auth를 비활성화하지 않으면 validator가 participant에 연결할 수 없습니다.
+
+Authentication 없이 실행할 때 validator administrator user name은 `administrator`입니다.
+
+## Software 설치
+
+<Note>
+
+참조하는 Secret 또는 ConfigMap이 변경될 때 pod의 rolling restart를 자동 수행하는 [Stakater Reloader](https://github.com/stakater/Reloader) 설치를 권장합니다.
+
+Splice Helm chart는 기본적으로 `reloader.stakater.com/auto: "true"` annotation을 포함합니다.
+
+Reloader를 사용하지 않아도 annotation은 영향을 주지 않고 무시됩니다.
+
+제거하려면 Helm values file에서 `enableReloader: false`를 설정합니다.
+
+</Note>
+
+### Helm Chart 설정
+
+{/* NETWORKVARS_START source="/snippets/networkvars/global-synchronizer/deployment/validator-kubernetes-2.mdx" */}
+<Tabs>
+
+<Tab title="DevNet (0.7.1)">
+
+Cluster에 연결된 Validator node를 시작하는 Helm chart를 설치하려면 몇 가지 전제 조건을 충족해야 합니다. 먼저 이 environment에 연결하는 데 필요한 Helm chart version을 나타내는 environment variable을 정의해야 합니다.
+
+```bash
+export CHART_VERSION=0.7.1
+```
+
+`splice-node/examples/sv-helm/participant-values.yaml` file을 다음과 같이 수정합니다.
+
+- `OIDC_AUTHORITY_LEDGER_API_AUDIENCE` in the `auth.targetAudience` entry를 Ledger API audience로 바꿉니다. 예: `https://ledger_api.example.com`. Custom audience를 아직 사용할 수 없다면 권장 기본값 `https://canton.network.global`을 사용할 수 있습니다.
+- `auth.jwksUrl` entry가 auth provider의 JWK set document를 가리키도록 `OIDC_AUTHORITY_URL`을 위에서 설명한 auth provider의 OIDC URL로 바꿉니다.
+- Kubernetes 1.24 미만을 실행한다면 `enableHealthProbes`를 `false`로 설정해 gRPC liveness/readiness probe를 비활성화합니다.
+
+제공된 Postgres Helm chart를 사용한다면 `splice-node/examples/sv-helm/postgres-values-validator-participant.yaml`을 다음과 같이 수정합니다.
+
+- Values file에 `db.volumeSize`와 `db.volumeStorageClass`를 추가해 필요한 경우 persistent storage size와 storage class를 조정합니다. 기본값은 20GiB와 `standard-rwo`입니다.
+
+또한 `splice-node/examples/sv-helm/standalone-participant-values.yaml` file을 다음과 같이 수정합니다.
+
+- `persistence.databaseName`에는 기본적으로 `MIGRATION_ID`가 포함됩니다. 새 deployment에서는 `participant`로만 설정하며 `MIGRATION_ID`를 무시합니다. 기존 node는 현재 database name을 유지해야 합니다.
+
+`scanClient` block을 `standalone-validator-values.yaml`에 정의해 validator가 network의 **Scan** service에 연결하는 방식을 설정해야 합니다.
+
+```yaml
+scanClient:
+  scanType: "bft"
+  seedUrls: ["TRUSTED_SCAN_URL"] # replace with scan seed url. Supports multiple urls, separated by comma.
+
+# scanClient denotes how the validator makes connections to scan service and supports three modes of operation.
+
+# Mode 1: bft (Byzantine Fault Tolerance)
+# Connects to all available scans in the network. It validates responses by ensuring
+# at least f+1 matching responses are received.
+
+# scanClient:
+#   scanType: "bft"
+#   seedUrls: ["TRUSTED_SCAN_URL"] # replace with scan seed url(s).  Supports multiple urls, separated by comma.
+
+# Mode 2: bft-custom
+# A specialized version of bft where you specify a subset of trusted SVs.
+# The validator connects only to the scans of the SVs listed in 'svNames'.
+# Optional param 'threshold' defines how many identical responses are required to consider the scan responses valid.
+
+# scanClient:
+#   scanType: "bft-custom"
+#   svNames: ["TRUSTED_SV"] # replace with trusted SV names(s)
+#   seedUrls: ["TRUSTED_SCAN_URL"] # replace with actual scan seed urls(s)
+#   threshold: <TRUST_THRESHOLD> # optional integer indicating the number of matching responses required for validation
+
+# Mode 3: trust-single
+# Connects to a single trusted scan address.
+# This means that you depend on that single SV and if it is broken or malicious you will be unable to use the network.
+# Hence, usually you want to default to not enabling this
+
+# scanClient:
+#   scanType: "trust-single"
+#   scanAddress: "TRUSTED_SCAN_URL" # replace with the trusted scan url
+```
+선택한 `scanClient` type에서 `TRUSTED_SCAN_URL`을 Validator가 접근할 수 있고 직접 host하거나 신뢰하는 Scan URL로 바꿉니다. 예를 들면 GSF Scan URL인 <a href="https://scan.sv-1.dev.global.canton.network.sync.global">https://scan.sv-1.dev.global.canton.network.sync.global</a>입니다. `bft-custom`/`bft` mode의 `scanClient`에는 여러 Scan seed URL을 comma로 구분해 지정할 수 있습니다.
+
+- Validator app backend API audience를 설정하려면 `OIDC_AUTHORITY_VALIDATOR_AUDIENCE` in the `auth.audience` entry를 해당 audience로 바꿉니다. 예: `https://validator.example.com/api`.
+- Ledger API audience를 설정하려면 `audience` field in the `splice-app-validator-ledger-api-auth` k8s secret을 Ledger API audience로 설정합니다. 예: `https://ledger_api.example.com`.
+- `OPERATOR_WALLET_USER_ID`를 validator operator party로 wallet에 login할 때 사용할 IAM user ID로 바꿉니다. `auth0|43b68e1e4978b000cefba352` 같은 전체 user ID여야 하며 suffix `43b68e1e4978b000cefba352`만 사용하면 안 됩니다.
+- `YOUR_CONTACT_POINT`를 node 문제 발생 시 node operator가 연락할 수 있는 Slack user name 또는 email address로 바꿉니다. Contact information은 공개됩니다. 공유하지 않으려면 빈 string을 입력할 수 있습니다.
+- `auth.jwksUrl` entry가 auth provider의 JWK set document를 가리키도록 `OIDC_AUTHORITY_URL`을 위에서 설명한 auth provider의 OIDC URL로 바꿉니다.
+
+`synchronizer` config를 `standalone-validator-values.yaml`에 정의해 validator participant가 **sequencer**에 연결하는 방식을 설정해야 합니다.
+
+```yaml
+synchronizer:
+  connectionType: "bft"
+
+# synchronizer configuration enables to configure how the validator's participant connects to the synchronizer.
+# synchronizer configuration has three modes of operation.
+
+# Mode 1: bft (Byzantine Fault Tolerance)
+# Uses all available synchronizer connections provided by the scan service.
+# Responses are validated against the network's f+1 fault tolerance logic.
+
+# synchronizer:
+#   connectionType: "bft"
+
+# Mode 2: bft-custom
+# Connects only to sequencers operated by the specific SVs listed in 'svNames'.
+# optional param 'threshold' defines the minimum number of matching responses required for validation.
+
+# synchronizer:
+#   connectionType: "bft-custom"
+#   svNames: ["TRUSTED_SV"] # replace with trusted SV name(s)
+#   threshold: <TRUST_THRESHOLD> # optional integer indicating the number of matching responses required for validation
+
+# Mode 3: trust-Single
+# Connects to a single specified sequencer URL.
+# trust-single makes you dependent on a single SV; if it is malicious or down, you will be unable to use the network.
+
+#synchronizer:
+#   connectionType: "trust-single"
+#   url: "TRUSTED_SYNCHRONIZER_SEQUENCER_URL" # replace with the trusted synchronizer sequencer url
+```
+또한 `splice-node/examples/sv-helm/standalone-validator-values.yaml` file을 다음과 같이 수정합니다.
+
+- Splice `0.6.8`부터는 필요하지 않습니다. `MIGRATION_ID`를 연결할 network의 global synchronizer migration ID로 바꿉니다.
+- `SPONSOR_SV_URL`을 secret을 제공한 SV의 URL로 바꿉니다.
+- `YOUR_VALIDATOR_PARTY_HINT`를 원하는 validator operator party 이름으로 바꿉니다. `<organization>-<function>-<enumerator>` 형식이어야 합니다.
+- `YOUR_VALIDATOR_NODE_NAME`을 network에서 validator node를 나타낼 이름으로 바꿉니다. 일반적으로 `validatorPartyHint`와 같은 값을 사용할 수 있습니다.
+
+마지막으로 [https://github.com/global-synchronizer-foundation/configs/blob/main/configs/ui-config-values.yaml](https://github.com/global-synchronizer-foundation/configs/blob/main/configs/ui-config-values.yaml)에서 UI config values file을 download해 해당 value를 `standalone-validator-values.yaml`에 추가합니다.
+
+</Tab>
+
+<Tab title="TestNet (0.7.0)">
+
+Cluster에 연결된 Validator node를 시작하는 Helm chart를 설치하려면 몇 가지 전제 조건을 충족해야 합니다. 먼저 이 environment에 연결하는 데 필요한 Helm chart version을 나타내는 environment variable을 정의해야 합니다.
+
+```bash
+export CHART_VERSION=0.7.0
+```
+
+`splice-node/examples/sv-helm/participant-values.yaml` file을 다음과 같이 수정합니다.
+
+- `OIDC_AUTHORITY_LEDGER_API_AUDIENCE` in the `auth.targetAudience` entry를 Ledger API audience로 바꿉니다. 예: `https://ledger_api.example.com`. Custom audience를 아직 사용할 수 없다면 권장 기본값 `https://canton.network.global`을 사용할 수 있습니다.
+- `auth.jwksUrl` entry가 auth provider의 JWK set document를 가리키도록 `OIDC_AUTHORITY_URL`을 위에서 설명한 auth provider의 OIDC URL로 바꿉니다.
+- Kubernetes 1.24 미만을 실행한다면 `enableHealthProbes`를 `false`로 설정해 gRPC liveness/readiness probe를 비활성화합니다.
+
+제공된 Postgres Helm chart를 사용한다면 `splice-node/examples/sv-helm/postgres-values-validator-participant.yaml`을 다음과 같이 수정합니다.
+
+- Values file에 `db.volumeSize`와 `db.volumeStorageClass`를 추가해 필요한 경우 persistent storage size와 storage class를 조정합니다. 기본값은 20GiB와 `standard-rwo`입니다.
+
+또한 `splice-node/examples/sv-helm/standalone-participant-values.yaml` file을 다음과 같이 수정합니다.
+
+- `persistence.databaseName`에는 기본적으로 `MIGRATION_ID`가 포함됩니다. 새 deployment에서는 `participant`로만 설정하며 `MIGRATION_ID`를 무시합니다. 기존 node는 현재 database name을 유지해야 합니다.
+
+`scanClient` block을 `standalone-validator-values.yaml`에 정의해 validator가 network의 **Scan** service에 연결하는 방식을 설정해야 합니다.
+
+```yaml
+scanClient:
+  scanType: "bft"
+  seedUrls: ["TRUSTED_SCAN_URL"] # replace with scan seed url. Supports multiple urls, separated by comma.
+
+# scanClient denotes how the validator makes connections to scan service and supports three modes of operation.
+
+# Mode 1: bft (Byzantine Fault Tolerance)
+# Connects to all available scans in the network. It validates responses by ensuring
+# at least f+1 matching responses are received.
+
+# scanClient:
+#   scanType: "bft"
+#   seedUrls: ["TRUSTED_SCAN_URL"] # replace with scan seed url(s).  Supports multiple urls, separated by comma.
+
+# Mode 2: bft-custom
+# A specialized version of bft where you specify a subset of trusted SVs.
+# The validator connects only to the scans of the SVs listed in 'svNames'.
+# Optional param 'threshold' defines how many identical responses are required to consider the scan responses valid.
+
+# scanClient:
+#   scanType: "bft-custom"
+#   svNames: ["TRUSTED_SV"] # replace with trusted SV names(s)
+#   seedUrls: ["TRUSTED_SCAN_URL"] # replace with actual scan seed urls(s)
+#   threshold: <TRUST_THRESHOLD> # optional integer indicating the number of matching responses required for validation
+
+# Mode 3: trust-single
+# Connects to a single trusted scan address.
+# This means that you depend on that single SV and if it is broken or malicious you will be unable to use the network.
+# Hence, usually you want to default to not enabling this
+
+# scanClient:
+#   scanType: "trust-single"
+#   scanAddress: "TRUSTED_SCAN_URL" # replace with the trusted scan url
+```
+선택한 `scanClient` type에서 `TRUSTED_SCAN_URL`을 Validator가 접근할 수 있고 직접 host하거나 신뢰하는 Scan URL로 바꿉니다. 예를 들면 GSF Scan URL인 <a href="https://scan.sv-1.test.global.canton.network.sync.global">https://scan.sv-1.test.global.canton.network.sync.global</a>입니다. `bft-custom`/`bft` mode의 `scanClient`에는 여러 Scan seed URL을 comma로 구분해 지정할 수 있습니다.
+
+- Validator app backend API audience를 설정하려면 `OIDC_AUTHORITY_VALIDATOR_AUDIENCE` in the `auth.audience` entry를 해당 audience로 바꿉니다. 예: `https://validator.example.com/api`.
+- Ledger API audience를 설정하려면 `audience` field in the `splice-app-validator-ledger-api-auth` k8s secret을 Ledger API audience로 설정합니다. 예: `https://ledger_api.example.com`.
+- `OPERATOR_WALLET_USER_ID`를 validator operator party로 wallet에 login할 때 사용할 IAM user ID로 바꿉니다. `auth0|43b68e1e4978b000cefba352` 같은 전체 user ID여야 하며 suffix `43b68e1e4978b000cefba352`만 사용하면 안 됩니다.
+- `YOUR_CONTACT_POINT`를 node 문제 발생 시 node operator가 연락할 수 있는 Slack user name 또는 email address로 바꿉니다. Contact information은 공개됩니다. 공유하지 않으려면 빈 string을 입력할 수 있습니다.
+- `auth.jwksUrl` entry가 auth provider의 JWK set document를 가리키도록 `OIDC_AUTHORITY_URL`을 위에서 설명한 auth provider의 OIDC URL로 바꿉니다.
+
+`synchronizer` config를 `standalone-validator-values.yaml`에 정의해 validator participant가 **sequencer**에 연결하는 방식을 설정해야 합니다.
+
+```yaml
+synchronizer:
+  connectionType: "bft"
+
+# synchronizer configuration enables to configure how the validator's participant connects to the synchronizer.
+# synchronizer configuration has three modes of operation.
+
+# Mode 1: bft (Byzantine Fault Tolerance)
+# Uses all available synchronizer connections provided by the scan service.
+# Responses are validated against the network's f+1 fault tolerance logic.
+
+# synchronizer:
+#   connectionType: "bft"
+
+# Mode 2: bft-custom
+# Connects only to sequencers operated by the specific SVs listed in 'svNames'.
+# optional param 'threshold' defines the minimum number of matching responses required for validation.
+
+# synchronizer:
+#   connectionType: "bft-custom"
+#   svNames: ["TRUSTED_SV"] # replace with trusted SV name(s)
+#   threshold: <TRUST_THRESHOLD> # optional integer indicating the number of matching responses required for validation
+
+# Mode 3: trust-Single
+# Connects to a single specified sequencer URL.
+# trust-single makes you dependent on a single SV; if it is malicious or down, you will be unable to use the network.
+
+#synchronizer:
+#   connectionType: "trust-single"
+#   url: "TRUSTED_SYNCHRONIZER_SEQUENCER_URL" # replace with the trusted synchronizer sequencer url
+```
+또한 `splice-node/examples/sv-helm/standalone-validator-values.yaml` file을 다음과 같이 수정합니다.
+
+- Splice `0.6.8`부터는 필요하지 않습니다. `MIGRATION_ID`를 연결할 network의 global synchronizer migration ID로 바꿉니다.
+- `SPONSOR_SV_URL`을 secret을 제공한 SV의 URL로 바꿉니다.
+- `YOUR_VALIDATOR_PARTY_HINT`를 원하는 validator operator party 이름으로 바꿉니다. `<organization>-<function>-<enumerator>` 형식이어야 합니다.
+- `YOUR_VALIDATOR_NODE_NAME`을 network에서 validator node를 나타낼 이름으로 바꿉니다. 일반적으로 `validatorPartyHint`와 같은 값을 사용할 수 있습니다.
+
+마지막으로 [https://github.com/global-synchronizer-foundation/configs/blob/main/configs/ui-config-values.yaml](https://github.com/global-synchronizer-foundation/configs/blob/main/configs/ui-config-values.yaml)에서 UI config values file을 download해 해당 value를 `standalone-validator-values.yaml`에 추가합니다.
+
+</Tab>
+
+<Tab title="MainNet (0.6.14)">
+
+Cluster에 연결된 Validator node를 시작하는 Helm chart를 설치하려면 몇 가지 전제 조건을 충족해야 합니다. 먼저 이 environment에 연결하는 데 필요한 Helm chart version을 나타내는 environment variable을 정의해야 합니다.
+
+```bash
+export CHART_VERSION=0.6.14
+```
+
+`splice-node/examples/sv-helm/participant-values.yaml` file을 다음과 같이 수정합니다.
+
+- `OIDC_AUTHORITY_LEDGER_API_AUDIENCE` in the `auth.targetAudience` entry를 Ledger API audience로 바꿉니다. 예: `https://ledger_api.example.com`. Custom audience를 아직 사용할 수 없다면 권장 기본값 `https://canton.network.global`을 사용할 수 있습니다.
+- `auth.jwksUrl` entry가 auth provider의 JWK set document를 가리키도록 `OIDC_AUTHORITY_URL`을 위에서 설명한 auth provider의 OIDC URL로 바꿉니다.
+- Kubernetes 1.24 미만을 실행한다면 `enableHealthProbes`를 `false`로 설정해 gRPC liveness/readiness probe를 비활성화합니다.
+
+제공된 Postgres Helm chart를 사용한다면 `splice-node/examples/sv-helm/postgres-values-validator-participant.yaml`을 다음과 같이 수정합니다.
+
+- Values file에 `db.volumeSize`와 `db.volumeStorageClass`를 추가해 필요한 경우 persistent storage size와 storage class를 조정합니다. 기본값은 20GiB와 `standard-rwo`입니다.
+
+또한 `splice-node/examples/sv-helm/standalone-participant-values.yaml` file을 다음과 같이 수정합니다.
+
+- `persistence.databaseName`에는 기본적으로 `MIGRATION_ID`가 포함됩니다. 새 deployment에서는 `participant`로만 설정하며 `MIGRATION_ID`를 무시합니다. 기존 node는 현재 database name을 유지해야 합니다.
+
+`scanClient` block을 `standalone-validator-values.yaml`에 정의해 validator가 network의 **Scan** service에 연결하는 방식을 설정해야 합니다.
+
+```yaml
+scanClient:
+  scanType: "bft"
+  seedUrls: ["TRUSTED_SCAN_URL"] # replace with scan seed url. Supports multiple urls, separated by comma.
+
+# scanClient denotes how the validator makes connections to scan service and supports three modes of operation.
+
+# Mode 1: bft (Byzantine Fault Tolerance)
+# Connects to all available scans in the network. It validates responses by ensuring
+# at least f+1 matching responses are received.
+
+# scanClient:
+#   scanType: "bft"
+#   seedUrls: ["TRUSTED_SCAN_URL"] # replace with scan seed url(s).  Supports multiple urls, separated by comma.
+
+# Mode 2: bft-custom
+# A specialized version of bft where you specify a subset of trusted SVs.
+# The validator connects only to the scans of the SVs listed in 'svNames'.
+# Optional param 'threshold' defines how many identical responses are required to consider the scan responses valid.
+
+# scanClient:
+#   scanType: "bft-custom"
+#   svNames: ["TRUSTED_SV"] # replace with trusted SV names(s)
+#   seedUrls: ["TRUSTED_SCAN_URL"] # replace with actual scan seed urls(s)
+#   threshold: <TRUST_THRESHOLD> # optional integer indicating the number of matching responses required for validation
+
+# Mode 3: trust-single
+# Connects to a single trusted scan address.
+# This means that you depend on that single SV and if it is broken or malicious you will be unable to use the network.
+# Hence, usually you want to default to not enabling this
+
+# scanClient:
+#   scanType: "trust-single"
+#   scanAddress: "TRUSTED_SCAN_URL" # replace with the trusted scan url
+```
+선택한 `scanClient` type에서 `TRUSTED_SCAN_URL`을 Validator가 접근할 수 있고 직접 host하거나 신뢰하는 Scan URL로 바꿉니다. 예를 들면 GSF Scan URL인 <a href="https://scan.sv-1.global.canton.network.sync.global">https://scan.sv-1.global.canton.network.sync.global</a>입니다. `bft-custom`/`bft` mode의 `scanClient`에는 여러 Scan seed URL을 comma로 구분해 지정할 수 있습니다.
+
+- Validator app backend API audience를 설정하려면 `OIDC_AUTHORITY_VALIDATOR_AUDIENCE` in the `auth.audience` entry를 해당 audience로 바꿉니다. 예: `https://validator.example.com/api`.
+- Ledger API audience를 설정하려면 `audience` field in the `splice-app-validator-ledger-api-auth` k8s secret을 Ledger API audience로 설정합니다. 예: `https://ledger_api.example.com`.
+- `OPERATOR_WALLET_USER_ID`를 validator operator party로 wallet에 login할 때 사용할 IAM user ID로 바꿉니다. `auth0|43b68e1e4978b000cefba352` 같은 전체 user ID여야 하며 suffix `43b68e1e4978b000cefba352`만 사용하면 안 됩니다.
+- `YOUR_CONTACT_POINT`를 node 문제 발생 시 node operator가 연락할 수 있는 Slack user name 또는 email address로 바꿉니다. Contact information은 공개됩니다. 공유하지 않으려면 빈 string을 입력할 수 있습니다.
+- `auth.jwksUrl` entry가 auth provider의 JWK set document를 가리키도록 `OIDC_AUTHORITY_URL`을 위에서 설명한 auth provider의 OIDC URL로 바꿉니다.
+
+`synchronizer` config를 `standalone-validator-values.yaml`에 정의해 validator participant가 **sequencer**에 연결하는 방식을 설정해야 합니다.
+
+```yaml
+synchronizer:
+  connectionType: "bft"
+
+# synchronizer configuration enables to configure how the validator's participant connects to the synchronizer.
+# synchronizer configuration has three modes of operation.
+
+# Mode 1: bft (Byzantine Fault Tolerance)
+# Uses all available synchronizer connections provided by the scan service.
+# Responses are validated against the network's f+1 fault tolerance logic.
+
+# synchronizer:
+#   connectionType: "bft"
+
+# Mode 2: bft-custom
+# Connects only to sequencers operated by the specific SVs listed in 'svNames'.
+# optional param 'threshold' defines the minimum number of matching responses required for validation.
+
+# synchronizer:
+#   connectionType: "bft-custom"
+#   svNames: ["TRUSTED_SV"] # replace with trusted SV name(s)
+#   threshold: <TRUST_THRESHOLD> # optional integer indicating the number of matching responses required for validation
+
+# Mode 3: trust-Single
+# Connects to a single specified sequencer URL.
+# trust-single makes you dependent on a single SV; if it is malicious or down, you will be unable to use the network.
+
+#synchronizer:
+#   connectionType: "trust-single"
+#   url: "TRUSTED_SYNCHRONIZER_SEQUENCER_URL" # replace with the trusted synchronizer sequencer url
+```
+또한 `splice-node/examples/sv-helm/standalone-validator-values.yaml` file을 다음과 같이 수정합니다.
+
+- Splice `0.6.8`부터는 필요하지 않습니다. `MIGRATION_ID`를 연결할 network의 global synchronizer migration ID로 바꿉니다.
+- `SPONSOR_SV_URL`을 secret을 제공한 SV의 URL로 바꿉니다.
+- `YOUR_VALIDATOR_PARTY_HINT`를 원하는 validator operator party 이름으로 바꿉니다. `<organization>-<function>-<enumerator>` 형식이어야 합니다.
+- `YOUR_VALIDATOR_NODE_NAME`을 network에서 validator node를 나타낼 이름으로 바꿉니다. 일반적으로 `validatorPartyHint`와 같은 값을 사용할 수 있습니다.
+
+마지막으로 [https://github.com/global-synchronizer-foundation/configs/blob/main/configs/ui-config-values.yaml](https://github.com/global-synchronizer-foundation/configs/blob/main/configs/ui-config-values.yaml)에서 UI config values file을 download해 해당 value를 `standalone-validator-values.yaml`에 추가합니다.
+
+</Tab>
+
+</Tabs>
+{/* NETWORKVARS_END */}
+
+### Helm Chart 설치
+
+{/* NETWORKVARS_START source="/snippets/networkvars/global-synchronizer/deployment/validator-kubernetes-3.mdx" */}
+<Tabs>
+
+<Tab title="DevNet (0.7.1)">
+
+File을 준비한 뒤 다음 Helm command를 순서대로 실행할 수 있습니다. 일반적으로 각 deployment가 stable state에 도달할 때까지 기다린 후 다음 단계로 이동하는 것이 좋습니다.
+
+```bash
+helm install postgres oci://ghcr.io/digital-asset/decentralized-canton-sync/helm/splice-postgres -n validator --version ${CHART_VERSION} -f splice-node/examples/sv-helm/postgres-values-validator-participant.yaml --wait
+helm install participant oci://ghcr.io/digital-asset/decentralized-canton-sync/helm/splice-participant -n validator --version ${CHART_VERSION} -f splice-node/examples/sv-helm/participant-values.yaml -f splice-node/examples/sv-helm/standalone-participant-values.yaml --wait
+helm install validator oci://ghcr.io/digital-asset/decentralized-canton-sync/helm/splice-validator -n validator --version ${CHART_VERSION} -f splice-node/examples/sv-helm/validator-values.yaml -f splice-node/examples/sv-helm/standalone-validator-values.yaml --wait
+```
+실행이 시작되면 cluster state를 검사하고 새 namespace에서 실행 중인 pod를 확인할 수 있습니다. 일반적인 query는 다음과 같습니다.
+
+```bash
+$ kubectl get pods -n validator
+NAMESPACE         NAME                                  READY   STATUS             RESTARTS        AGE
+validator         ans-web-ui-5bf489db78-bdn2j           1/1     Running            0               24m
+validator         participant-8988dfb54-m9655           1/1     Running            0               26m
+validator         postgres-0                            1/1     Running            0               37m
+validator         validator-app-f8c74d5dd-zf9j4         1/1     Running            0               24m
+validator         wallet-web-ui-69d85cdb99-fnj7q        1/1     Running            0               24m
+```
+Bring-up 중에는 특히 모든 Helm chart를 동시에 배포할 경우 `Pod` restart가 발생할 수 있습니다. 예를 들어 `participant`는 `postgres`가 실행될 때까지 시작할 수 없습니다.
+
+</Tab>
+
+<Tab title="TestNet (0.7.0)">
+
+File을 준비한 뒤 다음 Helm command를 순서대로 실행할 수 있습니다. 일반적으로 각 deployment가 stable state에 도달할 때까지 기다린 후 다음 단계로 이동하는 것이 좋습니다.
+
+```bash
+helm install postgres oci://ghcr.io/digital-asset/decentralized-canton-sync/helm/splice-postgres -n validator --version ${CHART_VERSION} -f splice-node/examples/sv-helm/postgres-values-validator-participant.yaml --wait
+helm install participant oci://ghcr.io/digital-asset/decentralized-canton-sync/helm/splice-participant -n validator --version ${CHART_VERSION} -f splice-node/examples/sv-helm/participant-values.yaml -f splice-node/examples/sv-helm/standalone-participant-values.yaml --wait
+helm install validator oci://ghcr.io/digital-asset/decentralized-canton-sync/helm/splice-validator -n validator --version ${CHART_VERSION} -f splice-node/examples/sv-helm/validator-values.yaml -f splice-node/examples/sv-helm/standalone-validator-values.yaml --wait
+```
+실행이 시작되면 cluster state를 검사하고 새 namespace에서 실행 중인 pod를 확인할 수 있습니다. 일반적인 query는 다음과 같습니다.
+
+```bash
+$ kubectl get pods -n validator
+NAMESPACE         NAME                                  READY   STATUS             RESTARTS        AGE
+validator         ans-web-ui-5bf489db78-bdn2j           1/1     Running            0               24m
+validator         participant-8988dfb54-m9655           1/1     Running            0               26m
+validator         postgres-0                            1/1     Running            0               37m
+validator         validator-app-f8c74d5dd-zf9j4         1/1     Running            0               24m
+validator         wallet-web-ui-69d85cdb99-fnj7q        1/1     Running            0               24m
+```
+Bring-up 중에는 특히 모든 Helm chart를 동시에 배포할 경우 `Pod` restart가 발생할 수 있습니다. 예를 들어 `participant`는 `postgres`가 실행될 때까지 시작할 수 없습니다.
+
+</Tab>
+
+<Tab title="MainNet (0.6.14)">
+
+File을 준비한 뒤 다음 Helm command를 순서대로 실행할 수 있습니다. 일반적으로 각 deployment가 stable state에 도달할 때까지 기다린 후 다음 단계로 이동하는 것이 좋습니다.
+
+```bash
+helm install postgres oci://ghcr.io/digital-asset/decentralized-canton-sync/helm/splice-postgres -n validator --version ${CHART_VERSION} -f splice-node/examples/sv-helm/postgres-values-validator-participant.yaml --wait
+helm install participant oci://ghcr.io/digital-asset/decentralized-canton-sync/helm/splice-participant -n validator --version ${CHART_VERSION} -f splice-node/examples/sv-helm/participant-values.yaml -f splice-node/examples/sv-helm/standalone-participant-values.yaml --wait
+helm install validator oci://ghcr.io/digital-asset/decentralized-canton-sync/helm/splice-validator -n validator --version ${CHART_VERSION} -f splice-node/examples/sv-helm/validator-values.yaml -f splice-node/examples/sv-helm/standalone-validator-values.yaml --wait
+```
+실행이 시작되면 cluster state를 검사하고 새 namespace에서 실행 중인 pod를 확인할 수 있습니다. 일반적인 query는 다음과 같습니다.
+
+```bash
+$ kubectl get pods -n validator
+NAMESPACE         NAME                                  READY   STATUS             RESTARTS        AGE
+validator         ans-web-ui-5bf489db78-bdn2j           1/1     Running            0               24m
+validator         participant-8988dfb54-m9655           1/1     Running            0               26m
+validator         postgres-0                            1/1     Running            0               37m
+validator         validator-app-f8c74d5dd-zf9j4         1/1     Running            0               24m
+validator         wallet-web-ui-69d85cdb99-fnj7q        1/1     Running            0               24m
+```
+Bring-up 중에는 특히 모든 Helm chart를 동시에 배포할 경우 `Pod` restart가 발생할 수 있습니다. 예를 들어 `participant`는 `postgres`가 실행될 때까지 시작할 수 없습니다.
+
+</Tab>
+
+</Tabs>
+{/* NETWORKVARS_END */}
+
+## Cluster Ingress 설정
+
+Cluster ingress controller에 다음 route를 설정해야 합니다.
+
+| Service                     | Port | Route                                                                                                                                                                     |
+|------------------------------|------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `wallet-web-ui`              |      | `https://wallet.validator.<YOUR_HOSTNAME>`                                                                                                                                 |
+| `validator-app` `ans-web-ui` | 5003 | `https://wallet.validator.<YOUR_HOSTNAME>/api/validator` `https://cns.validator.<YOUR_HOSTNAME>`                                                                           |
+| `validator-app`              | 5003 | `https://cns.validator.<YOUR_HOSTNAME>/api/validator`                                                                                                                      |
+| `participant`                | 7575 | `https://<YOUR_HOSTNAME>/api/json-api` (선택 사항, validator 자체에는 필요하지 않지만 Ledger API에 직접 접근하려면 사용합니다. Route는 자유롭게 변경할 수 있습니다.) |
+
+- `https://wallet.validator.<YOUR_HOSTNAME>`을 `wallet-web-ui` service로 route합니다. 이 service는 `validator` namespace에 있습니다.
+- `https://wallet.validator.<YOUR_HOSTNAME>/api/validator`를 `/api/validator`로 route합니다. 대상은 `validator-app` service의 port 5003이며 `validator` namespace에 있습니다.
+- `https://cns.validator.<YOUR_HOSTNAME>`을 `ans-web-ui` service로 route합니다. 이 service는 `validator` namespace에 있습니다.
+- `https://cns.validator.<YOUR_HOSTNAME>/api/validator`를 `/api/validator`로 route합니다. 대상은 `validator-app` service의 port 5003이며 `validator` namespace에 있습니다.
+
+<Warning>
+Validator deployment의 attack surface를 작게 유지하려면 그 밖의 모든 service에 대한 ingress connection을 허용하지 마세요. 추가 port나 service를 *하나라도* 여는 것은 case-by-case로 신중히 평가해야 하는 security risk라고 가정해야 합니다. 또한 위 service에 대한 access를 명시적으로 신뢰하는 제한된 IP address range로 한정하는 것을 권장합니다.
+</Warning>
+
+Internet ingress configuration은 설정하는 cluster의 network configuration과 scenario에 따라 달라지는 경우가 많습니다. Validator node ingress의 기본 요구 사항을 보여주기 위해 아래 section에서는 Istio를 사용해 위 route에 따라 ingress를 설정하는 Helm chart를 제공합니다.
+
+### 요구 사항
+
+Reference chart를 설치하려면 cluster가 다음 조건을 충족해야 합니다.
+
+- Cluster에서 *cert-manager*를 사용할 수 있어야 합니다. [cert-manager documentation](https://cert-manager.io/docs/installation/helm/)을 참조하세요.
+- Cluster에 *Istio*가 설치되어 있어야 합니다. [Istio documentation](https://istio.io/latest/docs/setup/)을 참조하세요.
+
+*이 component의 deployment는 platform에 따라 달라지는 경우가 많으며 설정 방법에 대한 좋은 문서를 online에서 찾을 수 있습니다.*
+
+**Istio 설치 예제:**
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmBash545 />
+
+### 설치 지침
+
+{/* NETWORKVARS_START source="/snippets/networkvars/global-synchronizer/deployment/validator-kubernetes-4.mdx" */}
+<Tabs>
+
+<Tab title="DevNet (0.7.1)">
+
+`cluster-ingress` namespace를 생성합니다.
+
+```bash
+kubectl create ns cluster-ingress
+```
+`cn-net-tls`라는 secret에 cert-manager certificate가 있는지 확인합니다. 적절한 certificate definition 예제는 다음과 같습니다.
+
+```yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+   name: cn-certificate
+   namespace: cluster-ingress
+spec:
+    dnsNames:
+    - '*.validator.YOUR_HOSTNAME'
+    issuerRef:
+        name: letsencrypt-production
+    secretName: cn-net-tls
+```
+다음 내용으로 `istio-gateway-values.yaml` file을 생성합니다. GCP에서는 `gcloud compute addresses list`로 cluster IP를 확인할 수 있습니다.
+
+```yaml
+service:
+    loadBalancerIP: "YOUR_CLUSTER_IP"
+    loadBalancerSourceRanges:
+        - "35.194.81.56/32"
+        - "35.198.147.95/32"
+        - "35.189.40.124/32"
+        - "34.132.91.75/32"
+```
+그리고 cluster에 설치합니다.
+
+```bash
+helm install istio-ingress istio/gateway -n cluster-ingress -f istio-gateway-values.yaml
+```
+`cluster-ingress` namespace에 Istio Gateway resource를 생성합니다. 다음 내용을 `gateway.yaml` file로 저장하고 `YOUR_HOSTNAME`을 validator node에 사용할 실제 hostname으로 바꿉니다. 이 hostname에는 위에서 설정한 cluster IP를 가리키는 DNS record가 있어야 합니다.
+
+```yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: cn-http-gateway
+  namespace: cluster-ingress
+spec:
+  selector:
+    app: istio-ingress
+    istio: ingress
+  servers:
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: cn-net-tls # name of the secret created above
+    hosts:
+    - "*.YOUR_HOSTNAME"
+    - "YOUR_HOSTNAME"
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    tls:
+      httpsRedirect: true
+    hosts:
+    - "*.YOUR_HOSTNAME"
+    - "YOUR_HOSTNAME"
+```
+그리고 cluster에 적용합니다.
+
+```bash
+kubectl apply -f gateway.yaml -n cluster-ingress
+```
+이 gateway는 위에서 설정한 secret으로 TLS를 terminate하고 outbound port 443에서 raw HTTP traffic을 노출합니다. 이제 Istio VirtualService를 생성해 이 traffic을 cluster 내 필요한 pod로 route할 수 있습니다. 이를 위한 reference Helm chart가 제공되며 다음 단계 후에 설치할 수 있습니다.
+
+1.  `YOUR_HOSTNAME`을 `splice-node/examples/sv-helm/validator-cluster-ingress-values.yaml`에서 바꾸고
+2.  같은 file의 `nameServiceDomain`을 `"cns"`로 설정한 뒤
+
+다음을 사용합니다.
+
+```bash
+helm install cluster-ingress-validator oci://ghcr.io/digital-asset/decentralized-canton-sync/helm/splice-cluster-ingress-runbook -n validator --version ${CHART_VERSION} -f splice-node/examples/sv-helm/validator-cluster-ingress-values.yaml
+```
+
+</Tab>
+
+<Tab title="TestNet (0.7.0)">
+
+`cluster-ingress` namespace를 생성합니다.
+
+```bash
+kubectl create ns cluster-ingress
+```
+`cn-net-tls`라는 secret에 cert-manager certificate가 있는지 확인합니다. 적절한 certificate definition 예제는 다음과 같습니다.
+
+```yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+   name: cn-certificate
+   namespace: cluster-ingress
+spec:
+    dnsNames:
+    - '*.validator.YOUR_HOSTNAME'
+    issuerRef:
+        name: letsencrypt-production
+    secretName: cn-net-tls
+```
+다음 내용으로 `istio-gateway-values.yaml` file을 생성합니다. GCP에서는 `gcloud compute addresses list`로 cluster IP를 확인할 수 있습니다.
+
+```yaml
+service:
+    loadBalancerIP: "YOUR_CLUSTER_IP"
+    loadBalancerSourceRanges:
+        - "35.194.81.56/32"
+        - "35.198.147.95/32"
+        - "35.189.40.124/32"
+        - "34.132.91.75/32"
+```
+그리고 cluster에 설치합니다.
+
+```bash
+helm install istio-ingress istio/gateway -n cluster-ingress -f istio-gateway-values.yaml
+```
+`cluster-ingress` namespace에 Istio Gateway resource를 생성합니다. 다음 내용을 `gateway.yaml` file로 저장하고 `YOUR_HOSTNAME`을 validator node에 사용할 실제 hostname으로 바꿉니다. 이 hostname에는 위에서 설정한 cluster IP를 가리키는 DNS record가 있어야 합니다.
+
+```yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: cn-http-gateway
+  namespace: cluster-ingress
+spec:
+  selector:
+    app: istio-ingress
+    istio: ingress
+  servers:
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: cn-net-tls # name of the secret created above
+    hosts:
+    - "*.YOUR_HOSTNAME"
+    - "YOUR_HOSTNAME"
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    tls:
+      httpsRedirect: true
+    hosts:
+    - "*.YOUR_HOSTNAME"
+    - "YOUR_HOSTNAME"
+```
+그리고 cluster에 적용합니다.
+
+```bash
+kubectl apply -f gateway.yaml -n cluster-ingress
+```
+이 gateway는 위에서 설정한 secret으로 TLS를 terminate하고 outbound port 443에서 raw HTTP traffic을 노출합니다. 이제 Istio VirtualService를 생성해 이 traffic을 cluster 내 필요한 pod로 route할 수 있습니다. 이를 위한 reference Helm chart가 제공되며 다음 단계 후에 설치할 수 있습니다.
+
+1.  `YOUR_HOSTNAME`을 `splice-node/examples/sv-helm/validator-cluster-ingress-values.yaml`에서 바꾸고
+2.  같은 file의 `nameServiceDomain`을 `"cns"`로 설정한 뒤
+
+다음을 사용합니다.
+
+```bash
+helm install cluster-ingress-validator oci://ghcr.io/digital-asset/decentralized-canton-sync/helm/splice-cluster-ingress-runbook -n validator --version ${CHART_VERSION} -f splice-node/examples/sv-helm/validator-cluster-ingress-values.yaml
+```
+
+</Tab>
+
+<Tab title="MainNet (0.6.14)">
+
+`cluster-ingress` namespace를 생성합니다.
+
+```bash
+kubectl create ns cluster-ingress
+```
+`cn-net-tls`라는 secret에 cert-manager certificate가 있는지 확인합니다. 적절한 certificate definition 예제는 다음과 같습니다.
+
+```yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+   name: cn-certificate
+   namespace: cluster-ingress
+spec:
+    dnsNames:
+    - '*.validator.YOUR_HOSTNAME'
+    issuerRef:
+        name: letsencrypt-production
+    secretName: cn-net-tls
+```
+다음 내용으로 `istio-gateway-values.yaml` file을 생성합니다. GCP에서는 `gcloud compute addresses list`로 cluster IP를 확인할 수 있습니다.
+
+```yaml
+service:
+    loadBalancerIP: "YOUR_CLUSTER_IP"
+    loadBalancerSourceRanges:
+        - "35.194.81.56/32"
+        - "35.198.147.95/32"
+        - "35.189.40.124/32"
+        - "34.132.91.75/32"
+```
+그리고 cluster에 설치합니다.
+
+```bash
+helm install istio-ingress istio/gateway -n cluster-ingress -f istio-gateway-values.yaml
+```
+`cluster-ingress` namespace에 Istio Gateway resource를 생성합니다. 다음 내용을 `gateway.yaml` file로 저장하고 `YOUR_HOSTNAME`을 validator node에 사용할 실제 hostname으로 바꿉니다. 이 hostname에는 위에서 설정한 cluster IP를 가리키는 DNS record가 있어야 합니다.
+
+```yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: cn-http-gateway
+  namespace: cluster-ingress
+spec:
+  selector:
+    app: istio-ingress
+    istio: ingress
+  servers:
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: cn-net-tls # name of the secret created above
+    hosts:
+    - "*.YOUR_HOSTNAME"
+    - "YOUR_HOSTNAME"
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    tls:
+      httpsRedirect: true
+    hosts:
+    - "*.YOUR_HOSTNAME"
+    - "YOUR_HOSTNAME"
+```
+그리고 cluster에 적용합니다.
+
+```bash
+kubectl apply -f gateway.yaml -n cluster-ingress
+```
+이 gateway는 위에서 설정한 secret으로 TLS를 terminate하고 outbound port 443에서 raw HTTP traffic을 노출합니다. 이제 Istio VirtualService를 생성해 이 traffic을 cluster 내 필요한 pod로 route할 수 있습니다. 이를 위한 reference Helm chart가 제공되며 다음 단계 후에 설치할 수 있습니다.
+
+1.  `YOUR_HOSTNAME`을 `splice-node/examples/sv-helm/validator-cluster-ingress-values.yaml`에서 바꾸고
+2.  같은 file의 `nameServiceDomain`을 `"cns"`로 설정한 뒤
+
+다음을 사용합니다.
+
+```bash
+helm install cluster-ingress-validator oci://ghcr.io/digital-asset/decentralized-canton-sync/helm/splice-cluster-ingress-runbook -n validator --version ${CHART_VERSION} -f splice-node/examples/sv-helm/validator-cluster-ingress-values.yaml
+```
+
+</Tab>
+
+</Tabs>
+{/* NETWORKVARS_END */}
+
+## Wallet UI Login
+
+Ingress를 배포한 뒤 browser에서 [https://wallet.validator.YOUR_HOSTNAME](https://wallet.validator.YOUR_HOSTNAME)을 열고 앞서 `validatorWalletUser`로 설정한 user credential로 login합니다. Login하면 transaction page가 표시됩니다.
+
+<img src="/images/splice/wallet_home.png" width="600" alt="After logged in into the wallet UI" />
+
+<div className="todo">
+
+아래 config section을 Docker Compose user도 사용할 수 있는 방식으로 설명
+
+</div>
+
+## Automatic Traffic Purchase 설정
+
+기본적으로 node는 pay-as-you-go 방식으로 [traffic을 자동 구매](/global-synchronizer/deployment/synchronizer-traffic)하도록 설정됩니다. 비활성화하거나 필요에 맞게 조정하려면 validator-values.yaml file의 다음 section을 수정합니다.
+
+<ExternalSpliceMainSpliceRstLiteralMarkerAppsAppSrcPackExamplesSvHelmStandaloneValidatorValuesConfiguringTopupStart />
+
+<ExternalSpliceMainSpliceRstFullDocsSrcCommonTrafficTopups />
+
+<div className="todo">
+
+\* 잔액 부족으로 traffic purchase에 실패할 때 표시되는 error message를 보여줍니다. 현재 [error-insufficient-funds](/global-synchronizer/troubleshooting-guide/troubleshooting-methodology)에 있습니다. \* Automatic top-up 비활성화 option에 link하고 third-party traffic provider 사용 option을 명시합니다.
+
+</div>
+
+## Transfer Offer Sweep 및 Auto-accept 설정
+
+<ExternalSpliceMainSpliceRstFullDocsSrcCommonWalletSweeps />
+
+이를 수행하려면 `validator-values.yaml` file의 다음 section을 uncomment하고 입력합니다.
+
+<ExternalSpliceMainSpliceRstLiteralMarkerAppsAppSrcPackExamplesSvHelmValidatorValuesSweepStart />
+
+마찬가지로 network의 특정 party가 보낸 transfer offer를 자동으로 accept하도록 validator를 설정할 수 있습니다. 이를 수행하려면 `validator-values.yaml` file의 다음 section을 uncomment하고 입력합니다.
+
+<ExternalSpliceMainSpliceRstLiteralMarkerAppsAppSrcPackExamplesSvHelmValidatorValuesAutoAcceptStart />
+
+## CNS UI Login
+
+Browser에서 [https://cns.validator.YOUR_HOSTNAME](https://cns.validator.YOUR_HOSTNAME)을 열고 앞서 `validatorWalletUser`로 설정한 user credential로 login합니다. Canton Name Service에 name을 register할 수 있습니다.
+
+<img src="/images/splice/ans_home.png" width="600" alt="After logged in into the CNS UI" />
+
+## Participant Pruning
+
+기본적으로 participant는 모든 history를 보존합니다. 하지만 이로 인해 database가 점차 커지고 특정 query, 특히 Ledger API의 active contract set query가 느려질 수 있습니다.
+
+이를 완화하려면 지정한 retention point 이전의 모든 history를 제거하고 active contract set만 보존하는 participant pruning을 활성화할 수 있습니다.
+
+이 설정은 participant store에만 영향을 줍니다. CN app(Validator, SV, Scan)은 영향을 받지 않으므로 예를 들어 wallet history는 pruning되지 않습니다.
+
+최근 48시간의 history만 유지하도록 `validator-values.yaml`에 추가할 pruning config 예제는 다음과 같습니다.
+
+Node가 pruning window보다 오래 중단되면, 위 예제에서는 48시간을 넘으면 app의 catch-up과 participant의 지속적인 pruning이 경쟁해 node가 손상될 가능성이 큽니다. 따라서 보장 가능한 node uptime을 고려해 감당할 수 있는 값으로 pruning window를 설정하는 것이 좋습니다. 일반적으로 30일이 합리적입니다. 현재 sequencer도 30일 후 pruning되므로 그보다 긴 downtime 후에는 어차피 network를 catch up할 수 없습니다. Disaster recovery 지침은 [Disaster Recovery](/global-synchronizer/production-operations/validator-disaster-recovery)를 참조하세요.
+
+Participant pruning의 자세한 내용은 [pruning guide](/global-synchronizer/production-operations/pruning)를 참조하세요.
+
+<ExternalSpliceMainSpliceRstLiteralMarkerAppsAppSrcPackExamplesSvHelmValidatorValuesParticipantPruningScheduleStart />
+
+## Init Container 설정
+
+Participant 또는 validator deployment에 init container를 설정하려면 `splice-participant` 또는 `splice-validator`에 다음 Helm value를 사용할 수 있습니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmYaml787 />
+
+## Volume Ownership 문제 우회
+
+`splice-validator` chart의 container는 security를 위해 non-root user, 구체적으로 user:group 1001:1001로 실행됩니다. Pod는 container가 사용할 volume을 mount하며 이 volume은 container를 실행하는 user가 소유해야 합니다. Helm chart는 `fsGroup` [security context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/)를 사용해 mount된 volume을 올바른 user가 소유하게 합니다. 하지만 일부 environment에서는 예상대로 동작하지 않아 root가 volume을 소유할 수 있습니다. 이 경우 mount된 volume의 ownership을 올바른 user로 변경하는 init container를 생성해 우회할 수 있습니다.
+
+예를 들어 synchronizer upgrade에 필요한 `/domain-upgrade-dump` volume에는 `validator-values.yaml` file에 다음을 추가할 수 있습니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorHelmYaml815 />
+
+Identities backup에서 recover할 때 필요한 `/participant-bootstrapping-dump`를 사용 가능하게 mount할 때도 유사한 workaround가 필요합니다.
+
+[^1]: URL은 cluster에서 실행되는 Canton participant/validator app과 wallet/CNS UI에 interact해야 하는 모든 web browser에서 접근할 수 있어야 합니다.
+
+{/* COPIED_END */}

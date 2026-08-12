@@ -1,0 +1,151 @@
+---
+title: "Logical Synchronizer Upgrade"
+description: "Logical Synchronizer Upgrade(LSU)를 통해 network downtime을 매우 제한하면서 Global Synchronizer의 protocol version을 upgrade합니다."
+source_id: "SRC-DC42839CD4"
+source_path: "global-synchronizer/production-operations/logical-synchronizer-upgrade"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "23e0cc5772f93785f08470cc922583585d3e29fecaf1fa2d4fa574181e1f91b7"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import { Version, VersionOption } from '/snippets/components/version.mdx';
+import { networkData } from '/snippets/generated/version-dashboard-data.mdx';
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvLogicalSynchronizerUpgradeNone87 from '/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-logical-synchronizer-upgrade-none-87.mdx';
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvLogicalSynchronizerUpgradeNone118 from '/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-logical-synchronizer-upgrade-none-118.mdx';
+import ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvLogicalSynchronizerUpgradeNone142 from '/snippets/internal/splice/main/splice-rst-code-docs-src-sv-operator-sv-logical-synchronizer-upgrade-none-142.mdx';
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/logical-synchronizer-upgrade.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/sv_operator/sv_logical_synchronizer_upgrade.rst" hash="62d973d4" */}
+
+Logical synchronizer upgrade(LSU)를 사용하면 **network downtime을 매우 제한하면서** synchronizer의 protocol version을 upgrade할 수 있으며, upgrade와 관련하여 validator operator와 app dev에게 operational overhead가 발생하지 않습니다.
+Super [validator](/global-synchronizer/production-operations/validator-disaster-recovery)는 여전히 successor node를 배포하고 upgrade를 예약하는 operational step을 수행해야 하지만, 이 작업은 실제 upgrade가 이루어지기 전에 비동기적으로 수행됩니다.
+
+## 개요
+
+1. Updated protocol version을 포함한 새 Canton release와 호환되는 Splice release가 제공됩니다. Testing 목적이나 일부 disaster recovery 상황에서는 동일한 version 및 protocol version일 수도 있습니다.
+   이 release는 이전 protocol version과 새 protocol version을 모두 지원합니다.
+2. Validator 및 super validator는 새 release로 upgrade하지만 이전 protocol version을 사용하는 원래 physical synchronizer를 계속 실행합니다. 이는 일반 upgrade이며 비동기적으로 수행할 수 있지만
+   실제 upgrade 시간 전에 완료해야 합니다.
+3. `DsoRulesConfig`의 `nextScheduledLogicalSynchronizerUpgrade` field를 통해 LSU를 예약하는 vote를 SV UI에서 생성합니다.
+   Schedule에는 다음이 포함됩니다.
+
+   1. **Topology freeze time**: 이 시점 이후에는 upgrade time까지 topology transaction을 sequence할 수 없습니다. 따라서 특히 party를 추가하거나 Daml package를 vet할 수 없습니다.
+   2. **Upgrade time**: 이 시점에 원래 physical synchronizer의 Daml transaction은 timeout되고 새 Daml transaction은 새 physical synchronizer에서 실행됩니다.
+   3. **New physical synchronizer serial**: 일반적으로 이전 serial에 1을 더한 값입니다.
+   4. **New protocol version**: successor synchronizer의 protocol version입니다.
+
+4. 모든 SV는 기존 node와 함께 *successor* synchronizer node, 즉 sequencer, mediator 및 DABFT를 사용하지 않는 경우 선택적으로 CometBFT를 배포합니다. 새 participant는 없습니다. Participant는 logical synchronizer에 연결되므로 LSU에서 변경되지 않습니다. 이 과정의 일부로 successor synchronizer를 SV 및 scan config에도 [구성](#super-validator-deployment-changes)합니다.
+   이 deployment는 freeze time 전에 완료해야 합니다.
+5. 예약된 **topology freeze time**에 각 SV의 SV app automation이 topology state를 successor node로 전송하고 새 sequencer의 sequencer URL을 topology state에 publish합니다. 이는 freeze time 이후 publish할 수 있는 유일한 topology transaction입니다.
+6. Topology freeze time과 upgrade time 사이에 SV app
+   automation은 새 physical synchronizer의 health를 확인하기 위해 주기적으로 특수 health check event를 보냅니다. 각 super
+   validator는 metric을 사용하여 `LSU
+   Sequencing Test` dashboard에서 다른 모든 super validator의 event를 하나 이상 관찰했는지, 그리고 successor node의 BFT peer
+   connection(CometBFT 또는 DABFT)이 healthy한지 검증해야 합니다.
+
+   <div className="todo">추가된 후 세부 정보 보완</div>
+
+7. 예약된 **upgrade time**에 participant가 successor synchronizer에 자동으로 연결됩니다.
+   SV automation은 현재 sequencer의 traffic control state를 successor로 전송합니다.
+   새 synchronizer의 초기 traffic surge를 방지하기 위해 successor physical synchronizer를 낮은 initial rate limit으로 구성할 수 있으며,
+   구성 가능한 시간이 지나면 SV app이 이를 높입니다.
+
+   <div className="todo">추가된 후 세부 정보 보완.</div>
+
+9. 이제 successor physical synchronizer를 완전히 사용할 수 있습니다. Super Validator는 원래 synchronizer를 legacy로, successor를 current synchronizer로 표시하도록 [configuration](#super-validator-deployment-changes)을 update합니다.
+10. 30일 후 super validator는 이전 physical synchronizer node deployment를 제거합니다. Super Validator는 legacy synchronizer configuration을 제거하도록 [configuration](#super-validator-deployment-changes)을 update합니다.
+
+### LSU 취소
+
+Topology freeze time과 upgrade time 사이에 health check 실패 등으로 successor physical synchronizer가 unhealthy하다고 판단되면 upgrade를 취소할 수 있습니다.
+이를 위해 threshold 이상의 super validator가 SV API의 `/v0/admin/synchronizer/lsu/cancel` endpoint에 `POST` request를 보내야 합니다.
+
+### Roll-Forward LSU를 통한 Disaster Recovery
+
+현재 physical synchronizer를 사용할 수 없게 되는 disaster가 발생한 경우 LSU를 roll-forward recovery mechanism으로 사용할 수 있습니다.
+[절차](/global-synchronizer/production-operations/validator-disaster-recovery)는 일반 LSU와 유사하지만, 현재 physical synchronizer를 사용할 수 없으므로 vote 및 topology transaction을 통한 coordination이 불가능하며 validator와 super validator가 수동으로 upgrade를 시작해야 합니다.
+
+이 절차는 실패한 LSU에서 recovery할 때도 사용할 수 있습니다. 다음 두 경우가 관련됩니다.
+
+1. Upgrade time 전에 LSU가 취소되지 않았지만 upgrade time 이후 successor physical synchronizer에서 Daml transaction 및 topology transaction이 하나도 sequence되지 못했습니다. 이 경우 원래 successor synchronizer를 폐기하고 serial을 1 증가시킨 새 successor synchronizer, 즉 원래 non-successor synchronizer와 비교하여 serial 2로 교체할 수 있습니다.
+2. LSU가 진행되어 일부 transaction이 successor physical synchronizer에서 sequence되었지만 이후 successor physical synchronizer를 사용할 수 없게 되었습니다. 이 경우에도 절차는 동일하지만,
+   SV는 node가 먼저 catch up할 수 있도록 원래 synchronizer와 손상된 successor synchronizer를 둘 다 계속 실행해야 합니다. 손상된 successor가 새 message를 sequence하지는 못해도 event는 계속 제공할 수 있다고 가정합니다. 그리고 새 successor synchronizer를 별도로 구성하여 일정 기간 3개의 synchronizer node를 실행해야 합니다. Node가 가능한 한 많이 catch up하도록 하면 ACS commitment mismatch를 수동으로 해결해야 하는 desynchronization 가능성이 줄어듭니다.
+
+구체적인 절차는 다음과 같습니다.
+
+1. 이전 physical synchronizer가 손상된 것으로 판단되며 마지막으로 sequence된 message의 record time은 R입니다.
+2. Super validator는 해당 시점 이후에 어떤 message도 실수로 sequence되지 않도록 이를 이전 sequencer의 max sequencing time으로 구성합니다. 기존 sequencer에 다음 environment variable을 적용합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvLogicalSynchronizerUpgradeNone87 />
+
+2. Super validator가 successor node를 배포합니다. 문제에 따라
+   새 version에만 문제가 있다면 successor node에 이전 image 및 protocol
+   version을 구성할 수 있습니다. Successor
+   sequencer에는 `lower-bound-sequencing-time-exclusive`와
+   `upgrade-time`이라는 두 timestamp를 구성해야 합니다. 이는 일반 LSU의 topology freeze time 및
+   upgrade time에 해당합니다. 특히
+   `lower-bound-sequencing-time-exclusive` 이후에는 sequencing test message를 제출하고 `LSU Sequencing Test`
+   dashboard에서 관찰할 수 있습니다. `upgrade-time` 이후에는 모든 Daml transaction을 제출할 수 있습니다.
+   실제 timestamp는 모든 SV와 coordination하여 선택합니다.
+   Timestamp는 successor sequencer의 environment variable을 통해 적용합니다.
+
+<Version
+  title="LSU sequencing bounds configuration"
+  networkData={networkData}
+>
+  <VersionOption version="0.5.18" code={`- name: ADDITIONAL_CONFIG_SEQUENCER_LSU_SEQUENCING_BOUNDS
+  value: |
+    canton.sequencers.sequencer.parameters.parameters.lsu-repair.lsu-sequencing-bounds-override.lower-bound-sequencing-time-exclusive=LOWER_BOUND_SEQUENCING_TIME_EXCLUSIVE
+    canton.sequencers.sequencer.parameters.parameters.lsu-repair.lsu-sequencing-bounds-override.upgrade-time=UPGRADE_TIME`} />
+  <VersionOption version="0.6.3" code={`- name: ADDITIONAL_CONFIG_SEQUENCER_LSU_SEQUENCING_BOUNDS
+  value: |
+    canton.sequencers.sequencer.parameters.lsu-repair.lsu-sequencing-bounds-override.lower-bound-sequencing-time-exclusive=LOWER_BOUND_SEQUENCING_TIME_EXCLUSIVE
+    canton.sequencers.sequencer.parameters.lsu-repair.lsu-sequencing-bounds-override.upgrade-time=UPGRADE_TIME`} />
+</Version>
+
+3. Super validator는 ingestion이 완료될 때까지 기다립니다.
+
+4. Super validator는 이전 physical synchronizer의 topology 및 traffic state를 successor node로 전송하도록 SV app을 구성합니다.
+   이를 위해 SV app에 다음 Helm values를 추가합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvLogicalSynchronizerUpgradeNone118 />
+
+5. Validator가 자체 측에서 *procedure*를 시작합니다.
+
+#### 아무것도 sequence되지 않은 실패한 LSU에서 recovery
+
+LSU가 발표되고 취소되지 않았지만
+실패하여 successor synchronizer에서 아무것도 sequence되지 않은 특수한 경우에는 ingestion
+완료 여부를 수동으로 확인하지 않고 validator의 명시적인 상호작용도 요구하지 않는 variant가 있습니다.
+
+이를 위해 다음 단계를 사용합니다.
+
+1. Super validator가 scan에 manual LSU를 구성합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcSvOperatorSvLogicalSynchronizerUpgradeNone142 />
+
+2. Validator app automation이 해당 configuration을 가져와 새 synchronizer에 대한 manual roll-forward LSU를 시작합니다.
+
+#### ACS mismatch 해결
+
+이전 synchronizer가 정확히 어떻게 실패했는지에 따라
+일부 validator는 failure 전에 transaction을 관찰했지만 다른 validator는 관찰하지 못해 desynchronize될 수 있습니다. Recovery하려면 *validator* 지침을 따르세요.
+
+## Super Validator Deployment 변경 사항
+
+<div className="todo">Helm values를 update하고 여기에 link 추가</div>
+
+LSU에는 super validator의 deployment 변경이 필요합니다. 구체적으로 다음과 같습니다.
+
+1. 이제 participant는 LSU의 일부로 유지됩니다. 이전에 participant, sequencer 및 mediator가 migration ID마다 항상 하나의 unit으로 제공된다고 가정했다면 이제 participant를 그 unit에서 분리해야 합니다.
+2. SV app Helm chart의 `domain` 값은 `synchronizers`로 교체해야 합니다. `synchronizers.current`는 이전에 `domain`을 통해 구성된 synchronizer를 대체합니다. `synchronizers.successor`는 successor physical synchronizer를 배포할 때 해당 synchronizer로 구성해야 합니다. Upgrade 후에는 `synchronizers.current`가 `synchronizers.legacy`가 되고 `synchronizers.successor`가 `synchronizers.current`가 됩니다. 30일 후 이전 physical synchronizer를 제거할 때 legacy configuration도 함께 제거해야 합니다. `legacy`에 이미 node가 있으며 아직 decommission하면 안 되는 경우 array 형태의 synchronizer를 받는 `additionalLegacy`로 옮깁니다.
+   CometBFT configuration도 `synchronizers.(current|successor|legacy)` 아래로 이동합니다.
+3. Scan의 `sequencerAddress`와 `mediatorAddress` 값은 `synchronizers.current.sequencer` 및 `synchronizers.current.mediator`로 교체해야 합니다. `synchronizers.successor` 아래의 해당 값은 successor physical synchronizer를 배포할 때 함께 설정해야 합니다. Upgrade 후 `successor`는 `current`가 되고 `current`는 제거됩니다.
+4. DABFT를 successor node로 사용하는 경우 추가 변경이 필요합니다. 가장 중요한 점은 DABFT가 sequencer pod의 일부로 실행되므로 CometBFT node가 없어지는 것입니다. Sequencer pod와 SV app에는 추가 configuration이 필요합니다. 세부 사항은 나중에 추가됩니다.
+
+{/* COPIED_END */}

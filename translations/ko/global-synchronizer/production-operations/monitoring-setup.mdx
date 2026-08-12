@@ -1,0 +1,1097 @@
+---
+title: "Monitoring 설정"
+description: "Canton monitoring 예시, Participant Node health 및 ACS commitment monitoring"
+source_id: "SRC-B85835EA73"
+source_path: "global-synchronizer/production-operations/monitoring-setup"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "ff32dfec043d75672f40ac6723ae8925aaba820e535564cd955a6855cfcc0d81"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/monitoring-setup.md)을 사용하세요.
+</Warning>
+
+이 페이지에서는 container 기반 monitoring 설정 예시(Prometheus, Grafana, ELK), Participant Node health endpoint, ACS commitment monitoring 방법 등 Canton 측 monitoring 주제를 다룹니다.
+
+각 component가 expose하는 항목, scrape 방법, Validator 및 Super Validator에서 확인할 metric 등 Splice/Canton Network metric에 관한 구체적인 내용은 다음을 참고하세요.
+
+- [Splice Metric 개요](/global-synchronizer/production-operations/splice-metrics-overview)
+- [Metric Reference](/global-synchronizer/reference/metrics-reference)
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/tutorials/monitoring/example_monitoring_setup.rst" hash="3c277458" */}
+
+이 guide와 script/config는 테스트되지 않았습니다. 여전히 동작하는지 확인해야 합니다. 이를 구체적인 how-to로 나누고 config/script를 테스트되는 예시로 옮기세요.
+
+이 내용이 기존 observability 문서와 어떤 관계를 가져야 하는지 검토해야 합니다. GitHub의 observability 자료와 quickstart의 observability 자료가 별도로 존재합니다.
+
+## Monitoring 설정 예시
+
+이 section에서는 연결된 Docker container network 안에서 Canton을 실행하는 방법을 예시로 설명합니다. Network activity를 monitoring하는 방법도 보여줍니다. Monitoring 용어의 정의는 [용어집](/overview/understand/glossary)을, 예시 monitoring 설정에서 해당 기술을 선택한 이유는 [Monitoring 선택](#monitoring-choices) section을 참고하세요.
+
+<Note>
+Canton container image는 `ghcr.io/digital-asset/decentralized-canton-sync/docker/canton`에 publish됩니다. 아래 Docker Compose 예시는 `${CANTON_VERSION}`을 tag placeholder로 사용합니다. 실행하기 전에 `CANTON_VERSION`을 대상 network의 값으로 export하거나 값을 inline으로 대체하세요. MainNet, TestNet 및 DevNet의 현재 tag는 [Version Compatibility Dashboard](/shared/version-compatibility-dashboard)를 참고하세요.
+</Note>
+
+### Container 설정
+
+Diagram에 표시된 Docker container network를 시작하도록 [Docker Compose](https://docs.docker.com/compose/)를 구성하려면 아래 내용을 사용하세요. Configuration file 구조에 관한 자세한 내용은 `compose` 문서를 참고하세요.
+
+`compose`에서는 전체 configuration을 여러 file로 나누어 제공할 수 있습니다. 아래에서는 각 configuration file을 설명한 다음, 실행 중인 network로 결합하는 방법을 안내합니다.
+
+<img src="./images/basic-canton-setup.svg" className="align-center" style={{width: "100%"}} alt="A diagram showing an example Docker network setup" />
+
+#### 사용 목적
+
+이 예시는 Canton의 monitoring 정보를 expose, aggregate, observe하는 방법을 보여주기 위한 것입니다. 수정 없이 production에 사용하기에는 적합하지 않습니다. 다음 경고에 유의하세요.
+
+<Warning>
+UI 지원에 필요하지 않은 port도 Docker network 외부로 expose됩니다. 예를 들어 REST 또는 유사한 interface를 통해 기반 service와 low-level로 상호작용할 수 있습니다. Production system에서는 system 운영에 필요한 port만 expose해야 합니다.
+</Warning>
+
+<Warning>
+예시에 사용된 일부 service(예: Postgres 및 Elasticsearch)는 data를 disk에 persist합니다. 이 예시에서 persisted data에 사용하는 volume은 Docker container 내부에 있습니다. 따라서 Docker network를 해제하면 container와 함께 모든 data가 삭제됩니다. Production system에서는 이 volume을 permanent storage에 mount해야 합니다.
+</Warning>
+
+<Warning>
+Password가 configuration file에 plaintext로 저장됩니다. Production system에서는 runtime에 secure keystore에서 password를 가져와야 합니다.
+</Warning>
+
+<Warning>
+Network connection이 보호되지 않습니다. Production system에서는 service 간 connection에 TLS를 활성화하고 certificate authority(CA)를 제공해야 합니다.
+</Warning>
+
+<Warning>
+Container의 memory 사용 설정은 가벼운 demo load에만 적합합니다. Production 설정에서는 memory profiling을 바탕으로 container에 충분한 memory를 할당해야 합니다.
+</Warning>
+
+<Warning>
+예시에 사용된 Docker image version은 오래된 상태가 될 수 있습니다. Production system에서는 최신 patch version만 사용해야 합니다.
+</Warning>
+
+
+#### Network Configuration
+
+이 compose file에서 실행 중인 모든 container를 연결할 network를 정의합니다.
+
+```yaml
+# Create with `docker network create monitoring`
+# Note that `external: false` will fail the docker-compose execution if the network `monitoring` already exists
+
+version: "3.8"
+
+networks:
+  default:
+    name: monitoring
+    external: false
+```
+
+#### Postgres 설정
+
+하나의 Postgres container만 사용하여 Synchronizer database와 각 Participant의 Canton 및 index database를 생성합니다. 이를 위해 `postgres-init.sql`을 Postgres initialization directory에 mount합니다. Production environment에서는 password를 config에 inline으로 넣으면 안 됩니다.
+
+```yaml
+services:
+  postgres:
+    image: postgres:17.5-bullseye
+    hostname: postgres
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=pguser
+      - POSTGRES_PASSWORD=pgpass
+    volumes:
+      - ../etc/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql
+    expose:
+      - "5432"
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: "pg_isready -U postgres"
+      interval: 5s
+      timeout: 5s
+      retries: 5
+```
+
+```sql
+create database canton1db;
+create database index1db;
+
+create database synchronizer0db;
+
+create database canton2db;
+create database index2db;
+```
+
+#### Synchronizer 설정
+
+Debug level의 plaintext를 standard output에 기록하는 `--log-profile container` option으로 Synchronizer를 실행합니다.
+
+{/* Add examples here \<[https://github.com/DACH-NY/canton/issues/23872](https://github.com/DACH-NY/canton/issues/23872)\> */}
+
+#### Participant 설정
+
+Participant container를 생성할 때 두 file이 mapping됩니다. `.conf` file에는 Synchronizer 및 database 위치 정보가 들어 있습니다. [Prometheus Text Based Format](https://github.com/prometheus/docs/blob/main/content/docs/instrumenting/exposition_formats.md#text-based-format)의 metric을 반환하는 HTTP metrics endpoint도 expose됩니다. 기본적으로 Participant는 remote Synchronizer에 연결하지 않으므로 이를 수행하는 bootstrap script를 제공합니다.
+
+```yaml
+services:
+  participant1:
+    image: ghcr.io/digital-asset/decentralized-canton-sync/docker/canton:${CANTON_VERSION}
+    container_name: participant1
+    hostname: participant1
+    volumes:
+      - ./participant1.conf:/canton/etc/participant1.conf
+      - ./participant1.bootstrap:/canton/etc/participant1.bootstrap
+    command: daemon --log-profile container --config etc/participant1.conf --bootstrap etc/participant1.bootstrap
+    expose:
+      - "10011"
+      - "10012"
+      - "10013"
+    ports:
+      - "10011:10011"
+      - "10012:10012"
+      - "10013:10013"
+```
+
+```scala
+participant1.synchronizers.connect_local(sequencer1, alias = "synchronizer0")
+```
+
+``` none
+canton {
+  participants {
+    participant1 {
+      storage {
+        type = postgres
+        config {
+        dataSourceClass = "org.postgresql.ds.PGSimpleDataSource"
+          properties = {
+            databaseName = "canton1db"
+            serverName = "postgres"
+            portNumber = "5432"
+            user = pguser
+            password = pgpass
+          }
+        }
+        ledger-api-jdbc-url = "jdbc:postgresql://postgres:5432/index1db?user=pguser&password=pgpass"
+      }
+      ledger-api {
+        port = 10011
+        address = "0.0.0.0"
+      }
+      admin-api {
+        port = 10012
+        address = "0.0.0.0"
+      }
+    }
+  }
+  monitoring.metrics.reporters = [{
+    type = prometheus
+    address = "0.0.0.0"
+    port = 10013
+  }]
+}
+```
+
+participant2의 설정은 name과 port가 바뀐다는 점을 제외하면 동일합니다.
+
+```yaml
+services:
+  participant2:
+    image: ghcr.io/digital-asset/decentralized-canton-sync/docker/canton:${CANTON_VERSION}
+    container_name: participant2
+    hostname: participant2
+    volumes:
+      - ./participant2.conf:/canton/etc/participant2.conf
+      - ./participant2.bootstrap:/canton/etc/participant2.bootstrap
+    command: daemon --log-profile container --config etc/participant2.conf --bootstrap etc/participant2.bootstrap
+    expose:
+      - "10021"
+      - "10022"
+      - "10023"
+    ports:
+      - "10021:10021"
+      - "10022:10022"
+      - "10023:10023"
+```
+
+```scala
+participant1.synchronizers.connect_local(sequencer1, alias = "synchronizer0")
+```
+
+``` none
+canton {
+  participants {
+    participant1 {
+      storage {
+        type = postgres
+        config {
+        dataSourceClass = "org.postgresql.ds.PGSimpleDataSource"
+          properties = {
+            databaseName = "canton1db"
+            serverName = "postgres"
+            portNumber = "5432"
+            user = pguser
+            password = pgpass
+          }
+        }
+        ledger-api-jdbc-url = "jdbc:postgresql://postgres:5432/index1db?user=pguser&password=pgpass"
+      }
+      ledger-api {
+        port = 10011
+        address = "0.0.0.0"
+      }
+      admin-api {
+        port = 10012
+        address = "0.0.0.0"
+      }
+    }
+  }
+  monitoring.metrics.reporters = [{
+    type = prometheus
+    address = "0.0.0.0"
+    port = 10013
+  }]
+}
+```
+
+#### Logstash
+
+Docker container는 container의 log 정보를 aggregation service로 자동 export하도록 log driver를 지정할 수 있습니다. 이 예시는 모든 GELF stream의 aggregation point로 Logstash를 사용하여 log 정보를 GELF 형식으로 export합니다. Logstash를 사용하면 Elasticsearch, Loki 및 Graylog 등 다양한 downstream logging data store로 data를 전달할 수 있습니다.
+
+``` none
+services:
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.5.1
+    hostname: logstash
+    container_name: logstash
+    expose:
+      - 12201/udp
+    volumes:
+      - ./pipeline.yml:/usr/share/logstash/config/pipeline.yml
+      - ./logstash.yml:/usr/share/logstash/config/logstash.yml
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    ports:
+      - "12201:12201/udp"
+```
+
+Logstash는 `pipeline.yml`을 읽어 모든 pipeline의 위치를 찾습니다.
+
+``` none
+- pipeline.id: main
+  path.config: "/usr/share/logstash/pipeline/logstash.conf"
+```
+
+구성된 pipeline은 GELF 형식의 input을 읽은 후 `logs-` prefix와 date postfix가 붙은 Elasticsearch index로 output합니다.
+
+``` none
+# Main logstash pipeline
+
+input { 
+  gelf {
+    use_udp => true
+    use_tcp => false
+    port => 12201   
+  }
+} 
+
+filter {}
+
+output { 
+
+  elasticsearch { 
+    hosts => ["http://elasticsearch:9200"] 
+    index => "logs-%{+YYYY.MM.dd}"
+  }
+
+}
+```
+
+기본 Logstash 설정을 사용하며 HTTP port는 모든 host IP address에 bind됩니다.
+
+``` none
+# For full set of descriptions see
+# https://www.elastic.co/guide/en/logstash/current/logstash-settings-file.html
+
+http.host: "0.0.0.0"
+```
+
+#### Elasticsearch
+
+Elasticsearch는 built-in resiliency가 있는 cluster configuration 실행을 지원합니다. 이 예시에서는 Elasticsearch Node 하나만 실행합니다.
+
+``` none
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.5.2
+    container_name: elasticsearch
+    environment:
+      ELASTIC_PASSWORD: elastic
+      node.name: elasticsearch
+      cluster.name: elasticsearch
+      cluster.initial_master_nodes: elasticsearch
+      xpack.security.enabled: false
+      bootstrap.memory_lock: true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    expose:
+      - 9200
+    ports:
+      - 9200:9200
+    healthcheck:
+      test: "curl -s -I http://localhost:9200 | grep 'HTTP/1.1 200 OK'"
+      interval: 10s
+      timeout: 10s
+      retries: 10
+```
+
+#### Kibana
+
+Kibana는 Elasticsearch log index를 검색할 수 있는 UI를 제공합니다.
+
+``` none
+services:
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.5.2
+    container_name: kibana
+    expose:
+      - 5601
+    ports:
+      - 5601:5601
+    environment:
+      - SERVERNAME=kibana
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    healthcheck:
+      test: "curl -s -I http://localhost:5601 | grep 'HTTP/1.1 302 Found'"
+      interval: 10s
+      timeout: 10s
+      retries: 10
+```
+
+Log를 보려면 data view를 수동으로 구성해야 합니다. 안내는 [Kibana log monitoring](#kibana-log-monitoring)을 참고하세요.
+
+#### cAdvisor
+
+cAdvisor는 container system metric(CPU, memory, disk 및 network)을 Prometheus에 expose합니다. 이 metric을 확인하는 UI도 제공합니다.
+
+``` none
+services:
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.45.0
+    container_name: cadvisor
+    hostname: cadvisor
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /var/run:/var/run:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Although the following two directories are not present on OSX removing them stops cAdvisor working
+      # Maybe some internal logic checks for the existence of the directory.
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    expose:
+      - 8080
+    ports:
+      - "8080:8080"
+```
+
+Container metric을 확인하려면 다음을 수행합니다.
+
+> 1.  [http://localhost:8080/docker/](http://localhost:8080/docker/)로 이동합니다.
+> 2.  확인할 Docker container를 선택합니다.
+
+이제 표시된 예시와 유사한 UI가 나타납니다.
+
+<img src="./images/c-advisor.png" className="align-center" style={{width: "100%"}} alt="An example cAdvisor UI" />
+
+Prometheus 형식의 metric은 기본적으로 [http://localhost:8080/metrics](http://localhost:8080/metrics)에서 사용할 수 있습니다.
+
+#### Prometheus
+
+Metric data를 scrape할 endpoint를 제공하도록 `prometheus.yml`로 Prometheus를 구성합니다. 기본적으로 port `9090`에서 저장된 metric data를 query할 수 있습니다.
+
+``` none
+services:
+  prometheus:
+    image: prom/prometheus:v2.40.6
+    container_name: prometheus
+    hostname: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
+```
+
+``` none
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 1m
+
+scrape_configs:
+
+  - job_name: canton
+    static_configs:
+      - targets:
+          - participant1:10013
+          - participant2:10023
+
+  - job_name: cadvisor
+    static_configs:
+      - targets:
+          - cadvisor:8080
+
+    # Exclude container labels by default
+    # curl cadvisor:8080/metrics to see all available labels
+    metric_relabel_configs:
+      - regex: "container_label_.*"
+        action: labeldrop
+```
+
+#### Grafana
+
+Grafana에는 다음 항목이 제공됩니다.
+
+- Prometheus metric store 연결 정보
+- Web UI 사용에 필요한 username 및 password
+- 외부에서 제공하는 dashboard의 위치
+- 실제 dashboard
+
+docker-compose.yml file에서 참조하는 `Metric Count` dashboard(`grafana-message-count-dashboard.json`)는 아래에 inline으로 포함되지 않습니다. 수동으로 구성한 것이 아니라 web UI에서 생성한 후 export했기 때문입니다. Grafana login 및 dashboard 표시 방법은 [Grafana metric monitoring](#grafana-metric-monitoring)을 참고하세요.
+
+``` none
+services:
+  grafana:
+    image: grafana/grafana:9.3.1-ubuntu
+    container_name: grafana
+    hostname: grafana
+    volumes:
+      - ./grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/default.yml
+      - ./grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/default.yml
+      - ./grafana-message-count-dashboard.json:/var/lib/grafana/dashboards/grafana-message-count-dashboard.json
+    ports:
+      - 3000:3000
+```
+
+``` none
+instance_name = "docker-compose"
+
+[security]
+admin_user = "grafana"
+admin_password = "grafana"
+
+[unified_alerting]
+enabled = false
+
+[alerting]
+enabled = false
+
+[plugins]
+plugin_admin_enabled = true
+```
+
+``` none
+---
+apiVersion: 1
+
+datasources:
+- name: prometheus
+  type: prometheus
+  access: proxy
+  orgId: 1
+  uid: prometheus
+  url: http://prometheus:9090
+  isDefault: true
+  version: 1
+  editable: false
+```
+
+``` none
+---
+apiVersion: 1
+
+providers:
+  - name: local
+    orgId: 1
+    folder: ''
+    folderUid: default
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true
+```
+
+#### Dependency
+
+Docker container 사이에는 startup dependency가 있습니다. 예를 들어 Participant보다 Synchronizer를 먼저 실행해야 하며, Synchronizer보다 database를 먼저 실행해야 합니다.
+
+`yaml` anchor인 `x-logging`은 GELF container logging을 활성화하며, logging output을 capture할 각 container에 반복해서 사용됩니다. OSX에서 host address는 network address가 아니라 host machine을 가리킨다는 점에 유의하세요.
+
+```yaml
+x-logging: &logging
+  driver: gelf
+  options:
+    # Should be able to use "udp://logstash:12201"
+    gelf-address: "udp://host.docker.internal:12201"
+
+services:
+
+  logstash:
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  postgres:
+    logging:
+      <<: *logging
+    depends_on:
+      logstash:
+        condition: service_started
+
+  participant1:
+    logging:
+      <<: *logging
+    depends_on:
+      synchronizer0:
+        condition: service_started
+      logstash:
+        condition: service_started
+
+  participant2:
+    logging:
+      <<: *logging
+    depends_on:
+      synchronizer0:
+        condition: service_started
+      logstash:
+        condition: service_started
+
+  kibana:
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  grafana:
+    depends_on:
+      prometheus:
+        condition: service_started
+```
+
+#### Docker image
+
+Network를 시작하기 전에 다음 Docker image를 pull해야 합니다.
+
+- `ghcr.io/digital-asset/decentralized-canton-sync/docker/canton:${CANTON_VERSION}`
+- docker.elastic.co/elasticsearch/elasticsearch:8.5.2
+- docker.elastic.co/kibana/kibana:8.5.2
+- docker.elastic.co/logstash/logstash:8.5.1
+- gcr.io/cadvisor/cadvisor:v0.45.0
+- grafana/grafana:9.3.1-ubuntu
+- postgres:17.5-bullseye
+- prom/prometheus:v2.40.6
+
+#### Docker Compose 실행
+
+위에 표시된 모든 compose file로 `docker compose`를 실행하면 command line이 길어지므로 helper script인 `dc.sh`를 사용합니다.
+
+Docker에는 최소 **12GB** memory를 권장합니다. Docker의 memory가 부족하지 않은지 확인하려면 `docker stats`를 실행하고 전체 `MEM%`가 너무 높지 않은지 확인하세요.
+
+```bash
+#!/bin/bash
+
+if [ $# -eq 0 ];then
+    echo "Usage: $0 <docker compose command>"
+    echo "Use '$0 up --force-recreate --renew-anon-volumes' to re-create network"
+    exit 1
+fi
+
+set -x
+
+docker compose \
+    -p monitoring \
+    -f etc/network-docker-compose.yml \
+    -f etc/cadvisor-docker-compose.yml \
+    -f etc/elasticsearch-docker-compose.yml \
+    -f etc/logstash-docker-compose.yml \
+    -f etc/postgres-docker-compose.yml \
+    -f etc/synchronizer0-docker-compose.yml0-docker-compose.yml \
+    -f etc/participant1-docker-compose.yml \
+    -f etc/participant2-docker-compose.yml \
+    -f etc/kibana-docker-compose.yml \
+    -f etc/prometheus-docker-compose.yml \
+    -f etc/grafana-docker-compose.yml \
+    -f etc/dependency-docker-compose.yml \
+    $*
+```
+
+**유용한 command**
+
+```bash
+./dc.sh up -d       # Spins up the network and runs it in the background
+
+./dc.sh ps          # Shows the running containers
+
+./dc.sh stop        # Stops the containers
+
+./dc.sh start       # Starts the containers
+
+./dc.sh down        # Stops and tears down the network, removing any created containers
+```
+
+### Node 연결
+
+실행 중인 network와 상호작용하려면 remote configuration을 적용한 Canton Console을 사용할 수 있습니다. 예시는 다음과 같습니다.
+
+```bash
+bin/canton -c etc/remote-participant1.conf
+```
+
+#### Remote configuration
+
+``` none
+canton {
+
+  features.enable-testing-commands = yes  // Needed for ledger-api
+
+  remote-participants.participant1 {
+    ledger-api {
+      address="0.0.0.0"
+      port="10011"
+    }
+    admin-api {
+      address="0.0.0.0"
+      port="10012"
+    }
+  }
+} 
+```
+
+``` none
+canton {
+
+  features.enable-testing-commands = yes  // Needed for ledger-api
+
+  remote-participants.participant2 {
+    ledger-api {
+      address="0.0.0.0"
+      port="10021"
+    }
+    admin-api {
+      address="0.0.0.0"
+      port="10022"
+    }
+  }
+
+}  
+```
+
+#### 시작하기
+
+앞의 script를 사용하여 Getting Started guide에 제공된 예시를 따라 할 수 있습니다.
+
+### Kibana log monitoring
+
+Kibana를 처음 시작할 때 log data를 볼 수 있도록 data view를 설정해야 합니다.
+
+> 1.  [http://localhost:5601/](http://localhost:5601/)로 이동합니다.
+> 2.  **Explore on my own**을 click합니다.
+> 3.  Menu에서 **Analytics** \> **Discover**를 선택합니다.
+> 4.  **Create data view**를 click합니다.
+> 5.  다음 property로 data view를 저장합니다.
+>     - Name: `Logs`
+>     - Index pattern: `logs-\*`
+>     - Timestamp field: `@timestamp`
+
+이제 여기에 표시된 예시와 유사한 UI가 나타납니다.
+
+<img src="./images/kibana.png" className="align-center" style={{width: "100%"}} alt="An example Kibana UI" />
+
+Kibana interface에서는 다음 작업을 수행할 수 있습니다.
+
+> - 선택한 field를 기반으로 view 생성
+> - Logging timestamp별 log message 확인
+> - Field value로 filter
+> - Text 검색
+> - `KSQL` 또는 `Lucene` query language로 query
+
+자세한 내용은 Kibana 문서를 참고하세요. 넓은 time window에서 plaintext 기반으로 query하면 UI performance가 저하될 가능성이 높습니다. 개선 방법은 [Logging 개선](#logging-improvements)을 참고하세요.
+
+### Grafana metric monitoring
+
+Grafana UI에 login하여 dashboard를 설정할 수 있습니다. 이 예시는 cAdvisor metric graph가 포함된 [GrafanaLabs community dashboard](https://grafana.com/grafana/dashboards/)를 import합니다. 아래에서 import하는 [cAdvisor Export dashboard](https://grafana.com/grafana/dashboards/14282-cadvisor-exporter/)의 ID는 **14282**입니다.
+
+> 1.  [http://localhost:3000/login](http://localhost:3000/login)으로 이동합니다.
+> 2.  Username/password로 `grafana/grafana`를 입력합니다.
+> 3.  Sidebar에서 **Dashboards**를 선택한 다음 **Import**를 선택합니다.
+> 4.  Dashboard ID `14282`를 입력하고 **Load**를 click합니다.
+> 5.  화면에서 data source로 **Prometheus**를 선택하고 **Import**를 click합니다.
+
+이제 여기에 표시된 예시와 유사한 container system metrics dashboard가 나타납니다.
+
+<img src="./images/grafana-cadvisor.png" className="align-center" style={{width: "100%"}} alt="An example metrics dashboard" />
+
+Dashboard 구성 방법은 [Grafana 문서](https://grafana.com/grafana/)를 참고하세요. 사용 가능한 metric에 관한 정보는 이 user manual의 Monitoring section에 있는 Metrics 문서를 참고하세요.
+
+### Monitoring Choices
+
+이 section에서는 monitoring 설정 예시에 사용한 기술을 선택한 이유를 설명합니다.
+
+#### Docker Log Driver 사용
+
+**이유:**
+
+- 대부분의 Docker container는 모든 debug output을 stdout에 기록하도록 구성할 수 있습니다.
+- 제공된 상태 그대로 container를 실행할 수 있습니다.
+- Log scraper를 설치하고 시작하기 위한 추가 dockerfile layer가 필요하지 않습니다.
+- Local file naming, log rotation 등을 별도로 관리할 필요가 없습니다.
+
+#### GELF Docker Log Driver 사용
+
+**이유:**
+
+- Docker에 포함되어 제공됩니다.
+- Decode할 수 있는 JSON payload가 있습니다.
+- Syslog와 같은 size 제한이 없습니다.
+- UDP listener를 사용하여 문제를 debug할 수 있습니다.
+
+#### Logstash 사용
+
+**이유:**
+
+- Container가 제공하는 GELF output을 Elasticsearch로 연결하는 lightweight 방식입니다.
+- Input/filter/output plugin으로 구성된 pipeline이라는 단순한 conceptual model을 사용합니다.
+- Input/filter 및 output plugin ecosystem이 큽니다.
+- Container logging output을 structured/ECS format으로 mapping하는 logic을 외부화합니다.
+- 테스트 시 `stdin`/`stdout` input/output plugin으로 실행할 수 있습니다.
+- Elasticsearch, Loki 또는 Graylog로 data를 전달하는 데 사용할 수 있습니다.
+- 필요한 경우 Elastic Common Schema(ECS)를 지원합니다.
+
+#### Elasticsearch/Kibana 사용
+
+**이유:**
+
+- Elasticsearch 및 Kibana와 함께 Logstash를 사용하는 ELK stack은 logging infrastructure를 구성하는 성숙한 방식입니다.
+- 이 product들의 우수한 default 설정 덕분에 configuration이 거의 없어도 기본 설정을 시작할 수 있습니다.
+- ELK 설정은 Loki 또는 Graylog 등의 다른 option과 비교할 때 유용한 baseline이 됩니다.
+
+#### Prometheus/Grafana 사용
+
+**이유:**
+
+- Prometheus는 OpenTelemetry reference file format을 정의하고 사용합니다.
+- HTTP endpoint를 통해 metric을 expose하면 metric value를 쉽게 직접 확인할 수 있습니다.
+- 기반 system에서 metric을 pull하는 Prometheus 방식에서는 실행 중인 container가 metric data를 저장하고 push할 infrastructure를 갖출 필요가 없습니다.
+- Grafana는 Prometheus와 매우 잘 연동됩니다.
+
+### Logging Improvements
+
+이 version의 예시는 GELF를 통해 제공되는 logging structure만 포함합니다. 다음과 같이 개선할 수 있습니다.
+
+> - 기반 container에서 data를 JSON stream으로 추출합니다.
+> - 이 JSON data의 field를 ECS에 mapping하여 자주 사용하는 field value(예: log level)에 동일한 name을 사용합니다.
+> - 특정 field(예: log level)를 빠르게 filter할 수 있는 schema로 Elasticsearch를 구성합니다.
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/observe/health.rst" hash="c376ddfa" */}
+
+## Participant Node Health
+
+Participant는 여러 방식으로 health status 정보를 expose합니다. 이 정보는 troubleshooting 시 수동으로 확인하거나 더 큰 monitoring 및 orchestration system에 통합할 수 있습니다.
+
+### Load Balancing 및 Orchestration에 gRPC Health Service 사용
+
+Participant Node는 [gRPC Health Checking Protocol](https://github.com/grpc/grpc/blob/master/doc/health-checking.md)을 구현하는 `grpc.health.v1.Health` service를 제공합니다.
+
+Kubernetes container는 이를 readiness 또는 liveness probe에 사용하도록 [구성](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#define-a-grpc-liveness-probe)할 수 있습니다. 해당 [probe](https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/#readiness-probe)의 예시는 다음과 같습니다.
+
+```text
+readinessProbe:
+  grpc:
+    port: <port>
+```
+기본적으로 `Ledger API`에 사용하는 port를 사용합니다.
+
+마찬가지로 [gRPC client](https://grpc.io/docs/guides/health-checking/#enabling-client-health-checking)와 [NGinx](https://docs.nginx.com/nginx/admin-guide/load-balancer/grpc-health-check/)를 구성하여 traffic management 및 load balancing을 위해 health service를 감시할 수 있습니다.
+
+[grpcurl](https://github.com/fullstorydev/grpcurl)과 같은 command line tool을 사용하여 Participant health를 수동으로 확인할 수도 있습니다. Participant의 실제 address를 사용하는 예시는 다음과 같습니다.
+
+```bash
+$ grpcurl -plaintext <host>:<port> grpc.health.v1.Health/Check
+{
+  "status": "SERVING"
+}
+```
+
+현재 요청을 처리할 준비가 되어 있고 사용할 수 있는 상태에서 [Check](https://github.com/grpc/grpc-proto/blob/6565a1ba38af695ace7c3ce6e6ff837ee87d4c10/grpc/health/v1/health.proto#L55)를 호출하면 `SERVING` response를 반환합니다.
+
+[Watch](https://github.com/grpc/grpc-proto/blob/6565a1ba38af695ace7c3ce6e6ff837ee87d4c10/grpc/health/v1/health.proto#L72)를 호출하면 streaming health check를 수행합니다. Server는 Participant의 현재 health를 즉시 전송한 후 health가 바뀔 때마다 새 message를 전송합니다.
+
+여러 Participant replica를 구성한 경우 passive Node는 `NOT_SERVING`을 반환합니다.
+
+실제로 Participant health는 Participant가 의존하는 component들의 health로 구성됩니다. [service](https://github.com/grpc/grpc-proto/blob/6565a1ba38af695ace7c3ce6e6ff837ee87d4c10/grpc/health/v1/health.proto#L29) field를 component name으로 설정하여 요청하면 각 component를 name으로 query할 수 있습니다. 비어 있거나 설정되지 않은 `service` field는 모든 component의 aggregate health를 반환합니다. 알 수 없는 name을 사용하면 gRPC `NOT_FOUND` error가 발생합니다.
+
+### HTTP를 통한 health 확인
+
+HTTP를 통해서도 health check를 수행할 수 있으며, 이는 gRPC Health Checking Protocol을 지원하지 않는 framework에 유용합니다. Node configuration에 monitoring.http-health-server.port=를 설정하면 `http://<host>:<port>/health` URL에서 health 정보를 expose합니다.
+
+여기서는 중요한 정보를 HTTP response status code로 보고합니다.
+
+- Status `200`은 gRPC Health Service의 `SERVING`과 동일합니다.
+- Status `503`은 `NOT_SERVING`과 동일합니다.
+- Status `500`은 다른 이유로 check가 실패했음을 의미합니다.
+
+Kubernetes에서도 이를 readiness probe에 사용할 수 있습니다.
+
+```text
+readinessProbe:
+  httpGet:
+    port: <port>
+    path: /health
+```
+### 일반 Health Status 검사
+
+Unhealthy Synchronizer 및 dependency와 현재 Node가 Active 상태인지 여부를 포함한 Participant Node의 일반 정보는 Canton Console에서 Node의 `health.status` command를 호출하여 표시할 수 있습니다.
+
+``` none
+@ participant1.health.status
+    res1: NodeStatus[ParticipantStatus] = Participant id: PAR::participant1::12201ff69b1d24edbf0ee2028a304ea702ee8536790dab1a31e7136e6d90ff6d473c
+    Uptime: 2.006305s
+    Ports: 
+        ledger: 30145
+        admin: 30146
+        json: 30147
+    Connected synchronizers: None
+    Unhealthy synchronizers: None
+    Active: true
+    Components: 
+        memory_storage : Ok()
+        connected-synchronizer : Not Initialized
+        sync-ephemeral-state : Not Initialized
+        sequencer-client : Not Initialized
+        acs-commitment-processor : Not Initialized
+    Version: 3.5.0-SNAPSHOT
+    Supported protocol version(s): 34
+```
+
+Participant Node의 Admin API는 [ParticipantStatusService](https://github.com/DACH-NY/canton/blob/release-line-3.3/community/admin-api/src/main/protobuf/com/digitalasset/canton/admin/participant/v30/participant_status_service.proto#L10)의 `ParticipantStatus` call을 통해 이 data에 structured form으로 programmatic access를 제공합니다.
+
+Canton Console은 top level에서 command를 호출하여 remote로 연결된 Node를 포함한 *모든* 연결 Node의 정보도 제공할 수 있습니다.
+
+``` none
+@ health.status
+    res2: CantonStatus = Status for Sequencer 'sequencer1':
+    Sequencer id: da::1220a82692abc55c0367abefc4bdbc23df25688230430ddfeef5759845f26d5cc29c
+    Synchronizer id: da::1220a82692abc55c0367abefc4bdbc23df25688230430ddfeef5759845f26d5cc29c::34-0
+    Uptime: 6.470662s
+    Ports: 
+        public: 30149
+        admin: 30150
+    Connected participants: 
+        PAR::participant2::1220a4d7463b...
+        PAR::participant1::12201ff69b1d...
+    Connected mediators: 
+        MED::mediator1::122009299340...
+    Sequencer: SequencerHealthStatus(active = true)
+    details-extra: None
+    Components: 
+        memory_storage : Ok()
+        sequencer : Ok()
+    Accepts admin changes: true
+    Version: 3.5.0-SNAPSHOT
+    Protocol version: 34
+
+    Status for Mediator 'mediator1':
+    Node uid: mediator1::12200929934059da3e012af672ee8a5d26a7e4b3e5084920be298f791f7619843c78
+    Synchronizer id: da::1220a82692abc55c0367abefc4bdbc23df25688230430ddfeef5759845f26d5cc29c::34-0
+    Uptime: 6.405066s
+    Ports: 
+        admin: 30148
+    Active: true
+    Components: 
+        memory_storage : Ok()
+        sequencer-client : Ok()
+        sequencer-connection-pool : Ok()
+        sequencer-subscription-pool : Ok()
+        internal-sequencer-connection-sequencer1-0 : Ok()
+        subscription-sequencer-connection-sequencer1-0 : Ok()
+    Version: 3.5.0-SNAPSHOT
+    Protocol version: 34
+
+    Status for Participant 'participant1':
+    Participant id: PAR::participant1::12201ff69b1d24edbf0ee2028a304ea702ee8536790dab1a31e7136e6d90ff6d473c
+    Uptime: 8.386186s
+    Ports: 
+        ledger: 30145
+        admin: 30146
+        json: 30147
+    Connected synchronizers: 
+        da::1220a82692ab...::34-0
+    Unhealthy synchronizers: None
+    Active: true
+    Components: 
+        memory_storage : Ok()
+        connected-synchronizer : Ok()
+        sync-ephemeral-state : Ok()
+        sequencer-client : Ok()
+        acs-commitment-processor : Ok()
+        sequencer-connection-pool : Ok()
+        sequencer-subscription-pool : Ok()
+        internal-sequencer-connection-sequencer1-0 : Ok()
+        subscription-sequencer-connection-sequencer1-0 : Ok()
+    Version: 3.5.0-SNAPSHOT
+    Supported protocol version(s): 34
+
+    Status for Participant 'participant2':
+    Participant id: PAR::participant2::1220a4d7463bd34b2ba3704401b48ab41d8f88cdcbe512fc1ef071aad97fef106161
+    Uptime: 8.670214s
+    Ports: 
+        ledger: 30180
+        admin: 30181
+        json: 30182
+    Connected synchronizers: 
+        da::1220a82692ab...::34-0
+    Unhealthy synchronizers: None
+    Active: true
+    Components: 
+        memory_storage : Ok()
+        connected-synchronizer : Ok()
+        sync-ephemeral-state : Ok()
+        sequencer-client : Ok()
+        acs-commitment-processor : Ok()
+        sequencer-connection-pool : Ok()
+        sequencer-subscription-pool : Ok()
+        internal-sequencer-connection-sequencer1-0 : Ok()
+        subscription-sequencer-connection-sequencer1-0 : Ok()
+    Version: 3.5.0-SNAPSHOT
+    Supported protocol version(s): 34
+```
+
+### Troubleshooting용 Node Health Dump 생성
+
+Support와 함께 troubleshooting할 때 health dump를 capture하고 공유하는 방법은 [Health Dump](/global-synchronizer/reference/observability-configuration#health-dumps)를 참고하세요.
+
+### 느리거나 멈춘 Task Monitoring
+
+다음 설정을 활성화하면 일부 operation이 느릴 때 이를 보고할 수 있습니다.
+
+``` none
+canton.monitoring.logging.log-slow-futures = yes
+```
+
+Task가 예상보다 오래 걸리면 완료될 때까지 `<task name> has not completed after <duration>`과 같은 log line이 주기적으로 emit됩니다. Overhead를 줄이기 위해 이 기능은 기본적으로 비활성화되어 있습니다.
+
+Canton은 새 task를 제때 schedule할 수 있는지 주기적으로 테스트하는 기능도 제공하며, 다음 configuration으로 활성화할 수 있습니다.
+
+``` none
+canton.monitoring.deadlock-detection.enabled = yes
+```
+
+문제가 감지되면 `Task runner <name> is stuck or overloaded for <duration>`이 포함된 log line이 emit됩니다. 이는 CPU 같은 resource가 overloaded 상태이거나, Execution Context가 너무 작거나, 너무 많은 task가 멈춰 있음을 나타낼 수 있습니다. 문제가 자체적으로 해결되면 이어서 `Task runner <name> is just overloaded, but operating correctly. Task got executed in the meantime` log message가 emit됩니다.
+
+### Fatal Failure 시 Restart 비활성화
+
+Process는 `systemd` 또는 Kubernetes와 같이 process를 monitoring하고 필요할 때 restart할 수 있는 process supervisor 아래에서 실행해야 합니다. 기본적으로 Participant Node process는 fatal failure가 발생하면 종료됩니다.
+
+이 동작을 비활성화하려면 다음을 사용합니다.
+
+``` none
+canton.parameters.exit-on-fatal-failures = no
+```
+
+이렇게 설정하면 해당 상황에서도 Node가 계속 실행되며 unhealthy 상태를 보고합니다.
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/observe/commitments.rst" hash="d74758f7" */}
+
+## ACS Commitment Monitoring
+
+Commitment를 제때 전송하지 못하는 Participant는 counter-participant에 문제를 일으킵니다. Counter-participant는 자신의 state가 해당 Participant의 state와 동일하다는 proof가 없으므로 state를 prune할 수 없습니다. Commitment에 관한 자세한 내용은 Pruning 개요 section에서 확인할 수 있습니다.
+
+이 페이지에서는 ACS commitment의 monitoring option을 설명합니다. Commitment monitoring은 여러 방식으로 Participant Node operator를 지원합니다. 첫째, monitoring은 commitment generation performance에 대한 insight를 제공하여 Participant Node operator가 잠재적인 performance 문제를 troubleshoot하고 해결할 수 있게 합니다. 예를 들어 monitoring metric은 잠재적인 performance bottleneck을 나타내며, operator는 이를 commitment generation configuration의 input으로 사용할 수 있습니다.
+
+둘째, monitoring은 counter-participant가 보낸 commitment의 status에 대한 insight를 제공합니다. Fault 또는 느린 network로 인해 commitment generation이 뒤처진 counter-participant는 해당 Participant의 pruning을 막으므로 이 정보는 Participant Node operator에게 중요합니다. Participant는 자신의 state와 counter-participant의 state가 diverge했는지 알 수 없고 잠재적인 fork를 조사해야 할 수 있으므로 prune할 수 없습니다. Operator는 monitoring metric을 사용하여 느린 counter-participant를 식별하고 필요하면 blacklist에 추가할 수 있습니다.
+
+### 자체 commitment monitoring
+
+Commitment generation을 위해 다음 metric을 제공하며, 자세한 내용은 Metrics reference section에서 설명합니다.
+
+- `daml.participant.sync.commitments.compute`: Participant Node가 commitment 계산에 사용하는 시간을 측정합니다.
+- `daml.participant.sync.commitments.sequencing-time`: Commitment period 종료 시점부터 Sequencer가 해당 commitment를 관찰한 시점까지의 시간을 측정합니다.
+- `daml.participant.sync.commitments.catchup-mode-enabled`: Catch-up mode가 trigger된 횟수를 측정합니다.
+
+### Counter-participant commitment monitoring
+
+Operator는 latency metric을 통해 counter-participant가 보낸 commitment의 status를 monitoring할 수 있습니다. 이 metric은 commitment 전송이 뒤처진 느린 counter-participant를 드러내고, operator가 counter-participant를 느리다고 판단할 threshold를 구성할 수 있게 합니다.
+
+Operator는 counter-participant를 metric reporting에 영향을 주는 세 category로 grouping할 수 있습니다.
+
+- *Default*
+- *Distinguished*
+- *Individually monitored*
+
+*Individually monitored* counter-participant는 항상 해당 Participant의 commitment latency를 표시합니다. Counter-participant의 *Distinguished* 및 *Default* grouping은 group에서 가장 큰 latency만 표시합니다. 이후 inspection tool과 direct monitoring을 사용하여 느린 counter-participant를 식별할 수 있습니다.
+
+아래 모든 metric의 자세한 내용은 Metrics reference section에서 설명합니다.
+
+- *Default*: Distinguished 또는 Individually monitored가 아닌 모든 counter-participant는 기본적으로 이 group에 속합니다. 이 group의 모든 Participant에 대해 하나의 aggregate metric인 `daml.participant.sync.commitments.synchronizer.largest-counter-participant-latency`를 publish합니다. 이 값은 threshold 개수 이상의 reconciliation interval 동안 outstanding 상태인 counter-participant commitment 중 가장 높은 latency를 millisecond 단위로 나타냅니다.
+
+- *Distinguished*: Operator는 중요한 business 관계가 있는 counter-participant 등 일부 Default counter-participant를 Distinguished group으로 upgrade할 수 있습니다. 모든 Distinguished Participant에 대해 `daml.participant.sync.commitments.synchronizer.largest-distinguished-counter-participant-latency`라는 하나의 aggregate metric을 publish합니다. Default group과 마찬가지로 이 metric은 `thresholdDistinguished` 개수 이상의 reconciliation interval 동안 outstanding 상태인 commitment 중 가장 높은 latency를 millisecond 단위로 나타냅니다.
+
+  다음 예시는 `participant1` operator가 counter-participant `participant4`를 Synchronizer `synchronizer2Id`의 Distinguished group에 추가하고, counter-participant `participant2`를 Synchronizer `synchronizer1Id`의 Distinguished group에서 제거하는 방법을 보여줍니다.
+
+  ``` none
+  participant1.commitments.add_config_distinguished_slow_counter_participants(
+    Seq(participant4Id),
+    Seq(synchronizer2Id),
+  )
+  ```
+
+  ``` none
+  participant1.commitments.remove_config_distinguished_slow_counter_participants(
+    Seq(participant2.id),
+    Seq(synchronizer1Id),
+  )
+  ```
+
+- *Individually monitored*: Operator는 commitment status를 개별적으로 monitoring할 counter-participant를 선택할 수 있습니다. 예를 들어 최근 intermittent failure가 발생한 후 복구되었거나, 다른 group 중 하나에서 slowdown을 관찰하여 원인을 찾으려는 경우입니다. 각 Participant는 daml.participant.sync.commitments.synchronizer.counter-participant-latency 아래에 고유한 label을 갖습니다. Business 관계를 기반으로 개별 alert를 설정할 수 있습니다. 참고로 *Default* 또는 *Distinguished* 여부와 관계없이 모든 Participant를 *Individually monitored*에 추가할 수 있습니다. Distinguished Participant는 *Individually monitored*여도 *Distinguished* group에 남습니다. 반면 *Individually monitored*에 추가된 Default Participant는 Default group에서 제거됩니다.
+
+  다음 예시는 `participant1` operator가 counter-participant `participant3`를 Synchronizer `synchronizerId`에서 *Individually monitored* 대상으로 추가하거나 제거하는 방법을 보여줍니다.
+
+  ``` none
+  participant1.commitments.add_participant_to_individual_metrics(
+    Seq(participant3.id),
+    Seq(synchronizerId),
+  )
+  ```
+
+  ``` none
+  participant1.commitments.remove_participant_from_individual_metrics(
+    Seq(participant3.id),
+    Seq(synchronizerId),
+  )
+  ```
+
+Participant operator는 *Default* 및 *Distinguished* group의 threshold와 *Individually monitored* 대상을 포함한 monitoring configuration을 여러 Synchronizer에 한 번에 설정할 수 있습니다. 아래 예시는 `participant1` operator가 Synchronizer `synchronizer1Id` 및 `synchronizer2Id`에 monitoring configuration을 설정하는 방법을 보여줍니다.
+
+``` none
+val update1Config = new SlowCounterParticipantSynchronizerConfig(
+  synchronizerIds = Seq(synchronizer1Id, synchronizer2Id),
+  distinguishedParticipants = Seq(participant3.id),
+  thresholdDistinguished = 15,
+  thresholdDefault = 15,
+  individuallyMonitored = Seq.empty,
+)
+participant1.commitments.set_config_for_slow_counter_participants(Seq(update1Config))
+```
+
+{/* COPIED_END */}

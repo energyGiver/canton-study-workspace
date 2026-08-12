@@ -1,0 +1,236 @@
+---
+title: "DA.Logic"
+description: "Daml module DA.Logic의 reference documentation"
+source_id: "SRC-B64979806A"
+source_path: "appdev/reference/daml-standard-library/da-logic"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "a7d6154d322543f321f2267ba63e1f7d2a3adfaa28a1779c4dda9bce18e09bff"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-logic.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-logic-59184"></span>
+
+# DA.Logic
+
+Logic, propositional calculus입니다.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-da-logic-types-formula-34794"></span>
+
+### `data Formula t`
+
+`Formula t`는 type t의 proposition을 갖는 propositional calculus의 formula입니다.
+
+Constructor:
+
+<span id="constr-da-logic-types-proposition-6173"></span>
+- `Proposition t`
+
+`Proposition p`는 formula p입니다.
+<span id="constr-da-logic-types-negation-48969"></span>
+- `Negation (Formula t)`
+
+formula f에 대해 `Negation f`는 ¬f입니다.
+<span id="constr-da-logic-types-conjunction-51637"></span>
+- `Conjunction [Formula t]`
+
+formula f1, ..., fn에 대해 `Conjunction [f1, ..., fn]`은 f1 ∧ ... ∧ fn입니다.
+<span id="constr-da-logic-types-disjunction-65549"></span>
+- `Disjunction [Formula t]`
+
+formula f1, ..., fn에 대해 `Disjunction [f1, ..., fn]`은 f1 ∨ ... ∨ fn입니다.
+
+Instance:
+
+- instance [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) [`Formula`](#type-da-logic-types-formula-34794)
+- instance [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) [`Formula`](#type-da-logic-types-formula-34794)
+- instance [`Functor`](/appdev/reference/daml-standard-library/prelude#class-ghc-base-functor-31205) [`Formula`](#type-da-logic-types-formula-34794)
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `t` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Formula`](#type-da-logic-types-formula-34794) `t`)
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `t` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`Formula`](#type-da-logic-types-formula-34794) `t`)
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `t` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Formula`](#type-da-logic-types-formula-34794) `t`)
+
+## Functions
+
+<span id="function-da-logic-ampampamp-55265"></span>
+
+### `&&&`
+
+`&&&` : [`Formula`](#type-da-logic-types-formula-34794) `t` -> [`Formula`](#type-da-logic-types-formula-34794) `t` -> [`Formula`](#type-da-logic-types-formula-34794) `t`
+
+`&&&`는 formula Boolean algebra의 ∧ operation이며 "and"로 읽습니다.
+
+<span id="function-da-logic-pipepipepipe-30747"></span>
+
+### `|||`
+
+`|||` : [`Formula`](#type-da-logic-types-formula-34794) `t` -> [`Formula`](#type-da-logic-types-formula-34794) `t` -> [`Formula`](#type-da-logic-types-formula-34794) `t`
+
+`|||`는 formula Boolean algebra의 ∨ operation이며 "or"로 읽습니다.
+
+<span id="function-da-logic-true-31438"></span>
+
+### `true`
+
+`true` : [`Formula`](#type-da-logic-types-formula-34794) `t`
+
+`true`는 formula Boolean algebra의 1 element이며 empty conjunction으로 표현됩니다.
+
+<span id="function-da-logic-false-99028"></span>
+
+### `false`
+
+`false` : [`Formula`](#type-da-logic-types-formula-34794) `t`
+
+`false`는 formula Boolean algebra의 0 element이며 empty disjunction으로 표현됩니다.
+
+<span id="function-da-logic-neg-1597"></span>
+
+### `neg`
+
+`neg` : [`Formula`](#type-da-logic-types-formula-34794) `t` -> [`Formula`](#type-da-logic-types-formula-34794) `t`
+
+`neg`는 formula Boolean algebra의 ¬, 즉 negation operation입니다.
+
+<span id="function-da-logic-conj-82504"></span>
+
+### `conj`
+
+`conj` : [[`Formula`](#type-da-logic-types-formula-34794) `t`] -> [`Formula`](#type-da-logic-types-formula-34794) `t`
+
+`conj`는 ∧의 associativity를 이용한 `&&&`의 list 버전입니다.
+
+<span id="function-da-logic-disj-92448"></span>
+
+### `disj`
+
+`disj` : [[`Formula`](#type-da-logic-types-formula-34794) `t`] -> [`Formula`](#type-da-logic-types-formula-34794) `t`
+
+`disj`는 ∨의 associativity를 이용한 `|||`의 list 버전입니다.
+
+<span id="function-da-logic-frombool-36630"></span>
+
+### `fromBool`
+
+`fromBool` : [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265) -> [`Formula`](#type-da-logic-types-formula-34794) `t`
+
+`fromBool`은 `True`를 `true`로, `False`를 `false`로 변환합니다.
+
+<span id="function-da-logic-tonnf-87354"></span>
+
+### `toNNF`
+
+`toNNF` : [`Formula`](#type-da-logic-types-formula-34794) `t` -> [`Formula`](#type-da-logic-types-formula-34794) `t`
+
+`toNNF`는 formula를 negation normal form으로 변환합니다. https://en.wikipedia.org/wiki/Negation_normal_form을 참조하세요.
+
+<span id="function-da-logic-todnf-90852"></span>
+
+### `toDNF`
+
+`toDNF` : [`Formula`](#type-da-logic-types-formula-34794) `t` -> [`Formula`](#type-da-logic-types-formula-34794) `t`
+
+`toDNF`는 formula를 disjunctive normal form으로 변환합니다. https://en.wikipedia.org/wiki/Disjunctive_normal_form을 참조하세요.
+
+<span id="function-da-logic-traverse-17816"></span>
+
+### `traverse`
+
+`traverse` : [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `f` => (`t` -> `f` `s`) -> [`Formula`](#type-da-logic-types-formula-34794) `t` -> `f` ([`Formula`](#type-da-logic-types-formula-34794) `s`)
+
+일반적인 의미의 `traverse` implementation입니다.
+
+<span id="function-da-logic-zipformulas-28999"></span>
+
+### `zipFormulas`
+
+`zipFormulas` : [`Formula`](#type-da-logic-types-formula-34794) `t` -> [`Formula`](#type-da-logic-types-formula-34794) `s` -> [`Formula`](#type-da-logic-types-formula-34794) (`t`, `s`)
+
+`zipFormulas`는 proposition만 다르고 shape이 같은 두 formula를 받아 zip합니다.
+
+<span id="function-da-logic-substitute-65872"></span>
+
+### `substitute`
+
+`substitute` : (`t` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> [`Formula`](#type-da-logic-types-formula-34794) `t` -> [`Formula`](#type-da-logic-types-formula-34794) `t`
+
+`substitute`는 truth assignment를 받아 formula의 해당 위치에 `True` 또는 `False`를 대체합니다.
+
+<span id="function-da-logic-reduce-40218"></span>
+
+### `reduce`
+
+`reduce` : [`Formula`](#type-da-logic-types-formula-34794) `t` -> [`Formula`](#type-da-logic-types-formula-34794) `t`
+
+`reduce`는 다음 방법으로 formula를 가능한 한 최대한 단순화합니다.
+1. `true`와 `false`의 모든 occurrence를 제거합니다.
+2. 직접 중첩된 Conjunction과 Disjunction을 제거합니다.
+3. negation normal form으로 변환합니다.
+
+<span id="function-da-logic-isbool-80820"></span>
+
+### `isBool`
+
+`isBool` : [`Formula`](#type-da-logic-types-formula-34794) `t` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`isBool`은 formula를 bool로 변환하려고 시도합니다. `isBool true == Some True`와 `isBool false == Some False`를 만족합니다. 그 외에는 `None`을 반환합니다.
+
+<span id="function-da-logic-interpret-88386"></span>
+
+### `interpret`
+
+`interpret` : (`t` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> [`Formula`](#type-da-logic-types-formula-34794) `t` -> [`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) ([`Formula`](#type-da-logic-types-formula-34794) `t`) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`interpret`는 truth function으로 먼저 substitute한 다음 가능한 한 최대한 reduce하는 `toBool` 버전입니다.
+
+<span id="function-da-logic-substitutea-61566"></span>
+
+### `substituteA`
+
+`substituteA` : [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `f` => (`t` -> `f` ([`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265))) -> [`Formula`](#type-da-logic-types-formula-34794) `t` -> `f` ([`Formula`](#type-da-logic-types-formula-34794) `t`)
+
+`substituteA`는 action에서 truth value를 얻을 수 있는 `substitute` 버전입니다.
+
+<span id="function-da-logic-interpreta-14928"></span>
+
+### `interpretA`
+
+`interpretA` : [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `f` => (`t` -> `f` ([`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265))) -> [`Formula`](#type-da-logic-types-formula-34794) `t` -> `f` ([`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) ([`Formula`](#type-da-logic-types-formula-34794) `t`) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265))
+
+`interpretA`는 action에서 truth value를 얻을 수 있는 `interpret` 버전입니다.
+
+## Orphan Typeclass Instances
+
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `t` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Formula`](#type-da-logic-types-formula-34794) `t`)
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `t` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`Formula`](#type-da-logic-types-formula-34794) `t`)
+
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `t` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Formula`](#type-da-logic-types-formula-34794) `t`)
+
+- instance [`Functor`](/appdev/reference/daml-standard-library/prelude#class-ghc-base-functor-31205) [`Formula`](#type-da-logic-types-formula-34794)
+
+- instance [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) [`Formula`](#type-da-logic-types-formula-34794)
+
+- instance [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) [`Formula`](#type-da-logic-types-formula-34794)

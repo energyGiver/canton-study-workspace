@@ -1,0 +1,223 @@
+---
+title: "DA.NonEmpty"
+description: "Daml module DA.NonEmpty의 reference documentation"
+source_id: "SRC-59EB47373D"
+source_path: "appdev/reference/daml-standard-library/da-nonempty"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "073b86759b47d4001024ca5fd28a5fcafff548cbd0db719b0679b40e5ddb16c8"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-nonempty.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-nonempty-15701"></span>
+
+# DA.NonEmpty
+
+non-empty list을 위한 type과 function입니다. 이 module은 prelude list function과 이름이 같은 많은 function을 re-export하므로 module을 qualified import하는 것이 예상됩니다.
+
+예를 들어 다음 import list를 사용하면 `NonEmpty` type에 접근할 수 있고, non-empty list의 function은 `NE.append, NE.map, NE.foldl`처럼 qualified됩니다.
+
+```
+
+import DA.NonEmpty (NonEmpty)
+
+import qualified DA.NonEmpty as NE
+
+```
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Functions
+
+<span id="function-da-nonempty-cons-63704"></span>
+
+### `cons`
+
+`cons` : `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`
+
+non-empty list 앞에 element를 추가합니다.
+
+<span id="function-da-nonempty-append-34337"></span>
+
+### `append`
+
+`append` : [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`
+
+두 non-empty list를 append 또는 concatenate합니다.
+
+<span id="function-da-nonempty-map-69362"></span>
+
+### `map`
+
+`map` : (`a` -> `b`) -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `b`
+
+non-empty list의 각 element에 function을 적용합니다.
+
+<span id="function-da-nonempty-nonempty-24939"></span>
+
+### `nonEmpty`
+
+`nonEmpty` : [`a`] -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`)
+
+가능한 경우 list를 non-empty list로 변환합니다. 입력 list가 비어 있으면 `None`을, 그렇지 않으면 `Some`을 반환합니다.
+
+<span id="function-da-nonempty-singleton-99101"></span>
+
+### `singleton`
+
+`singleton` : `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`
+
+element 하나를 가진 non-empty list입니다.
+
+<span id="function-da-nonempty-tolist-15474"></span>
+
+### `toList`
+
+`toList` : [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> [`a`]
+
+non-empty list를 비어 있지 않다는 정보를 잊고 일반 list로 변환합니다.
+
+<span id="function-da-nonempty-reverse-64050"></span>
+
+### `reverse`
+
+`reverse` : [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`
+
+non-empty list의 순서를 뒤집습니다.
+
+<span id="function-da-nonempty-find-73910"></span>
+
+### `find`
+
+`find` : (`a` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `a`
+
+non-empty list에서 element를 찾습니다.
+
+<span id="function-da-nonempty-deleteby-6333"></span>
+
+### `deleteBy`
+
+`deleteBy` : (`a` -> `a` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> [`a`]
+
+`deleteBy` function은 `delete`와 같이 동작하지만 user-supplied equality predicate를 받습니다.
+
+<span id="function-da-nonempty-delete-59160"></span>
+
+### `delete`
+
+`delete` : [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => `a` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> [`a`]
+
+non-empty list에서 x의 첫 번째 occurrence를 제거합니다. 결과적으로 모든 element가 제거될 수도 있습니다.
+
+<span id="function-da-nonempty-foldl1-17561"></span>
+
+### `foldl1`
+
+`foldl1` : (`a` -> `a` -> `a`) -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> `a`
+
+non-empty list의 element pair에 왼쪽에서부터 function을 반복 적용합니다. 예: `foldl1 (+) (NonEmpty 1 [2,3,4]) = ((1 + 2) + 3) + 4`.
+
+<span id="function-da-nonempty-foldr1-43627"></span>
+
+### `foldr1`
+
+`foldr1` : (`a` -> `a` -> `a`) -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> `a`
+
+non-empty list의 element pair에 오른쪽에서부터 function을 반복 적용합니다. 예: `foldr1 (+) (NonEmpty 1 [2,3,4]) = 1 + (2 + (3 + 4))`.
+
+<span id="function-da-nonempty-foldr-65043"></span>
+
+### `foldr`
+
+`foldr` : (`a` -> `b` -> `b`) -> `b` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> `b`
+
+주어진 initial value를 사용해 non-empty list의 element pair에 오른쪽에서부터 function을 반복 적용합니다. 예: `foldr (+) 0 (NonEmpty 1 [2,3,4]) = 1 + (2 + (3 + (4 + 0)))`.
+
+<span id="function-da-nonempty-foldra-91227"></span>
+
+### `foldrA`
+
+`foldrA` : [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) `m` => (`a` -> `b` -> `m` `b`) -> `b` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> `m` `b`
+
+`foldr`와 같지만 매번 action을 실행합니다.
+
+<span id="function-da-nonempty-foldr1a-13463"></span>
+
+### `foldr1A`
+
+`foldr1A` : [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) `m` => (`a` -> `a` -> `m` `a`) -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> `m` `a`
+
+`foldr1`과 같지만 매번 action을 실행합니다.
+
+<span id="function-da-nonempty-foldl-91113"></span>
+
+### `foldl`
+
+`foldl` : (`b` -> `a` -> `b`) -> `b` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> `b`
+
+주어진 initial value를 사용해 non-empty list의 element pair에 왼쪽에서부터 function을 반복 적용합니다. 예: `foldl (+) 0 (NonEmpty 1 [2,3,4]) = (((0 + 1) + 2) + 3) + 4`.
+
+<span id="function-da-nonempty-foldla-69961"></span>
+
+### `foldlA`
+
+`foldlA` : [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) `m` => (`b` -> `a` -> `m` `b`) -> `b` -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> `m` `b`
+
+`foldl`과 같지만 매번 action을 실행합니다.
+
+<span id="function-da-nonempty-foldl1a-63665"></span>
+
+### `foldl1A`
+
+`foldl1A` : [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) `m` => (`a` -> `a` -> `m` `a`) -> [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a` -> `m` `a`
+
+`foldl1`과 같지만 매번 action을 실행합니다.
+
+## Orphan Typeclass Instances
+
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`)
+
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`)
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`)
+
+- instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `hd` ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`) `a`
+
+- instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `hd` ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`) `a`
+
+- instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `tl` ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`) [`a`]
+
+- instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `tl` ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`) [`a`]
+
+- instance [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) `a`)
+
+- instance [`Functor`](/appdev/reference/daml-standard-library/prelude#class-ghc-base-functor-31205) [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010)
+
+- instance [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010)
+
+- instance [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010)
+
+- instance [`Foldable`](/appdev/reference/daml-standard-library/da-foldable#class-da-foldable-foldable-25994) [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010)
+
+- instance [`Traversable`](/appdev/reference/daml-standard-library/da-traversable#class-da-traversable-traversable-18144) [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010)
+
+- instance [`IsParties`](/appdev/reference/daml-standard-library/prelude#class-da-internal-template-functions-isparties-53750) ([`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010) [`Party`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-party-57932))

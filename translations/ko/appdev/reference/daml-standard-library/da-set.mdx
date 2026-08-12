@@ -1,0 +1,261 @@
+---
+title: "DA.Set"
+description: "Daml module DA.Set의 reference documentation"
+source_id: "SRC-0627BE45EB"
+source_path: "appdev/reference/daml-standard-library/da-set"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "654ac90afa8d698e6cdfcae3fea96846f49194eec6eb0c0369c70289d278712a"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-set.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-set-6124"></span>
+
+# DA.Set
+
+참고: Daml-LF 1.11 이상에서만 지원됩니다.
+
+이 module은 generic set type `Set k`와 관련 function을 export합니다. 이 module은 다음과 같이 qualified import해야 합니다.
+
+```
+
+import DA.Set (Set)
+
+import DA.Set qualified as S
+
+```
+
+이렇게 하면 `Set` type과 여러 operation을 `S.lookup`, `S.insert`, `S.fromList` 등으로 사용할 수 있습니다.
+
+`Set k`는 내부적으로 type `k`의 built-in order를 사용합니다. 이는 function을 포함한 key는 비교할 수 없고 runtime error를 일으킨다는 뜻입니다. 이를 방지하기 위해 대부분의 set operation에 `Ord k` instance가 필요합니다. `deriving`을 사용해 자동으로 derived된 `Ord k` instance가 있는 key type에만 `Set k`를 사용하는 것이 권장됩니다.
+
+```
+
+data K = ...
+
+deriving (Eq, Ord)
+
+```
+
+여기에는 function type이 아닌 모든 built-in type과, `a`와 `b`에 default `Ord` instance가 있는 `Int`, `Text`, `Bool`, `(a, b)`, `t`에 default `Ord` instance가 있는 `Optional t`와 `[t]`, `k`와 `v`에 default `Ord` instance가 있는 `Map k v`, `k`에 default `Ord` instance가 있는 `Set k`가 포함됩니다.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-da-set-types-set-90436"></span>
+
+### `data Set k`
+
+set의 type입니다. `Map` type을 wrapping합니다.
+
+Constructor:
+
+<span id="constr-da-set-types-set-78105"></span>
+- `Set`
+
+<ResponseField name="map" type="Map k ()" />
+
+Instance:
+
+- instance [`Foldable`](/appdev/reference/daml-standard-library/da-foldable#class-da-foldable-foldable-25994) [`Set`](#type-da-set-types-set-90436)
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => [`Monoid`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-monoid-6742) ([`Set`](#type-da-set-types-set-90436) `k`)
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Set`](#type-da-set-types-set-90436) `k`)
+- instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `map` ([`Set`](#type-da-set-types-set-90436) `k`) ([`Map`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-map-90052) `k` ())
+- instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `map` ([`Set`](#type-da-set-types-set-90436) `k`) ([`Map`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-map-90052) `k` ())
+- instance [`IsParties`](/appdev/reference/daml-standard-library/prelude#class-da-internal-template-functions-isparties-53750) ([`Set`](#type-da-set-types-set-90436) [`Party`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-party-57932))
+- instance `Serializable` `k` => `Serializable` ([`Set`](#type-da-set-types-set-90436) `k`)
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Set`](#type-da-set-types-set-90436) `k`)
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`Set`](#type-da-set-types-set-90436) `k`)
+- instance ([`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k`, [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `k`) => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Set`](#type-da-set-types-set-90436) `k`)
+
+## Functions
+
+<span id="function-da-set-empty-19742"></span>
+
+### `empty`
+
+`empty` : [`Set`](#type-da-set-types-set-90436) `k`
+
+empty set입니다.
+
+<span id="function-da-set-size-6437"></span>
+
+### `size`
+
+`size` : [`Set`](#type-da-set-types-set-90436) `k` -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+set의 element 수입니다.
+
+<span id="function-da-set-tolist-26355"></span>
+
+### `toList`
+
+`toList` : [`Set`](#type-da-set-types-set-90436) `k` -> [`k`]
+
+set을 element list로 변환합니다.
+
+<span id="function-da-set-fromlist-9190"></span>
+
+### `fromList`
+
+`fromList` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => [`k`] -> [`Set`](#type-da-set-types-set-90436) `k`
+
+element list에서 set을 생성합니다.
+
+<span id="function-da-set-tomap-37614"></span>
+
+### `toMap`
+
+`toMap` : [`Set`](#type-da-set-types-set-90436) `k` -> [`Map`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-map-90052) `k` ()
+
+`Set`을 `Map`으로 변환합니다.
+
+<span id="function-da-set-frommap-15501"></span>
+
+### `fromMap`
+
+`fromMap` : [`Map`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-map-90052) `k` () -> [`Set`](#type-da-set-types-set-90436) `k`
+
+`Map`에서 `Set`을 생성합니다.
+
+<span id="function-da-set-member-75542"></span>
+
+### `member`
+
+`member` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => `k` -> [`Set`](#type-da-set-types-set-90436) `k` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+element가 set에 있는지 확인합니다.
+
+<span id="function-da-set-notmember-79044"></span>
+
+### `notMember`
+
+`notMember` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => `k` -> [`Set`](#type-da-set-types-set-90436) `k` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+element가 set에 없는지 확인합니다. `notMember k s`는 `not (member k s)`와 동일합니다.
+
+<span id="function-da-set-null-99389"></span>
+
+### `null`
+
+`null` : [`Set`](#type-da-set-types-set-90436) `k` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+empty set인지 확인합니다.
+
+<span id="function-da-set-insert-58479"></span>
+
+### `insert`
+
+`insert` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => `k` -> [`Set`](#type-da-set-types-set-90436) `k` -> [`Set`](#type-da-set-types-set-90436) `k`
+
+set에 element를 insert합니다. set에 해당 element가 이미 있으면 set을 변경하지 않고 반환합니다.
+
+<span id="function-da-set-filter-76182"></span>
+
+### `filter`
+
+`filter` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => (`k` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)) -> [`Set`](#type-da-set-types-set-90436) `k` -> [`Set`](#type-da-set-types-set-90436) `k`
+
+predicate를 만족하는 모든 element를 filtering합니다.
+
+<span id="function-da-set-delete-52281"></span>
+
+### `delete`
+
+`delete` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => `k` -> [`Set`](#type-da-set-types-set-90436) `k` -> [`Set`](#type-da-set-types-set-90436) `k`
+
+set에서 element를 삭제합니다.
+
+<span id="function-da-set-singleton-15574"></span>
+
+### `singleton`
+
+`singleton` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => `k` -> [`Set`](#type-da-set-types-set-90436) `k`
+
+singleton set을 생성합니다.
+
+<span id="function-da-set-union-79876"></span>
+
+### `union`
+
+`union` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => [`Set`](#type-da-set-types-set-90436) `k` -> [`Set`](#type-da-set-types-set-90436) `k` -> [`Set`](#type-da-set-types-set-90436) `k`
+
+두 set의 union입니다.
+
+<span id="function-da-set-intersection-70017"></span>
+
+### `intersection`
+
+`intersection` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => [`Set`](#type-da-set-types-set-90436) `k` -> [`Set`](#type-da-set-types-set-90436) `k` -> [`Set`](#type-da-set-types-set-90436) `k`
+
+두 set의 intersection입니다.
+
+<span id="function-da-set-difference-68545"></span>
+
+### `difference`
+
+`difference` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => [`Set`](#type-da-set-types-set-90436) `k` -> [`Set`](#type-da-set-types-set-90436) `k` -> [`Set`](#type-da-set-types-set-90436) `k`
+
+```text
+`difference x y` returns the set consisting of all
+elements in `x` that are not in `y`.
+
+>>> fromList [1, 2, 3] `difference` fromList [1, 4]
+fromList [2, 3]
+```
+
+<span id="function-da-set-issubsetof-34493"></span>
+
+### `isSubsetOf`
+
+`isSubsetOf` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => [`Set`](#type-da-set-types-set-90436) `k` -> [`Set`](#type-da-set-types-set-90436) `k` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`a`의 모든 element가 `b`에 있어 `a`가 `b`의 subset이면 `isSubsetOf a b`는 true를 반환합니다.
+
+<span id="function-da-set-ispropersubsetof-90093"></span>
+
+### `isProperSubsetOf`
+
+`isProperSubsetOf` : [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => [`Set`](#type-da-set-types-set-90436) `k` -> [`Set`](#type-da-set-types-set-90436) `k` -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`a`가 `b`의 proper subset이면 `isProperSubsetOf a b`는 true를 반환합니다. 즉 `a`가 `b`의 subset이지만 `b`와 같지 않은 경우입니다.
+
+## Orphan Typeclass Instances
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Set`](#type-da-set-types-set-90436) `k`)
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`Set`](#type-da-set-types-set-90436) `k`)
+
+- instance ([`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k`, [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `k`) => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Set`](#type-da-set-types-set-90436) `k`)
+
+- instance [`IsParties`](/appdev/reference/daml-standard-library/prelude#class-da-internal-template-functions-isparties-53750) ([`Set`](#type-da-set-types-set-90436) [`Party`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-party-57932))
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Set`](#type-da-set-types-set-90436) `k`)
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => [`Monoid`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-monoid-6742) ([`Set`](#type-da-set-types-set-90436) `k`)
+
+- instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `map` ([`Set`](#type-da-set-types-set-90436) `k`) ([`Map`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-map-90052) `k` ())
+
+- instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `map` ([`Set`](#type-da-set-types-set-90436) `k`) ([`Map`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-map-90052) `k` ())
+
+- instance [`Foldable`](/appdev/reference/daml-standard-library/da-foldable#class-da-foldable-foldable-25994) [`Set`](#type-da-set-types-set-90436)

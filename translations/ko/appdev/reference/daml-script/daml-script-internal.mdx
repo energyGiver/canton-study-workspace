@@ -1,0 +1,304 @@
+---
+title: "Daml.Script.Internal"
+description: "Daml module Daml.Script.Internal의 reference documentation"
+source_id: "SRC-8E177EC822"
+source_path: "appdev/reference/daml-script/daml-script-internal"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "c829e910e4634f398f782c4f2bc459d0e7d8bfffc0e47481e3e84a4b2254acb1"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-script/daml-script-internal.md)을 사용하세요.
+</Warning>
+
+<span id="module-daml-script-internal-18793"></span>
+
+# Daml.Script.Internal
+
+Daml Script가 제공하는 모든 Internal 및 Alpha functionality를 포함합니다.
+
+주의해서 사용하세요. SDK upgrade 간 stability는 보장되지 않습니다.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-daml-script-internal-questions-testing-commandname-12991"></span>
+
+### `data CommandName`
+
+실패한 Daml Script Command 또는 Question의 이름입니다.
+
+Constructors:
+
+<span id="constr-daml-script-internal-questions-testing-commandname-12826"></span>
+- `CommandName`
+
+<ResponseField name="getCommandName" type="Text" />
+
+Instances:
+
+- instance `Eq` [`CommandName`](#type-daml-script-internal-questions-testing-commandname-12991)
+- instance `Show` [`CommandName`](#type-daml-script-internal-questions-testing-commandname-12991)
+- instance `GetField` `commandName` [`FailedCmd`](#type-daml-script-internal-questions-testing-failedcmd-88074) [`CommandName`](#type-daml-script-internal-questions-testing-commandname-12991)
+- instance `GetField` `getCommandName` [`CommandName`](#type-daml-script-internal-questions-testing-commandname-12991) `Text`
+- instance `SetField` `commandName` [`FailedCmd`](#type-daml-script-internal-questions-testing-failedcmd-88074) [`CommandName`](#type-daml-script-internal-questions-testing-commandname-12991)
+- instance `SetField` `getCommandName` [`CommandName`](#type-daml-script-internal-questions-testing-commandname-12991) `Text`
+
+<span id="type-daml-script-internal-questions-testing-errorclassname-49861"></span>
+
+### `data ErrorClassName`
+
+throw된 exception의 Scala class name입니다.
+
+Constructors:
+
+<span id="constr-daml-script-internal-questions-testing-errorclassname-42862"></span>
+- `ErrorClassName`
+
+<ResponseField name="getErrorClassName" type="Text" />
+
+Instances:
+
+- instance `Eq` [`ErrorClassName`](#type-daml-script-internal-questions-testing-errorclassname-49861)
+- instance `Show` [`ErrorClassName`](#type-daml-script-internal-questions-testing-errorclassname-49861)
+- instance `GetField` `errorClassName` [`FailedCmd`](#type-daml-script-internal-questions-testing-failedcmd-88074) [`ErrorClassName`](#type-daml-script-internal-questions-testing-errorclassname-49861)
+- instance `GetField` `getErrorClassName` [`ErrorClassName`](#type-daml-script-internal-questions-testing-errorclassname-49861) `Text`
+- instance `SetField` `errorClassName` [`FailedCmd`](#type-daml-script-internal-questions-testing-failedcmd-88074) [`ErrorClassName`](#type-daml-script-internal-questions-testing-errorclassname-49861)
+- instance `SetField` `getErrorClassName` [`ErrorClassName`](#type-daml-script-internal-questions-testing-errorclassname-49861) `Text`
+
+<span id="type-daml-script-internal-questions-testing-errormessage-78991"></span>
+
+### `data ErrorMessage`
+
+Scala exception에서 `getMessage` method를 호출한 결과입니다.
+
+Constructors:
+
+<span id="constr-daml-script-internal-questions-testing-errormessage-24784"></span>
+- `ErrorMessage`
+
+<ResponseField name="getErrorMessage" type="Text" />
+
+Instances:
+
+- instance `Eq` [`ErrorMessage`](#type-daml-script-internal-questions-testing-errormessage-78991)
+- instance `Show` [`ErrorMessage`](#type-daml-script-internal-questions-testing-errormessage-78991)
+- instance `GetField` `errorMessage` [`FailedCmd`](#type-daml-script-internal-questions-testing-failedcmd-88074) [`ErrorMessage`](#type-daml-script-internal-questions-testing-errormessage-78991)
+- instance `GetField` `getErrorMessage` [`ErrorMessage`](#type-daml-script-internal-questions-testing-errormessage-78991) `Text`
+- instance `SetField` `errorMessage` [`FailedCmd`](#type-daml-script-internal-questions-testing-failedcmd-88074) [`ErrorMessage`](#type-daml-script-internal-questions-testing-errormessage-78991)
+- instance `SetField` `getErrorMessage` [`ErrorMessage`](#type-daml-script-internal-questions-testing-errormessage-78991) `Text`
+
+<span id="type-daml-script-internal-questions-testing-failedcmd-88074"></span>
+
+### `data FailedCmd`
+
+script interpretation 중 throw된 Scala exception을 표현하는 Daml type입니다.
+Daml Script library의 internal testing에 사용됩니다.
+
+Constructors:
+
+<span id="constr-daml-script-internal-questions-testing-failedcmd-77803"></span>
+- `FailedCmd`
+
+<ResponseField name="commandName" type="CommandName" />
+
+<ResponseField name="errorClassName" type="ErrorClassName" />
+
+<ResponseField name="errorMessage" type="ErrorMessage" />
+
+Instances:
+
+- instance `Eq` [`FailedCmd`](#type-daml-script-internal-questions-testing-failedcmd-88074)
+- instance `Show` [`FailedCmd`](#type-daml-script-internal-questions-testing-failedcmd-88074)
+- instance `GetField` `commandName` [`FailedCmd`](#type-daml-script-internal-questions-testing-failedcmd-88074) [`CommandName`](#type-daml-script-internal-questions-testing-commandname-12991)
+- instance `GetField` `errorClassName` [`FailedCmd`](#type-daml-script-internal-questions-testing-failedcmd-88074) [`ErrorClassName`](#type-daml-script-internal-questions-testing-errorclassname-49861)
+- instance `GetField` `errorMessage` [`FailedCmd`](#type-daml-script-internal-questions-testing-failedcmd-88074) [`ErrorMessage`](#type-daml-script-internal-questions-testing-errormessage-78991)
+- instance `SetField` `commandName` [`FailedCmd`](#type-daml-script-internal-questions-testing-failedcmd-88074) [`CommandName`](#type-daml-script-internal-questions-testing-commandname-12991)
+- instance `SetField` `errorClassName` [`FailedCmd`](#type-daml-script-internal-questions-testing-failedcmd-88074) [`ErrorClassName`](#type-daml-script-internal-questions-testing-errorclassname-49861)
+- instance `SetField` `errorMessage` [`FailedCmd`](#type-daml-script-internal-questions-testing-failedcmd-88074) [`ErrorMessage`](#type-daml-script-internal-questions-testing-errormessage-78991)
+
+<span id="type-daml-script-internal-questions-submit-error-contractnotfoundadditionalinfo-6199"></span>
+
+### `data ContractNotFoundAdditionalInfo`
+
+IDE Ledger에서만 제공하는 추가 debugging information입니다.
+
+Instances:
+
+- instance `Show` [`ContractNotFoundAdditionalInfo`](#type-daml-script-internal-questions-submit-error-contractnotfoundadditionalinfo-6199)
+- instance `GetField` `actAs` [`ContractNotFoundAdditionalInfo`](#type-daml-script-internal-questions-submit-error-contractnotfoundadditionalinfo-6199) [`Party`]
+- instance `GetField` `additionalDebuggingInfo` [`SubmitError`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-questions-submit-error-submiterror-38284) (`Optional` [`ContractNotFoundAdditionalInfo`](#type-daml-script-internal-questions-submit-error-contractnotfoundadditionalinfo-6199))
+- instance `GetField` `additionalInfoCid` [`ContractNotFoundAdditionalInfo`](#type-daml-script-internal-questions-submit-error-contractnotfoundadditionalinfo-6199) [`AnyContractId`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-questions-util-anycontractid-11399)
+- instance `GetField` `effectiveAt` [`ContractNotFoundAdditionalInfo`](#type-daml-script-internal-questions-submit-error-contractnotfoundadditionalinfo-6199) `Text`
+- instance `GetField` `observers` [`ContractNotFoundAdditionalInfo`](#type-daml-script-internal-questions-submit-error-contractnotfoundadditionalinfo-6199) [`Party`]
+- instance `GetField` `readAs` [`ContractNotFoundAdditionalInfo`](#type-daml-script-internal-questions-submit-error-contractnotfoundadditionalinfo-6199) [`Party`]
+- instance `SetField` `actAs` [`ContractNotFoundAdditionalInfo`](#type-daml-script-internal-questions-submit-error-contractnotfoundadditionalinfo-6199) [`Party`]
+- instance `SetField` `additionalDebuggingInfo` [`SubmitError`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-questions-submit-error-submiterror-38284) (`Optional` [`ContractNotFoundAdditionalInfo`](#type-daml-script-internal-questions-submit-error-contractnotfoundadditionalinfo-6199))
+- instance `SetField` `additionalInfoCid` [`ContractNotFoundAdditionalInfo`](#type-daml-script-internal-questions-submit-error-contractnotfoundadditionalinfo-6199) [`AnyContractId`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-questions-util-anycontractid-11399)
+- instance `SetField` `effectiveAt` [`ContractNotFoundAdditionalInfo`](#type-daml-script-internal-questions-submit-error-contractnotfoundadditionalinfo-6199) `Text`
+- instance `SetField` `observers` [`ContractNotFoundAdditionalInfo`](#type-daml-script-internal-questions-submit-error-contractnotfoundadditionalinfo-6199) [`Party`]
+- instance `SetField` `readAs` [`ContractNotFoundAdditionalInfo`](#type-daml-script-internal-questions-submit-error-contractnotfoundadditionalinfo-6199) [`Party`]
+
+<span id="type-daml-script-internal-questions-packages-packagename-68696"></span>
+
+### `data PackageName`
+
+package vetting 및 unvetting에 사용됩니다.
+
+Constructors:
+
+<span id="constr-daml-script-internal-questions-packages-packagename-3807"></span>
+- `PackageName`
+
+<ResponseField name="name" type="Text" />
+
+<ResponseField name="version" type="Text" />
+
+Instances:
+
+- instance `IsQuestion` `ListAllPackages` [[`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696)]
+- instance `IsQuestion` `ListVettedPackages` [[`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696)]
+- instance `Eq` [`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696)
+- instance `Ord` [`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696)
+- instance `Show` [`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696)
+- instance `GetField` `name` [`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696) `Text`
+- instance `GetField` `packages` `UnvetPackages` [[`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696)]
+- instance `GetField` `packages` `VetPackages` [[`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696)]
+- instance `GetField` `version` [`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696) `Text`
+- instance `SetField` `name` [`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696) `Text`
+- instance `SetField` `packages` `UnvetPackages` [[`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696)]
+- instance `SetField` `packages` `VetPackages` [[`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696)]
+- instance `SetField` `version` [`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696) `Text`
+
+## Functions
+
+<span id="function-daml-script-internal-questions-testing-trycommands-17332"></span>
+
+### `tryCommands`
+
+`tryCommands` : [`Script`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-lowlevel-script-4781) `a` -> [`Script`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-lowlevel-script-4781) (`Either` [`FailedCmd`](#type-daml-script-internal-questions-testing-failedcmd-88074) `a`)
+
+Daml language에서 FailedCmd를 catch할 수 있게 하는 internal testing tool입니다.
+
+<span id="function-daml-script-internal-questions-testing-liftfailedcommandtofailurestatus-62416"></span>
+
+### `liftFailedCommandToFailureStatus`
+
+`liftFailedCommandToFailureStatus` : [`Script`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-lowlevel-script-4781) `a` -> [`Script`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-lowlevel-script-4781) `a`
+
+script를 실행하고 FailedCmd Scala exception을 tryFailureStatus로 catch할 수 있는 FailureStatus로 lift합니다.
+
+<span id="function-daml-script-internal-questions-submit-error-isnotactive-40539"></span>
+
+### `isNotActive`
+
+`isNotActive` : [`ContractNotFoundAdditionalInfo`](#type-daml-script-internal-questions-submit-error-contractnotfoundadditionalinfo-6199) -> `Optional` [`AnyContractId`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-questions-util-anycontractid-11399)
+
+ContractNotFoundAdditionalInfo에서 nonactive contract ID를 추출합니다.
+
+<span id="function-daml-script-internal-questions-packages-vetpackages-16211"></span>
+
+### `vetPackages`
+
+`vetPackages` : `HasCallStack` => [[`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696)] -> [`Script`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-lowlevel-script-4781) ()
+
+모든 participant에서 package 집합을 vet합니다.
+Canton Ledger에서 이를 사용할 때는 Admin API port를 제공해야 합니다.
+`daml script` CLI tool에서 ``--admin-port``를 사용하세요.
+
+<span id="function-daml-script-internal-questions-packages-vetpackagesonparticipant-8324"></span>
+
+### `vetPackagesOnParticipant`
+
+`vetPackagesOnParticipant` : `HasCallStack` => [[`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696)] -> [`ParticipantName`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-questions-partymanagement-participantname-88190) -> [`Script`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-lowlevel-script-4781) ()
+
+단일 participant에서 package 집합을 vet합니다.
+Canton Ledger에서 이를 사용할 때는 Admin API port를 제공해야 합니다.
+`daml script` CLI tool에서 ``--admin-port``를 사용하세요.
+
+<span id="function-daml-script-internal-questions-packages-unvetpackages-80050"></span>
+
+### `unvetPackages`
+
+`unvetPackages` : `HasCallStack` => [[`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696)] -> [`Script`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-lowlevel-script-4781) ()
+
+모든 participant에서 package 집합의 vetting을 해제합니다.
+Canton Ledger에서 이를 사용할 때는 Admin API port를 제공해야 합니다.
+`daml script` CLI tool에서 ``--admin-port``를 사용하세요.
+
+<span id="function-daml-script-internal-questions-packages-unvetpackagesonparticipant-47459"></span>
+
+### `unvetPackagesOnParticipant`
+
+`unvetPackagesOnParticipant` : `HasCallStack` => [[`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696)] -> [`ParticipantName`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-questions-partymanagement-participantname-88190) -> [`Script`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-lowlevel-script-4781) ()
+
+단일 participant에서 package 집합의 vetting을 해제합니다.
+Canton Ledger에서 이를 사용할 때는 Admin API port를 제공해야 합니다.
+`daml script` CLI tool에서 ``--admin-port``를 사용하세요.
+
+<span id="function-daml-script-internal-questions-packages-listvettedpackages-3001"></span>
+
+### `listVettedPackages`
+
+`listVettedPackages` : `HasCallStack` => [`Script`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-lowlevel-script-4781) [[`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696)]
+
+default participant에서 vetted package를 나열합니다.
+Canton Ledger에서 이를 사용할 때는 Admin API port를 제공해야 합니다.
+`daml script` CLI tool에서 ``--admin-port``를 사용하세요.
+
+<span id="function-daml-script-internal-questions-packages-listallpackages-50063"></span>
+
+### `listAllPackages`
+
+`listAllPackages` : `HasCallStack` => [`Script`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-lowlevel-script-4781) [[`PackageName`](#type-daml-script-internal-questions-packages-packagename-68696)]
+
+default participant에서 모든 package(vetted 및 unvetted)를 나열합니다.
+Canton Ledger에서 이를 사용할 때는 Admin API port를 제공해야 합니다.
+`daml script` CLI tool에서 ``--admin-port``를 사용하세요.
+
+<span id="function-daml-script-internal-questions-partymanagement-allocatereplicatedpartyon-96671"></span>
+
+### `allocateReplicatedPartyOn`
+
+`allocateReplicatedPartyOn` : `Text` -> [`ParticipantName`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-questions-partymanagement-participantname-88190) -> [[`ParticipantName`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-questions-partymanagement-participantname-88190)] -> [`Script`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-lowlevel-script-4781) `Party`
+
+party management service를 사용해 지정된 main participant에 주어진 display name으로 party를 allocate하고,
+지정된 추가 participant list(비어 있을 수 있음)에 replicate합니다. allocate된 party가 제출한 Command는
+main participant로 routing됩니다.
+
+<span id="function-daml-script-internal-questions-partymanagement-allocatereplicatedpartywithhinton-30144"></span>
+
+### `allocateReplicatedPartyWithHintOn`
+
+`allocateReplicatedPartyWithHintOn` : `Text` -> [`PartyIdHint`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-questions-partymanagement-partyidhint-14540) -> [`ParticipantName`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-questions-partymanagement-participantname-88190) -> [[`ParticipantName`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-questions-partymanagement-participantname-88190)] -> [`Script`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-lowlevel-script-4781) `Party`
+
+party management service를 사용해 지정된 main participant에 주어진 display name과 id hint로 party를
+allocate하고, 지정된 추가 participant list(비어 있을 수 있음)에 replicate합니다. allocate된 party가 제출한
+Command는 main participant로 routing됩니다.
+
+<span id="function-daml-script-internal-questions-exceptions-throwanyexception-70957"></span>
+
+### `throwAnyException`
+
+`throwAnyException` : `AnyException` -> [`Script`](/appdev/reference/daml-script/daml-script#type-daml-script-internal-lowlevel-script-4781) `t`
+
+``AnyException``을 throw합니다. 이 function은 stacktrace를 버립니다.
+

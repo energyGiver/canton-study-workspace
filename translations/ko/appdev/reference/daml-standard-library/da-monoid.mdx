@@ -1,0 +1,222 @@
+---
+title: "DA.Monoid"
+description: "Daml module DA.Monoid의 reference documentation"
+source_id: "SRC-FBBE11C7B8"
+source_path: "appdev/reference/daml-standard-library/da-monoid"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "cb9990224d7c2a7d313edce93126be86a12273885feac6030473895c40af7a9e"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-monoid.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-monoid-95505"></span>
+
+# DA.Monoid
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-da-monoid-types-all-38142"></span>
+
+### `data All`
+
+conjunction (&&)에 따른 Boolean monoid입니다.
+
+Constructors:
+
+<span id="constr-da-monoid-types-all-18981"></span>
+- `All`
+
+<ResponseField name="getAll" type="Bool" />
+
+Instances:
+
+- instance [`Monoid`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-monoid-6742) [`All`](#type-da-monoid-types-all-38142)
+- instance [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) [`All`](#type-da-monoid-types-all-38142)
+- instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `getAll` [`All`](#type-da-monoid-types-all-38142) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+- instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `getAll` [`All`](#type-da-monoid-types-all-38142) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`All`](#type-da-monoid-types-all-38142)
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`All`](#type-da-monoid-types-all-38142)
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`All`](#type-da-monoid-types-all-38142)
+
+<span id="type-da-monoid-types-any-3989"></span>
+
+### `data Any`
+
+disjunction (||)에 따른 Boolean Monoid입니다.
+
+Constructors:
+
+<span id="constr-da-monoid-types-any-54474"></span>
+- `Any`
+
+<ResponseField name="getAny" type="Bool" />
+
+Instances:
+
+- instance [`Monoid`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-monoid-6742) [`Any`](#type-da-monoid-types-any-3989)
+- instance [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) [`Any`](#type-da-monoid-types-any-3989)
+- instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `getAny` [`Any`](#type-da-monoid-types-any-3989) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+- instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `getAny` [`Any`](#type-da-monoid-types-any-3989) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`Any`](#type-da-monoid-types-any-3989)
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`Any`](#type-da-monoid-types-any-3989)
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`Any`](#type-da-monoid-types-any-3989)
+
+<span id="type-da-monoid-types-endo-95420"></span>
+
+### `data Endo a`
+
+composition에 따른 endomorphism monoid입니다.
+
+Constructors:
+
+<span id="constr-da-monoid-types-endo-7873"></span>
+- `Endo`
+
+<ResponseField name="appEndo" type="a -&gt; a" />
+
+Instances:
+
+- instance [`Monoid`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-monoid-6742) ([`Endo`](#type-da-monoid-types-endo-95420) `a`)
+- instance [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Endo`](#type-da-monoid-types-endo-95420) `a`)
+- instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `appEndo` ([`Endo`](#type-da-monoid-types-endo-95420) `a`) (`a` -> `a`)
+- instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `appEndo` ([`Endo`](#type-da-monoid-types-endo-95420) `a`) (`a` -> `a`)
+
+<span id="type-da-monoid-types-product-66754"></span>
+
+### `data Product a`
+
+(*)에 따른 Monoid입니다.
+
+```
+> Product 2 <> Product 3
+Product 6
+```
+
+Constructors:
+
+<span id="constr-da-monoid-types-product-4241"></span>
+- `Product a`
+
+Instances:
+
+- instance [`Multiplicative`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-multiplicative-10593) `a` => [`Monoid`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-monoid-6742) ([`Product`](#type-da-monoid-types-product-66754) `a`)
+- instance [`Multiplicative`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-multiplicative-10593) `a` => [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Product`](#type-da-monoid-types-product-66754) `a`)
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Product`](#type-da-monoid-types-product-66754) `a`)
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`Product`](#type-da-monoid-types-product-66754) `a`)
+- instance [`Additive`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-additive-25881) `a` => [`Additive`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-additive-25881) ([`Product`](#type-da-monoid-types-product-66754) `a`)
+- instance [`Multiplicative`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-multiplicative-10593) `a` => [`Multiplicative`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-multiplicative-10593) ([`Product`](#type-da-monoid-types-product-66754) `a`)
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Product`](#type-da-monoid-types-product-66754) `a`)
+
+<span id="type-da-monoid-types-sum-76394"></span>
+
+### `data Sum a`
+
+(+)에 따른 Monoid입니다.
+
+```
+> Sum 1 <> Sum 2
+Sum 3
+```
+
+Constructors:
+
+<span id="constr-da-monoid-types-sum-82289"></span>
+- `Sum a`
+
+Instances:
+
+- instance [`Additive`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-additive-25881) `a` => [`Monoid`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-monoid-6742) ([`Sum`](#type-da-monoid-types-sum-76394) `a`)
+- instance [`Additive`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-additive-25881) `a` => [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Sum`](#type-da-monoid-types-sum-76394) `a`)
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Sum`](#type-da-monoid-types-sum-76394) `a`)
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`Sum`](#type-da-monoid-types-sum-76394) `a`)
+- instance [`Additive`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-additive-25881) `a` => [`Additive`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-additive-25881) ([`Sum`](#type-da-monoid-types-sum-76394) `a`)
+- instance [`Multiplicative`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-multiplicative-10593) `a` => [`Multiplicative`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-multiplicative-10593) ([`Sum`](#type-da-monoid-types-sum-76394) `a`)
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Sum`](#type-da-monoid-types-sum-76394) `a`)
+
+## Orphan Typeclass Instances
+
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`All`](#type-da-monoid-types-all-38142)
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`All`](#type-da-monoid-types-all-38142)
+
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`All`](#type-da-monoid-types-all-38142)
+
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`Any`](#type-da-monoid-types-any-3989)
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`Any`](#type-da-monoid-types-any-3989)
+
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`Any`](#type-da-monoid-types-any-3989)
+
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Sum`](#type-da-monoid-types-sum-76394) `a`)
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`Sum`](#type-da-monoid-types-sum-76394) `a`)
+
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Sum`](#type-da-monoid-types-sum-76394) `a`)
+
+- instance [`Additive`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-additive-25881) `a` => [`Additive`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-additive-25881) ([`Sum`](#type-da-monoid-types-sum-76394) `a`)
+
+- instance [`Multiplicative`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-multiplicative-10593) `a` => [`Multiplicative`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-multiplicative-10593) ([`Sum`](#type-da-monoid-types-sum-76394) `a`)
+
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) `a` => [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) ([`Product`](#type-da-monoid-types-product-66754) `a`)
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `a` => [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) ([`Product`](#type-da-monoid-types-product-66754) `a`)
+
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) `a` => [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) ([`Product`](#type-da-monoid-types-product-66754) `a`)
+
+- instance [`Additive`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-additive-25881) `a` => [`Additive`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-additive-25881) ([`Product`](#type-da-monoid-types-product-66754) `a`)
+
+- instance [`Multiplicative`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-multiplicative-10593) `a` => [`Multiplicative`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-multiplicative-10593) ([`Product`](#type-da-monoid-types-product-66754) `a`)
+
+- instance [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) [`All`](#type-da-monoid-types-all-38142)
+
+- instance [`Monoid`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-monoid-6742) [`All`](#type-da-monoid-types-all-38142)
+
+- instance [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) [`Any`](#type-da-monoid-types-any-3989)
+
+- instance [`Monoid`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-monoid-6742) [`Any`](#type-da-monoid-types-any-3989)
+
+- instance [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Endo`](#type-da-monoid-types-endo-95420) `a`)
+
+- instance [`Monoid`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-monoid-6742) ([`Endo`](#type-da-monoid-types-endo-95420) `a`)
+
+- instance [`Additive`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-additive-25881) `a` => [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Sum`](#type-da-monoid-types-sum-76394) `a`)
+
+- instance [`Additive`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-additive-25881) `a` => [`Monoid`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-monoid-6742) ([`Sum`](#type-da-monoid-types-sum-76394) `a`)
+
+- instance [`Multiplicative`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-multiplicative-10593) `a` => [`Semigroup`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-semigroup-78998) ([`Product`](#type-da-monoid-types-product-66754) `a`)
+
+- instance [`Multiplicative`](/appdev/reference/daml-standard-library/prelude#class-ghc-num-multiplicative-10593) `a` => [`Monoid`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-monoid-6742) ([`Product`](#type-da-monoid-types-product-66754) `a`)
+
+- instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `getAll` [`All`](#type-da-monoid-types-all-38142) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+- instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `getAll` [`All`](#type-da-monoid-types-all-38142) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+- instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `getAny` [`Any`](#type-da-monoid-types-any-3989) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+- instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `getAny` [`Any`](#type-da-monoid-types-any-3989) [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+- instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `appEndo` ([`Endo`](#type-da-monoid-types-endo-95420) `a`) (`a` -> `a`)
+
+- instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `appEndo` ([`Endo`](#type-da-monoid-types-endo-95420) `a`) (`a` -> `a`)
+

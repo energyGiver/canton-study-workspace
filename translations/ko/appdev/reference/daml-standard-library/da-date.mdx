@@ -1,0 +1,243 @@
+---
+title: "DA.Date"
+description: "Daml module DA.Date의 reference documentation"
+source_id: "SRC-94718A9DA3"
+source_path: "appdev/reference/daml-standard-library/da-date"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "77e82a1f248eeb8ba26329b60a0705e0665c8ecf890ddd8e876d4bb87ab77ffe"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-date.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-date-80009"></span>
+
+# DA.Date
+
+이 module은 Date 값을 조작하는 function 집합을 제공합니다.
+
+Date의 범위는 0001-01-01T00:00:00.000000Z에서 9999-12-31T23:59:59.999999Z까지입니다.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-da-date-types-dayofweek-18120"></span>
+
+### `data DayOfWeek`
+
+Constructor:
+
+<span id="constr-da-date-types-monday-43349"></span>
+- `Monday`
+<span id="constr-da-date-types-tuesday-5501"></span>
+- `Tuesday`
+<span id="constr-da-date-types-wednesday-18786"></span>
+- `Wednesday`
+<span id="constr-da-date-types-thursday-55301"></span>
+- `Thursday`
+<span id="constr-da-date-types-friday-14884"></span>
+- `Friday`
+<span id="constr-da-date-types-saturday-99714"></span>
+- `Saturday`
+<span id="constr-da-date-types-sunday-48181"></span>
+- `Sunday`
+
+Instance:
+
+- instance `Serializable` [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+- instance [`Bounded`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-bounded-34379) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+- instance [`Enum`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-enum-63048) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+
+<span id="type-da-date-types-month-22803"></span>
+
+### `data Month`
+
+`Month` type은 Gregorian calendar의 월을 표현합니다.
+
+`Month`에 `Enum` instance가 있지만 `toEnum`과 `fromEnum` function은 0부터 세므로 `toEnum 1 :: Month`는 `Feb`입니다.
+
+Constructor:
+
+<span id="constr-da-date-types-jan-1103"></span>
+- `Jan`
+<span id="constr-da-date-types-feb-88523"></span>
+- `Feb`
+<span id="constr-da-date-types-mar-5472"></span>
+- `Mar`
+<span id="constr-da-date-types-apr-12091"></span>
+- `Apr`
+<span id="constr-da-date-types-may-50999"></span>
+- `May`
+<span id="constr-da-date-types-jun-17739"></span>
+- `Jun`
+<span id="constr-da-date-types-jul-21893"></span>
+- `Jul`
+<span id="constr-da-date-types-aug-18125"></span>
+- `Aug`
+<span id="constr-da-date-types-sep-63548"></span>
+- `Sep`
+<span id="constr-da-date-types-oct-96134"></span>
+- `Oct`
+<span id="constr-da-date-types-nov-72317"></span>
+- `Nov`
+<span id="constr-da-date-types-dec-74760"></span>
+- `Dec`
+
+Instance:
+
+- instance `Serializable` [`Month`](#type-da-date-types-month-22803)
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`Month`](#type-da-date-types-month-22803)
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`Month`](#type-da-date-types-month-22803)
+- instance [`Bounded`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-bounded-34379) [`Month`](#type-da-date-types-month-22803)
+- instance [`Enum`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-enum-63048) [`Month`](#type-da-date-types-month-22803)
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`Month`](#type-da-date-types-month-22803)
+
+## Functions
+
+<span id="function-da-date-adddays-7836"></span>
+
+### `addDays`
+
+`addDays` : [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253)
+
+date에 주어진 일수를 더합니다.
+
+<span id="function-da-date-subtractdays-16626"></span>
+
+### `subtractDays`
+
+`subtractDays` : [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253)
+
+date에서 주어진 일수를 뺅니다.
+
+`subtractDays d r`은 `addDays d (- r)`과 동일합니다.
+
+<span id="function-da-date-subdate-25598"></span>
+
+### `subDate`
+
+`subDate` : [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253) -> [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+주어진 두 date 사이의 일수를 반환합니다.
+
+<span id="function-da-date-dayofweek-99931"></span>
+
+### `dayOfWeek`
+
+`dayOfWeek` : [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253) -> [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+
+주어진 date의 요일을 반환합니다.
+
+<span id="function-da-date-fromgregorian-85346"></span>
+
+### `fromGregorian`
+
+`fromGregorian` : ([`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261), [`Month`](#type-da-date-types-month-22803), [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)) -> [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253)
+
+triple `(year, month, days)`에서 `Date`를 구성합니다.
+
+<span id="function-da-date-togregorian-84541"></span>
+
+### `toGregorian`
+
+`toGregorian` : [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253) -> ([`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261), [`Month`](#type-da-date-types-month-22803), [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261))
+
+Gregorian calendar에 따라 `Date` 값을 `(year, month, day)` triple로 변환합니다.
+
+<span id="function-da-date-date-21355"></span>
+
+### `date`
+
+`date` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Month`](#type-da-date-types-month-22803) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253)
+
+세 값 year, month, day가 주어지면 `Date` 값을 구성합니다. `date y m d`는 year `y`, month `m`, day `d`를 `Date` 값으로 변환합니다. `d`가 `1 .. monthDayCount y m` 범위 밖이면 error를 발생시킵니다.
+
+<span id="function-da-date-isleapyear-61920"></span>
+
+### `isLeapYear`
+
+`isLeapYear` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+주어진 year가 윤년이면 `True`를 반환합니다.
+
+<span id="function-da-date-frommonth-90328"></span>
+
+### `fromMonth`
+
+`fromMonth` : [`Month`](#type-da-date-types-month-22803) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+주어진 month에 해당하는 숫자를 얻습니다. 예를 들어 `Jan`은 `1`, `Feb`는 `2`에 해당하며 이후도 같은 방식입니다.
+
+<span id="function-da-date-monthdaycount-59295"></span>
+
+### `monthDayCount`
+
+`monthDayCount` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Month`](#type-da-date-types-month-22803) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+Gregorian calendar에 따라 주어진 year의 주어진 month에 포함된 일수를 얻습니다. Julian calendar에서 Gregorian calendar로의 변경과 같은 역사적 calendar 변경은 반영하지 않지만 윤년은 계산합니다.
+
+<span id="function-da-date-datetime-90284"></span>
+
+### `datetime`
+
+`datetime` : [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Month`](#type-da-date-types-month-22803) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886)
+
+`year`, `month`, `day`, `hours`, `minutes`, `seconds`를 사용해 instant를 구성합니다.
+
+<span id="function-da-date-todateutc-87953"></span>
+
+### `toDateUTC`
+
+`toDateUTC` : [`Time`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-time-63886) -> [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253)
+
+UTC time에서 UTC date를 추출합니다.
+
+이 function은 Time을 Date로 truncate하지만 많은 경우 실제로 원하는 date를 반환하지 않습니다. 보통 Time의 source가 getTime이고, getTime은 UTC를 반환하며, 원하는 date는 특정 위치나 exchange의 local date일 가능성이 크기 때문입니다. 따라서 예를 들어 Singapore에서 market이 열릴 때 이 방법으로 date를 가져오면 어제 date가 될 수 있습니다.
+
+## Orphan Typeclass Instances
+
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+
+- instance [`Enum`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-enum-63048) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+
+- instance [`Bounded`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-bounded-34379) [`DayOfWeek`](#type-da-date-types-dayofweek-18120)
+
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`Month`](#type-da-date-types-month-22803)
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`Month`](#type-da-date-types-month-22803)
+
+- instance [`Show`](/appdev/reference/daml-standard-library/prelude#class-ghc-show-show-65360) [`Month`](#type-da-date-types-month-22803)
+
+- instance [`Enum`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-enum-63048) [`Month`](#type-da-date-types-month-22803)
+
+- instance [`Bounded`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-bounded-34379) [`Month`](#type-da-date-types-month-22803)
+
+- instance [`Enum`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-enum-63048) [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253)
+
+- instance [`Bounded`](/appdev/reference/daml-standard-library/prelude#class-ghc-enum-bounded-34379) [`Date`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-date-32253)

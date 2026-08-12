@@ -1,0 +1,210 @@
+---
+title: "FAQ"
+description: "Canton Network validator 및 Super Validator를 위한 자주 묻는 질문"
+source_id: "SRC-C3089AD8CA"
+source_path: "global-synchronizer/faq"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "ad3db04e7afcf40dadbdd6ceb9b775dafc8b379120fd357ab752e7ca3ad75037"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/faq.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/faq.rst" hash="10d62bbe" */}
+
+## Super Validator
+
+<div className="glossary">
+
+Whitelist에 등록된 모든 node operator는 어디에서 찾을 수 있나요?
+
+> Whitelist에 등록된 모든 SV는 [public global synchronizer configurations repository](https://github.com/global-synchronizer-foundation/configs)에 나열되어 있습니다.
+
+Validator Onboarding Token은 어디에서 생성하나요?
+
+> SV는 SV UI에서 [validator onboarding token을 생성](/global-synchronizer/deployment/sv-operations)합니다.
+
+</div>
+
+## Validator
+
+<div className="glossary">
+
+Validator Onboarding Token의 유효 기간은 얼마인가요?
+
+> SV가 생성한 secret은 48시간, DevNet self-onboarding endpoint를 통해 생성한 secret은 1시간 동안 사용할 수 있습니다. 한 번만 사용할 수 있습니다.
+
+Validator reward를 어떻게 확인하나요?
+
+{/* DIVERGENCE: updated locally to reflect CIP-0096 (validator liveness rewards discontinued, $0 cap effective 2026-04-30); upstream splice source (docs/src/faq.rst, hash 10d62bbe) still describes "liveness rewards". See cf-docs issue #1049. */}
+
+> Transaction history에서 validator reward를 mint하는 transaction을 찾아 validator reward를 확인할 수 있습니다. Validator liveness reward는 [CIP-0096](https://github.com/canton-foundation/cips/blob/main/cip-0096/cip-0096.md)에 따라 2026-04-30부터 중단되었으며, 이제 validator는 activity reward만 획득합니다.
+>
+> <img src="/images/splice/transaction_history.png" width="700" alt="Validator reward transaction을 보여 주는 transaction history." />
+
+특정 transaction에 사용된 traffic을 어떻게 확인하나요?
+
+> Splice 0.5.x부터 두 가지 option이 있습니다. (1) transaction prepare 시 반환되는 traffic cost estimate를 사용하거나 (2) 실제 사용된 traffic을 participant log에서 확인합니다.
+>
+> **Option 1:** `/v2/interactive-submission/prepare` [Ledger API endpoint](https://github.com/digital-asset/canton/blob/025cdcf3c04ef052f775d6ccfb88c049a82d65a8/community/ledger/ledger-json-api/src/test/resources/json-api-docs/openapi.yaml#L1916)를 호출하고 response의 `costEstimation` field를 확인합니다. Submission에 사용되는 traffic과 confirmation에 사용되는 traffic의 estimate가 모두 포함됩니다. Transaction prepare와 submit 사이에 topology state가 변경될 수 있으므로 estimate입니다.
+>
+> **Option 2:** 특정 transaction에 실제로 사용된 traffic을 participant log에서 확인합니다. 다음 단계를 따르세요.
+>
+> 1.  Participant configuration에서 `DEBUG` log가 활성화되어 있는지 확인합니다.
+> 2.  Participant log에서 command submission의 trace-id를 확인합니다.
+> 3.  `EventCost`와 해당 `trace-id`가 포함된 `DEBUG` log line을 검색합니다. [Canton protocol](/overview/learn/architecture)의 작동 방식 때문에 일반적으로 이러한 log line이 두 개 있습니다. 첫 번째는 confirmation request submission의 cost이고 두 번째는 participant node가 수행한 tx validation의 confirmation response submission cost입니다.
+>
+> 예를 들어 [lnav](/global-synchronizer/troubleshooting-guide/troubleshooting-methodology)로 보기 좋게 출력한 다음 log line은 Amulet tap에서 발생한 trace-id `1e2d6bf54d150e230fd0c7f348707bf6`의 command submission을 보여 줍니다.
+>
+> ``` text
+> 2025-07-10T14:39:43.155Z [⋮] INFO - c.d.c.p.a.s.c.CommandSubmissionServiceImpl:participant=aliceParticipant (1e2d6bf54d150e230fd0c7f348707bf6---) - Phase 1 started: Submitting commands for interpretation: Commands(
+>   commandId = org.lfdecentralizedtrust.splice.wallet.tap_92d9ffae4bd90068a15dad747559ed641572f057e3beb03f2a9b024f388bdc20,
+>   submissionId = 0a3e62aa-c4e7-44ba-ad8a-fdbd0e55b9e9,
+>   userId = alice_validator_user-b7e18d55,
+>   actAs = alice-validatorb7e18d55-1::12204bfd2aa7...,
+>   readAs = alice__wallet__user-b7e18d55__tc0::12204bfd2aa7...,
+>   submittedAt = 2025-07-10T14:39:43.154021Z,
+>   ledgerEffectiveTime = 1970-01-01T01:11:10Z,
+>   deduplicationPeriod = (duration=PT24H),
+>   synchronizerId = global-domain::12203755b6a7...,
+>   ...
+> ).
+> ```text
+>
+> `aliceParticipant.*1e2d6bf54d150e230fd0c7f348707bf6.*EventCost` pattern과 일치하는 log line을 검색하면 다음 두 log line을 얻습니다.
+>
+> ``` text
+> 2025-07-10T14:39:43.202Z [⋮] DEBUG - c.d.c.s.t.TrafficStateController:participant=aliceParticipant/synchronizerId=global-domain::12203755b6a7 (1e2d6bf54d150e230fd0c7f348707bf6---) - Computed following cost for submission request using topology at 1970-01-01T01:11:10.000177Z: EventCostDetails(
+>   cost multiplier = 4,
+>   group to members size = MediatorGroupRecipient(group = 0) -> 1,
+>   envelopes cost details = Seq(
+>     EnvelopeCostDetails(write cost = 1541, read cost = 0, final cost = 1541, recipients = MediatorGroupRecipient(group = 0)),
+>     EnvelopeCostDetails(
+>       write cost = 137,
+>       read cost = 0,
+>       final cost = 137,
+>       recipients = Seq(MemberRecipient(PAR::aliceValidator::12204bfd2aa7...), MediatorGroupRecipient(group = 0), MemberRecipient(PAR::sv1::1220c1e24991...))
+>     ),
+>     EnvelopeCostDetails(write cost = 1904, read cost = 0, final cost = 1904, recipients = MemberRecipient(PAR::aliceValidator::12204bfd2aa7...)),
+>     EnvelopeCostDetails(write cost = 2509, read cost = 2, final cost = 2511, recipients = Seq(MemberRecipient(PAR::aliceValidator::12204bfd2aa7...), MemberRecipient(PAR::sv1::1220c1e24991...)))
+>   ),
+>   event cost = 6093
+> )
+> 2025-07-10T14:39:43.414Z [⋮] DEBUG - c.d.c.s.t.TrafficStateController:participant=aliceParticipant/synchronizerId=global-domain::12203755b6a7 (1e2d6bf54d150e230fd0c7f348707bf6---) - Computed following cost for submission request using topology at 1970-01-01T01:11:10.000179Z: EventCostDetails(
+>   cost multiplier = 4,
+>   group to members size = MediatorGroupRecipient(group = 0) -> 1,
+>   envelopes cost details = EnvelopeCostDetails(write cost = 651, read cost = 0, final cost = 651, recipients = MediatorGroupRecipient(group = 0)),
+>   event cost = 651
+> )
+> ```text
+>
+> 따라서 confirmation request submission에는 6093 byte의 traffic이, confirmation response submission에는 651 byte의 traffic이 사용되었습니다.
+>
+> Read cost는 모든 recipient에게 envelope를 전달하는 cost를 반영합니다. `readCost = writeCost * #recipients * costMultiplier / 10_000`으로 계산됩니다([code](https://github.com/digital-asset/canton/blob/1f7d0513843ae791f870ac2caeb4402f73109f86/community/base/src/main/scala/com/digitalasset/canton/sequencing/traffic/EventCostCalculator.scala#L118-L123)).
+
+Validator party ID를 가져오는 API가 있나요?
+
+> [/v0/validator-user](https://github.com/canton-network/splice/blob/c712e75775a7d3229eff2a1837b06417a02b03f3/apps/validator/src/main/openapi/validator-internal.yaml#L14)를 참조하세요.
+
+</div>
+
+## Application Development
+
+### JSON API
+
+<div className="glossary">
+
+JSON API를 통해 ACS entry를 200개보다 많이 가져오려면 어떻게 해야 하나요?
+
+> 기본값이 200인 server limit이 있습니다. 아래와 같이 configuration file을 update하여 `http-list-max-elements-limit` 값을 1,000으로 늘릴 수 있습니다.
+>
+> ``` text
+> canton {
+>   participants {
+>     participant1 {
+>       http-ledger-api {
+>         address = 0.0.0.0
+>         port = 10010
+>         port-file = "./json.port"
+>         path-prefix = "my-prefix"
+>         websocket-config {
+>             http-list-max-elements-limit = 1000,
+>             http-list-wait-time = 2s,
+>         }
+>         daml-definitions-service-enabled = true
+>       }
+>     }
+>   }
+> }
+> ```text
+>
+> [Ad-hoc configuration 추가](/global-synchronizer/deployment/configuration)의 설명에 따라 Canton participant Docker process에 environment variable `ADDITIONAL_CONFIG_JSON_LIMIT=canton.participants.participant.http-ledger-api.websocket-config { http-list-max-elements-limit = 1000, http-list-wait-time = 2s }`을 추가합니다.
+>
+> 그런 다음 request의 query에 추가 limit `(?limit=xyz)`을 지정할 수 있지만 result는 server limit을 초과하지 않습니다.
+>
+> Hard limit이 없는 [websocket API](/reference/json-api-asyncapi-reference)를 사용하는 것도 한 가지 대안입니다.
+>
+> 또 다른 대안은 [Daml Shell](/sdks-tools/cli-tools/daml-shell#contract-summaries)을 통해 debugging을 단순화할 수 있는 [PQS](/appdev/deep-dives/query-with-pqs)를 사용하는 것입니다.
+
+Root node가 둘 이상인 transaction을 어떻게 생성하나요?
+
+> Marker creation용 root 하나와 실제 user command용 root 하나가 있는 transaction에서 발생할 수 있습니다. 다음 error message는 여러 root가 있는 transaction을 시도했음을 나타냅니다. `Only single root transactions can currently be externally signed`.
+>
+> 권장 접근 방식은 두 call을 작은 helper contract로 감싸는 것입니다. [예제](https://github.com/canton-network/splice/pull/1907/files#diff-90d0ed0955b3e59b9edec55e5191d155335bae39a258dbd029b53a4e53e15db3)를 참조하세요.
+
+Onboarding된 user와 연관된 party를 식별하려면 application에서 등록된 public key를 해당 party와 어떻게 연결하나요?
+
+> 여러 대안이 있습니다.
+>
+> > - Canton API를 사용하여 filter 없이 [call listPartyToKeyMappingRequest](https://github.com/digital-asset/canton/blob/eeb56bc5d9779a7f918893b7a6b15e0b312a044e/community/base/src/main/protobuf/com/digitalasset/canton/topology/admin/v30/topology_manager_read_service.proto#L19)를 호출한 다음 mapping을 reverse하고, 빠른 접근을 위해 이를 local database 등에 저장합니다.
+> > - Mapping을 deterministic하게 만듭니다. Party format은 `name::key_fingerprint`이며 fingerprint는 public key에서 계산됩니다. 따라서 항상 deterministic name, 예를 들어 "ledger" 또는 다른 fingerprint를 선택한다면 fingerprint를 계산할 수 있으므로 mapping을 read할 필요가 없습니다. Fingerprint, signing key 및 delegated "intermediary namespace key"를 결정하는 "namespace root"에 서로 다른 key를 사용하기 시작한다면 특별한 고려가 필요합니다.
+> > - `base_query`의 `filter_signed_key` field를 통해 signed key로 필터링할 수도 있습니다. Party fingerprint를 사용하면 적절한 filter를 얻을 수 있습니다. 이는 `ListPartyToKeyMapping`과 같은 모든 `List***Request` [API](https://github.com/digital-asset/canton/blob/eeb56bc5d9779a7f918893b7a6b15e0b312a044e/community/base/src/main/protobuf/com/digitalasset/canton/topology/admin/v30/topology_manager_read_service.proto#L14)에서 사용할 수 있습니다.
+
+Dev/Test/MainNet release의 최신 API version specification은 어떻게 찾나요?
+
+> Canton Network capability는 계속 향상되므로 최신 API version specification을 사용해야 합니다. JSON API 또는 gRPC API의 절차는 유사합니다.
+>
+> > - JSON API의 OpenAPI 또는 AsyncAPI specification은 다음 단계를 따릅니다.
+> >   - [Version Compatibility Dashboard](/shared/version-compatibility-dashboard)에서 network의 SDK version을 찾습니다.
+> >   - Canton version의 major 및 minor semver digit을 기록합니다. 예를 들어 snapshot이 `3.3.0-snapshot.20250827.16063.0.vdc9a8874`라면 중요한 version information은 `3.3`입니다.
+> >   - Open source [Canton Git repo](https://github.com/digital-asset/canton)로 이동합니다.
+> >   - `main`이라고 표시된 dropdown을 선택하여 사용 가능한 branch를 표시한 다음 위에서 찾은 version과 동일한 release line을 선택합니다. 이 예에서 선택할 release line은 `release-line-3.3`입니다.
+> >   - 이것이 해당 release line의 최신 code입니다. `/canton/tree/main/community/ledger/ledger-json-api/src/test/resources/json-api-docs` path를 따라 `openapi.yaml` 및 `asyncapi.yaml` file로 이동합니다.
+> > - JSON API specification의 또 다른 source는 실행 중인 Canton participant node에서 가져오는 것입니다. [Verification - OpenAPI download](/sdks-tools/api-reference/json-api#configuration) section에 설명되어 있습니다. Specification은 다음에서 제공됩니다.
+> >   - OpenAPI: `http://<host>:<port>/docs/openapi`
+> >   - AsyncAPI: `http://<host>:<port>/docs/asyncapi`
+> > - GRPC protobuf definition은 위와 동일한 단계를 따르되 마지막 단계를 다음과 같이 변경합니다.
+> >   - `/community/ledger-api/src/main/protobuf/com/daml/ledger/api/v2` path를 따라 `proto` file로 이동합니다.
+
+JSON API의 websocket version을 사용하는 실제 작동 예제가 있나요?
+
+> 예제가 제공됩니다. [여기](https://github.com/digital-asset/canton/tree/main/community/app/src/pack/examples/09-json-api)를 참조하세요. 이 [file](https://github.com/digital-asset/canton/blob/main/community/app/src/pack/examples/09-json-api/wsacs.sh)은 [README.md](https://github.com/digital-asset/canton/blob/main/community/app/src/pack/examples/09-json-api/README.md)에 설명된 scenario의 일부로 websocket을 통해 request를 보냅니다.
+
+`v2/updates/trees` JSON Ledger API가 deprecated되었다면 무엇으로 대체되나요?
+
+> `v2/updates/trees`와 `v2/updates/flats`가 제거되었습니다. 대신 `UpdateService.GetUpdates`와 동일하게 동작하는 `v2/updates`를 사용하세요. 이제 `updateFormat` request field가 필수입니다. 이전에 `v2/updates/trees`가 반환하던 tree-shaped transaction을 가져오려면 `updateFormat.includeTransactions.transactionShape`를 `TRANSACTION_SHAPE_LEDGER_EFFECTS`로 설정합니다.
+
+</div>
+
+### Token Standard
+
+<div className="glossary">
+
+Data-dependencies가 가리키도록 token standard의 `DAR` file을 `daml` project에 포함하는 best practice는 무엇인가요?
+
+> - [Repository](https://github.com/canton-network/splice/tree/main/daml/dars)에서 token standard DAR를 복사하여 자체 repository에 check in합니다.
+> - Main file에서는 `splice-token-api-*` package에만 의존해야 합니다. 이러한 package는 stable하다고 보장됩니다.
+> - [Splice](https://github.com/canton-network/splice/tree/b91cf9a77bad6c513658401a57db87d975f9a526/token-standard/splice-token-standard-test)에서 수행한 것처럼 workflow용 Daml script test를 별도의 `*-test` Daml project에 배치합니다. 자세한 내용은 [daml.yaml](https://github.com/canton-network/splice/blob/b91cf9a77bad6c513658401a57db87d975f9a526/token-standard/splice-token-standard-test/daml.yaml)을 참조하세요.
+
+Canton Coin을 위한 open-source wallet implementation이 있나요?
+
+> 빠르게 개발 중인 wallet SDK가 [여기](/sdks-tools/sdks/wallet-sdk/overview)에 있습니다. 아직 OSS UI는 없습니다.
+
+</div>
+
+
+{/* COPIED_END */}

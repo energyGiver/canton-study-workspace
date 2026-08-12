@@ -14,6 +14,9 @@ This boundary avoids translating internal snippets, duplicated generated inputs,
 4. Preserve the exact strength of authorization, privacy, trust, security, failure, and operational statements.
 5. Do not add explanations, guarantees, or implementation claims that are absent from the official page.
 6. Follow [the shared translation glossary](glossary.md) and extend it through review when a repeated term needs a stable decision.
+7. Use Codex directly for translation. Do not use external translation APIs, browser translation services, or separately installed local translation models.
+
+See [the translation provenance audit](PROVENANCE-AUDIT.md) for the detection criteria and the pages that were withdrawn and translated again.
 
 ## Required page format
 

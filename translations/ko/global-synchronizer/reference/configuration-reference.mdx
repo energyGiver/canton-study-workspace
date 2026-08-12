@@ -1,0 +1,298 @@
+---
+title: "Configuration Reference"
+description: "Canton Network validator 및 SV operator를 위한 전체 configuration reference"
+source_id: "SRC-1FBB751553"
+source_path: "global-synchronizer/reference/configuration-reference"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "982900296ac1afeb56f324a68a353cbfe643d9333e53430a1237999be6011644"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL35 from "/snippets/canton-docs/global-synchronizer_reference_configuration-reference_L35.mdx";
+import CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL63 from "/snippets/canton-docs/global-synchronizer_reference_configuration-reference_L63.mdx";
+import CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL87 from "/snippets/canton-docs/global-synchronizer_reference_configuration-reference_L87.mdx";
+import CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL118 from "/snippets/canton-docs/global-synchronizer_reference_configuration-reference_L118.mdx";
+import CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL127 from "/snippets/canton-docs/global-synchronizer_reference_configuration-reference_L127.mdx";
+import CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL142 from "/snippets/canton-docs/global-synchronizer_reference_configuration-reference_L142.mdx";
+import CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL150 from "/snippets/canton-docs/global-synchronizer_reference_configuration-reference_L150.mdx";
+import CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL192 from "/snippets/canton-docs/global-synchronizer_reference_configuration-reference_L192.mdx";
+import CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL251 from "/snippets/canton-docs/global-synchronizer_reference_configuration-reference_L251.mdx";
+import CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL262 from "/snippets/canton-docs/global-synchronizer_reference_configuration-reference_L262.mdx";
+import CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL273 from "/snippets/canton-docs/global-synchronizer_reference_configuration-reference_L273.mdx";
+import CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL298 from "/snippets/canton-docs/global-synchronizer_reference_configuration-reference_L298.mdx";
+import CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL306 from "/snippets/canton-docs/global-synchronizer_reference_configuration-reference_L306.mdx";
+import CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL314 from "/snippets/canton-docs/global-synchronizer_reference_configuration-reference_L314.mdx";
+import CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL328 from "/snippets/canton-docs/global-synchronizer_reference_configuration-reference_L328.mdx";
+import CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL342 from "/snippets/canton-docs/global-synchronizer_reference_configuration-reference_L342.mdx";
+import CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL355 from "/snippets/canton-docs/global-synchronizer_reference_configuration-reference_L355.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/reference/configuration-reference.md)을 사용하세요.
+</Warning>
+
+이 페이지에서는 Canton Network의 validator 및 Super Validator(SV) operator가 사용할 수 있는 configuration option을 설명합니다. Splice app configuration, Canton participant setting, database setup, authentication, traffic management, pruning 및 observability를 다룹니다.
+
+Application developer configuration(Canton + DPM)은 [AppDev Configuration Reference](/appdev/reference/configuration-reference)를 참조하세요.
+
+## Configuration format
+
+### Helm chart configuration
+
+Helm으로 배포할 때 Helm values file의 `additionalEnvVars` field를 통해 `ADDITIONAL_CONFIG` 값을 전달합니다. 전체 Helm values 집합은 아래 `standalone-validator-values.yaml` section을 참조하세요.
+
+### Custom bootstrap script
+
+Custom bootstrap script는 node startup 시 Canton Console command를 실행합니다. 이 section은 향후 update에서 확장됩니다. Script syntax 및 example은 [Canton Console Scripting](/global-synchronizer/canton-console/scripting) 페이지를 참조하세요.
+
+## Validator node configuration
+
+### 필수 network parameter
+
+Validator가 network(DevNet, TestNet 또는 MainNet)에 연결하려면 다음 값이 필요합니다.
+
+- **MIGRATION_ID** -- Target network의 현재 migration ID입니다. [sync.global/sv-network](https://sync.global/sv-network/)에서 확인하세요.
+- **SPONSOR_SV_URL** -- Sponsor SV app의 URL, 예를 들어 CF SV URL입니다.
+- **ONBOARDING_SECRET** -- Sponsor SV가 제공한 one-time secret입니다. Secret은 48시간 후 만료됩니다.
+- **TRUSTED_SCAN_URL** -- 신뢰하는 SV의 Scan URL이며, BFT read를 위한 추가 Scan URL을 가져오는 데 사용됩니다.
+
+### Helm values: standalone-validator-values.yaml
+
+이 file은 validator identity 및 network binding을 정의합니다.
+
+<CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL35 />
+
+
+### Helm values: validator-values.yaml
+
+이 file은 validator app behavior, authentication 및 wallet setting을 다룹니다.
+
+<CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL63 />
+
+
+### Helm values: participant-values.yaml
+
+이 file은 validator의 기반이 되는 Canton participant를 구성합니다.
+
+<CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL87 />
+
+
+<Note>
+1.24 이전 Kubernetes version에서는 `enableHealthProbes`를 `false`로 설정하여 gRPC liveness 및 readiness probe를 비활성화하세요.
+</Note>
+
+## Synchronizer connection option
+
+기본적으로 validator는 BFT read를 위해 여러 Scan instance와 sequencer connection을 discover합니다. 여러 SV에 trust를 분산하므로 production에서 권장하는 configuration입니다.
+
+### Scan proxy를 통한 BFT(권장)
+
+기본 동작은 `TRUSTED_SCAN_URL`을 사용하여 추가 Scan instance 및 sequencer endpoint를 discover합니다. 위의 필수 network parameter 외에 추가 configuration은 필요하지 않습니다. Validator는 여러 Scan에서 read하고 여러 sequencer에 자동으로 연결합니다.
+
+### 단일 trusted Scan
+
+Single point of failure라는 trade-off를 감수하고 trusted Scan 하나에만 연결하려면 다음을 사용합니다.
+
+<CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL118 />
+
+
+### 단일 trusted sequencer
+
+마찬가지로 Scan에서 discover한 집합 대신 단일 sequencer를 통해 route하려면 다음을 사용합니다.
+
+<CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL127 />
+
+
+<Warning>
+두 single-trust option 모두 validator가 해당 SV 하나에 완전히 의존한다는 의미입니다. 해당 SV가 offline이거나 compromise되면 validator는 transaction을 수행할 수 없습니다.
+</Warning>
+
+## Database configuration
+
+### PostgreSQL setup(Helm)
+
+Helm으로 배포된 PostgreSQL instance 및 모든 Splice app은 Kubernetes secret에 저장된 password를 공유합니다. 모든 app은 `cnadmin` database user를 사용합니다.
+
+<CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL142 />
+
+
+Persistent storage size 및 storage class를 조정하려면 PostgreSQL Helm values file에 다음을 추가합니다.
+
+<CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL150 />
+
+
+### PostgreSQL configuration(standalone Canton)
+
+PostgreSQL에 연결된 standalone Canton participant의 configuration은 다음과 같습니다.
+
+```
+canton.participants.participant1.storage {
+  type = postgres
+  config {
+    dataSourceClassName = "org.postgresql.ds.PGSimpleDataSource"
+    properties = {
+      serverName = "localhost"
+      databaseName = "participant1_db"
+      portNumber = "5432"
+      user = ${POSTGRES_USER}
+      password = ${POSTGRES_PASSWORD}
+    }
+  }
+}
+```
+
+Canton은 connection pooling에 [HikariCP](https://github.com/brettwooldridge/HikariCP)를 사용합니다. Tuning 권장 사항은 [HikariCP pool sizing guide](https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing)를 참조하세요.
+
+### PostgreSQL SSL
+
+다음 `PGSimpleDataSource` property로 database connection의 SSL을 활성화합니다.
+
+- `ssl = true` -- SSL certificate 및 hostname 검증
+- `sslmode = "verify-ca"` -- Root certificate를 기준으로 certificate chain 확인
+- `sslrootcert = "path/to/root.cert"` -- Root CA certificate path
+
+Mutual TLS의 경우 client certificate와 key를 가리키는 `sslcert` 및 `sslkey`를 추가합니다.
+
+## Authentication
+
+Validator component는 OpenID Connect(OIDC) provider가 발급한 JWT token을 통해 서로 및 external user에게 authenticate합니다. 전체 setup 지침은 [OIDC Provider](/global-synchronizer/deployment/oidc-providers) 페이지에 있습니다. 주요 configuration secret은 다음과 같습니다.
+
+<CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL192 />
+
+
+Authentication을 비활성화하려면 production에서는 매우 권장하지 않지만 `validator-values.yaml`과 `participant-values.yaml` 모두에서 `disableAuth: true`를 설정합니다.
+
+## TLS configuration
+
+Canton API(Ledger API 및 Admin API)는 선택적인 mutual authentication과 함께 TLS를 지원합니다. Ledger API의 최소 server-side TLS configuration은 다음과 같습니다.
+
+```
+canton.participants.participant.ledger-api.tls {
+  cert-chain-file = "./tls/ledger-api.crt"
+  private-key-file = "./tls/ledger-api.pem"
+  trust-collection-file = "./tls/root-ca.crt"
+}
+```
+
+Client certificate authentication(mTLS)을 요구하려면 다음을 추가합니다.
+
+```
+canton.participants.participant.ledger-api.tls.client-auth {
+  type = require
+  admin-client {
+    cert-chain-file = "./tls/admin-client.crt"
+    private-key-file = "./tls/admin-client.pem"
+  }
+}
+```
+
+모든 private key는 PKCS#8 PEM format이어야 합니다. Minimum TLS version도 제한할 수 있습니다.
+
+```
+canton.participants.participant.ledger-api.tls.minimum-server-protocol-version = TLSv1.3
+```
+
+허용되는 cipher suite는 다음과 같이 지정합니다.
+
+```
+canton.participants.participant.ledger-api.tls.ciphers =
+  [
+    "TLS_AES_256_GCM_SHA384",
+    "TLS_AES_128_GCM_SHA256",
+    "TLS_CHACHA20_POLY1305_SHA256"
+  ]
+```
+
+1.3 suite에서는 Java `jdk.tls.namedGroups` property를 사용하여 지원되는 key exchange를 사용자 지정합니다.
+
+## Traffic configuration
+
+Validator는 Canton Coin을 사용하여 traffic, 즉 sequencer throughput을 자동으로 구매합니다. `standalone-validator-values.yaml`에서 top-up 동작을 구성합니다.
+
+<CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL251 />
+
+
+Automatic top-up을 비활성화하려면 `enabled: false` 또는 `targetThroughput: 0`을 설정합니다. 현재 traffic parameter(base rate limit, extra traffic price, minimum top-up amount)는 `AmuletRules` contract에 기록되며 어느 Scan instance에서든 query할 수 있습니다.
+
+Docker Compose deployment에서는 대신 environment variable로 다음을 설정합니다.
+
+<CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL262 />
+
+
+## Participant pruning
+
+기본적으로 participant는 전체 transaction history를 보존합니다. Pruning을 활성화하면 retention window보다 오래된 history가 제거되고 active contract set만 유지됩니다. Pruning은 Splice app data에 영향을 주지 않습니다. 예를 들어 wallet history는 절대 pruning되지 않습니다.
+
+`validator-values.yaml`에 다음을 추가합니다.
+
+<CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL273 />
+
+
+<Warning>
+Node가 pruning retention window보다 오랫동안 offline이면 app이 pruning된 data를 따라잡기 위해 경쟁하면서 손상될 수 있습니다. Uptime guarantee를 반영하는 값으로 retention을 설정하세요. Sequencer도 30일 후 pruning되므로 30일이 합리적인 시작점입니다.
+</Warning>
+
+자세한 내용은 Canton의 [pruning operation 문서](/global-synchronizer/production-operations/pruning#participant-node-pruning)를 참조하세요.
+
+## Monitoring 및 observability
+
+### Metrics endpoint
+
+**Helm deployment**: Helm values에서 `metrics.enable: true`를 설정하여 `ServiceMonitor` custom resource를 생성합니다. Prometheus Operator가 필요합니다. 또는 port 10013을 대상으로 하는 Prometheus scrape annotation을 추가합니다.
+
+**Docker Compose deployment**: Metric은 기본적으로 `http://validator.localhost/metrics`(validator app) 및 `http://participant.localhost/metrics`(participant)에서 활성화됩니다.
+
+### Histogram
+
+Metric은 OpenTelemetry로 구축되며 [Prometheus native histogram](https://prometheus.io/docs/specs/native_histograms/)으로 노출됩니다. Prometheus에서 `-enable-feature=native-histograms`로 활성화합니다. Regular histogram으로 fallback하려면 다음을 사용합니다.
+
+<CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL298 />
+
+
+### Topology metric
+
+Validator app은 polling trigger를 활성화하여 synchronizer topology metric, prefix `splice.synchronizer-topology`를 export할 수 있습니다.
+
+<CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL306 />
+
+
+### Health check
+
+모든 Splice app은 port 5003에서 `/readyz` 및 `/livez` endpoint를 제공합니다. Kubernetes에서는 liveness 및 readiness probe가 미리 구성되어 있습니다. 다음과 같이 수동으로 확인할 수도 있습니다.
+
+<CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL314 />
+
+
+200 response는 validator가 healthy함을 나타냅니다.
+
+### Grafana dashboard
+
+Splice version별 dashboard folder 위치는 [Grafana Dashboard](/global-synchronizer/production-operations/splice-metrics-overview#grafana-dashboards)를 참조하세요.
+
+## HTTP proxy configuration
+
+Environment에서 HTTP forward proxy를 통해 egress를 route한다면 Helm values에 proxy host 및 port를 설정합니다.
+
+<CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL328 />
+
+
+이를 validator 및 participant Helm chart 모두에 적용합니다. 특정 address를 제외하려면 `https.nonProxyHosts`를 사용합니다. Proxy authentication은 현재 지원되지 않습니다.
+
+## Wallet automation
+
+### Sweep configuration
+
+Party balance가 threshold를 초과할 때 fund를 자동으로 sweep합니다.
+
+<CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL342 />
+
+
+### Transfer 자동 수락
+
+특정 party의 transfer offer를 자동으로 수락합니다.
+
+<CantonDocsGlobalSynchronizerReferenceConfigurationReferenceL355 />
+
+
+두 configuration 모두 party ID가 필요하며, initial deployment 후 wallet UI에서 확인할 수 있습니다.

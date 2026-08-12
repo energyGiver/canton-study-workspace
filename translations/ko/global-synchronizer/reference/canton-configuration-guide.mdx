@@ -1,0 +1,759 @@
+---
+title: "Canton Configuration 가이드"
+description: "HOCON 파일, command-line option, declarative configuration을 사용해 Canton node를 구성합니다."
+source_id: "SRC-340118120F"
+source_path: "global-synchronizer/reference/canton-configuration-guide"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "b7a00287741ed9531d76c1a0446f7b92266636f4b176dc177bfa08d2dcd50c6b"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalCantonMainCommunityAppSrcTestResourcesDocumentationSnippetsNoFailFast from "/snippets/external/canton/main/community/app/src/test/resources/documentation-snippets/no-fail-fast.mdx";
+import ExternalCantonMainCommunityAppSrcTestResourcesDocumentationSnippetsPortsFile from "/snippets/external/canton/main/community/app/src/test/resources/documentation-snippets/ports-file.mdx";
+import ExternalCantonMainCommunityAppSrcTestResourcesDocumentationSnippetsPreviewCommands from "/snippets/external/canton/main/community/app/src/test/resources/documentation-snippets/preview-commands.mdx";
+import ExternalCantonMainCommunityAppSrcPackExampleSimpleTopology from "//snippets/external/canton/main/community/app/src/pack/examples/01-simple-topology/simple-topology.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/reference/canton-configuration-guide.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/configure/general/conf_file.rst" hash="b4ada566" */}
+
+static configuration과 dynamic configuration의 차이를 설명합니다. 아래의 multi-synchronizer처럼 특정 configuration 부분은 해당 how-to section으로 옮깁니다.
+
+# Configuration option 설정
+
+Canton은 static configuration과 dynamic configuration을 구분합니다. Static configuration은 변경할 수 없으므로 process 시작 시점부터 알고 있어야 합니다. Static configuration의 예로 local persistence store의 connectivity parameter 또는 admin API가 bind할 port가 있습니다. 반면 Synchronizer 연결이나 Party 추가는 static configuration에 해당하지 않으므로 config file이 아니라 console command 또는 administration API를 통해 설정합니다.
+
+![./images/canton_node_initialization.png](./images/canton_node_initialization.png)
+
+Configuration file 자체는 몇 가지 확장이 추가된 [HOCON](https://github.com/lightbend/config/blob/master/HOCON.md) 형식으로 작성합니다.
+
+- Duration은 `<length><unit>` 형식의 Scala duration으로 지정합니다. 유효한 unit은 [Scala](https://github.com/scala/scala/blob/v2.13.3/src/library/scala/concurrent/duration/Duration.scala#L82)에서 직접 정의하지만, millisecond, second, minute, hour, day를 나타내는 `ms`, `s`, `m`, `h`, `d`를 예상대로 사용할 수 있습니다. 여기서 duration은 음수가 아니어야 합니다.
+
+Canton은 하나의 node만 실행하지 않습니다. 같은 process에서 Synchronizer나 Participant Node를 원하는 수만큼 실행할 수 있습니다. 따라서 root configuration에서는 일반 process parameter 집합과 함께 여러 Synchronizer 및 Participant Node instance를 정의할 수 있습니다.
+
+두 Participant Node와 하나의 Synchronizer를 위한 configuration file 예시는 아래와 같습니다.
+
+<ExternalCantonMainCommunityAppSrcPackExampleSimpleTopology />
+
+## Configuration reference
+
+Static property를 위한 Canton configuration file은 [PureConfig](https://pureconfig.github.io/)를 기반으로 합니다. PureConfig는 Scala case class 및 그 class structure를 대응하는 configuration option으로 mapping합니다. 예시는 [PureConfig quick start](https://pureconfig.github.io/docs/#quick-start)를 참고하세요. 따라서 사용 가능한 모든 configuration option과 configuration file syntax에 대한 최종 source of truth는 `CantonConfig` Scala type 및 `com.digitalasset.canton.config`의 관련 type입니다.
+
+Scaladoc에서 configuration으로 mapping되는 방식을 이해할 때 다음 사항에 유의하세요.
+
+- CamelCase Scala name은 configuration file에서 lowercase-with-dashes name으로 mapping됩니다. 예를 들어 scaladoc의 `synchronizerParameters`는 configuration file에서 `synchronizer-parameters`가 됩니다. underscore가 아니라 dash를 사용합니다.
+- `Option[<scala-class>]`는 configuration을 지정할 수 있지만 필수는 아니라는 뜻입니다. 예를 들어 `RemoteParticipantConfig`에서 `token=token`으로 JWT token을 지정할 수 있지만 `token`을 지정하지 않아도 유효합니다.
+
+{/* DIVERGENCE: removed a "Configuration Compatibility" section describing enterprise/community edition config compatibility -- there's no more edition distinction as of Canton 3.5; upstream docs-website source (docs/replicated/canton/3.5/participant/howtos/configure/general/conf_file.rst, hash b4ada566) still has it. Related to issue #615. */}
+
+## 고급 Configuration
+
+Configuration file은 중첩하거나 결합할 수 있습니다. 먼저 상대 경로와 함께 `include required` directive를 사용해 다른 configuration file을 포함할 수 있습니다.
+
+{/* TODO: Rework this example https://github.com/DACH-NY/canton/issues/23924 */}
+
+```
+canton {
+    synchronizers {
+        include required(file("synchronizer1.conf"))
+    }
+}
+```
+
+포함할 file이 없으면 `required` keyword가 error를 발생시킵니다. `required` keyword가 없으면 누락된 file을 알림 없이 무시합니다. `file` keyword는 argument를 filename으로 해석하도록 configuration parser에 지시합니다. 이 keyword가 없으면 parser가 주어진 name을 URL이나 classpath resource로 해석할 수 있습니다. `file` keyword를 사용하면 `include`에서 가장 직관적이고 안정적인 semantics도 얻을 수 있습니다. 상대 경로를 resolve하는 정확한 규칙은 [여기](https://github.com/lightbend/config/blob/master/HOCON.md#include-semantics-locating-resources)를 참고하세요.
+
+둘째, 여러 configuration file을 제공하고 명시적인 configuration option path를 사용해 configuration setting을 override할 수 있습니다.
+
+```
+canton.participants.myparticipant.admin-api.port = 11234
+```
+
+같은 key가 여러 configuration에 포함되면 마지막 definition의 precedence가 가장 높습니다.
+
+또한 HOCON은 `key = ${ENV_VAR_NAME}` syntax 또는 optional substitution인 `key = ${?ENV_VAR_NAME}`를 사용하여 config value를 environment variable로 대체할 수 있습니다. Optional substitution에서는 environment variable이 존재할 때만 key가 설정됩니다.
+
+## Configuration Mixin
+
+여러 configuration file을 사용하는 것에서 더 나아가 [PureConfig](https://github.com/pureconfig/pureconfig)를 활용해 environment variable을 참조하는 공유 configuration item을 만들 수 있습니다. 다음은 여러 Synchronizer 또는 Participant Node가 포함된 setup에서 database configuration setting을 공유할 수 있는 유용한 예시입니다.
+
+``` none
+# Postgres persistence configuration mixin
+#
+# This file defines a shared configuration resources. You can mix it into your configuration by
+# refer to the shared storage resource and add the database name.
+#
+# Example:
+#   participant1 {
+#     storage = ${_shared.storage}
+#     storage.config.properties.databaseName = "participant1"
+#   }
+#
+# The user and password is not set. You want to either change this configuration file or pass
+# the settings in via environment variables POSTGRES_USER and POSTGRES_PASSWORD.
+#
+_shared {
+    storage {
+        type = postgres
+        config {
+            dataSourceClass = "org.postgresql.ds.PGSimpleDataSource"
+            properties = {
+                serverName = "localhost"
+                # the next line will override above "serverName" in case the environment variable POSTGRES_HOST exists
+                # which makes it optional
+                serverName = ${?POSTGRES_HOST}
+                portNumber = "5432"
+                portNumber = ${?POSTGRES_PORT}
+                # user and password are required
+                user = ${POSTGRES_USER}
+                password = ${POSTGRES_PASSWORD}
+            }
+        }
+        parameters {
+            # If defined, will configure the number of database connections per node.
+            # Please note that the number of connections can be fine tuned for participant nodes (see participant.conf)
+            max-connections = ${?POSTGRES_NUM_CONNECTIONS}
+            # If true, then database migrations will be applied on startup automatically
+            # Otherwise, you will have to run the migration manually using participant.db.migrate()
+            migrate-and-start = false
+            # If true (default), then the node will fail to start if it can not connect to the database.
+            # The setting is useful during initial deployment to get immediate feedback when the
+            # database is not available.
+            # In a production setup, you might want to set this to false to allow uncoordinated startups between
+            # the database and the node.
+            fail-fast-on-startup = true
+        }
+    }
+}
+```
+
+이러한 definition은 이후 실제 node definition에서 참조할 수 있습니다.
+
+```hocon
+canton {
+    synchronizers {
+        mysynchronizer {
+            storage = ${_shared.storage}
+            storage.config.properties.databaseName = ${CANTON_DB_NAME_SYNCHRONIZER}
+        }
+    }
+}
+```
+## 여러 Synchronizer
+
+Canton configuration에서는 여러 Synchronizer를 정의할 수 있습니다. 또한 Canton Participant는 여러 Synchronizer에 연결할 수 있습니다. 하지만 이는 preview feature로만 지원되며 아직 production 용도에 적합하지 않습니다.
+
+특히 contract key uniqueness는 여러 Synchronizer에 걸쳐 강제할 수 없습니다. 이 경우 Canton configuration에서 contract key uniqueness를 꺼야 합니다. 이 setting은 최종적이며 이후 변경할 수 없습니다. Multi-synchronizer 기능이 완전히 구현되면 migration path를 제공할 예정입니다.
+
+## Fail Fast Mode
+
+기본적으로 Canton은 database 같은 external dependency에 접근할 수 없으면 시작에 실패합니다. 초기 deployment 및 development 단계에서는 즉각적인 feedback을 제공하므로 바람직하지만 production에서는 문제가 될 수 있습니다. 예를 들어 Canton을 database와 병렬로 시작하면 Canton process가 database에 접근하려는 시점보다 database 준비가 늦을 경우 Canton process가 실패합니다. 이 문제를 피하려면 database 같은 external dependency가 시작될 때까지 node가 무기한 기다리도록 구성할 수 있습니다. 아래 config option은 `participant1`의 "fail fast" behavior를 비활성화합니다.
+
+<ExternalCantonMainCommunityAppSrcTestResourcesDocumentationSnippetsNoFailFast />
+
+이 option은 설계상 끝없이 많은 noisy wait를 일으킬 수 있으므로 주의해서 사용해야 합니다.
+
+## Init Configuration
+
+일부 configuration value는 node의 첫 initialization 중에만 사용되며 이후 변경할 수 없습니다. 이러한 value는 해당 node configuration의 `init` section 아래에 있습니다. 다음은 Participant config의 일부 init value 예시입니다.
+
+``` none
+participant1 {
+  init {
+    // example settings
+    ledger-api.max-deduplication-duration = 1 minute
+    identity.node-identifier.type = random
+  }
+}
+```
+
+`ledger-api.max-deduplication-duration` option은 Participant가 Command deduplication에 사용하는 최대 deduplication duration을 설정합니다.
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/configure/general/command_line.rst" hash="58c294b3" */}
+
+# Canton Command Line 사용
+
+Canton은 다양한 command-line argument를 지원합니다. 전체 목록을 보려면 `bin/canton --help`를 실행하세요. 여기서는 가장 관련성 높은 argument를 설명합니다.
+
+## Configuration 선택
+
+Canton을 실행하려면 configuration file이 필요합니다. 내장된 default Topology configuration이 없으므로 사용자는 주어진 process에서 어떤 종류의 node, 즉 Synchronizer 또는 Participant를 몇 개 실행할지 적어도 정의해야 합니다. Sample configuration file은 release package의 `examples` directory에 있습니다.
+
+Canton을 시작할 때 다음과 같이 configuration file을 제공할 수 있습니다.
+
+```bash
+bin/canton --config conf_filename -c conf_filename2
+```
+
+이 command는 `conf_filename2`의 content를 `conf_filename`에 merge하여 Canton을 시작합니다. `-c`와 `--config` option은 동일합니다. 여러 configuration file이 같은 key에 value를 할당하면 *마지막* value를 사용합니다. Configuration file 작성 방법은 static configuration section을 참고하세요.
+
+Command line에서 configuration file과 함께 또는 단독으로 config parameter를 지정하여 누락된 parameter를 제공하거나 다른 parameter를 overwrite할 수도 있습니다. 간단하고 짧은 config 정보를 제공할 때 유용할 수 있습니다. Config parameter는 `-C`를 사용해 제공할 수 있습니다.
+
+```bash
+bin/canton --config conf_filename -C canton.participants.participant1.storage.type=memory
+```
+
+## 실행 Mode
+
+원하는 environment 및 task에 따라 다양한 mode로 Canton을 실행할 수 있습니다.
+
+### Interactive Console
+
+Canton을 실행하는 기본 방법은 interactive mode입니다. Process는 Canton application을 편리하게 operate, modify, inspect할 수 있는 command-line interface인 REPL을 시작합니다.
+
+이 mode에서는 모든 error가 console에 `CommandExecutionException`으로 report되지만 Canton은 계속 실행됩니다.
+
+`--bootstrap=...` option을 사용해 script와 함께 interactive console을 시작할 수 있습니다. Script는 console과 같은 syntax를 사용합니다.
+
+Interactive mode는 development, education, expert use에 유용합니다.
+
+### Daemon
+
+Server operation처럼 console이 필요하지 않다면 daemon mode로 Canton을 시작할 수 있습니다.
+
+```bash
+bin/canton daemon --config ...
+```
+
+구성된 모든 entity가 자동으로 시작되어 operation을 재개합니다.
+
+Database storage 연결 실패 시 process가 0이 아닌 exit code로 종료됩니다. 다음을 사용해 이 동작을 끌 수 있습니다.
+
+<ExternalCantonMainCommunityAppSrcTestResourcesDocumentationSnippetsNoFailFast />
+
+Bootstrap script 실행 중 발생하는 모든 failure는 0이 아닌 exit code와 함께 Canton process를 즉시 종료합니다.
+
+Daemon mode로 시작한 node는 interactive user experience를 제공하는 remote console을 설정하여 관리할 수 있으며, node는 별도의 process에서 실행됩니다.
+
+### Sandbox
+
+Development 중에는 주어진 DAR로 lightweight ledger를 실행하는 것이 유용할 수 있습니다. 이를 위해 Daml Sandbox를 실행하는 sandbox mode로 Canton을 실행할 수 있습니다.
+
+```bash
+bin/canton sandbox --dar Main.dar ...
+```
+
+### Headless Script Mode
+
+Test 및 scripting 목적을 위해 Canton을 headless script mode로 시작할 수도 있습니다.
+
+```bash
+bin/canton run <script-path> --config ...
+```
+
+이 경우 Command는 대화형으로 실행하는 대신 script에 지정합니다. Script 또는 Command 실행 중 발생하는 error는 Canton process가 0이 아닌 exit code로 종료되게 해야 합니다. Script가 완료되면 모든 component가 중지됩니다.
+
+### Screen을 사용한 Interactive Server Process
+
+일부 상황에서는 server process도 대화형으로 실행하는 것이 편리합니다. Linux / OSX에서 server 용도로 [screen](https://linux.die.net/man/1/screen) command를 사용하면 다음과 같이 실행할 수 있습니다.
+
+```bash
+screen -S canton -d -m ./bin/canton -c ...
+```
+
+이 command는 `canton`이라는 screen session에서 Canton process를 시작합니다. 이 session은 user logout 시 종료되지 않으므로 필요할 때마다 Canton process를 inspect할 수 있습니다.
+
+이전에 시작한 process에는 다음 command로 접속할 수 있습니다.
+
+```bash
+screen -r canton
+```
+
+활성 screen session은 CTRL-A 다음 D를 차례로 눌러 detach할 수 있습니다. CTRL-D를 입력하면 session이 종료되므로 주의하세요. Machine에서 logout해도 screen session은 계속 실행됩니다.
+
+## Java Virtual Machine Argument
+
+`bin/canton` application은 Canton process를 실행하는 Java Virtual Machine을 시작하기 위한 편리한 wrapper입니다. Wrapper는 `JAVA_OPTS` environment variable 또는 `-D` command-line option을 사용해 추가 JVM option을 제공할 수 있습니다.
+
+예를 들어 다음과 같이 heap size를 구성할 수 있습니다.
+
+```bash
+JAVA_OPTS="-Xmx2G" ./bin/canton --config ...
+```
+
+지정할 수 있는 log 관련 option이 여러 개 있습니다. 자세한 내용은 Logging을 참고하세요.
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/configure/general/declarative_conf.rst" hash="2e965fb9" */}
+
+# Declarative Configuration
+
+<Note>
+Declarative configuration은 alpha feature이며 처음에는 Participant Node에서만 사용할 수 있습니다.
+</Note>
+
+기본적으로 Canton은 scalability를 위해 runtime에 API request로 관리됩니다. 소규모 deployment를 위해 Canton은 dynamic change를 위한 configuration setting도 지원합니다. 이 configuration은 DAR, Party, Synchronizer, user, identity provider를 추가하거나 제거할 수 있으며 다음과 같이 사용할 수 있습니다.
+
+``` none
+// enable dynamic configuration explicitly (alpha feature, turned off by default)
+canton.parameters.enable-alpha-state-via-config = yes
+canton.parameters.state-refresh-interval = 5s
+
+// this is an example configuration file
+// note that the configuration format will possibly change in the future based
+// on the feedback we get from the community
+canton.participants.myparticipant.alpha-dynamic {
+  fetched-dar-directory = "fetched-dars"
+  // upload dars
+  dars = [
+    { location = "dars/CantonExamples.dar", expected-main-package = "abcd" }
+    { location = "https://path.to/repo/token.dar", request-headers = { AuthenticationToken : "mytoken" }}
+  ],
+  // define parties
+  parties = [
+    { party = "Alice", synchronizers = ["mysync"] }
+    { party = "Bob" }
+  ],
+  // if true, then parties found which are not in the configuration file will be deleted
+  remove-parties = false
+  // define identity providers
+  idps = [
+    { identity-provider-id = "idp1", issuer = "issuer", jwks-url = "https://path.to/jwks", audience = "optional", is-deactivated = false }
+  ]
+  // if true, then idps found which are not in the configuration file will be deleted
+  remove-idps = false
+  // define users
+  users = [
+    { user = "User1", primary-party = "Alice", is-deactivated = false, annotations = {"key" : "value"},
+      identity-provider-id = "idp1", rights = {
+        act-as = ["Alice"],
+        read-as = ["Bob"],
+        read-as-any-party = true
+        participant-admin = true
+        identity-provider-admin = true
+      }
+    }
+  ]
+  // if true, then users found which are not in the configuration file will be deleted
+  remove-users = false
+  // define synchronizers
+  connections = [{
+    synchronizer-alias = "mysync"
+    manual-connect = false
+    priority = 0
+    trust-threshold = 1
+    connections = {
+      "first" : {
+        endpoints = [{ host = "localhost", port = 1234 }]
+        transport-security = true
+        custom-trust-certificate = "cert.pem"
+      }
+    }
+  }]
+}
+```
+
+모든 configuration file은 file modification 여부를 정기적으로 검사하며, 변경되면 reload를 trigger하고 node에 적용합니다.
+
+`daml.declarative_api.items` 및 `daml.declarative_api.errors` metric은 state configuration file을 통해 관리되는 item 수에 대한 insight를 제공합니다. 음수 error code는 sync의 근본적인 부분이 성공하지 못했음을 뜻합니다. Config file을 parse할 수 없으면 -1, sync 준비 중 문제가 발생하면 -2, sync 자체가 근본적으로 실패하면 -3입니다. 양수 error code는 실패한 item 수를 가리킵니다. Error가 0이 아니면 문제가 있는 것입니다.
+
+일부 setting은 특정 precondition이 충족되어야 적용할 수 있습니다. User에 Party를 할당하려면 Synchronizer가 이미 등록되어 있어야 합니다. 따라서 일부 change는 이러한 precondition이 충족된 후에만 나타납니다. 하지만 Participant가 Synchronizer에 연결되기 전에 Party를 포함한 target state를 정의해도 안전합니다.
+
+Declarative configuration과 imperative configuration을 혼합할 수도 있습니다. API를 통해 정의한 초과 item은 명시적으로 삭제하도록 구성하지 않는 한 삭제되지 않습니다.
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/configure/storage/storage.rst" hash="83ff3a81" */}
+
+# Storage 구성
+
+Canton은 작동하기 위해 data를 영구 저장해야 합니다. Participant Node, Mediator Node, Synchronizer Node에는 모두 storage configuration이 필요합니다.
+
+<Note>
+Canton은 시작할 때 database schema를 직접 생성, 관리, upgrade합니다.
+</Note>
+
+## Production storage 구성
+
+Production deployment에서 지원되는 storage는 [PostgreSQL](https://www.postgresql.org/)뿐입니다. 구성 방법은 Configure Canton with Postgres를 참고하세요.
+
+## 기타 storage configuration
+
+<Warning>
+다음 storage configuration은 production deployment에서 지원되지 않습니다. Test, development, experimental 목적으로만 제공됩니다.
+</Warning>
+
+### In-memory storage 구성
+
+다른 storage configuration을 제공하지 않으면 기본적으로 in-memory storage를 사용합니다. In-memory storage에서는 relational database 대신 in-memory data structure에 data를 저장합니다. 따라서 node가 중지되면 모든 data가 손실됩니다.
+
+이 예시는 Sequencer, Mediator, Participant Node에 대한 명시적인 in-memory configuration을 보여줍니다.
+
+``` none
+# Configures sequencer1, mediator1, and participant1 to use in-memory storage.
+canton {
+  sequencers.sequencer1.storage.type = memory
+  mediators.mediator1.storage.type = memory
+  participants.participant1.storage.type = memory
+}
+```
+
+### H2 storage 구성
+
+이 예시는 Sequencer, Mediator, Participant Node의 [H2](https://www.h2database.com/) storage configuration을 보여줍니다.
+
+``` none
+# Configures sequencer1, mediator1, and participant1 to use file based H2 storage.
+canton {
+  sequencers.sequencer1.storage {
+    type = h2
+    config.url = "jdbc:h2:file:./data/sequencer1;MODE=PostgreSQL;LOCK_TIMEOUT=10000;DB_CLOSE_DELAY=-1"
+  }
+  mediators.mediator1.storage {
+    type = h2
+    config.url = "jdbc:h2:file:./data/mediator1;MODE=PostgreSQL;LOCK_TIMEOUT=10000;DB_CLOSE_DELAY=-1"
+  }
+  participants.participant1.storage {
+    type = h2
+    config.url = "jdbc:h2:file:./data/participant1;MODE=PostgreSQL;LOCK_TIMEOUT=10000;DB_CLOSE_DELAY=-1"
+  }
+}
+```
+
+`jdbc:` prefix가 붙은 `url`은 [다양한 방식으로 구성](https://www.h2database.com/html/features.html#database_url)할 수 있습니다. 위 예시는 다음과 같이 구성합니다.
+
+Embedded file based storage
+Canton이 시작되면 embedded H2 database가 Canton node의 working directory 기준 `./data` directory에 생성되며 `.mv.db` file suffix를 갖습니다. H2 [embedded connection mode](https://www.h2database.com/html/features.html#connection_modes)를 사용할 때는 한 번에 하나의 process만 database에 접근할 수 있으므로 database를 inspect하려면 먼저 Canton을 중지해야 합니다. 다른 process가 database에 접근하지 않으면 [H2 Console](https://www.h2database.com/html/quickstart.html#h2-console) 같은 H2 tool로 inspect할 수 있습니다.
+
+MODE=PostgreSQL
+Canton에서 사용하는 SQL dialect가 PostgreSQL이므로 반드시 필요합니다. 이 setting은 [PostgreSQL compatibility mode](https://www.h2database.com/html/features.html#postgresql_mode)를 활성화합니다.
+
+LOCK_TIMEOUT=10000
+Thread가 timeout되기 전 database lock을 획득할 수 있도록 10초를 제공합니다.
+
+DB_CLOSE_DELAY=-1
+이 setting은 Canton process가 종료될 때까지 database를 open 상태로 유지합니다.
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/configure/storage/postgres.rst" hash="60ddcb0f" */}
+
+# PostgreSQL로 Canton 구성<span id="postgres-config"></span>
+
+## Configuration 예시
+
+이 예시는 모두 port `5432`의 local PostgreSQL database instance에서 실행되는 Sequencer, Mediator, Participant Node의 [PostgreSQL](https://https://www.postgresql.org/) storage configuration을 보여줍니다.
+
+``` none
+# Configures sequencer1, mediator1, and participant1 with locally running PostgreSQL storage.
+canton {
+  sequencers.sequencer1.storage {
+    type = postgres
+    config {
+      dataSourceClassName = "org.postgresql.ds.PGSimpleDataSource"
+      properties = {
+        serverName = "localhost"
+        databaseName = "sequencer1_db"
+        portNumber = "5432"
+        user = "sequencer1"
+        password = "pgpass"
+      }
+    }
+  }
+  mediators.mediator1.storage {
+    type = postgres
+    config {
+      dataSourceClassName = "org.postgresql.ds.PGSimpleDataSource"
+      properties = {
+        serverName = "localhost"
+        databaseName = "mediator1_db"
+        portNumber = "5432"
+        user = "mediator1"
+        password = "pgpass"
+      }
+    }
+  }
+  participants.participant1.storage {
+    type = postgres
+    config {
+      dataSourceClassName = "org.postgresql.ds.PGSimpleDataSource"
+      properties = {
+        serverName = "localhost"
+        databaseName = "participant1_db"
+        portNumber = "5432"
+        user = "participant1"
+        password = "pgpass"
+      }
+    }
+  }
+}
+```
+
+## Connection pool 구성
+
+Canton은 connection pooling에 [HikariCP](https://github.com/brettwooldridge/HikariCP)를 사용합니다. 이는 `storage.config`에서 구성합니다. [Pool size 선택 방법](https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing)에 대한 이 글을 권장합니다.
+
+<Note>
+PostgreSQL의 `dataSourceClassName` 및 `properties` 설정은 다음 section에서 설명합니다.
+</Note>
+
+설정할 수 있는 pool property 집합은 아래와 같습니다. Property에 대한 설명은 [HikariConfig](https://www.javadoc.io/doc/com.zaxxer/HikariCP/3.2.0/com/zaxxer/hikari/HikariConfig.html)의 관련 `get`/`set` method 설명에서 확인할 수 있습니다.
+
+|                        |                           |                        |
+|------------------------|---------------------------|------------------------|
+| allowPoolSuspension    | catalog                   | connectionInitSql      |
+| connectionTestQuery    | connectionTimeout         | dataSourceClassName    |
+| idleTimeout            | initializationFailTimeout | isolateInternalQueries |
+| leakDetectionThreshold | maxLifetime               | maximumPoolSize        |
+| minimumIdle            | poolName                  | properties             |
+| readOnly               | registerMbeans            | schema                 |
+| validationTimeout      |                           |                        |
+
+## PostgreSQL data source 구성
+
+Connection을 생성하기 위해 `HikariCP`는 `properties`의 property로 구성된 *data-source* `dataSourceClassName`을 사용합니다. 다음 property와 함께 구성한 `org.postgresql.ds.PGSimpleDataSource` *data-source*를 사용하는 것이 좋습니다.
+
+> - serverName
+> - databaseName
+> - portNumber
+> - user
+> - password
+
+추가로 지원되는 property의 자세한 내용은 [PGSimpleDataSource](https://jdbc.postgresql.org/documentation/publicapi/org/postgresql/ds/PGSimpleDataSource.html)의 관련 `get`/`set` method 설명에서 확인할 수 있습니다.
+
+### Configuration에서 environment variable 사용
+
+Environment variable을 사용해 PostgreSQL data-source property를 구성할 수 있습니다. Password 같은 민감한 정보나 configuration file에 value를 hardcode하지 않으려 할 때 유용합니다.
+
+이 예시에서는 모든 database property를 environment variable로 설정합니다. 다른 configuration과 충돌하지 않도록 environment variable에 `SEQUENCER1_` prefix를 붙입니다.
+
+``` 
+config {
+  dataSourceClassName = "org.postgresql.ds.PGSimpleDataSource"
+  properties = {
+    serverName = ${SEQUENCER1_SERVER}
+    databaseName = ${SEQUENCER1_DB}
+    portNumber = ${SEQUENCER1_PORT}
+    user = ${SEQUENCER1_USER}
+    password = ${SEQUENCER1_PASSWORD}
+  }
+```
+
+### Node 간 database configuration 공유
+
+이 예시는 [PureConfig](https://github.com/pureconfig/pureconfig)를 사용해 Canton setup의 여러 node에서 공통 database configuration을 공유하는 방법을 보여줍니다.
+
+``` none
+# Postgres persistence configuration mixin
+#
+# This file defines a shared configuration resources. You can mix it into your configuration by
+# refer to the shared storage resource and add the database name.
+#
+# Example:
+#   participant1 {
+#     storage = ${_shared.storage}
+#     storage.config.properties.databaseName = "participant1"
+#   }
+#
+# The user and password is not set. You want to either change this configuration file or pass
+# the settings in via environment variables POSTGRES_USER and POSTGRES_PASSWORD.
+#
+_shared {
+    storage {
+        type = postgres
+        config {
+            dataSourceClass = "org.postgresql.ds.PGSimpleDataSource"
+            properties = {
+                serverName = "localhost"
+                # the next line will override above "serverName" in case the environment variable POSTGRES_HOST exists
+                # which makes it optional
+                serverName = ${?POSTGRES_HOST}
+                portNumber = "5432"
+                portNumber = ${?POSTGRES_PORT}
+                # user and password are required
+                user = ${POSTGRES_USER}
+                password = ${POSTGRES_PASSWORD}
+            }
+        }
+        parameters {
+            # If defined, will configure the number of database connections per node.
+            # Please note that the number of connections can be fine tuned for participant nodes (see participant.conf)
+            max-connections = ${?POSTGRES_NUM_CONNECTIONS}
+            # If true, then database migrations will be applied on startup automatically
+            # Otherwise, you will have to run the migration manually using participant.db.migrate()
+            migrate-and-start = false
+            # If true (default), then the node will fail to start if it can not connect to the database.
+            # The setting is useful during initial deployment to get immediate feedback when the
+            # database is not available.
+            # In a production setup, you might want to set this to false to allow uncoordinated startups between
+            # the database and the node.
+            fail-fast-on-startup = true
+        }
+    }
+}
+```
+
+## SSL 사용
+
+다음 `PGSimpleDataSource` property를 사용해 SSL을 구성합니다.
+
+ssl = true
+SSL certificate를 검증하고 hostname도 검증합니다.
+
+sslmode= "verify-ca"
+Client에 저장된 root certificate까지 certificate chain을 검사합니다.
+
+sslrootcert = "path/to/root.cert"
+필요한 경우 root certificate 경로로 설정합니다.
+
+PostgreSQL에서 SSL을 구성하는 자세한 방법은 [PostgreSQL SSL](https://jdbc.postgresql.org/documentation/ssl/) 문서를 참고하세요.
+
+### mTLS 사용
+
+Mutual TLS인 [mTLS](https://en.wikipedia.org/wiki/Mutual_authentication#mTLS)를 구성하려면 다음과 같은 추가 property를 사용할 수 있습니다.
+
+> - sslcert = "path/to/client-cert.pem"
+> - sslkey = "path/to/client-key.p12"
+
+## PostgreSQL database 설정
+
+Canton node마다 별도의 database가 필요합니다. Canton을 시작하기 전에 database를 생성하세요.
+
+<Note>
+Canton distribution은 database와 user 생성을 돕는 `config/utils/postgres/db.sh` script를 제공합니다.
+</Note>
+
+### Database 생성
+
+Unicode character를 올바르게 처리하려면 database를 UTF8 encoding으로 생성해야 합니다. 다음 SQL command는 UTF8 encoding으로 `participant1_db`라는 database를 생성합니다.
+
+```sql
+create database participant1_db encoding = 'UTF8';
+```
+
+### Database user 생성
+
+*data-source* property에 구성된 database user는 data read 및 write 권한 외에도 database schema를 생성하고 수정하는 데 필요한 permission을 가져야 합니다.
+
+다음 SQL command는 password를 사용하는 `participant1_user`라는 user를 생성하고 database에 대한 모든 privilege를 부여합니다.
+
+```sql
+create user participant1_user with password 'change-me';
+grant all privileges on database participant1_db to participant1_user;
+```
+
+## Operation
+
+### Storage 최적화
+
+Storage Optimization을 참고하세요.
+
+### Backup
+
+Backup and Restore를 참고하세요.
+
+### HA 설정
+
+High Availability Usage를 참고하세요.
+
+## Cloud-hosted database 사용
+
+[Amazon RDS](https://aws.amazon.com/rds/postgresql/), [Google Cloud SQL](https://cloud.google.com/sql/docs/postgres), [Azure Database for PostgreSQL](https://azure.microsoft.com/en-us/services/postgresql/) 같은 cloud-hosted PostgreSQL database를 사용할 수 있습니다.
+
+PostgreSQL database를 설정, 구성, 보호하는 방법에 대한 자세한 내용은 각 cloud provider의 문서를 참고하세요.
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/configure/parameters/parameters.rst" hash="d824950d" */}
+
+# Canton parameter 구성
+
+## Participant Node protocol version
+
+Participant Node가 Sequencer Node에 연결될 때 node 간 handshake를 수행하여 Synchronizer protocol version의 compatibility를 확인합니다. 기본적으로 Participant Node는 안정된 protocol version을 실행하는 모든 Synchronizer에 연결할 수 있습니다.
+
+### 최소 protocol version 보장
+
+최소 protocol version을 설정하면 Participant Node가 구성된 최소 version 이상의 protocol version을 실행하는 Synchronizer에만 연결할 수 있습니다. 보안 취약점이 알려졌거나 필요한 feature를 지원하지 않는 protocol version을 실행하는 Synchronizer에 Participant Node가 연결하지 못하도록 보장할 때 사용하세요.
+
+예를 들어 Synchronizer protocol version이 최소 **33**임을 보장하려면 Participant Node parameter `minimum-protocol-version`을 설정합니다.
+
+``` 
+canton.participants.participant1.parameters.minimum-protocol-version=33
+```
+
+### Early access protocol feature 활성화
+
+<Warning>
+Early access는 non-production environment용이며 support 대상이 아닙니다.
+</Warning>
+
+#### Alpha protocol version 활성화
+
+Participant Node가 alpha protocol version을 실행하는 Synchronizer에 연결할 수 있게 하려면 `alpha-version-support` parameter를 `true`로 설정합니다. Experimental feature이므로 `non-standard-config` parameter도 `true`로 설정해야 합니다.
+
+``` none
+canton.parameters {
+  # turn on non-standard configuration support
+  non-standard-config = yes
+
+  # turn on support of alpha version support for synchronizer nodes
+  alpha-version-support = yes
+}
+
+canton.participants.participant1.parameters = {
+  # enable alpha version support on the participant (this will allow the participant to connect to a synchronizer running protocol version dev or any other alpha protocol)
+  # and it will turn on support for unsafe daml lf dev versions
+  # not to be used in production and requires you to define non-standard-config = yes
+  alpha-version-support = yes
+}
+```
+
+#### Beta protocol version 활성화
+
+Participant Node가 beta protocol version을 실행하는 Synchronizer에 연결할 수 있게 하려면 `beta-version-support` parameter를 `true`로 설정합니다. Experimental feature이므로 `non-standard-config` parameter도 `true`로 설정해야 합니다.
+
+``` 
+```
+
+``` none
+canton.parameters {
+  # turn on support of beta version support for synchronizer nodes
+  beta-version-support = yes
+}
+
+canton.participants.participant1.parameters = {
+  # enable beta version on the participant (this will allow the participant to connect to a synchronizer with beta protocol version)
+  beta-version-support = yes
+}
+```
+
+## Canton 시작 감지
+
+Test environment에서 Canton을 실행할 때 Canton이 시작된 시점을 감지하면 유용할 수 있습니다.
+
+Initialization 시 실행 중인 port 세부 정보가 담긴 file을 Canton이 작성하도록 ports-file을 구성하세요.
+
+<ExternalCantonMainCommunityAppSrcTestResourcesDocumentationSnippetsPortsFile />
+
+시작할 때 Canton은 service가 실행되는 port value를 ports-file에 기록합니다.
+
+```json
+{
+  "participant1" : {
+    "ledgerApi" : 5021,
+    "adminApi" : 5022,
+    "jsonApi" : null
+  }
+}
+```
+
+## Preview command 활성화
+
+Canton console *preview command*는 stable로 간주되지 않으며 command group help request에 나열되지 않는 Command입니다.
+
+Preview command를 활성화하려면 configuration file에서 `enable-preview-commands` parameter를 `yes`로 설정하세요. 이제 preview command가 command group help request에 나열되고 사용할 수 있습니다.
+
+<Warning>
+Preview command는 안정성이 보장되지 않으며 향후 release에서 변경될 수 있습니다.
+</Warning>
+
+<ExternalCantonMainCommunityAppSrcTestResourcesDocumentationSnippetsPreviewCommands />
+
+{/* COPIED_END */}

@@ -1,0 +1,956 @@
+---
+title: "Party Management"
+description: "Canton Node에서 Party allocation, replication 및 decentralized Party 설정 관리"
+source_id: "SRC-E94F527CC1"
+source_path: "global-synchronizer/production-operations/party-management"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "c97fe81fe5406444f50c5633a1b5b4f13102024d9f2ffbf819db905b6a344e4c"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/parties-1.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties2 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/parties-2.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties3 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/parties-3.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties4 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/parties-4.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties5 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/parties-5.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties6 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/parties-5.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties7 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/parties-7.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties8 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/parties-8.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties9 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/parties-9.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties10 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/parties-10.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties11 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/parties-11.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties12 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/parties-12.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties13 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/parties-13.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties14 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/parties-14.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties15 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/parties-15.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties16 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/parties-16.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-1.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication2 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-2.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication3 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-3.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication4 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-4.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication5 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-5.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication7 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-7.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication8 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-8.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication9 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-9.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication10 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-10.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication11 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-11.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication12 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-12.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication13 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-13.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication14 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-14.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication15 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-15.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication20 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-20.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication21 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-21.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication22 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-22.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication23 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-23.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication24 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-24.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication25 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-25.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication26 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-26.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication27 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/participant/howtos/operate/parties/party_replication-27.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/production-operations/party-management.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/operate/parties/parties.rst" hash="5dabde1e" */}
+
+# Party Management
+
+Party는 User 또는 organization을 represent하며 Daml ledger와 상호작용하는 entity입니다. Participant Node에 onboard하면 transaction을 submit하고 ledger에 access할 수 있습니다.
+
+다음 section에서는 local Party를 onboard하는 방법을 설명합니다. 다른 종류의 Party onboarding은 다음 how-to를 참고하세요.
+
+- Decentralized Party는 Decentralized Party Overview 문서를 참고하세요.
+- External Party는 Onboard External Party tutorial을 참고하세요.
+- Participant에서 이미 host되는 Party는 Party Replication 문서를 참고하세요.
+
+## Ledger API를 통한 새 Party onboarding
+
+Ledger API에 access할 수 있다면 `parties` command로 새 Party를 onboard할 수 있습니다. 이 command는 기반 Ledger API endpoint를 wrapping한 것입니다. 자세한 내용은 Ledger API 문서를 참고하세요.
+
+1. Party name을 정의합니다. Name은 자유롭게 선택할 수 있지만 `\[a-zA-Z0-9:-\_ \]` format을 따라야 하고 185자를 넘을 수 없으며 연속된 colon 두 개를 사용할 수 없고 Namespace에서 unique해야 합니다.
+
+예를 들어 Party `bob`을 host하려고 합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties1 />
+
+2. Party를 allocate할 optional Synchronizer ID를 지정합니다. Participant는 이 Synchronizer에 연결되어 있어야 합니다. Participant가 Synchronizer 하나에만 연결되어 있다면 이 parameter를 생략할 수 있습니다. 그렇지 않으면 각 Synchronizer에서 Party를 명시적으로 enable해야 합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties2 />
+
+3. Optional annotation을 정의합니다. 이는 Party와 연관되고 이 Ledger API server local에 저장되는 key-value pair입니다. Annotation은 allocated Party의 metadata를 유지하는 데 유용합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties3 />
+
+4.  Optional Identity Provider ID를 정의합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties4 />
+
+5.  이 Participant의 ""my-synchronizer""에서 Party를 enable합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties5 />
+
+6.  두 번째 Synchronizer에 Party를 onboard하려면 다른 Synchronizer ID로 `allocate` command를 다시 실행합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties6 />
+
+### Party 갱신
+
+1.  `update` command를 사용하여 Party annotation을 갱신할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties7 />
+
+2.  `update_idp` command를 사용하여 Party Identity Provider도 갱신할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties8 />
+
+### Party 찾기
+
+`list` command를 사용하여 Party를 찾을 수 있습니다.
+
+1.  Identity Provider로 Party를 filter할 수 있습니다. 지정하지 않으면 Participant에서 host되는 모든 Party를 반환합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties9 />
+
+## Admin API를 통한 새 Party onboarding
+
+Party allocation을 더 세밀하게 control하려면 Admin API를 사용합니다. Participant Node에 새 Party를 onboard하려면 다음 단계를 수행합니다.
+
+1. Party name을 정의합니다. 위에서 설명한 것과 같은 rule이 적용됩니다. 예를 들어 Party `alice`를 host하려고 합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties10 />
+
+2.  Optional Namespace를 정의합니다. 기본적으로 Alice는 command를 submit하는 Participant의 Namespace를 사용합니다.
+
+Namespace에 관한 자세한 내용은 Namespaces 문서를 참고하세요.
+
+3. Party를 allocate할 optional Synchronizer alias를 지정합니다. Participant는 해당 Synchronizer에 연결되어 있어야 합니다. Participant가 Synchronizer 하나에만 연결되어 있다면 이 parameter를 생략할 수 있습니다. 그렇지 않으면 각 Synchronizer에서 Party를 명시적으로 enable해야 합니다.
+
+4.  이 Participant에서 Party를 enable합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties11 />
+
+5.  Party가 onboard되었는지 verify합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties12 />
+
+6.  두 번째 Synchronizer에 Party를 onboard하려면 다른 Synchronizer alias로 `enable` command를 다시 실행합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties13 />
+
+### Party 찾기
+
+`list` command를 사용하여 Party를 찾을 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties14 />
+
+Participant Node 및 Synchronizer로도 filter할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties15 />
+
+### Party 비활성화
+
+<Warning>
+현재 Party 비활성화는 지원되지 않으며 위험한 operation으로 간주됩니다.
+</Warning>
+
+수행할 작업을 확실히 이해하고 있다면 다음 command로 특정 Synchronizer에서 Party를 비활성화할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesParties16 />
+
+## Multi-hosted Party
+
+*Multi-hosted Party*는 두 개 이상의 Participant에서 host되는 Party입니다. 그러면 한 Participant에서 다른 Participant로 Party를 replicate하는 방법이 필요합니다.
+
+Party를 multi-host하는 가장 단순하고 안전한 방법은 해당 Party가 아직 어떤 Daml transaction에도 참여하지 않은 경우에만 사용할 수 있습니다. 그렇지 않으면 offline Party replication 절차를 수행해야 합니다.
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/operate/parties/party_replication.rst" hash="b73466d7" */}
+
+# Party replication
+
+*Party replication*은 **단일 Synchronizer 안에서** 기존 Party를 추가 Participant에 복제하는 process입니다. 이 process에서 Party를 이미 host하는 Participant를 *source* Participant, 새 Participant를 *target* Participant라고 합니다.
+
+Replicate하려는 Party가 Daml transaction에 참여한 적이 있는지에 따라 운영 절차의 complexity 및 risk가 크게 달라집니다.
+
+따라서 Participant에 Party를 onboard하고 **Party를 사용하기 전에** simple Party replication 단계에 따라 다른 Participant로 replicate하세요.
+
+그렇지 않으면 offline Party replication 절차를 적용해야 합니다.
+
+<Note>
+**Party replication**은 **Party migration**과 다릅니다. Party migration에는 기존 Participant에서 Party를 제거, 즉 *offboard*하는 최종 단계가 추가됩니다.
+
+Party offboarding과 이에 따른 Party migration은 현재 지원되지 않습니다.
+</Note>
+
+## Party replication authorization
+
+### Authorization 동작 방식
+
+Party와 새 hosting Participant가 각각 Party-to-Participant mapping Topology transaction을 발행하여 동의해야 합니다. 이를 통해 Party replication에 대한 상호 합의를 보장합니다.
+
+### External Party
+
+External Party의 경우 Party topology 변경은 External Party Namespace key의 signature로 명시적으로 authorize해야 합니다. How-to에서 Party authorization이 필요할 때마다 *local* Party와 *external* Party를 구분합니다. External Party 절차에서는 Party-to-Participant mapping update를 authorize하는 abstract function을 참조합니다.
+
+```python
+class HostingParticipant:
+    participant_uid: str
+    permission: Enums.ParticipantPermission
+
+def update_external_party_hosting(
+    party_id: str,
+    synchronizer_id: str,
+    confirming_threshold: int,
+    hosting_participants_add_or_update: [HostingParticipant]
+)
+```
+
+이 function의 구현 예시는 External Party onboarding 문서에 있습니다. 구현은 Party Namespace private key와 Party confirming Node 중 하나의 Admin API에 연결된 gRPC channel도 받습니다. 간결성을 위해 위 function declaration에서는 생략했습니다.
+
+이 how-to에서 Topology 변경 authorize 외의 action에 `source` Participant를 사용할 때는 External Party의 기존 confirming Participant 중 하나를 사용해야 합니다.
+
+### Owner가 여러 명인 Party
+
+Decentralized Namespace의 member group이 Party를 소유하면 해당 owner 중 최소 수, 즉 정의된 threshold가 새 hosting arrangement를 승인해야 합니다. 충분한 개별 owner가 각각 자체 Party-to-Participant mapping Topology transaction을 발행하면 threshold가 충족됩니다.
+
+### Activation
+
+상호 authorization process를 완료하면 target Participant에서 Party가 *activate*됩니다.
+
+## Simple Party replication
+
+Party를 replicate하는 가장 단순하고 안전한 방법은 Party가 contract의 stakeholder가 되기 **전에** 수행하는 것입니다.
+
+<Warning>
+Party가 이미 Daml transaction에 참여했다면 offline Party replication을 사용해야 합니다.
+</Warning>
+
+Simple Party replication은 다음 단계로 구성되며 나열된 **순서대로** 수행해야 합니다.
+
+1.  Participant Namespace 또는 전용 Namespace에 Party를 생성합니다.
+2.  Package를 vet합니다.
+3.  하나 이상의 추가 Participant가 Party를 host하도록 authorize합니다.
+4.  Party를 사용합니다.
+
+다음에서는 두 Participant를 사용하여 이 단계를 보여줍니다.
+
+``` none
+@ val source = participant1
+    source : com.digitalasset.canton.console.LocalParticipantReference = Participant 'participant1'
+```
+
+``` none
+@ val target = participant2
+    target : com.digitalasset.canton.console.LocalParticipantReference = Participant 'participant2'
+```
+
+``` none
+@ val synchronizerId = source.synchronizers.id_of("mysynchronizer")
+    synchronizerId : SynchronizerId = da::1220a82692ab...
+```
+
+### 1. Party 생성
+
+Party Alice를 생성합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication1 />
+
+<Note>
+이 예시에서 **local Party Alice**는 `source` Participant가 소유하며 이는 단순화한 설정입니다. Alice가 Participant Namespace에 register되어 있음을 의미하지만 필수 조건은 아닙니다.
+
+대신 Party를 자체 전용 Namespace에 생성하거나 External Party를 생성할 수 있습니다.
+</Note>
+
+### 2. Package vetting
+
+진행하기 **전에** target Participant에서 package를 vet합니다.
+
+<Note>
+이 process가 익숙하지 않다면 package vetting에 관한 일반 설명을 읽으세요.
+</Note>
+
+### 3. Party multi-host
+
+Party Alice가 target Participant에서 host되는 데 동의해야 합니다.
+
+Source Participant가 Party Alice를 소유하므로 `source` Participant에서 Party-to-Participant mapping Topology transaction을 발행해야 합니다.
+
+#### Source Participant에서 hosting update authorize
+
+Local Party
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication2 />
+
+Participant는 서로 다른 permission으로 Party를 host할 수 있습니다. 이 예시에서 target Participant는 submission permission으로 Party Alice를 host하며 Alice는 해당 Participant에서 Daml transaction을 submit할 수 있습니다.
+
+External Party
+
+External Party onboarding process에서는 Party 생성 중 여러 Node에 host하는 multi-hosted External Party를 포함하여 Party hosting relationship을 declare하는 방법을 보여줍니다. 항상 단일 Node에서 먼저 host되어 나중에 multi-host를 위해 Party-to-Participant mapping을 amend해야 하는 local Party와 달리 External Party는 onboarding process 중 한 단계로 이를 수행할 수 있습니다. 자세한 내용은 onboarding process를 참고하세요.
+
+#### Target Participant에서 hosting update authorize
+
+Process를 완료하려면 target Participant도 Alice를 새로 host하는 데 동의해야 합니다. 따라서 `target` Participant에서 **동일한** Party-to-Participant mapping Topology transaction을 발행해야 합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication3 />
+
+<Note>
+여기서 Participant permission은 이전 단계와 같아야 합니다. 특히 External Party에서는 `Confirmation` 또는 `Observation`이어야 합니다.
+</Note>
+
+Party-to-Participant mapping이 적용되면 replication이 완료됩니다. 결과적으로 Party Alice가 `source` 및 `target` Participant 모두에서 multi-host됩니다.
+
+Alice를 더 많은 Participant로 replicate하려면 먼저 `newTarget` Participant에서 package를 vet한 다음 기존 `source` 및 `newTarget` Participant를 사용하여 replication을 다시 수행합니다.
+
+### 3.a Confirmation threshold를 동시에 변경하여 Party replicate(3번 단계 variant)
+
+<Note>
+**External Party**는 onboarding process 중 이미 threshold가 정의되므로 이 section이 적용되지 않습니다.
+</Note>
+
+Party confirmation threshold를 변경하려면 이전과 다른 Party-to-Participant mapping propose 절차를 사용해야 합니다.
+
+이 alternative method를 사용하면 단일 operation으로 replication을 수행하고 threshold를 update할 수 있습니다.
+
+다음 예시는 앞의 예시에서 이어지며 Party Alice를 `source` Participant에서 `newTarget` Participant로 replicate하면서 confirmation threshold를 3으로 설정하는 방법을 보여줍니다. 또한 Alice를 host할 세 Participant 모두의 Participant permission을 confirmation으로 설정합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication4 />
+
+
+## Offline Party replication
+
+Offline Party replication은 여러 단계로 이루어진 manual process입니다.
+
+Replication을 시작하기 전에 target Participant와 Party가 모두 새 hosting arrangement에 명시적으로 동의해야 합니다.
+
+그런 다음 source Participant에서 Party의 Active Contract Set(ACS)을 export하고 target Participant로 import하여 replication을 수행합니다.
+
+<Note>
+- 단일 physical machine 또는 environment에서 Party ACS file을 export/import할 수 있도록 하나의 Canton Console을 source 및 target Participant 모두에 연결합니다. 그렇지 않으면 ACS export file을 target Participant로 import할 위치에 secure하게 전달해야 합니다.
+- Offline Party replication에서는 Party ACS를 import하기 전에 target Participant를 모든 Synchronizer에서 disconnect해야 합니다. 이것이 *offline* Party replication이라고 부르는 이유입니다.
+- Target Participant에 Party를 onboard하는 동안 ACS commitment mismatch가 감지될 수 있습니다. 이는 예상된 현상이며 시간이 지나면 해결되므로 Party replication 절차 중에는 해당 error를 무시합니다.
+</Note>
+
+<Warning>
+**주의: ACS import를 시작하기 전에 target Participant를 backup해야 합니다.**
+
+ACS import가 crash 또는 의도하지 않은 Node restart 등으로 중단되거나 manual 운영 단계를 끝까지 수행하지 못한 경우 clean recovery point를 보장합니다. 이 backup이 있으면 target Participant를 안전하게 reset하고 **진행 중인 Offline Party replication을 계속 완료**할 수 있습니다.
+</Warning>
+
+## Offline Party replication 단계
+
+다음 단계를 나열된 **정확한 순서대로** 수행해야 합니다.
+
+1.  **Target: Package Vetting** - Target Participant가 필요한 모든 package를 vet하는지 확인합니다.
+2.  **Source: Data Retention** - Source Participant가 export에 충분한 기간 동안 data를 유지하는지 확인합니다.
+3.  **Target: Authorization** - Target Participant가 onboarding flag를 설정하여 새 hosting을 authorize합니다.
+4.  **Target: Isolation** - 모든 Synchronizer에서 disconnect합니다.
+5.  **Target: Disable auto-reconnect** - Restart 시 automatic reconnection을 비활성화합니다.
+6.  **Source: Party Authorization** - Party가 onboarding flag를 설정하여 replication을 authorize합니다.
+7.  **Source: ACS Export** - 현재 Party를 host하는 Participant가 ACS를 export합니다.
+8.  **Source: Re-enable pruning** *(optional)* - Automatic pruning을 다시 활성화합니다.
+9.  **Target: Backup** - ACS import를 시작하기 전에 target Participant를 backup합니다.
+10. **Target: ACS Import** - Target Participant가 ACS를 import합니다.
+11. **Target: Reconnect** - Target Participant가 Synchronizer에 reconnect합니다.
+12. **Target: Re-enable auto-reconnect** *(optional)* - Automatic reconnection을 다시 활성화합니다.
+13. **Target: Onboarding Flag Clearance** - Target Participant가 onboarding flag clearance를 발행합니다.
+
+<Warning>
+Offline Party replication은 문서에 설명된 **단계와 순서**를 엄격히 지켜 신중하게 수행해야 합니다. 설명된 운영 flow를 따르지 않으면 상당한 manual correction이 필요한 error가 발생할 수 있습니다.
+
+이 문서는 guide를 제공합니다. Environment에 따라 조정이 필요할 수 있으므로 production 사용 전에 test environment에서 철저히 테스트하세요.
+</Warning>
+
+### Scenario 설명
+
+다음 단계에서는 Party `alice`를 `source` Participant로부터 새 `target` Participant로 Synchronizer `mysynchronizer`에서 replicate하는 방법을 보여줍니다. `source`는 Party를 이미 host하는 어떤 Participant라도 될 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication5 />
+
+### 1. Vet packages
+
+Target Participant가 Party가 stakeholder인 contract와 연관된 모든 package를 vet하는지 확인합니다.
+
+Party `alice`는 `CantonExamples` package를 사용합니다. 이 package는 `source` Participant에서는 vet되었지만 `target` Participant에서는 아직 vet되지 않았습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication7 />
+
+따라서 누락된 DAR package를 `target` Participant에 upload합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication8 />
+
+### 2. Data Retention
+
+Source Participant의 retention period가 다음 두 event 사이의 전체 기간을 포함할 만큼 충분히 긴지 확인합니다.
+
+1.  Party-to-Participant mapping Topology transaction이 effective 상태가 됩니다.
+2.  Source Participant의 ACS export가 완료됩니다.
+
+현재 retention period가 충분한지 확실하지 않거나 추가 precaution이 필요하면 source Participant에서 automatic pruning을 일시적으로 비활성화해야 합니다.
+
+현재 automatic pruning schedule을 가져옵니다. Schedule이 설정되지 않았다면 이 command는 `None`을 반환합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication9 />
+
+Pruning schedule을 clear하여 `source` Node의 automatic pruning을 비활성화합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication10 />
+
+<Warning>
+`source` Participant의 manual pruning은 programmatic 방식으로 비활성화할 수 없습니다. 다른 operator와 긴밀히 조율하고 ACS export가 완료될 때까지 external automation이 pruning을 trigger하지 않도록 확인하세요.
+</Warning>
+
+### 3. Authorize new hosting on the target participant
+
+먼저 `target` Participant가 원하는 Participant permission으로 Party Alice를 host하는 데 동의하도록 합니다. 이 예시에서는 *observation*입니다.
+
+<Warning>
+Onboarding flag를 `requiresPartyToBeOnboarded = true`로 설정했는지 확인하세요.
+</Warning>
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication11 />
+
+### 4. Disconnect target participant from all synchronizers
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication12 />
+
+### 5. Disable auto-reconnect on target participant
+
+Restart 시 target Participant가 Synchronizer에 자동으로 reconnect하지 않도록 합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication13 />
+
+### 6. Authorize new hosting for the party
+
+새 hosting arrangement를 authorize하는 Topology transaction의 ledger offset을 나중에 *찾기* 위해 `source` Participant의 현재 ledger end offset을 starting point로 사용합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication14 />
+
+Target Participant가 모든 Synchronizer에서 disconnect된 **후에만** Party Alice가 해당 Participant에서 host되는 데 동의하도록 합니다.
+
+<Warning>
+다시 한번 local Party는 onboarding flag를 `requiresPartyToBeOnboarded = true`로, External Party는 `onboarding = HostingParticipant.Onboarding()`으로 설정했는지 확인하세요.
+</Warning>
+
+Local Party
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication15 />
+
+External Party
+
+```python
+update_external_party_hosting(
+    party_id = alice,
+    synchronizer_id = synchronizerId,
+    confirming_threshold = None, # Keep current threshold
+    hosting_participants_add_or_update: [
+        HostingParticipant(participant_uid = target.id, ParticipantPermission.Observation, onboarding = HostingParticipant.Onboarding())
+    ]
+)
+```
+
+### 7. Export ACS
+
+`source` Participant에서 Alice의 ACS를 export합니다.
+
+다음 command는 Party Alice가 `target` Participant에서 activate된 ledger offset을 내부적으로 찾으며 `beginOffsetExclusive`부터 검색을 시작합니다.
+
+그런 다음 정확한 offset에서 `source` Participant로부터 Alice의 ACS를 export하여 `party_replication.alice.acs.gz`라는 export file에 저장합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication20 />
+
+### 8. Optional: Re-enable automatic pruning
+
+Data retention 단계에 따라 `source` Participant에서 automatic pruning을 비활성화했다면 이제 다시 활성화할 수 있습니다.
+
+Schedule을 비활성화하기 전에 기록한 기존 configuration parameter를 사용하여 다음 command를 실행합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication21 />
+
+### 9. Back up target participant
+
+<Warning>
+**ACS를 import하기 전에 target Participant를 backup하세요.**
+</Warning>
+
+### 10. Import ACS
+
+`target` Participant에서 Alice의 ACS를 import합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication22 />
+
+<Note>
+Backward compatibility를 위해 Party ID 제공은 optional입니다. 그러나 생략하면 automatic onboarding flag clearance가 수행되지 않으므로 [flag를 수동으로 clear](#13-complete-the-onboarding-of-the-party)해야 합니다.
+</Note>
+
+### 11. Reconnect target participant to synchronizer
+
+`target` Participant에서 새 hosting arrangement를 authorize한 Topology transaction을 나중에 찾을 수 있도록 현재 ledger end offset을 기록합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication23 />
+
+이제 `target` Participant를 Synchronizer에 reconnect합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication24 />
+
+### 12. Optional: Re-enable auto-reconnect on target participant
+
+[이전 단계](#5-disable-auto-reconnect-on-target-participant)에 따라 auto-reconnect를 비활성화했다면 이제 다시 활성화할 수 있습니다. Target Participant가 원래 restart 시 자동 reconnect하도록 구성된 경우에만 필요합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication25 />
+
+### 13. Complete the onboarding of the party
+
+Replication을 완료하려면 `target` Participant를 사용하여 [이전에 설정한 onboarding flag](#3-authorize-new-hosting-on-the-target-participant)를 clear해야 합니다. 이는 Participant가 Party를 host할 준비를 완전히 마쳤음을 나타냅니다.
+
+Protocol version 35 이상을 실행하고 [ACS import](#10-import-acs) 중 Party ID를 제공했다면 Synchronizer에 reconnect할 때 background에서 이 clearance가 자동으로 schedule됩니다. 안전하게 수행할 수 있는 즉시 execute됩니다.
+
+<Note>
+Background flag clearance execution은 Participant log에서 관찰할 수 있습니다.
+</Note>
+
+#### Optional: Manual onboarding flag clearance
+
+Automatic clearance가 적용되지 않거나 background clearance에 문제가 있으면 flag를 수동으로 clear해야 합니다.
+
+필요한 Topology transaction을 안전하게 발행하는 아래 전용 command를 사용합니다. 이전에 capture한 `targetLedgerEnd`를 사용하여 `target` Participant에서 Party를 activate한 transaction을 찾습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication26 />
+
+<Note>
+`targetLedgerEnd`는 `target` Participant의 ledger offset이며, 이 command는 여기서부터 Party `alice`가 `target` Participant에 onboarding 중이라고 선언하는 effective Topology transaction을 검색합니다.
+</Note>
+
+Command는 onboarding flag clearance status를 반환합니다.
+
+- `FlagNotSet`: Onboarding flag가 clear된 상태입니다.
+- `FlagSet`: Onboarding flag가 아직 설정된 상태입니다. 표시된 timestamp 이후에만 안전하게 제거할 수 있습니다.
+
+Onboarding flag가 아직 설정되어 있으면 command가 적절한 시점에 onboarding flag clearance를 trigger하는 schedule을 내부적으로 생성합니다. 이는 background에서 수행됩니다.
+
+이 command는 idempotent하므로 반복해서 호출해도 됩니다. 따라서 onboarding flag가 clear되었다고 confirm할 때까지 command를 poll할 수도 있습니다. 다음 snippet에서는 polling 방법을 보여줍니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataParticipantHowtosOperatePartiesPartyReplication27 />
+
+<Note>
+`timeout`은 1분인 default *decision timeout*을 기준으로 합니다.
+</Note>
+
+### Summary
+
+Alice를 `source` 및 `target` Participant에서 성공적으로 multi-host했습니다.
+
+{/* COPIED_END */}
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/operate/parties/decentralized_parties.rst" hash="f99bf5c3" */}
+
+# Decentralized Party 개요
+
+Decentralized Party는 서로 다른 세 feature를 결합합니다.
+
+- Party Topology Management의 decentralization: 해당 Party의 모든 Topology transaction에 threshold 수의 key signature가 필요하도록 보장하는 `decentralized namespace`
+- Party transaction confirmation의 decentralization: 여러 confirming Participant와 threshold를 포함하는 `party to participant mapping`을 사용하여 해당 Party confirmation이 필요한 transaction에 threshold 수의 Participant Node confirmation도 필요하도록 보장
+- Party transaction submission의 decentralization: 선택적으로 `party to key mapping`을 사용하여 External Party의 direct authorization이 필요한 transaction submit을 지원합니다. 예를 들어 threshold 수의 key로 prepared transaction에 sign하여 해당 Party가 signatory인 contract를 생성합니다. Party-to-Key mapping이 정의되지 않았다면 `party to participant` threshold가 1인 시점이 있었을 때 submission right를 가진 Node가 initial contract를 생성해야 하며 confirmation right만으로는 부족합니다.
+
+## Decentralized Party 설정
+
+Decentralized Namespace, Party-to-Participant mapping 및 Party-to-Key mapping은 완전히 독립적으로 구성할 수 있습니다. 하지만 일반적인 scenario에서는 하나의 entity set이 세 항목을 공동 control하여 모두 같은 member 수와 threshold를 사용합니다. 여기서는 `alice`, `bob`, `charlie`라는 세 member가 각각 `participant1`, `participant2`, `participant3`을 사용하는 설정을 설명합니다.
+
+먼저 Decentralized Namespace에 사용할 key를 생성합니다.
+
+``` none
+@ val aliceNamespaceKey = participant1.keys.secret.generate_signing_key("decentralized-party-namespace", SigningKeyUsage.NamespaceOnly)
+    aliceNamespaceKey : SigningPublicKey = SigningPublicKey(
+      id = 1220a47e9f51...,
+      format = DER-encoded X.509 SubjectPublicKeyInfo,
+      keySpec = EC-Curve25519,
+      usage = namespace
+    )
+```
+
+``` none
+@ val bobNamespaceKey = participant2.keys.secret.generate_signing_key("decentralized-party-namespace", SigningKeyUsage.NamespaceOnly)
+    bobNamespaceKey : SigningPublicKey = SigningPublicKey(
+      id = 1220feb20cd4...,
+      format = DER-encoded X.509 SubjectPublicKeyInfo,
+      keySpec = EC-Curve25519,
+      usage = namespace
+    )
+```
+
+``` none
+@ val charlieNamespaceKey = participant3.keys.secret.generate_signing_key("decentralized-party-namespace", SigningKeyUsage.NamespaceOnly)
+    charlieNamespaceKey : SigningPublicKey = SigningPublicKey(
+      id = 1220d30102cc...,
+      format = DER-encoded X.509 SubjectPublicKeyInfo,
+      keySpec = EC-Curve25519,
+      usage = namespace
+    )
+```
+
+``` none
+@ val aliceNamespace = Namespace(aliceNamespaceKey.fingerprint)
+    aliceNamespace : Namespace = 1220a47e9f51...
+```
+
+``` none
+@ val bobNamespace = Namespace(bobNamespaceKey.fingerprint)
+    bobNamespace : Namespace = 1220feb20cd4...
+```
+
+``` none
+@ val charlieNamespace = Namespace(charlieNamespaceKey.fingerprint)
+    charlieNamespace : Namespace = 1220d30102cc...
+```
+
+다음으로 각 Node가 해당 key의 Namespace delegation을 Synchronizer에 publish합니다. 그러면 Synchronizer에 연결된 모든 Node가 key를 알게 되어 이후 transaction에 사용할 수 있습니다.
+
+``` none
+@ val synchronizerId = participant1.synchronizers.id_of(com.digitalasset.canton.SynchronizerAlias.tryCreate("global"))
+    synchronizerId : SynchronizerId = global::1220f622b718...
+```
+
+``` none
+@ participant1.topology.namespace_delegations.propose_delegation(aliceNamespace, aliceNamespaceKey, DelegationRestriction.CanSignAllMappings, store = synchronizerId)
+    res8: SignedTopologyTransaction[TopologyChangeOp, NamespaceDelegation] = SignedTopologyTransaction(
+      TopologyTransaction(
+        NamespaceDelegation(
+          namespace = 1220a47e9f51...,
+          target = SigningPublicKey(
+            id = 1220a47e9f51...,
+            format = DER-encoded X.509 SubjectPublicKeyInfo,
+            keySpec = EC-Curve25519,
+            usage = namespace
+          ),
+          restriction = none
+        ),
+        serial = 1,
+        operation = Replace,
+        hash = SHA-256:0bade82cfd74...
+      ),
+      signatures = 1220a47e9f51...
+    )
+```
+
+``` none
+@ participant2.topology.namespace_delegations.propose_delegation(bobNamespace, bobNamespaceKey, DelegationRestriction.CanSignAllMappings, store = synchronizerId)
+    res9: SignedTopologyTransaction[TopologyChangeOp, NamespaceDelegation] = SignedTopologyTransaction(
+      TopologyTransaction(
+        NamespaceDelegation(
+          namespace = 1220feb20cd4...,
+          target = SigningPublicKey(
+            id = 1220feb20cd4...,
+            format = DER-encoded X.509 SubjectPublicKeyInfo,
+            keySpec = EC-Curve25519,
+            usage = namespace
+          ),
+          restriction = none
+        ),
+        serial = 1,
+        operation = Replace,
+        hash = SHA-256:ffe1362ad7a5...
+      ),
+      signatures = 1220feb20cd4...
+    )
+```
+
+``` none
+@ participant3.topology.namespace_delegations.propose_delegation(charlieNamespace, charlieNamespaceKey, DelegationRestriction.CanSignAllMappings, store = synchronizerId)
+    res10: SignedTopologyTransaction[TopologyChangeOp, NamespaceDelegation] = SignedTopologyTransaction(
+      TopologyTransaction(
+        NamespaceDelegation(
+          namespace = 1220d30102cc...,
+          target = SigningPublicKey(
+            id = 1220d30102cc...,
+            format = DER-encoded X.509 SubjectPublicKeyInfo,
+            keySpec = EC-Curve25519,
+            usage = namespace
+          ),
+          restriction = none
+        ),
+        serial = 1,
+        operation = Replace,
+        hash = SHA-256:c07d20baa445...
+      ),
+      signatures = 1220d30102cc...
+    )
+```
+
+Namespace delegation이 publish되면 Decentralized Namespace definition을 생성할 수 있습니다. 각 Node는 동일한 Topology transaction에 sign하고 Synchronizer에 publish해야 합니다. 또한 Decentralized Namespace를 대신하여 Topology transaction을 authorize하는 데 필요한 owner signature 수를 결정하는 threshold를 선택해야 합니다. 이 예시에서는 threshold 2를 사용합니다. Threshold는 Decentralized Namespace를 설정하는 initial transaction에는 적용되지 않으며 이때는 threshold가 아니라 모든 owner의 signature가 필요합니다. 모든 Node가 signed transaction을 publish하면 Decentralized Namespace transaction이 `list` command에 나타납니다.
+
+``` none
+@ val namespaceDef = DecentralizedNamespaceDefinition.tryCreate(DecentralizedNamespaceDefinition.computeNamespace(Set(aliceNamespace, bobNamespace, charlieNamespace)), PositiveInt.tryCreate(2), com.digitalasset.nonempty.NonEmpty(Set, aliceNamespace, bobNamespace, charlieNamespace))
+    namespaceDef : DecentralizedNamespaceDefinition = DecentralizedNamespaceDefinition(
+      namespace = 12202c38d8aa...,
+      threshold = 2,
+      owners = Seq(1220a47e9f51..., 1220d30102cc..., 1220feb20cd4...)
+    )
+```
+
+``` none
+@ participant1.topology.decentralized_namespaces.propose(namespaceDef, store = synchronizerId)
+    res12: SignedTopologyTransaction[TopologyChangeOp, DecentralizedNamespaceDefinition] = SignedTopologyTransaction(
+      TopologyTransaction(
+        DecentralizedNamespaceDefinition(
+          namespace = 12202c38d8aa...,
+          threshold = 2,
+          owners = Seq(1220a47e9f51..., 1220d30102cc..., 1220feb20cd4...)
+        ),
+        serial = 1,
+        operation = Replace,
+        hash = SHA-256:1281c71fb9e7...
+      ),
+      signatures = 1220a47e9f51...,
+      proposal
+    )
+```
+
+``` none
+@ participant2.topology.decentralized_namespaces.propose(namespaceDef, store = synchronizerId)
+    res13: SignedTopologyTransaction[TopologyChangeOp, DecentralizedNamespaceDefinition] = SignedTopologyTransaction(
+      TopologyTransaction(
+        DecentralizedNamespaceDefinition(
+          namespace = 12202c38d8aa...,
+          threshold = 2,
+          owners = Seq(1220a47e9f51..., 1220d30102cc..., 1220feb20cd4...)
+        ),
+        serial = 1,
+        operation = Replace,
+        hash = SHA-256:1281c71fb9e7...
+      ),
+      signatures = 1220feb20cd4...,
+      proposal
+    )
+```
+
+``` none
+@ participant3.topology.decentralized_namespaces.propose(namespaceDef, store = synchronizerId)
+    res14: SignedTopologyTransaction[TopologyChangeOp, DecentralizedNamespaceDefinition] = SignedTopologyTransaction(
+      TopologyTransaction(
+        DecentralizedNamespaceDefinition(
+          namespace = 12202c38d8aa...,
+          threshold = 2,
+          owners = Seq(1220a47e9f51..., 1220d30102cc..., 1220feb20cd4...)
+        ),
+        serial = 1,
+        operation = Replace,
+        hash = SHA-256:1281c71fb9e7...
+      ),
+      signatures = 1220d30102cc...,
+      proposal
+    )
+```
+
+``` none
+@ utils.retry_until_true(participant1.topology.decentralized_namespaces.list(synchronizerId, filterNamespace = namespaceDef.namespace.filterString).nonEmpty)
+```
+
+다음 단계는 `PartyToParticipant` mapping 설정입니다. 이를 위해 Party prefix를 선택해야 하며 full Party ID는 `prefix::namespace`가 됩니다. 이 예시에서는 `decentralized-party`를 prefix로 사용합니다. Party를 host할 Participant 목록, permission 및 threshold도 지정해야 합니다. 해당 Party consensus에 참여하는 모든 Node는 `Confirmation`이어야 하지만 `Observation` permission을 가진 read-only Node를 추가할 수 있습니다. Threshold는 Decentralized Party에 필요한 confirmation 수를 결정하며 이 예시에서는 Decentralized Namespace와 같은 threshold 2를 사용합니다. Decentralized Namespace와 마찬가지로 각 Node가 transaction을 독립적으로 publish하며 모두 publish하면 valid 상태가 되어 `list`에 나타납니다.
+
+``` none
+@ val partyId = PartyId(UniqueIdentifier.tryCreate("decentralized-party", namespaceDef.namespace))
+    partyId : PartyId = decentralized-party::12202c38d8aa...
+```
+
+``` none
+@ participant1.topology.party_to_participant_mappings.propose(partyId, Seq((participant1, ParticipantPermission.Confirmation), (participant2, ParticipantPermission.Confirmation), (participant3, ParticipantPermission.Confirmation)), PositiveInt.tryCreate(2), store = synchronizerId)
+    res17: SignedTopologyTransaction[TopologyChangeOp, PartyToParticipant] = SignedTopologyTransaction(
+      TopologyTransaction(
+        PartyToParticipant(
+          partyId = decentralized-party::12202c38d8aa...,
+          threshold = 2,
+          participants = Map(
+            PAR::participant1::12201ff69b1d... -> Confirmation,
+            PAR::participant2::1220a4d7463b... -> Confirmation,
+            PAR::participant3::1220d6908163... -> Confirmation
+          )
+        ),
+        serial = 1,
+        operation = Replace,
+        hash = SHA-256:34c9eabe6b81...
+      ),
+      signatures = Seq(12201ff69b1d..., 1220a47e9f51...),
+      proposal
+    )
+```
+
+``` none
+@ participant2.topology.party_to_participant_mappings.propose(partyId, Seq((participant1, ParticipantPermission.Confirmation), (participant2, ParticipantPermission.Confirmation), (participant3, ParticipantPermission.Confirmation)), PositiveInt.tryCreate(2), store = synchronizerId)
+    res18: SignedTopologyTransaction[TopologyChangeOp, PartyToParticipant] = SignedTopologyTransaction(
+      TopologyTransaction(
+        PartyToParticipant(
+          partyId = decentralized-party::12202c38d8aa...,
+          threshold = 2,
+          participants = Map(
+            PAR::participant1::12201ff69b1d... -> Confirmation,
+            PAR::participant2::1220a4d7463b... -> Confirmation,
+            PAR::participant3::1220d6908163... -> Confirmation
+          )
+        ),
+        serial = 1,
+        operation = Replace,
+        hash = SHA-256:34c9eabe6b81...
+      ),
+      signatures = Seq(1220a4d7463b..., 1220feb20cd4...),
+      proposal
+    )
+```
+
+``` none
+@ participant3.topology.party_to_participant_mappings.propose(partyId, Seq((participant1, ParticipantPermission.Confirmation), (participant2, ParticipantPermission.Confirmation), (participant3, ParticipantPermission.Confirmation)), PositiveInt.tryCreate(2), store = synchronizerId)
+    res19: SignedTopologyTransaction[TopologyChangeOp, PartyToParticipant] = SignedTopologyTransaction(
+      TopologyTransaction(
+        PartyToParticipant(
+          partyId = decentralized-party::12202c38d8aa...,
+          threshold = 2,
+          participants = Map(
+            PAR::participant1::12201ff69b1d... -> Confirmation,
+            PAR::participant2::1220a4d7463b... -> Confirmation,
+            PAR::participant3::1220d6908163... -> Confirmation
+          )
+        ),
+        serial = 1,
+        operation = Replace,
+        hash = SHA-256:34c9eabe6b81...
+      ),
+      signatures = Seq(1220d30102cc..., 1220d6908163...),
+      proposal
+    )
+```
+
+``` none
+@ utils.retry_until_true(participant3.topology.party_to_participant_mappings.list(synchronizerId, filterParty = partyId.filterString).nonEmpty)
+```
+
+마지막 optional 단계는 Party-to-Key mapping 설정입니다. 이를 통해 offline에서 signature를 aggregate하여 Decentralized Party로 직접 transaction을 submit할 수 있습니다. SigningKeyUsage의 restriction을 줄이면 Decentralized Namespace에 사용한 key를 재사용할 수 있지만 여기서는 별도 key를 사용합니다.
+
+``` none
+@ val aliceDamlKey = participant1.keys.secret.generate_signing_key("decentralized-party-daml-transactions", SigningKeyUsage.ProtocolOnly)
+    aliceDamlKey : SigningPublicKey = SigningPublicKey(
+      id = 122008a40e2d...,
+      format = DER-encoded X.509 SubjectPublicKeyInfo,
+      keySpec = EC-Curve25519,
+      usage = Set(signing, proof-of-ownership)
+    )
+```
+
+``` none
+@ val bobDamlKey = participant2.keys.secret.generate_signing_key("decentralized-party-daml-transactions", SigningKeyUsage.ProtocolOnly)
+    bobDamlKey : SigningPublicKey = SigningPublicKey(
+      id = 122021bbfb34...,
+      format = DER-encoded X.509 SubjectPublicKeyInfo,
+      keySpec = EC-Curve25519,
+      usage = Set(signing, proof-of-ownership)
+    )
+```
+
+``` none
+@ val charlieDamlKey = participant3.keys.secret.generate_signing_key("decentralized-party-daml-transactions", SigningKeyUsage.ProtocolOnly)
+    charlieDamlKey : SigningPublicKey = SigningPublicKey(
+      id = 122087fb80ff...,
+      format = DER-encoded X.509 SubjectPublicKeyInfo,
+      keySpec = EC-Curve25519,
+      usage = Set(signing, proof-of-ownership)
+    )
+```
+
+Key 설정이 완료되면 `PartyToKey` Topology transaction을 생성할 수 있습니다. 다시 signature threshold 2를 사용합니다.
+
+``` none
+@ participant1.topology.party_to_key_mappings.propose(partyId, PositiveInt.tryCreate(2), com.digitalasset.nonempty.NonEmpty(Seq, aliceDamlKey, bobDamlKey, charlieDamlKey), store = synchronizerId, mustFullyAuthorize = false)
+    res24: SignedTopologyTransaction[TopologyChangeOp, PartyToKeyMapping] = SignedTopologyTransaction(
+      TopologyTransaction(
+        PartyToKeyMapping(
+          party = decentralized-party::12202c38d8aa...,
+          signingKeys = Seq(122008a40e2d..., 122021bbfb34..., 122087fb80ff...),
+          threshold = 2
+        ),
+        serial = 1,
+        operation = Replace,
+        hash = SHA-256:11ea53fbf846...
+      ),
+      signatures = Seq(122008a40e2d..., 1220a47e9f51...),
+      proposal
+    )
+```
+
+``` none
+@ participant2.topology.party_to_key_mappings.propose(partyId, PositiveInt.tryCreate(2), com.digitalasset.nonempty.NonEmpty(Seq, aliceDamlKey, bobDamlKey, charlieDamlKey), store = synchronizerId, mustFullyAuthorize = false)
+    res25: SignedTopologyTransaction[TopologyChangeOp, PartyToKeyMapping] = SignedTopologyTransaction(
+      TopologyTransaction(
+        PartyToKeyMapping(
+          party = decentralized-party::12202c38d8aa...,
+          signingKeys = Seq(122008a40e2d..., 122021bbfb34..., 122087fb80ff...),
+          threshold = 2
+        ),
+        serial = 1,
+        operation = Replace,
+        hash = SHA-256:11ea53fbf846...
+      ),
+      signatures = Seq(122021bbfb34..., 1220feb20cd4...),
+      proposal
+    )
+```
+
+``` none
+@ participant3.topology.party_to_key_mappings.propose(partyId, PositiveInt.tryCreate(2), com.digitalasset.nonempty.NonEmpty(Seq, aliceDamlKey, bobDamlKey, charlieDamlKey), store = synchronizerId, mustFullyAuthorize = false)
+    res26: SignedTopologyTransaction[TopologyChangeOp, PartyToKeyMapping] = SignedTopologyTransaction(
+      TopologyTransaction(
+        PartyToKeyMapping(
+          party = decentralized-party::12202c38d8aa...,
+          signingKeys = Seq(122008a40e2d..., 122021bbfb34..., 122087fb80ff...),
+          threshold = 2
+        ),
+        serial = 1,
+        operation = Replace,
+        hash = SHA-256:11ea53fbf846...
+      ),
+      signatures = Seq(122087fb80ff..., 1220d30102cc...),
+      proposal
+    )
+```
+
+``` none
+@ utils.retry_until_true(participant3.topology.party_to_key_mappings.list(store = synchronizerId, filterParty = partyId.filterString).nonEmpty)
+```
+
+이제 Party 설정이 완료되어 사용할 수 있습니다.
+
+## Member set 변경
+
+Member 추가 및 제거 단계는 동일합니다. 기존 member의 threshold가 있으며 새 member는 세 Topology transaction을 submit해야 합니다. 세 mapping 모두가 아니라 일부에만 추가할 수도 있지만 일반적으로 세 mapping을 sync 상태로 유지하는 것이 좋습니다.
+
+`PartyToParticipant`에 member를 추가하려면 Topology transaction뿐 아니라 ACS export 및 import를 포함하는 full Party migration이 필요합니다. 자세한 내용은 이 topic의 scope를 벗어납니다.
+
+## 다음 단계
+
+`PartyToKey` mapping이 enable하는 externally signed Daml transaction submit 방법은 external submission 문서를 참고하세요.
+
+이 tutorial에서는 Participant 자체가 Namespace 및 protocol key를 모두 보유합니다. Participant 외부에서 보유할 수도 있습니다. 실제 flow는 동일하지만 각 Topology transaction submit에 external signature가 필요합니다. 수행 방법은 external Topology signing 문서를 참고하세요.
+
+## Decentralized Namespace 계산
+
+위 예시에서는 `DecentralizedNamespaceDefinition.computeNamespace(Set(aliceNamespace, bobNamespace, charlieNamespace))`를 사용하여 initial owner의 Namespace에서 Decentralized Namespace를 계산했습니다. 여기서는 initial owner만 중요하며 owner를 추가하거나 제거해도 Decentralized Namespace는 바뀌지 않습니다.
+
+하지만 Topology gRPC API를 직접 사용하는 등의 이유로 Canton Console에서 실행하지 않거나 다른 이유로 Namespace를 직접 계산해야 할 수 있습니다. 이러한 경우 Python에서 계산하는 방법은 다음과 같습니다.
+
+Namespace를 lexicographic 순서로 정렬:
+
+```python
+def compute_decentralized_namespace(owners):
+    builder = hashlib.sha256()
+    # hash purpose prefix
+    builder.update((37).to_bytes(4))
+    for owner in sorted(owners):
+        # namespace length
+        builder.update(len(owner).to_bytes(4))
+        builder.update(owner.encode("utf-8"))
+    # 1220 is the Canton prefix for sha256 hashes
+    return f"1220{builder.hexdigest()}"
+```
+
+{/* COPIED_END */}

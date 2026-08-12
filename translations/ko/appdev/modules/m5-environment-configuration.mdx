@@ -1,0 +1,428 @@
+---
+title: "환경 구성"
+description: "서로 다른 Canton Network environment를 위한 DPM, project setting 및 authentication 구성"
+source_id: "SRC-E135300A79"
+source_path: "appdev/modules/m5-environment-configuration"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "8ee002022ecacb2d5f6d0a051adb0b0c8eaf8712d56f043c28eca0d900f8e7d2"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m5-environment-configuration.md)을 사용하세요.
+</Warning>
+
+import DamlDocsAppdevModulesM5EnvironmentConfigurationL96 from "/snippets/daml-docs/appdev_modules_m5-environment-configuration_L96.mdx";
+import DamlDocsAppdevModulesM5EnvironmentConfigurationL108 from "/snippets/daml-docs/appdev_modules_m5-environment-configuration_L108.mdx";
+import DamlDocsAppdevModulesM5EnvironmentConfigurationL127 from "/snippets/daml-docs/appdev_modules_m5-environment-configuration_L127.mdx";
+import ExternalDpmMainDpmRstCodeDocsSrcPublicConfigurationYaml60 from "/snippets/external/dpm/main/dpm-rst-code-docs-src-public-configuration-yaml-60.mdx";
+import ExternalDpmMainDpmRstCodeDocsSrcPublicConfigurationShell223 from "/snippets/external/dpm/main/dpm-rst-code-docs-src-public-configuration-shell-223.mdx";
+
+
+Canton application에는 LocalNet, DevNet, TestNet, MainNet environment마다 서로 다른 configuration이 필요합니다. 이 page에서는 DPM global setting, project-level `daml.yaml`, 환경 변수 및 authentication 설정이라는 configuration layer를 다룹니다.
+
+## DPM Configuration
+
+DPM은 Daml package manager입니다.
+
+{/* COPIED_START source="docs-website:replicated/dpm/3.5/configuration.rst" hash="dpm-config" */}
+
+`dpm`은 config file과 환경 변수를 통해 동시에 구성할 수 있습니다. 환경 변수가 config file보다 우선합니다.
+
+### Config file
+
+Config file은 `${DPM_HOME}/dpm-config.yaml`에 있습니다.
+
+- `registry`: `dpm`이 SDK와 SDK component를 가져오는 default location을 override합니다. Stable release의 default는 `europe-docker.pkg.dev/da-images/public`입니다. Unstable release에는 `europe-docker.pkg.dev/da-images/public-unstable`을 사용합니다.
+- `registry-auth-path`: Registry의 default auth file을 override합니다.
+- `insecure`: `dpm`이 insecure HTTP registry에서 가져오도록 허용합니다.
+
+### 환경 변수
+
+다음 환경 변수는 해당 config file setting을 override합니다.
+
+- `DPM_REGISTRY`: SDK pull을 위한 registry location
+- `DPM_REGISTRY_AUTH`: Registry access용 auth file
+- `DPM_INSECURE_REGISTRY`: Insecure registry connection 허용
+- `DPM_LOG_LEVEL`: `dpm install` 및 `dpm version` 같은 command의 log level(`debug`, `info`, `error`, `warn`)
+- `DAML_PACKAGE`: 해당 directory에 있지 않아도 package context에서 `dpm` command 실행(예: `DAML_PACKAGE=/path/to/package`)
+- `DPM_SDK_VERSION`: SDK version을 global하게 override합니다. `sdk-version`을 모든 `daml.yaml` file에서 override하지만 `dpm install`에는 영향을 주지 않습니다.
+
+{/* COPIED_END */}
+
+## Project Configuration
+
+{/* COPIED_START source="docs-website:replicated/dpm/3.5/configuration.rst" hash="project-config" */}
+
+### daml.yaml
+
+각 Daml package에는 SDK version, package 이름, source location 및 dependency를 지정하는 `daml.yaml`이 있습니다. `dpm build` command는 이 file을 사용하여 dependency를 resolve하고 project를 compile합니다.
+
+### multi-package.yaml
+
+서로 연결된 Daml package가 여러 개인 project에서는 `multi-package.yaml`이 `dpm`에 package를 찾고 build하는 방법을 알려줍니다.
+
+<ExternalDpmMainDpmRstCodeDocsSrcPublicConfigurationYaml60 />
+
+`dpm`은 dependency를 기준으로 이 package를 topological order로 build합니다.
+
+### 환경 변수 interpolation
+
+`daml.yaml`과 `multi-package.yaml`은 모든 string field에서 환경 변수 interpolation을 지원합니다. `${MY_VARIABLE}` syntax를 사용합니다.
+
+```yaml
+sdk-version: ${SDK_VERSION}
+name: ${PROJECT_NAME}_test
+source: daml
+version: ${PROJECT_VERSION}
+dependencies:
+  - ${DEPENDENCY_DIRECTORY}/my-dependency-1.0.0.dar
+```
+
+`\` prefix로 escape합니다: `\${NOT_INTERPOLATED}`.
+
+SDK version과 package version 같은 공통 값을 `.envrc` file 또는 build system variable로 추출할 때 유용합니다. 환경 변수를 통해 dependency DAR를 전달할 수도 있으므로 build system이 cache에서 DAR artifact를 관리할 때 도움이 됩니다.
+
+{/* COPIED_END */}
+
+## Environment별 Setting
+
+각 environment에는 일반적으로 소수의 configuration point에 서로 다른 값이 필요합니다. 다음은 이를 관리하는 pattern입니다.
+
+### LocalNet
+
+LocalNet은 self-contained입니다. Cn-quickstart Makefile과 Docker Compose configuration이 대부분의 setting을 처리합니다.
+
+<DamlDocsAppdevModulesM5EnvironmentConfigurationL96 />
+
+Authentication은 default user(`app-user`, `app-provider`, `sv`)가 있는 bundled Keycloak instance를 사용합니다.
+
+### DevNet / TestNet / MainNet
+
+Shared network에서는 connection 상세 정보와 authentication을 구성합니다.
+
+<DamlDocsAppdevModulesM5EnvironmentConfigurationL108 />
+
+Ledger API endpoint, auth provider URL 및 Party identifier는 environment마다 다릅니다. Environment-specific file(`.envrc.devnet`, `.envrc.testnet`, `.envrc.mainnet`)에 저장하고 적절한 file을 load합니다.
+
+## Authentication Configuration
+
+Canton Validator는 JWT 기반 authentication으로 Ledger API를 보호합니다. Application이 command를 제출하고 Transaction을 읽으려면 유효한 token이 필요합니다.
+
+### Keycloak을 사용하는 LocalNet
+
+Cn-quickstart LocalNet에는 미리 구성된 Keycloak instance가 포함되어 있습니다. Keycloak token endpoint를 통해 token을 얻습니다.
+
+<DamlDocsAppdevModulesM5EnvironmentConfigurationL127 />
+
+### Production environment
+
+DevNet, TestNet 및 MainNet에서는 Validator auth provider가 token을 발행합니다. 정확한 mechanism은 Validator IAM 설정에 따라 다르지만 flow는 동일합니다. Application이 JWT를 얻어 Ledger API request에 Bearer token으로 포함합니다.
+
+gRPC client는 token을 call credential로 설정합니다. HTTP/JSON request는 `Authorization` header에 포함합니다.
+
+{/* COPIED_END */}
+
+### dpm Component
+
+<Note>
+이 기능은 dpm version 1.0.17 이상 또는 SDK 3.5.1 이상에 bundled된 version에서 사용할 수 있습니다.
+</Note>
+
+`dpm`을 사용하면 sdk-version bundle에 의존하는 대신 사용할 default 및 optional `dpm` component를 명시하고 single-package 또는 multi-package project에서 지정할 수 있습니다.
+
+전통적으로 dpm SDK의 일부인 _default component_를 사용하거나 CLI를 확장하기 위해 직접 생성하고 publish한 _optional component_를 사용할 수 있습니다. 자체 extension을 작성하려면 [Component Publishing](/sdks-tools/cli-tools/dpm#publishing-components)을 참조하세요.
+
+Component의 사용 가능한 version은 [public da-images registry](https://console.cloud.google.com/artifacts/docker/da-images/europe/public?project=da-images)에서 확인하거나 `dpm tags`를 실행하여 확인할 수 있습니다. 자세한 내용은 [Tag 나열](/sdks-tools/cli-tools/dpm#listing-available-tags-and-versions-in-an-oci-repository) documentation을 참조하세요.
+
+`dpm tags`를 사용하여 [public da-images registry](https://console.cloud.google.com/artifacts/docker/da-images/europe/public?project=da-images)에서 `damlc`의 사용 가능한 version을 찾는 example은 다음과 같습니다.
+
+```shell
+dpm tags oci://europe-docker.pkg.dev/da-images/public/components/damlc
+3.5.2
+3.5.2.darwin_amd64
+3.5.2.darwin_arm64
+3.5.2.linux_amd64
+3.5.2.linux_arm64
+3.5.2.windows_amd64
+...
+```
+
+다음은 `daml.yaml` project file에서 사용할 default component를 명시적으로 지정하는 example입니다. 이를 통해 default component를 pin할 수 있습니다.
+``` yaml
+# daml.yaml
+
+components:
+  # damlc is a component bundled in SDK version 3.5.2 that is now explicitly set in the project
+  - damlc:3.5.2
+  # daml-script is a component bundled in SDK version 3.5.2 that is now explicitly set in the project
+  - daml-script:3.5.2
+```
+
+다음은 multi-package project의 `multi-package.yaml`에서 사용할 default component를 명시적으로 지정하는 example이며 모든 downstream Daml project에서 암묵적으로 사용됩니다.
+``` yaml
+# multi-package.yaml
+
+packages:
+  - ./daml-pkg-1
+  - ./daml-pkg-2
+
+components:
+  # damlc is a component bundled in SDK version 3.5.2 that is now explicitly set in the project
+  - damlc:3.5.2
+  # daml-script is a component bundled in SDK version 3.5.2 that is now explicitly set in the project
+  - daml-script:3.5.2
+```
+
+#### SDK component
+
+Default로 bundled되는 다음 component를 명시적으로 지정할 수 있습니다.
+
+| 이름 | 설명 |
+| --- | --- |
+| canton-open-source | Canton open source sandbox / JAR |
+| codegen | Java 및 Typescript codegen |
+| damlc | Daml compiler |
+| daml-new | Daml 새 project template |
+| daml-script | Daml scripting 및 testing |
+| upgrade-check | Smart Contract Upgrade(SCU) checker |
+| scribe | Participant Query Store |
+| daml-shell | Participant Query Store와 interaction하는 shell |
+
+
+#### Single-package project에서 사용
+
+다음 example은 여러 use case에 component를 지정하는 방법을 보여줍니다.
+
+- [Public da-images registry](https://console.cloud.google.com/artifacts/docker/da-images/europe/public?project=da-images)의 default component 지정:
+``` yaml
+# daml.yaml
+
+components:
+  # component "damlc" at version 3.5.2 explicitly
+  - damlc:3.5.2
+  # component "daml-script" at version 3.5.2 explicitly
+  - daml-script:3.5.2
+```
+
+- External OCI registry의 component 지정
+``` yaml
+# daml.yaml
+
+components:
+  # custom component "foo" from an external registry
+  - oci://example.com/some/path/foo:1.2.3
+```
+
+- Local filesystem의 component 지정
+``` yaml
+# daml.yaml
+
+components:
+  # a codegen-python component present locally on the filesystem
+  - name: codegen-python
+    path: ../path/to/component/directory
+```
+
+#### Multi-package project에서 사용
+
+Multi-package project에서는 `components` YAML object를 `multi-package.yaml`에 지정해야 합니다. 지정된 component가 모든 package에 적용됩니다.
+
+``` yaml
+# multi-package.yaml
+
+packages:
+  - ./daml-pkg-1
+  - ./daml-pkg-2
+
+components:
+  # adding default components damlc and daml-script
+  - damlc:3.5.2
+  - daml-script:3.5.2
+
+  # adding component "foo"
+  - oci://example.com/some/path/foo:1.2.3@sha256:a1d6c42f8b80842b71c05152c20fb21e351666b9a07ee0d4e22dfe47ae9a3dbb
+
+  # component present locally on the filesystem
+  - name: codegen-java
+    path: ../path/to/component/directory
+```
+
+Multi-package project에서 dpm은 `daml.yaml` component를 `multi-package.yaml`에 지정된 component보다 우선합니다. 다음 example을 살펴보세요.
+
+``` yaml
+# multi-package.yaml
+
+packages:
+  - ./daml-pkg-1
+
+components:
+  # adding default components damlc and daml-script
+  - damlc:3.5.1
+  - daml-script:3.5.1
+```
+
+``` yaml
+# ./daml-pkg-1/daml.yaml
+
+components:
+  # adding default components damlc and daml-script
+  - damlc:3.5.2
+```
+`./daml-pkg-1` directory의 project는 `damlc:3.5.2`를 사용하며, 이는 parent에 지정된 `damlc:3.5.1`과 `multi-package.yaml`의 setting을 대체합니다.
+
+
+`components` field를 package별 `daml.yaml`에 선택적으로 지정하여 multi-package project의 package마다 서로 다른 component를 사용할 수도 있습니다.
+
+#### `dpm add` / `dpm update`를 통한 component 추가 및 update
+
+<Note>
+`dpm add`, `dpm update` 및 `oci://` component에 대한 `@sha256` 또는 rolling tag 지원은 DPM version 1.0.20 이상 또는 SDK 3.5.2 이상에 bundled된 version에서 사용할 수 있습니다.
+</Note>
+
+다음을 사용하여 project에 `oci://` component를 추가할 수 있습니다.
+```shell
+dpm add component oci://example.com/some/path/foo:latest
+```
+그러면 지정한 component를 local machine에 install하고 command 실행 위치에 따라 `daml.yaml` 또는 `multi-package.yaml`에 pin된 reference를 추가합니다.
+
+`dpm add component oci://example.com/some/path/foo:latest` 실행 전 example configuration:
+``` yaml
+# daml.yaml
+components:
+  - damlc:3.5.2
+  - daml-script:3.5.2
+```
+
+`dpm add component oci://example.com/some/path/foo:latest` 실행 후 example configuration:
+
+``` yaml
+# daml.yaml
+components:
+  - damlc:3.5.2
+  - daml-script:3.5.2
+  # added via `dpm add component`
+  - oci://example.com/some/path/foo:latest@sha256:a1d6c42f8b80842b71c05152c20fb21e351666b9a07ee0d4e22dfe47ae9a3dbb
+```
+
+Component에 사용할 수 있는 tag는 [Tag 나열](/sdks-tools/cli-tools/dpm#listing-available-tags-and-versions-in-an-oci-repository)을 참조하세요.
+
+Rolling tag(예: `:latest`)를 사용하는 project component를 update하려면 다음을 실행합니다.
+```shell
+dpm update
+```
+그러면 마찬가지로 component를 install하고 `daml.yaml` / `multi-package.yaml`을 update하며 file을 변경하고 저장하여 SHA를 적용하거나 update합니다.
+
+Rolling tag를 지정하고 `dpm update`를 실행하기 전 example configuration:
+``` yaml
+components:
+  # foo component with a rolling tag and outdated sha
+  - oci://example.com/some/path/foo:latest@sha256:a1d6c42f8b80842b71c05152c20fb21e351666b9a07ee0d4e22dfe47ae9a3dbb
+```
+
+`dpm update` 실행 후 example configuration:
+``` yaml
+components:
+  # foo component with a rolling tag and updated sha
+  - oci://example.com/some/path/foo:latest@sha256:7bbb16fd80bac53192b71efd83e9725c9af74cd55978f1ecaea631c4692762bf
+```
+
+
+현재 이 기능은 'oci://`로 시작하는 fully-qualified URI를 사용하는 component만 지원합니다.
+
+#### Installation
+
+`components`에 지정된 component는 다음 command를 실행하여 install해야 합니다.
+
+``` shell
+dpm install
+```
+`daml.yaml` 또는 `multi-package.yaml`이 포함된 directory에서 실행합니다.
+
+다음 example의 경우:
+``` yaml
+# daml.yaml
+components:
+  - damlc:3.5.2
+  - daml-script:3.5.2
+```
+`dpm install package`를 `daml.yaml`이 있는 directory에서 실행하면 component artifact를 download하여 local에 저장합니다.
+
+<Warning>
+
+필요한 component를 `components` block에 나열하면 project에 필요한 특정 component만 포함할 수 있습니다. sdk-version field는 필요 여부와 관계없이 모든 default component bundle을 가져옵니다. multi-package.yaml 또는 daml.yaml file에서 sdk-version이나 components 중 하나를 지정할 수 있지만 둘 다 동시에 지정할 수는 없습니다.
+
+</Warning>
+
+<Note>
+SDK version 3.5부터 `override-components` field는 `components` field를 위해 deprecated되었습니다.
+</Note>
+
+
+### Remote DAR
+
+<Note>
+OCI repository의 remote DAR dependency 지원은 DPM version `1.0.20` 이상 또는 SDK `3.5.2` 이상에 bundled된 version에서 사용할 수 있습니다.
+</Note>
+
+다음 `daml.yaml`이 있다고 가정합니다.
+``` yaml
+# daml.yaml
+components:
+  - damlc:3.5.2
+  - daml-script:3.5.2
+```
+
+`dpm add dar` command에 지정된 version 또는 rolling tag(예: `my-package:latest`)를 사용하여 OCI repository에 저장된 DAR에 dependency를 추가할 수 있습니다.
+```shell
+dpm add dar --dependencies oci://example.com/my/dars/my-package:1.2.3
+```
+
+생성되는 `daml.yaml`:
+``` yaml
+# daml.yaml
+dependencies:
+  - oci://example.com/my/dars/my-package:1.2.3@sha256:82a5467ac5bf4ed78415dee71f7af587a9e7a8f5e26f3f7dd938fbb8a8d09211
+components:
+  - damlc:3.5.2
+  - daml-script:3.5.2
+```
+
+또는 OCI repository에 저장된 DAR dependency를 data-dependency로 추가합니다.
+
+```shell
+dpm add dar --data-dependencies oci://example.com/my/dars/my-package:1.2.3
+```
+
+생성되는 `daml.yaml`:
+``` yaml
+# daml.yaml
+data-dependencies:
+  - oci://example.com/my/dars/my-package:1.2.3@sha256:82a5467ac5bf4ed78415dee71f7af587a9e7a8f5e26f3f7dd938fbb8a8d09211
+components:
+  - damlc:3.5.2
+  - daml-script:3.5.2
+```
+
+그러면 DAR를 가져오고 `daml.yaml`의 `dependencies` 또는 `data-dependencies` field를 update합니다. 두 field의 상세 정보는 [Build 및 Packaging](/appdev/modules/m3-building-packaging#how-to-depend-on-daml-packages) documentation을 참조하세요.
+
+DAR에 사용할 수 있는 version tag는 [Tag 나열](/sdks-tools/cli-tools/dpm#listing-available-tags-and-versions-in-an-oci-repository)을 참조하세요.
+
+`daml.yaml`에 지정된 누락된 remote DAR를 install하려면 다음을 실행합니다.
+```shell
+dpm install
+```
+
+또한 project에서 rolling tag(예: `:latest`)가 있는 remote DAR를 update할 수 있습니다.
+```shell
+dpm update
+```
+
+자체 `oci://` DAR를 publish하는 방법은 [DAR Publishing](/sdks-tools/cli-tools/dpm#publishing-dars-to-an-oci)을 참조하세요.
+
+## 다음 단계
+
+- [Deployment Progression](/appdev/modules/m5-deployment-progression): Environment 차이와 promotion checklist
+- [CI/CD Integration](/appdev/modules/m5-ci-cd-integration): Automated pipeline에서 environment configuration 사용

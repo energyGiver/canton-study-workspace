@@ -1,0 +1,528 @@
+---
+title: "Canton Observability Configuration"
+description: "Canton node의 logging, tracing, metrics 및 health monitoring을 구성합니다."
+source_id: "SRC-2FFD30BB04"
+source_path: "global-synchronizer/reference/observability-configuration"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "59d59c1378c6a69fa8d2be1c0a400cd8616a2f630b2baa7fd65f1052f17c17ab"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/reference/observability-configuration.md)을 사용하세요.
+</Warning>
+
+{/* DIVERGENCE: replaced "Daml Enterprise" (solution/example/plural) with "Canton" throughout this section -- there's no more separate Enterprise product/edition as of Canton 3.5; upstream docs-website source (docs/replicated/canton/3.5/participant/howtos/observe/monitoring.rst, hash 68d54436) still uses the old name. Related to issue #615. */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/observe/monitoring.rst" hash="68d54436" */}
+
+# Monitoring Best Practice
+
+## 소개
+
+Observability, 즉 monitoring을 통해 Canton이 healthy한지 확인할 수 있습니다. State가 healthy하지 않다면 observability가 root cause 진단에 도움을 줍니다. Observability에는 metrics, logs, traces라는 세 부분이 있습니다. 이 section에서 설명합니다.
+
+많은 metric과 log message에 압도되지 않으려면 다음 단계를 따르세요.
+
+- Metric monitoring을 구축할 때 시작점 및 참고 자료로 아래 Hands-On with the Canton Observability Example section에 설명된 중요한 내용을 빠르게 학습하세요.
+- 대부분의 metric이 노출되는 방식의 개요는 아래 Golden Signals and Key Metrics Quick Start section을 읽으세요. Metric naming 및 labeling의 배경 철학을 설명합니다.
+
+나머지 section은 더 자세한 information reference를 제공합니다.
+
+### Canton Observability Example 실습
+
+Canton Observability [Example]() GitHub repository는 Canton이 노출하는 metric을 탐색할 수 있는 완전한 reference example을 제공합니다. Metric collection, aggregation, filtering 및 visualization을 탐색하는 데 사용할 수 있습니다. 다음 component를 포함하는 self-contained example입니다.
+
+- 모든 component의 runtime을 생성하는 example Docker Compose file
+- Canton solution에 request를 생성하는 shell script
+- Metrics data를 scrape하는 Prometheus config file
+- 아래 example dashboard처럼 의미 있는 방식으로 metric을 시각화하는 Grafana template file
+
+<Frame caption="Metric이 포함된 dashboard">
+  <img src="/images/docs_website/noc_dashboard.png" alt="images/noc_dashboard.png" />
+</Frame>
+
+## Golden Signal 및 Key Metric Quick Start
+
+Microservice [application](https://sre.google/sre-book/monitoring-distributed-systems)을 monitoring하는 best practice는 Golden [Signals](https://www.blameless.com/blog/4-sre-golden-signals-what-they-are-and-why-they-matter) 또는 RED [method](https://www.waferwire.com/blog/red-metrics-use-microservices-monitoring)라고 알려진 접근 방식입니다. 이 접근 방식에서 metric monitoring은 application이 healthy한지 확인하고 healthy하지 않다면 어떤 service가 문제의 root cause인지 판단합니다. HTTP 및 gRPC endpoint의 Golden Signal은 모든 endpoint에서 지원됩니다. Canton-specific key metric도 사용할 수 있습니다. 아래에서 설명합니다.
+
+각 HTTP 및 gRPC API에 다음 Golden Signal metric을 사용할 수 있습니다.
+
+- Input request rate, counter
+- Error rate, counter, 아래에서 설명
+- Latency, request 처리 시간, histogram
+- Apache HTTP [precedent](https://github.com/Lusitaniae/apache_exporter)를 따르는 payload size, counter
+
+함께 제공되는 label을 사용하여 각 metric을 filter하거나 aggregate할 수 있습니다. 각 HTTP API metric에 추가되는 instrumentation label은 다음과 같습니다.
+
+- `http_verb`: HTTP verb, 예: GET, POST
+- `http_status`: Status code, 예: 200, 401, 403, 504
+- `host`: Host identifier
+- `daml_version`: Daml release number
+- `service`: 이 process에서 어떤 Daml service 또는 Canton component가 실행 중인지 식별하는 string, 예: `participant`, `sequencer`, `json_api`
+- `path`: Endpoint에 대한 request, 예: `/v2/commands/submit-and-wait`, `/v2/state/active-contracts`
+
+gRPC protocol은 HTTP/2 위에 layer되므로 위 section의 `daml_version` 및 `service` 같은 일부 label을 포함합니다. 각 gRPC API metric에 기본적으로 추가되는 label은 다음과 같습니다.
+
+- `canton_version`: Canton protocol [version]()
+- `grpc_code`: 사람이 읽을 수 있는 gRPC status code, 예: `OK`, `CANCELLED`, `DEADLINE_EXCEEDED`
+- `grpc_client_type` 및 `grpc_server_type` label 아래의 client/server gRPC [request](http://www.grpc.io/docs/guides/concepts.html#rpc-life-cycle) type
+- `grpc_service_name` 및 `grpc_method_name` label 아래의 protobuf package 및 service name
+
+다음과 같은 다른 key metric도 monitoring됩니다.
+
+- Binary gauge가 node의 healthy 여부를 나타냅니다. High availability configuration에서 어떤 node가 passive인지 추론하는 데도 사용할 수 있습니다. Passive node는 healthy하지 않은 것으로 표시되고 active node는 항상 healthy합니다.
+- Binary gauge가 node의 active/passive 여부를 나타내어 active node를 식별합니다.
+- Binary gauge가 pruning 진행 여부를 detect합니다.
+- 각 participant node가 inflight(dirty) request count를 측정하므로 `maxDirtyRequests` limit에 가까워졌는지 확인할 수 있습니다. Metric은 `canton_dirty_requests` 및 `canton_max_dirty_requests`입니다.
+- 각 participant node는 수신 event(update)의 distribution을 기록하며 event type(package upload, party creation 또는 transaction), status(success 또는 failure), participant ID 및 가능한 경우 application ID로 drill-down할 수 있습니다. Counter 이름은 `daml_indexer_events_total`입니다.
+- Ledger event request는 `daml_indexer_metered_events_total`이라는 counter로 합산됩니다.
+- JVM garbage collection metric이 수집됩니다.
+
+이 목록이 전부는 아니며 가장 중요한 metric을 강조합니다.
+
+## Metrics Scraping 설정
+
+### Prometheus Reporter 활성화
+
+Metrics reporting에는 [Prometheus](https://prometheus.io)를 권장합니다. 다른 reporter(jmx, graphite, csv)도 지원되지만 deprecated되었습니다. 이러한 reporter는 Prometheus로 migrate해야 합니다.
+
+다음으로 Prometheus를 활성화할 수 있습니다.
+
+```hocon
+canton.monitoring.metrics.reporters = [{
+  type = prometheus
+  address = "localhost" // default
+  port = 9000 // default
+}]
+```
+### Prometheus 전용 Metric
+
+일부 metric은 Prometheus reporter를 사용할 때만 제공됩니다. 여기에는 4가지 golden [signal](https://sre.google/sre-book/monitoring-distributed-systems/#xref_monitoring_golden-signals)을 측정하는 데 유용한 공통 gRPC 및 HTTP metric과 활성화된 경우 JVM GC 및 memory usage metric이 포함됩니다. Metric은 아래에서 자세히 설명합니다.
+
+`*` 표시가 있는 metric은 Prometheus reporter 사용 시에만 사용할 수 있습니다.
+
+### Deprecated Reporter
+
+Testing 목적으로만 사용하는 JMX 기반 reporting은 다음으로 활성화할 수 있습니다.
+
+```hocon
+canton.monitoring.metrics.reporters = [{ type = jmx }]
+```
+또한 metric을 file에 write할 수 있습니다.
+
+```hocon
+canton.monitoring.metrics.reporters = [{
+  type = jmx
+}, {
+  type = csv
+  directory = "metrics"
+  interval = 5s // default
+  filters = [{
+    contains = "canton"
+  }]
+}]
+```
+또는 Graphite를 통해 Grafana로 report할 수 있습니다.
+
+```hocon
+canton.monitoring.metrics.reporters = [{
+  type = graphite
+  address = "localhost" // default
+  port = 2003
+  prefix.type = hostname // default
+  interval = 30s // default
+  filters = [{
+    contains = "canton"
+  }]
+}]
+```
+`graphite` 또는 `csv` reporter를 사용할 때 Canton은 지정한 filter와 일치하는 모든 metric을 주기적으로 evaluate합니다. 관련 있는 metric만 filter하세요.
+
+Canton metric 외에도 process는 Ledger API server의 Daml metric도 report할 수 있습니다. 선택적으로 다음을 사용하여 JVM metric을 포함할 수 있습니다.
+
+    canton.monitoring.metrics.report-jvm-metrics = yes // default no
+
+## Metrics
+
+Participant Metrics, Sequencer Metrics, Mediator Metrics 및 Splice service metric을 포함한 전체 Canton metrics inventory는 [Canton Metrics](/global-synchronizer/reference/canton-metrics)에 있습니다.
+
+## Logging
+
+Canton은 logging library로 [Logback](https://logback.qos.ch)을 사용합니다. 모든 Canton log는 logger `com.digitalasset.canton`에서 파생됩니다. 기본적으로 Canton은 `INFO` log level로 `log/canton.log` file에 log를 write하고 `WARN` 및 `ERROR`도 stdout에 기록합니다.
+
+Canton이 log file을 생성하는 방식은 다음 command line option으로 폭넓게 구성할 수 있습니다.
+
+- `-v` 또는 `--verbose`는 Canton log level을 `DEBUG`로 설정하는 short option입니다. 가장 흔히 사용할 log option입니다.
+- `--debug`는 stdout을 제외한 모든 log level을 `DEBUG`로 설정합니다. Stdout은 `INFO`로 설정됩니다. External library의 `DEBUG` log는 매우 많을 수 있습니다.
+- `--log-level-root=<level>`은 root logger의 log level을 구성합니다. Canton 및 external library의 log level은 변경하지만 stdout은 변경하지 않습니다.
+- `--log-level-canton=<level>`은 Canton logger만의 log level을 구성합니다.
+- `--log-level-stdout=<level>`은 stdout log level을 구성합니다. 일반적으로 Canton console에 표시되는 text입니다.
+- `--log-file-name=log/canton.log`는 log file 위치를 구성합니다.
+- `--log-file-appender=flat|rolling|off`는 file logging 수행 여부와 방식을 구성합니다. Rolling appender는 정의된 date-time pattern에 따라 file을 roll합니다.
+- `--log-file-rolling-history=12`는 rolling appender 사용 시 보관할 historical file 수를 구성합니다.
+- `--log-file-rolling-pattern=YYYY-mm-dd`는 file rolling 방식의 rolling file suffix와 frequency를 구성합니다.
+- `--log-truncate`는 startup 시 log file truncate 여부를 구성합니다.
+- `--log-profile=container`는 특정 setup용 logging setting의 기본 집합을 제공합니다. `container` profile만 지원되며 STDOUT 및 10시간으로 제한된 rolling log file history에 모두 기록하여 storage leak를 방지합니다.
+- `--log-immediate-flush=false`는 log output을 log file로 즉시 flush하는 기능을 끕니다.
+
+`--log-profile`을 사용하면 command line argument 순서가 중요합니다. Profile을 선택한 뒤 adjustment를 배치하면 command line에서 profile setting을 override할 수 있습니다.
+
+Canton은 일반적인 log4j logging level인 `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`를 지원합니다.
+
+추가 customization을 위해 `JAVA_OPTS`로 custom logback [configuration](https://logback.qos.ch/manual/configuration.html)을 제공할 수 있습니다.
+
+```bash
+JAVA_OPTS="-Dlogback.configurationFile=./path-to-file.xml" ./bin/canton --config ...
+```
+
+Custom log file을 사용하면 logging용 command line argument는 영향을 주지 않습니다. 단 `--log-level-canton` 및 `--log-level-root`는 여전히 root logger의 log level 조정에 사용할 수 있습니다.
+
+### Log 보기
+
+Canton log를 보고 문제를 해결하려면 [lnav](#lnav) 같은 log file viewer를 권장합니다. Lnav는 automatic syntax highlighting, 특정 log message의 편리한 filtering, 서로 다른 Canton component log file의 single view 표시 등을 지원합니다. Standard UNIX tool인 less 또는 grep보다 효율적으로 log를 보고 문제를 해결할 수 있습니다.
+
+`lnav` 사용 시 특히 유용한 기능은 다음과 같습니다.
+
+- 서로 다른 Canton component의 log file을 timestamp에 따라 merge하여 단일 [view](https://lnav.org/features#single-log-view)에 표시(`lnav <log1> <log2> ...`)
+- 특정 log message를 포함(`:filter-in <regex>`) 또는 제외(`:filter-out <regex>`)하도록 [filtering](https://docs.lnav.org/en/latest/usage.html#filtering). 특정 trace-id 등을 사용하여 message를 filter하면 앞서 설명한 single-view 기능에서 여러 component에 걸쳐 transaction을 추적할 수 있습니다.
+- 특정 log message [검색](https://docs.lnav.org/en/latest/usage.html#searching)(`/<regex>`) 및 message 간 이동(`n`, `N`)
+- Log message 일부, 예를 들어 timestamp와 log message 자체의 automatic syntax highlighting. 예를 들어 `WARN` log message는 노란색
+- Error message(`e`, `E`) 및 warn message(`w`, `W`) 사이 이동
+- 서로 다른 filter와 file의 선택적 활성화 및 비활성화, `TAB` 및 `SPACE`로 filter 활성화/비활성화
+- Line 표시(`m`) 및 표시된 line 사이 앞뒤 이동(`u`, `U`)
+- 동일한 trace-id를 가진 line 사이 앞뒤 이동(`o`, `O`)
+
+Canton log용 custom lnav log format [file](https://docs.lnav.org/en/latest/formats.html) `canton.lnav.json`은 모든 Canton release에 포함됩니다. `lnav -i canton.lnav.json`으로 install할 수 있습니다. `.clog` file suffix를 사용해야 하는 JSON 기반 log file은 `canton-json.lnav.json` format file로 볼 수 있습니다.
+
+### Detailed Logging
+
+기본적으로 logging은 sensitive data를 log file에 write하지 않도록 detail을 생략합니다. Debugging 또는 교육 목적으로 다음 configuration switch를 사용하여 additional logging을 켤 수 있습니다.
+
+``` none
+canton.monitoring.logging {
+    event-details = true
+    api {
+        message-payloads = true
+        max-method-length = 1000
+        max-message-lines = 10000
+        max-string-length = 10000
+        max-metadata-size = 10000
+    }
+}
+```
+
+이렇게 하면 모든 GRPC API invocation을 기록하는 `ApiRequestLogger`의 payload logging과 `SequencerClient` 및 transaction tree의 detailed logging이 활성화됩니다. 모든 additional event는 `DEBUG` level로 기록됩니다.
+
+<Note>
+Detailed event logging은 gRPC API Interceptor 안에서 수행됩니다. 전송되거나 수신되는 모든 message가 보기 좋게 출력된 string으로 변환되므로 sequential bottleneck이 발생합니다. 이 setting을 켜면 동일한 performance를 달성할 수 없습니다.
+</Note>
+
+## Tracing
+
+추가 debugging을 위해 Canton은 system 전체에서 request processing을 추적할 수 있는 trace-id를 제공합니다. Trace-id는 *mapping diagnostic context*를 통해 logback에 노출되며 `%mdc{trace-id}`를 사용하여 logback output pattern에 포함할 수 있습니다.
+
+Trace-id propagation은 기본적으로 활성화된 `canton.monitoring.tracing.propagation = enabled` configuration option으로 활성화합니다.
+
+Distributed trace를 관찰할 수 있도록 trace 및 span이 report되는 service를 구성할 수 있습니다. Preview는 Traces를 참조하세요.
+
+Jaeger 및 Zipkin을 지원합니다. 예를 들어 Jaeger reporting은 다음과 같이 구성할 수 있습니다.
+
+```text
+monitoring.tracing.tracer.exporter {
+  type = jaeger
+  address = ... // default: "localhost"
+  port = ... // default: 14250
+}
+```
+이 configuration은 실행 중인 Jaeger server에 연결하여 tracing information을 report합니다.
+
+다음과 같이 Docker container에서 Jaeger를 실행할 수 있습니다.
+
+    docker run --rm -it --name jaeger\
+      -p 16686:16686 \
+      -p 14250:14250 \
+      jaegertracing/all-in-one:1.22.0
+
+Docker를 사용하지 않으려면 Download Jaeger에서 OS별 binary를 download할 수 있습니다. File을 unzip한 다음 `jaeger-all-in-one` binary를 실행합니다. Argument는 필요하지 않습니다. 기본적으로 Jaeger는 UI용 port `16686`, browser window에서 확인 가능, 및 Canton이 trace information을 report하는 port `14250`을 노출합니다. 이 port들을 올바르게 노출하세요.
+
+전체 trace를 정확히 볼 수 있도록 network의 모든 Canton node가 동일한 Jaeger server에 report하게 하세요. 또한 모든 Canton node에서 Jaeger server에 접근할 수 있어야 합니다.
+
+Jaeger 외에도 Canton node는 Zipkin 또는 OTLP format으로 report하도록 구성할 수 있습니다.
+
+### Sampling
+
+Span을 sampling하고 구성된 exporter에 report하는 빈도를 변경할 수 있습니다. 기본적으로 항상 report합니다(`monitoring.tracing.tracer.sampler.type = always-on`). 전혀 report하지 않도록 구성할 수도 있지만(`monitoring.tracing.tracer.sampler.type = always-off`) 활용도는 낮습니다. 다음과 같이 특정 비율의 span만 report하도록 구성할 수도 있습니다.
+
+```text
+monitoring.tracing.tracer.sampler = {
+  type = trace-id-ratio
+  ratio = 0.5
+}
+```
+Parent 기반 sampling property도 변경할 수 있습니다. 기본적으로 켜져 있습니다(`monitoring.tracing.tracer.sampler.parent-based = true`). 켜져 있으면 parent가 sampling된 경우에만 span이 sampling되며 root span은 구성된 sampling strategy를 따릅니다. Incomplete trace는 절대 발생하지 않습니다. 전체 trace가 sampling되거나 전혀 sampling되지 않습니다. 이 property를 변경하면 모든 span은 parent sampling 여부를 무시하고 구성된 sampling strategy를 따릅니다.
+
+### 알려진 Limitation
+
+Log에서 관찰할 수 있는 모든 trace가 구성된 trace collector service에 report되는 것은 아닙니다. Console command에서 시작되거나 transaction protocol의 일부인 trace는 대부분 report되며 다른 type의 trace도 필요에 따라 report 대상 집합에 추가됩니다.
+
+<div className="todo">
+
+아래 limitation은 다음 ticket에서 해결될 예정입니다. \#22920 \#14256
+
+</div>
+
+또한 transaction protocol trace에는 알려진 limitation이 있습니다. Command가 submit되고 trace가 완전히 report된 뒤, 그 결과 처리되는 Daml event에는 새 trace가 생성됩니다. Ledger API가 command submission에서 transaction subscription으로 trace context information을 propagate하지 않기 때문입니다. 예를 들어 participant가 `Ping` contract를 생성하면 submit되는 `Ping` command의 전체 transaction processing trace를 볼 수 있습니다. 하지만 `Respond`를 exercise하고 `Pong` contract를 생성하여 `Ping`을 처리하는 participant는 동일한 trace 대신 별도 trace를 생성합니다.
+
+이는 단일 Daml transaction이 여러 contract를 archive하고 create하는 등 동시에 여러 action을 생성하는 상황과 다릅니다. 해당 경우에는 external process가 Daml event에 반응한 결과가 아니라 단일 transaction의 일부로 발생하므로 단일 trace가 전체 process를 포함합니다.
+
+### Trace
+
+Trace에는 각각 span으로 표현되는 operation이 포함됩니다. Trace는 span의 directed acyclic graph(DAG)이며 span 사이 edge는 parent/child relationship으로 정의됩니다. Definition은 OpenTelemetry glossary에서 가져옵니다.
+
+Canton은 여러 type의 trace를 report합니다. 한 예로 Admin API와 상호작용하는 모든 Canton console command는 특정 Admin API endpoint에 대한 GRPC call을 포함하여 command 전체 duration 동안 지속되는 initial span으로 trace를 시작합니다.
+
+<Frame caption="18개 span이 포함된 Canton ping trace graph">
+  <img src="/images/docs_website/ping-trace.jpg" style={{width: "100.0%"}} alt="./images/ping-trace.jpg" />
+</Frame>
+
+Daml command submission trace는 중요합니다. 그림의 trace는 console을 사용하여 Canton ping을 수행할 때 생성됩니다. Ping은 connection을 테스트하도록 Daml transaction(create Ping, exercise choice Pong, exercise choice Archive)을 보내는 smoke test입니다. 모든 Canton participant에 preinstall된 특정 smart contract를 사용합니다. Command는 Admin API를 사용하여 preinstalled application에 접근하고, 이 application은 해당 smart contract를 대상으로 Ledger API command를 실행합니다. 이 예에서 trace는 18개의 span을 포함합니다. Ping은 `participant1`이 시작하고 `participant2`가 target입니다. Trace는 message handler 또는 추가 transaction processing을 자세히 살펴보지 않고 sequencer를 통한 message exchange에 초점을 둡니다.
+
+Asynchronous processing으로 인해 일부 span은 parent가 끝난 뒤 시작될 수 있습니다. 일반적으로 나중에 처리할 새 operation을 queue에 넣어 parent span이 즉시 해제되고 끝날 때 발생합니다.
+
+Initial span(span 1)은 ping operation duration을 포함합니다. Span 2에서는 participant node의 GrpcPingService가 console의 GRPC request를 처리합니다. 이 span도 ping operation duration 동안 지속됩니다.
+
+Canton ping은 세 Daml command로 구성됩니다.
+
+1.  `participant1`의 admin party가 `Ping` contract를 생성합니다.
+2.  `participant2`의 admin party가 contract의 `Respond` consuming choice를 exercise하여 `Pong` contract를 생성합니다.
+3.  `participant1`의 admin party가 이에 대해 `Ack` consuming choice를 exercise합니다.
+
+<div className="todo">
+
+\#22920
+
+</div>
+
+세 Daml command 중 첫 번째, Ping contract creation의 submission은 example trace의 span 3에서 시작됩니다. 다음 section에서 설명하는 limitation으로 다른 두 Daml command submission은 이 trace에 연결되지 않습니다. 별도로 찾을 수 있습니다. 어떤 경우든 span 2는 세 Daml command가 완료된 후에만 완료됩니다.
+
+Span 3에서 participant node는 Ledger API client 측에 있습니다. 다른 use case에서는 participant와 통합된 application일 수 있습니다. 이 span은 GRPC call duration 동안 지속되며 server 측 span 4에서 수신되고 span 5의 `CantonSyncService`가 처리합니다. 이후 request가 수신되고 acknowledge되지만 완전히 처리되지는 않습니다. 나중에 비동기적으로 처리되므로 span 3-5는 request 처리 전에 완료됩니다.
+
+Span 5와 6 사이 gap 일부를 차지하는 trace에서 누락된 step은 다음과 같습니다.
+
+- Participant가 command submission에 사용할 synchronizer를 결정하는 synchronizer routing
+- 전송할 initial message set 준비
+
+Canton transaction protocol 시작은 span 6에서 이루어집니다. 이 span에서 `participant1`은 transaction protocol phase 1의 일부로 initial confirmation request message set을 sequence하도록 `sequencer1`에 request를 보냅니다. Transaction protocol에는 7개 phase가 있습니다.
+
+Span 7에서 `sequencer1`은 request를 수신하고 등록합니다. Message receipt는 이 span에 속하지 않으며 나중에 비동기적으로 발생합니다.
+
+Span 18에서는 phase 2의 일부로 `mediator1`이 informee message를 수신합니다. Validate하고 등록하기만 하면 됩니다. Response할 필요가 없으므로 span 18에는 child가 없습니다.
+
+Phase 3의 일부로 `participant2`가 message를 수신하고 span 8을 참조하세요, `participant1`도 message를 수신합니다. Span 9를 참조하세요. 두 participant 모두 비동기적으로 message를 validate합니다. `participant2`는 response할 필요가 없으며 observer일 뿐이므로 span 8에는 child가 없습니다. 하지만 `participant1`은 response하며 span 10에서 확인할 수 있습니다. 여기에서 다시 `sequencer1`을 call하고 sequencer는 span 11에서 이를 수신합니다.
+
+Span 12에서 `participant1`은 mediator에 보낸 message가 성공적으로 sequence되었음을 알리는 successful send response message를 수신합니다. Confirmation response가 mediator에 전송되는 phase 4의 일부로 발생합니다. Mediator는 span 13에서 이를 수신하고 message를 validate합니다(phase 5).
+
+Span 14 및 15에서 `mediator1`은 phase 6으로 이동하여 `sequencer1`에 transaction result message를 participant로 전송하도록 요청합니다.
+
+이 transaction protocol round를 끝내기 위해 `participant1`과 `participant2`는 각각 span 16 및 17에서 message를 수신합니다. Message는 비동기적으로 validate되며 virtual shared ledger projection이 update됩니다(phase 7).
+
+언급했듯 이 ping trace에 연결되지 않았지만 operation의 일부인 다른 transaction submission이 두 개 있습니다. 두 번째는 `participant2`가 생성한 `admin-ping.processTransaction`이라는 span에서 시작합니다. 세 번째도 이름은 같지만 `participant1`이 시작합니다.
+
+## Node Health Status
+
+각 Canton node는 풍부한 health status information을 노출합니다. 다음을 실행합니다.
+
+```bash
+<node>.health.status
+```
+
+다음 중 하나인 status object를 반환합니다.
+
+- `Failure`: Node status를 판단할 수 없으며 실패 이유의 error message 포함
+- `NotInitialized`: Node가 아직 initialize되지 않음
+- `Success[NodeStatus]`: Status를 판단할 수 있으며 detailed status 포함
+
+`NodeStatus`는 node type에 따라 다릅니다. Participant node는 다음을 포함하는 message로 response합니다.
+
+- `Participant id`: Node의 participant ID
+- `Uptime`: 이 node의 uptime
+- `Ports`: Participant node가 Ledger 및 Admin API를 노출하는 port
+- `Connected synchronizers`: Participant가 올바르게 연결된 synchronizer 목록
+- `Unhealthy synchronizers`: Participant가 연결을 시도하지만 connection이 command submission 준비 상태가 아닌 synchronizer 목록
+- `Active`: 이 instance가 active replica이면 true. High-availability deployment의 passive instance에서는 false일 수 있습니다.
+
+Synchronizer node 또는 sequencer node는 다음을 포함하는 message로 response합니다.
+
+- `Synchronizer id`: Synchronizer의 unique identifier
+- `Uptime`: 이 node의 uptime
+- `Ports`: Synchronizer가 Public 및 Admin API를 노출하는 port
+- `Connected Participants`: 연결된 participant 목록
+- `Sequencer`: Embedded sequencer writer가 operational인지 나타내는 boolean flag
+
+Canton 2.8.6부터 sequencer node는 다음 additional field도 반환합니다.
+
+- `Accepts admin changes`: Sequencer가 admin change를 accept하는지 나타내는 boolean flag
+
+Synchronizer topology manager 또는 mediator node는 다음을 반환합니다.
+
+- `Node uid`: Node의 unique identifier
+- `Uptime`: 이 node의 uptime
+- `Ports`: Node가 API를 hosting하는 port
+- `Active`: 이 instance가 active replica이면 true. High-availability deployment의 passive instance에서는 false일 수 있습니다.
+
+또한 모든 node는 internal runtime dependency 각각의 health state를 자세히 나타내는 `components` field도 반환합니다. 실제 component는 node마다 다르며 node의 current status에 대한 추가 insight를 제공할 수 있습니다. 예로 storage access, synchronizer connectivity, sequencer backend connectivity가 있습니다.
+
+## Health Check
+
+### gRPC Health Check Service
+
+각 Canton node는 선택적으로 gRPC Health [Service](https://github.com/grpc/grpc/blob/master/doc/health-checking.md#service-definition)를 노출하는 gRPC server를 시작하도록 구성할 수 있습니다. Passive node, active/passive state는 High Availability를 참조하세요, 는 `NOT_SERVING`을 반환합니다. Kubernetes [environment](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes)에서 liveness 및 readiness probe를 구성할 때 이를 고려하세요.
+
+State를 계산하는 정확한 방식은 변경될 수 있습니다.
+
+Node configuration object 안에 배치하는 example monitoring configuration은 다음과 같습니다.
+
+``` none
+monitoring.grpc-health-server {
+  address = "127.0.0.1"
+  port = 5861
+}
+```
+
+<Note>
+gRPC health server는 아래의 HTTP health check server처럼 process별이 아니라 Canton node별로 구성됩니다. 따라서 configuration을 node의 configuration object 안에 삽입해야 합니다.
+</Note>
+
+<Note>
+Kubernetes liveness probe로 사용할 수 있도록 health server는 gRPC [probe](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#define-a-grpc-liveness-probe) 구성 시 target으로 지정할 `liveness`라는 service를 노출합니다. 이 service는 항상 `SERVING`을 반환합니다.
+</Note>
+
+### HTTP Health Check
+
+선택적으로 `canton` process는 process가 healthy하다고 판단하는지 나타내는 HTTP endpoint를 노출할 수 있습니다. Uptime check 또는 Kubernetes liveness [probe](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes)로 사용할 수 있습니다. 활성화하면 `/health` endpoint는 `GET` HTTP request에 healthy한 경우 HTTP 200 status code, unhealthy한 경우 500과 unhealthy 이유의 plain text 설명으로 response합니다.
+
+이 health endpoint를 활성화하려면 Canton configuration에 `monitoring` section을 추가합니다. 이 health check는 전체 process용이므로 특정 node가 아닌 `canton` configuration에 직접 추가합니다.
+
+```hocon
+canton {
+  monitoring.health {
+   server {
+      port = 7000
+   }
+
+   check {
+     type = ping
+     participant = participant1
+     interval = 30s
+   }
+}
+```
+이 health check는 `participant1`이 30초마다 자체적으로 "ledger ping"을 수행하게 합니다. Ping이 성공하면 process를 healthy한 것으로 간주합니다.
+
+## Health Dump
+
+효율적인 support를 받으려면 가능한 한 많은 information을 제공해야 합니다. 이를 위해 Canton은 support staff용 핵심 system information을 수집하는 information-gathering facility를 implement합니다. 도움이 필요한 error가 발생하면 다음을 수행하세요.
+
+- Debug logging을 활성화하는 `-v` option으로 Canton을 interactive mode로 시작합니다. `./bin/canton -v -c <myconfig>`. Console prompt를 제공합니다.
+- 이전에 error를 발생시킨 step을 따라 error를 재현합니다. Support staff에게 제공할 수 있도록 이 step을 기록합니다.
+- Error를 관찰한 뒤 Canton console에 `health.dump()`를 입력하여 ZIP file을 생성합니다.
+
+다음 information을 저장하는 dump file(`.zip`)이 생성됩니다.
+
+- Sensitive data가 모두 제거된 사용 중인 configuration, password 없음
+- Log file extract. Sensitive data는 log file에 기록되지 않음
+- Canton metric의 current snapshot
+- 실행 중인 각 thread의 stacktrace
+
+문제를 발생시킨 정확한 step 목록과 함께 수집한 information을 support contact에게 제공하세요. Complete information 제공은 문제 troubleshooting에 매우 중요합니다.
+
+### Remote Health Dump
+
+Remote node에 접근하도록 구성된 console을 실행하면 `health.dump()` command가 remote node의 health data를 수집하여 결과 ZIP file로 package합니다. 특별한 action은 필요하지 않습니다. Command 실행 시 특정 node를 target으로 지정하여 해당 node의 health data를 가져올 수 있습니다. 예:
+
+`remoteParticipant1.health.dump()`
+
+많은 data를 package할 때는 dump command의 기본 timeout을 늘립니다.
+
+`health.dump(timeout = 2.minutes)`
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/observe/metrics.rst" hash="bc10ae2b" */}
+
+# Metrics 구성
+
+Metric은 실행 중인 system internal state의 quantitative information을 제공합니다. 이는 health 및 performance [monitoring](https://sre.google/sre-book/monitoring-distributed-systems)과 operating behavior [observability](https://medium.com/honeycombio/observability-101-terminology-and-concepts-honeycomb-821f17fde452)에 핵심입니다.
+
+Participant Node는 HTTP endpoint에서 이 metric을 report할 수 있습니다. 이후 [Prometheus](https://prometheus.io) 같은 별도 monitoring system이 이를 주기적으로 scrape하여 query, alert, dashboard 등을 위한 time-series data로 저장할 수 있습니다.
+
+## Scraping용 Metric Export
+
+`canton.monitoring.metrics.reporters = [{ type = prometheus }]` configuration으로 Prometheus reporter를 활성화하여 application metric을 export합니다.
+
+기본적으로 `http://<host>:9464/`에서 OpenMetrics format으로 metric을 scrape할 수 있습니다.
+
+다음을 사용하여 JVM metric도 export할 수 있습니다.
+
+`canton.monitoring.metrics.reporters.jvm-metrics.enabled = yes`
+
+예:
+
+``` none
+canton.monitoring.metrics {
+    jvm-metrics.enabled = yes
+    reporters = [{
+        type = prometheus
+        address = 0.0.0.0
+        // This will expose the prometheus metrics on port 9000
+        port = 9000
+    }]
+}
+```
+
+Export되는 전체 metric 목록은 metrics reference를 참조하세요.
+
+## Deprecated Reporter
+
+다른 reporter(jmx, graphite, csv)도 지원되지만 deprecated되었습니다. 이러한 reporter는 [Prometheus](https://prometheus.io)로 migrate해야 합니다.
+
+Testing 목적으로만 사용하는 JMX 기반 reporting은 다음으로 활성화할 수 있습니다.
+
+```hocon
+canton.monitoring.metrics.reporters = [{ type = jmx }]
+```
+또한 metric을 file에 write할 수 있습니다.
+
+```hocon
+canton.monitoring.metrics.reporters = [{
+  type = jmx
+}, {
+  type = csv
+  directory = "metrics"
+  interval = 5s // default
+  filters = [{
+    contains = "canton"
+  }]
+}]
+```
+또는 Graphite를 통해 Grafana로 report할 수 있습니다.
+
+```hocon
+canton.monitoring.metrics.reporters = [{
+  type = graphite
+  port = 2003
+  interval = 30s // default
+  filters = [{
+    contains = "canton"
+  }]
+}]
+```
+`graphite` 또는 `csv` reporter를 사용할 때 Canton은 지정한 filter와 일치하는 모든 metric을 주기적으로 evaluate합니다. 관련 있는 metric만 filter하세요.
+
+
+{/* COPIED_END */}

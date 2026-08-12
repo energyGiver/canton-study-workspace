@@ -1,0 +1,1362 @@
+---
+title: "Ledger Model 상세 가이드"
+description: "Canton Ledger Model의 structure, integrity, privacy, projection 및 multi-ledger causality 상세 설명"
+source_id: "SRC-496FDA9ABF"
+source_path: "overview/reference/ledger-model-detailed"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "8caea05d768516325c8b7971f24f68f4f2024b528da15f457221d4ea3608b100"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/overview/reference/ledger-model-detailed.md)을 함께 확인하세요.
+</Warning>
+
+import LedgerModelSimpleDvPSCRIPT from '/snippets/daml-docs/ledger-model_SimpleDvP_SCRIPT.mdx';
+import LedgerModelSimpleDvPACCEPTANDSETTLE from '/snippets/daml-docs/ledger-model_SimpleDvP_ACCEPT_AND_SETTLE.mdx';
+import LedgerModelSimpleDvPACCEPTTHENSETTLE from '/snippets/daml-docs/ledger-model_SimpleDvP_ACCEPT_THEN_SETTLE.mdx';
+import LedgerModelSimpleDvPREVERTPROPOSAL from '/snippets/daml-docs/ledger-model_SimpleDvP_REVERT-PROPOSAL.mdx';
+
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.5/overview/explanations/ledger-model/ledger-structure.rst" hash="a180a0ec" */}
+
+# Structure
+
+이 절에서는 ledger change로 party 간 interaction을 기록하는 ledger의 structure를 살펴봅니다. 여기서 제시하는 정의는 "Change와 ledger는 어떤 모습인가?"라는 첫 번째 질문에 답합니다. 기록된 interaction의 기본 구성 요소는 action이며, action은 transaction, *update*, *commit*, Ledger로 그룹화됩니다.
+
+## 실행 workflow 예제
+
+이 절의 대부분 예제는 running example의 template을 기반으로 한 다음 Daml Script scenario를 사용합니다. 먼저 두 bank가 Alice와 Bob에게 각각 asset 하나를 발행하고, Alice가 Bob에게 DvP를 제안합니다. Bob은 제안을 수락하고 DvP를 settlement합니다.
+
+<LedgerModelSimpleDvPSCRIPT />
+
+Acceptance와 settlement는 `AcceptAndSettle` choice를 통해 한 단계로 수행할 수 있습니다.
+
+<LedgerModelSimpleDvPACCEPTANDSETTLE />
+
+또는 `Accept` 후 `Settle`을 실행하는 두 단계로 나눌 수 있습니다.
+
+<LedgerModelSimpleDvPACCEPTTHENSETTLE />
+
+## Actions
+
+### Hierarchical structure
+
+Ledger Model의 주요 특징 중 하나는 *hierarchical action structure*입니다. 위 scenario에서 Bob이 `Settle` choice를 exercise해 DvP를 settlement하는 예로 이 structure를 설명합니다. Alice와 Bob은 ledger의 자신의 asset, 즉 contract \#1과 \#2를 `SimpleDvp` contract (#4)에 할당했습니다. 이 contract들은 아래 diagram 왼쪽의 점선 box에 input으로 표시됩니다.
+
+![The settlement action on the \`\`SimpleDvp\`\` contract between Alice and Bob, with the two legs of the swap as consequences.](/images/docs_website/dvp-settle-action.svg)
+
+`Settle` choice를 exercise하면 파란색으로 표시된 node tree인 Exercise action이 생성됩니다. 왼쪽의 input contract는 action에 포함되지 않습니다. Root node는 choice parameter를 설명하고 `SimpleDvp` input contract \#4를 참조합니다. 두 subtree는 `Settle` choice의 일부로 asset transfer를 자동 수행합니다.
+
+1.  왼쪽 subtree는 Alice가 자신의 `SimpleAsset` contract \#1에서 `Transfer` choice를 exercise하는 것을 나타냅니다. 두 node로 구성되며, root node는 choice parameter와 input contract \#1을 설명합니다. 자체적으로 하나의 node subtree인 child node는 Bob의 새 `SimpleAsset` contract \#5 생성을 encode합니다.
+2.  오른쪽 subtree도 같은 방식입니다. Subtree의 root node는 Bob이 자신의 `SimpleAsset` contract \#2에서 `Transfer` choice를 exercise하는 것을 나타내며, child는 Alice의 새 `SimpleAsset` contract \#6 생성을 encode합니다.
+
+Root node가 관련 parameter를 모두 설명하더라도 Exercise action은 tree 전체라는 점이 중요합니다. Daml model에서 choice를 exercise하면 choice body가 항상 실행되어야 하므로 root node는 child 없이 단독으로 존재할 수 없습니다. 그래서 Ledger Model은 node보다 action에 초점을 맞춥니다. Integrity 절에서 이를 자세히 설명합니다.
+
+그렇다고 action이 더 나눌 수 없는 것은 아니며 hierarchical합니다. 왼쪽과 오른쪽 subtree도 각각 독립된 action입니다. 즉 Alice와 Bob이 각자의 `SimpleAsset` input contract \#1과 \#2에서 `Transfer` choice를 exercise하는 Exercise action입니다. 두 subtree에는 각각 Bob과 Alice의 새 `SimpleAsset` contract \#5와 \#6을 생성하는 또 다른 subtree가 있습니다. 이 subtree도 각각 독립된 action입니다. 이러한 hierarchical structure는 아래에서 설명하는 subaction 관계를 만들며 privacy model의 기반이 됩니다.
+
+### Definition
+
+위 예제의 settlement에는 두 종류의 action이 있습니다.
+
+1.  Contract 생성
+2.  Contract에서 choice exercise
+
+이 둘은 Ledger Model의 주요 action 종류이기도 합니다.
+
+**Node**는 다음 중 하나입니다.
+
+1.  **Create** node는 contract 생성을 기록하며 다음 정보를 포함합니다.
+
+    - **Contract ID**는 contract의 고유 identifier이며 unspent transaction output(UTxO) 기반 ledger의 transaction output(TxO)에 해당합니다.
+    - **Template ID**는 contract와 연결된 Daml code를 식별하고 그 argument는 contract ID와 연결된 immutable data인 **contract instance**를 정의합니다.
+    - **Signatories**는 contract 생성과 archival을 authorize해야 하는 비어 있지 않은 party 집합입니다.
+    - **Contract observers**, 줄여서 observer는 signatory 외에 contract 생성과 archival을 통지받는 party 집합입니다.
+
+    Daml에서 signatory와 contract observer는 template에 정의된 `signatory`, `observer` clause로 결정됩니다.
+
+    Create node는 아래와 같이 표시합니다. Diagram에서는 값이 비어 있는 field와 signatory이기도 한 observer를 흔히 생략합니다.
+
+    <img src="/images/docs_website/create-node.svg" className="align-center" style={{width: "30.0%"}} alt="The structure of a **Create** node." />
+
+2.  **Exercise** node는 하나 이상의 party가 contract에서 exercise한 choice의 parameter를 기록하며 다음 정보를 포함합니다.
+
+    - Exercise **kind**는 **consuming** 또는 **non-consuming**입니다. 소비된 contract는 다시 사용할 수 없습니다. 예를 들어 Alice가 자신의 asset을 두 번 transfer할 수 있다면 double spending이 됩니다. 반면 non-consuming 방식으로 exercise한 contract는 재사용할 수 있으며, 한 party가 다른 party에 delegation을 표현하는 경우가 그 예입니다.
+    - Choice가 exercise되는 **contract ID**이며 이 contract를 **input contract**라고 합니다.
+    - Daml interface를 통해 choice를 exercise했다면 **interface ID**가 포함됩니다.
+    - 주어진 **choice name**의 smart contract code를 정의하는 **template ID**, 그리고 smart contract code에 전달되는 **choice arguments**가 포함됩니다.
+    - **Actors**라는 관련 party 집합이며 action을 수행하는 party입니다. Daml template의 `controller` clause에서 지정합니다.
+    - 관련 **choice observers** 집합이며 choice exercise를 통지받는 party입니다.
+    - Choice body 평가가 반환한 Daml value인 **exercise result**가 포함됩니다.
+
+    Exercise node는 아래와 같이 표시하며 consequence는 왼쪽에서 오른쪽 순서의 arrow로 나타냅니다. Diagram은 consuming인 kind, 값이 빈 field, actor이기도 한 choice observer를 생략합니다.
+
+    <img src="/images/docs_website/exercise-node.svg" className="align-center" style={{width: "30.0%"}} alt="The structure of an **Exercise** node." />
+
+3.  Contract의 **Fetch** node는 fetch 시점에 contract가 존재하며 active임을 증명합니다. Fetch는 consequence가 없는 non-consuming Exercise처럼 동작하며 반복할 수 있습니다. Fetch node는 Exercise node와 유사하게 **contract ID**, **interface ID**, **template ID**, 그리고 contract를 fetch하는 party인 **actors**를 포함합니다.
+
+    Fetch node는 아래와 같이 표시합니다.
+
+    <img src="/images/docs_website/fetch-node.svg" className="align-center" style={{width: "30.0%"}} alt="The structure of a **Fetch** node." />
+
+**Action**은 **root node**와 그 자체가 action인 **consequences** 목록으로 구성됩니다. 이에 따라 action은 tree structure를 가지며 action의 root node는 consequence의 root node를 child로 둡니다.
+
+Action은 root node에서 kind를 상속합니다.
+
+1.  **Create action**은 Create node를 root로 가지며 consequence는 비어 있습니다.
+2.  **Exercise action**은 Exercise node를 root로 가지며 consequence는 subaction입니다. Exercise action은 consequence의 **parent action**입니다.
+3.  **Fetch action**은 Fetch node를 root로 가지며 consequence는 비어 있습니다.
+
+Node terminology은 root node를 통해 action으로 확장됩니다. 예를 들어 Create action의 signatory는 Create node의 signatory이며, Exercise action은 root node가 consuming 또는 non-consuming인 경우에만 각각 consuming 또는 non-consuming입니다. Contract의 Exercise 또는 Fetch action은 해당 contract를 **use**한다고 표현합니다. Consuming Exercise는 contract를 **consume** 또는 **archive**한다고 합니다.
+
+### Examples
+
+Fetch action의 예는 `ProposeSimpleDvP` template의 DvP proposal contract에 있는 `Accept` choice에서 볼 수 있습니다. Choice body는 Bob이 DvP에 할당한 `SimpleAsset`을 fetch합니다. 이를 통해 asset contract가 active인지 확인하고 contract instance를 computation에 가져와 choice implementation이 해당 asset이 proposal contract에 명시된 조건을 충족하는지 검증할 수 있습니다. 다음 diagram은 Fetch action을 첫 consequence로 가진 이 Exercise action을 보여줍니다.
+
+<img src="/images/docs_website/dvp-propose-accept-action.svg" className="align-center" style={{width: "100.0%"}} alt="The accept action on Alice&#39;s ``ProposeSimpleDvP`` exercised by Bob." />
+
+Non-consuming Exercise는 `ProposeSimpleDvP` contract의 결합된 `AcceptAndSettle` choice에 나타납니다. Choice body에서 exercise되는 `Accept` choice가 proposal contract를 consume할 수 있도록 이 choice는 non-consuming입니다. 다음 diagram처럼 non-consuming Exercise는 같은 input contract \#3에 대한 여러 reference를 생성합니다. Fetch도 같은 효과가 있어 input contract \#2가 두 번 사용됩니다.
+
+<img src="/images/docs_website/dvp-propose-accept-and-settle-action.svg" className="align-center" style={{width: "100.0%"}} alt="The accept-and-settle action on Alice&#39;s ``ProposeSimpleDvP`` exercised by Bob." />
+
+### Subactions
+
+이 예제는 action의 hierarchical structure를 다시 보여줍니다. `AcceptAndSettle` action은 `Accept`와 `Settle`에 해당하는 action을 consequence로 포함합니다.
+
+일반적으로 action `act`의 **proper subactions**는 `act`의 consequence에 있는 모든 action과 그 action들의 모든 proper subaction입니다. 또한 `act`는 자기 자신의 non-proper **subaction**입니다.
+
+아래는 Bob의 `Settle` Exercise에서 subaction 관계를 시각화한 것입니다. 테두리 없는 각 box는 node tree 형태의 action을 포함하며 box의 nesting이 subaction 관계를 encode합니다. 파란색과 보라색 box는 모두 회색으로 표시된 Bob의 `Settle` action의 proper subaction입니다. 초록색 box는 파란색과 회색 box의 proper subaction이고, 노란색 box는 보라색과 회색 box의 proper subaction입니다.
+
+<img src="/images/docs_website/dvp-settle-subactions.svg" className="align-center" style={{width: "60.0%"}} alt="The subactions of Bob exercising the ``Settle` choice on the DvP contract." />
+
+## Transactions
+
+**Transaction**은 atomic하게 실행되는 action 목록입니다. 이러한 action을 transaction의 **root actions**라고 합니다. 즉 transaction `tx = act``1``, …, act``n`에서 모든 `act``i`는 root action입니다. 예를 들어 Alice와 Charlie가 Bob에게 각각 DvP proposal을 만들었다면 Bob은 둘을 동시에 accept하려 할 수 있습니다. 이를 위해 Bob은 다음과 같이 파란색과 보라색의 root action 두 개가 있는 단일 transaction에서 두 `Accept` choice를 모두 exercise합니다. 시각적으로 transaction은 action과 구분하기 위해 양쪽 점선으로 경계를 표시합니다. Action과 마찬가지로 왼쪽 input contract는 transaction에 포함되지 않습니다.
+
+<img src="/images/docs_website/dvp-accept-two.svg" className="align-center" style={{width: "100.0%"}} alt="A transaction with two top-level actions where Bob accepts two DvP proposal, one from Alice and one from Charlie." />
+
+또 다른 예로 Exercise action의 consequence는 action 목록이므로 transaction을 구성합니다. Alice와 Bob의 `SimpleDvP`에서 `Settle` action의 consequence는 다음 transaction을 구성하며 이전과 같이 action은 왼쪽에서 오른쪽으로 정렬됩니다. 이 transaction은 파란색과 보라색 root action 두 개, 즉 DvP 양쪽 leg의 두 `Transfer` action으로 구성됩니다.
+
+<img src="/images/docs_website/dvp-settle-consequences-are-transactions.svg" className="align-center" style={{width: "50.0%"}} alt="The consequences of the ``Settle`` action are a transaction of two actions, namely the two ``Transfer`` legs of the DvP." />
+
+Action의 hierarchical structure는 transaction으로 확장되어 subtransaction 개념을 만듭니다. Transaction의 **proper subtransaction**은 action을 그 consequence로 반복해서 대체하여 얻습니다. Transaction의 **subtransaction**은 transaction 자체 또는 그 proper subtransaction입니다.
+
+예를 들어 위 transaction이 `Settle` action의 두 consequence만으로 구성된 경우 다음 diagram은 비어 있지 않은 proper subtransaction 7개를 각각 점선 경계와 함께 보여줍니다.
+
+<img src="/images/docs_website/dvp-settle-consequences-subtransactions.svg" className="align-center" style={{width: "100.0%"}} alt="All proper subtransactions of the consequences of the ``Settle`` action." />
+
+Privacy model은 subtransaction 개념을 사용해 visibility rule을 정의합니다.
+
+## Input과 output
+
+Ledger Model은 unspent transaction output(UTxO) 집합이 ledger의 current state를 구성하는 확장 UTxO 방식 ledger에 속합니다. 여기서 **transaction outputs**은 transaction에서 생성된 contract의 contract ID입니다. Contract가 consume되면 contract ID가 spent되어 UTxO 집합에서 제거됩니다. 각 UTxO와 연결된 data는 immutable하며, 변경은 contract ID를 consume하고 다른 contract ID로 새 contract를 생성하는 방식으로 이루어집니다.
+
+이 Ledger Model은 UTxO model을 두 가지 측면에서 확장합니다.
+
+- Transaction은 non-consuming choice를 exercise하거나 fetch하는 방식으로 contract를 consume하지 않고 사용할 수 있습니다. 이 경우 contract ID는 transaction input으로 나타나더라도 UTxO 집합에 남습니다.
+- Transaction은 hierarchical하게 구성되며 transaction에서 생성된 contract ID가 같은 transaction 안에서 consume될 수 있습니다. 예를 들어 `AcceptAndSettle` action에서 첫 consequence가 생성한 `SimpleDvP`는 두 번째 consequence에 의해 consume됩니다. 이러한 contract를 **transient**라고 합니다.
+
+이러한 측면은 Ledger Model의 나머지 절에서 더 자세히 설명합니다.
+
+## Ledger
+
+Transaction structure는 party interaction의 내용을 기록합니다. Ledger는 interaction의 두 가지 측면을 추가로 기록합니다.
+
+- 특정 party interaction을 고유하게 참조하는 identifier
+- 특정 party interaction을 요청한 party
+
+Privacy model 때문에 모든 사람이 party interaction의 모든 부분을 볼 수 있는 것은 아닙니다. Party interaction의 고유 identifier가 있으면 서로 다른 party가 자신이 본 부분이 같은 interaction에 속하는지 연관 지을 수 있습니다. **Update** 개념은 이러한 identifier를 추가합니다. Update는 단일 transaction과 문자열인 **update ID**로 구성됩니다. Ledger Model 예제에서는 Daml Studio의 transaction view와 유사하게 숫자 `i`에 대해 `TX i` 형식의 update ID를 사용합니다. Ledger API에서 update ID는 임의의 문자열이며 lexicographic order는 ledger상의 순서와 무관합니다.
+
+**Commit**은 *누가 party interaction을 요청했는가*라는 정보를 추가합니다. Commit은 update와 이를 요청한 하나 이상의 party로 구성됩니다. 이 party를 commit의 **requesters**라고 합니다. Daml Script에서 requester는 `submit` command에 지정한 `actAs` party에 해당합니다.
+
+<Note>
+
+**Definition: Ledger**
+
+**Ledger**는 update ID가 고유한 commit의 directed acyclic graph(DAG)입니다.
+
+</Note>
+
+<Note>
+
+**Definition: top-level action**
+
+Commit에서 transaction의 root action을 **top-level actions**라고 합니다. Ledger commit의 top-level action은 ledger의 top-level action이기도 합니다.
+
+</Note>
+
+따라서 Canton Ledger는 party가 수행한 모든 action의 전체 history를 나타냅니다. Ledger의 graph structure는 ledger commit 사이에 **happens-before order**를 만듭니다. Ledger에 `c``1`에서 `c``2`로 가는 비어 있지 않은 path가 있는 경우에만 commit `c``1`이 `c``2`보다 *happens before*한다고 합니다. 이는 graph의 transitive closure에 `c``1`에서 `c``2`로 가는 edge가 있다는 것과 같습니다.
+
+<Note>
+Ledger의 integrity condition은 happens-before order가 contract lifecycle을 준수하도록 요구합니다. 예를 들어 두 commit이 같지 않다면 contract를 생성하는 commit이 해당 contract를 소비하는 commit보다 먼저 발생해야 합니다. 다음 몇 절에서는 이 condition을 충족하는 ledger만 다룹니다.
+</Note>
+
+시각적으로 ledger는 시간이 흐르면서 왼쪽에서 오른쪽으로 증가하는 sequence로 표현할 수 있습니다. 아래에서 보라색 세로 점선은 commit 경계를 나타내고 각 commit에는 requester와 update ID가 표시됩니다. 파란색 arrow는 각 Exercise/Fetch action을 input contract의 Create action에 연결합니다. 이 arrow는 ledger가 UTXO blockchain 관점의 **transaction graph**를 형성한다는 점을 보여줍니다.
+
+다음 Daml Script는 running DvP example의 전체 workflow를 encode합니다.
+
+<LedgerModelSimpleDvPSCRIPT />
+<LedgerModelSimpleDvPACCEPTANDSETTLE />
+
+이 workflow는 다음 네 commit으로 구성된 ledger를 만듭니다.
+
+- 첫 commit에서 Bank 1은 Alice에게 발행되는 `1 EUR`의 `SimpleAsset`, 즉 contract \#1 생성을 요청합니다.
+- 두 번째 commit에서 Bank 2는 Bob에게 발행되는 `1 USD`의 `SimpleAsset`, 즉 contract \#2 생성을 요청합니다.
+- 세 번째 commit에서 Alice는 `SimpleDvpPoposal`, 즉 contract \#3 생성을 요청합니다.
+- 네 번째 commit에서 Bob은 DvP proposal의 `AcceptAndSettle` choice exercise를 요청합니다.
+
+<img src="/images/docs_website/dvp-ledger.svg" className="align-center" alt="The sequence of commits for the whole DvP workflow. First, banks 1 and 2 issue the assets, then Alice proposes the DvP, and finally Bob accepts and settles it." />
+
+<Note>
+Integrity constraint는 독립적인 commit 사이에 순서를 부과하지 않습니다. 이 예제에서 첫 세 commit `TX 0`, `TX 1`, `TX 2` 사이에는 edge가 없어도 되므로 어떤 순서로도 표시할 수 있습니다.
+
+Ledger는 DAG이므로 topological sort를 통해 순서를 항상 linear sequence로 확장할 수 있습니다. 별도 언급이 없다면 다음 절에서는 Ledger가 totally ordered라고 가정합니다. 더 일반적인 partial order는 causality 절에서 설명합니다.
+</Note>
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.5/overview/explanations/ledger-model/ledger-integrity.rst" hash="e441af8b" */}
+
+# Integrity
+
+[Ledger structure](#structure) 절은 party interaction을 Ledger change로 기록하는 hierarchical format을 소개해 "Ledger는 어떤 모습인가?"라는 질문에 답했습니다.
+[Privacy](#privacy) 절은 projection을 소개해 "누가 어떤 change와 data를 보는가?"라는 질문에 답했습니다.
+이 절은 어떤 ledger가 valid한지 정의하여 "누가 어떤 change를 요청할 수 있는가?"라는 질문을 다룹니다.
+
+## Overview
+
+핵심은 *valid ledger* 개념입니다. 해당 commit을 ledger에 추가한 결과가 valid ledger라면 그 change는 허용됩니다.
+**Valid ledger**는 아래에서 형식적으로 소개하는 세 condition을 충족합니다.
+
+- [Consistency](#consistency):
+  Consistent Ledger는 inactive contract의 exercise와 fetch를 허용하지 않습니다.
+  즉 아직 생성되지 않았거나 exercise로 이미 consume된 contract에 action을 수행할 수 없습니다.
+
+- [Conformance](#conformance):
+  Conformant Ledger에는 생성하거나 사용하는 contract의 smart contract logic이 허용하는 action만 포함됩니다.
+  Daml에서는 template이 이 smart contract logic을 정의합니다.
+
+- [Authorization](#authorization):
+  Well-authorized Ledger에서는 change의 requester가 controller와 signatory를 통해 정의되는 required authorizer를 포함합니다.
+
+[Validity](#validity)는 이 세 condition의 conjunction으로 정의됩니다.
+뒤 절에서는 Ledger Model의 표현력을 확장하면서 validity condition을 추가합니다.
+
+예를 들어 [DvP workflow running example](#ledger)은 모든 validity condition을 충족하는 non-trivial Ledger의 좋은 예입니다.
+각 condition이 그렇게 정의된 이유를 직관적으로 이해하려면 일부 validity condition을 위반하는 예제도 살펴보는 것이 유용합니다.
+
+## Consistency 위반 예제
+이 예제에서 Alice는 다음 Daml script excerpt처럼 자신의 asset을 Bob과 Charlie에게 한 번씩 두 번 transfer하려고 합니다. 이를 "double spend"라고 합니다.
+이 script는 consistency를 위반하므로 runtime에서 실패해야 합니다.
+
+```haskell
+let eurAsset = SimpleAsset with
+      issuer = bank
+      owner = alice
+      asset = "1 EUR"
+aliceEur <- submit bank do createCmd eurAsset
+
+bobEur <- submit alice $ do
+  exerciseCmd aliceEur $ Transfer with
+    newOwner = bob
+
+carolEur <- submit alice $ do
+  exerciseCmd aliceEur $ Transfer with
+    newOwner = carol
+pure ()
+```
+
+해당 Canton ledger는 아래와 같습니다.
+Contract #1이 `TX 1`과 `TX 2`의 consuming exercise node 두 개에 input으로 사용되므로 이 ledger는 consistency condition을 위반합니다.
+
+{/* https://lucid.app/lucidchart/9fb12975-8d57-4f73-9c81-0154879c3cc9/edit */}
+![An inconsistent ledger where Alice double-spends her asset](/images/docs_website/asset-double-spend.svg)
+
+## Conformance 위반 예제
+
+아래 예제에서 마지막 transaction `TX 4`는 [DvP workflow](#running-workflow-example)의 한쪽 leg를 생략합니다.
+Bob이 `Settle` choice를 exercise하지만 Alice가 자신의 IOU를 transfer하는 subaction 하나만 있습니다.
+`SimpleDvP`의 `Settle` [choice body](#running-workflow-example)는 두 `exercise` call을 통해 consequence가 항상 두 개라고 지정하므로 conformance를 위반합니다.
+Daml script는 생성되는 모든 transaction이 Daml code를 conform하도록 보장하므로 이 상황은 Daml script scenario로 표현할 수 없습니다.
+
+{/* https://lucid.app/lucidchart/30be82bc-9d5c-4531-b7ff-3762eaa0a72d/edit */}
+![A non-conformant ledger where one leg of the DvP settlement is missing](/images/docs_website/dvp-ledger-one-leg-only.svg)
+
+## Authorization 위반 예제
+
+다음은 서로 다른 authorization 위반 세 가지를 보여줍니다.
+
+### Unauthorized transfer
+
+먼저 Alice가 Bob의 이름으로 transfer를 요청하여 Bob의 asset을 가져가려 합니다.
+`TX 1`에서 exercise root action의 actor와 requester가 다르므로 authorization failure가 발생합니다.
+
+```haskell
+let usdAsset = SimpleAsset with
+      issuer = bank
+      owner = bob
+      asset = "1 USD"
+bobUsd <- submit bank $ do createCmd usdAsset
+
+aliceUsd <- submit alice $ do
+  exerciseCmd bobUsd $ Transfer with
+      newOwner = alice
+```
+
+{/* https://lucid.app/lucidchart/c26ab5f9-b2e2-4ed5-82d4-2af02fec2edc/edit */}
+![A ledger where Alice submits a transaction where Bob exercises the transfer choice on his asset](/images/docs_website/asset-steal.svg)
+
+### Propose-accept workflow 생략
+
+다음으로 Bob은 `SimpleDvP` contract 생성을 위한 propose-accept workflow를 생략하고 아무 근거 없이 contract를 생성한 뒤 즉시 settlement하려 합니다.
+Alice가 자신의 EUR asset을 Bob의 USD asset과 교환하는 데 동의하지 않았으므로 authorization failure로 처리해야 합니다.
+
+```haskell
+let eurAsset = SimpleAsset with
+      issuer = bank1
+      owner = alice
+      asset = "1 EUR"
+eur <- submit bank1 do createCmd eurAsset
+
+let usdAsset = SimpleAsset with
+      issuer = bank2
+      owner = bob
+      asset = "1 USD"
+usd <- submit bank2 do createCmd usdAsset
+
+let dvp = SimpleDvP with
+      party1 = alice
+      party2 = bob
+      asset1 = eur
+      asset2 = usd
+(newUsd, newEur) <- submit bob $ do
+   createAndExerciseCmd dvp $ Settle with actor = bob
+```
+
+Ledger에서 `TX 2`의 첫 root action은 적절히 authorize되지 않았습니다.
+Alice가 update를 요청하지 않았지만 첫 root action에서 생성된 contract #3의 signatory이기 때문입니다.
+
+{/* https://lucid.app/lucidchart/cd2cef11-6f69-4f9c-8e1e-d79488547de2/edit */}
+![A ledger with an authorization violation on the creation of the DvP contract](/images/docs_website/dvp-ledger-create-auth-failure.svg)
+
+### 다른 사람의 asset 할당
+
+마지막 예제는 authorization failure가 root action에서만 발생하는 것이 아님을 보여줍니다.
+여기서 Alice는 DvP proposal에 Carol의 CHF asset을 할당합니다.
+Bob이 DvP를 settlement하려 할 때 첫 leg에서 Carol의 asset을 transfer하는 Exercise는 적절히 authorize되지 않습니다.
+Carol이 자신의 asset을 이전하는 데 동의하지 않았기 때문입니다.
+
+```haskell
+let chfAsset = SimpleAsset with
+      issuer = bank1
+      owner = carol
+      asset = "1 CHF"
+chf <- submit bank1 do createCmd chfAsset
+disclosedChf <- fromSome <$> queryDisclosure carol chf
+
+let usdAsset = SimpleAsset with
+      issuer = bank2
+      owner = bob
+      asset = "1 USD"
+usd <- submit bank2 do createCmd usdAsset
+
+proposeDvP <- submit alice $ do
+  createCmd ProposeSimpleDvP with
+     proposer = alice
+     counterparty = bob
+     allocated = chf
+     expected = usdAsset
+
+(newUsd, newEur) <- submit (actAs bob <> disclose disclosedChf) $ do
+    exerciseCmd proposeDvP $ AcceptAndSettle with toBeAllocated = usd
+```
+
+이 script가 생성한 ledger에서 contract #1의 Exercise node는 authorization failure를 가집니다.
+Transaction structure에는 actor Carol이 자신의 asset에서 `Transfer` choice를 exercise하는 데 동의했다는 evidence가 없습니다.
+
+{/* https://lucid.app/lucidchart/50e2ad7a-ef88-4fb8-bf62-44027034a3dd/edit */}
+![A ledger with an authorization failure where Alice allocates Carol's asset to her DvP with Bob](/images/docs_website/dvp-ledger-nested-auth-error.svg)
+
+## Projection과의 interaction
+
+이 페이지는 validity 개념을 소개하는 것 외에도 validity가 [projection](#projection)으로 정의된 privacy와 어떻게 상호 작용하는지 설명합니다.
+이를 위해 각 validity condition 절에서는 다음 두 property가 성립하기 위한 prerequisite를 분석합니다.
+
+- **Preservation**: Ledger가 condition을 준수하면 projection도 이를 준수합니다.
+  이 property는 개별 party가 Ledger의 모든 action을 볼 수 없다는 이유만으로 valid Ledger가 invalid하게 보이지 않도록 보장합니다.
+
+- **Reflection**: Projection이 condition을 준수하면 projection을 얻은 원래 Ledger도 이를 준수합니다.
+  이 property는 누구도 Ledger 전체를 보지 못하는 distributed Canton protocol에서 condition을 구현할 수 있도록 보장합니다.
+
+## Consistency
+
+Consistency는 한 문장으로 요약할 수 있습니다.
+Contract는 사용 전에 생성되어야 하며 consume된 후에는 사용할 수 없습니다.
+이 절에서는 이를 정확히 표현하는 데 필요한 개념을 소개합니다.
+
+- [Execution order](#execution-order)는 "before"와 "after" 개념을 정의합니다.
+
+- [Internal consistency](#internal-consistency)는 contract의 모든 operation이 생성, 사용, archival의 예상 순서로 발생하도록 보장하지만 모든 contract가 생성될 것을 요구하지는 않습니다. 단지 input으로 참조될 수도 있습니다.
+
+- [(Contract) Consistency](#definition-1)는 사용되는 모든 contract가 생성되어 있어야 한다는 조건으로 internal consistency를 강화합니다.
+
+## Execution order
+
+"Before"와 "after"의 의미는 ledger의 [node](#definition)에 execution order를 설정하여 정의합니다.
+Ledger의 graph structure는 이미 ledger commit에 [happens-before order](#ledger)를 정의합니다.
+Execution order는 이 happens-before order를 commit transaction 안의 모든 node로 확장하여 단일 transaction의 node에도 "before"와 "after"를 정의합니다.
+Contract는 transaction 안에서 생성되고 여러 번 사용될 수 있으므로 이 정의가 필요합니다.
+예를 들어 DvP example의 `AcceptAndSettle` [action](#subactions)에서 contract #3은 두 번 사용되고, root의 non-consuming exercise에서 한 번, 첫 consequence에서 consuming 방식으로 한 번 사용됩니다. Contract #4는 같은 action에서 생성되고 consume됩니다.
+
+**Definition: execution order**
+
+같은 action 또는 transaction 안의 서로 다른 두 node n₁과 n₂에 대해, transaction이 ordered forest라는 점을 전제로 (trans)action의 [preorder traversal](https://en.wikipedia.org/wiki/Tree_traversal#Pre-order,_NLR)에서 n₁이 n₂보다 먼저 나타나면 n₁이 n₂보다 **executes before**한다고 합니다.
+Ledger에서는 commit c₁이 c₂보다 happens before하면 c₁의 모든 node가 c₂의 모든 node보다 **executes before**합니다.
+
+Diagram에서 execution order는 root에서 leaf로, 왼쪽에서 오른쪽으로 tree를 traverse하여 정합니다.
+Parent action의 node는 subaction의 node보다 먼저 실행되고, 그 외에는 왼쪽 node가 오른쪽 node보다 먼저 실행됩니다.
+다음 diagram은 running DvP example의 execution order를 굵은 초록색 arrow로 보여줍니다.
+Node n₁에서 n₂로 가는 비어 있지 않은 초록색 arrow path가 있는 경우에만 n₁이 n₂보다 먼저 실행됩니다.
+명확성을 위해 parent-child arrow는 회색으로 표시합니다.
+
+{/* https://lucid.app/lucidchart/e3e9a609-b5bd-4faf-beb8-cd1166b160f1/edit */}
+![The execution order of the DvP ledger](/images/docs_website/dvp-ledger-execution-order.svg)
+
+Execution order는 항상 strict partial order입니다.
+즉 어떤 node도 자기 자신보다 먼저 실행되지 않으며, 이를 irreflexivity라고 합니다. Node n₁이 n₂보다 먼저 실행되고 n₂가 n₃보다 먼저 실행되면 n₁도 n₃보다 먼저 실행되며, 이를 transitivity라고 합니다.
+이 property는 ledger가 commit의 directed acyclic graph라는 점에서 도출됩니다.
+
+Execution order는 action의 root node 순서를 기준으로 ledger의 action에 자연스럽게 확장됩니다.
+따라서 action은 항상 자신의 subaction보다 먼저 실행됩니다.
+
+## Internal consistency
+
+Internal consistency는 action, transaction 또는 ledger 안에서 여러 node가 한 contract에 action을 수행할 때 해당 node가 생성, 사용, archival의 적절한 순서로 실행되도록 보장합니다.
+Internal contract consistency는 사용되는 모든 contract에 Create node가 있을 것을 요구하지 않습니다.
+따라서 외부에서 생성된 contract를 input으로 사용할 수 있는 개별 transaction이나 action 같은 ledger 일부에도 internal contract consistency를 적용할 수 있습니다.
+
+**Definition: internal consistency**
+
+Action, transaction 또는 ledger에서 `c`에 대한 서로 다른 임의의 두 node n₁과 n₂가 다음을 모두 충족하면 해당 action, transaction 또는 ledger는 contract `c`에 대해 **internally consistent**합니다.
+
+- n₁이 **Create** node이면 n₁은 n₂보다 먼저 실행됩니다.
+
+- n₂가 consuming **Exercise** node이면 n₁은 n₂보다 먼저 실행됩니다.
+
+Action, transaction 또는 ledger가 집합의 각 contract에 대해 internally consistent하면 해당 **contract 집합에 대해 internally consistent**합니다.
+모든 contract에 대해 internally consistent하면 **internally consistent**합니다.
+
+예를 들어 위 [execution order example](#internal-consistency)의 전체 ledger는 internally consistent합니다.
+
+<Tip>
+이를 확인하려면 같은 contract에 action을 수행하는 node pair를 검사해야 합니다.
+이 hint는 transaction `TX 3`에 대해 이 반복적인 분석을 수행합니다.
+Ledger의 다른 transaction도 같은 방식으로 분석할 수 있습니다.
+처음 읽을 때는 이 분석을 건너뛰어도 됩니다.
+Transaction의 node에는 contract #1부터 #6까지 여섯 개가 관련됩니다.
+
+- Contract #1, #5, #6은 각각 node ⑨, ⑩, ⑫ 하나에만 나타납니다.
+  따라서 `TX 3`은 이 contract들에 대해 자명하게 consistent합니다.
+
+- Contract #2는 Fetch node ⑥과 Exercise node ⑪에 나타납니다.
+  첫 condition은 적용되지 않고 ⑪이 consuming이며 ⑥이 ⑪보다 먼저 실행되어 두 번째 condition이 충족되므로 #2에 대해 internal consistency가 성립합니다.
+
+- Contract #3은 두 Exercise node ④와 ⑤에 나타납니다.
+  Consuming ⑤가 non-consuming ④ 이후에 실행되므로 #3에 대해서도 internal consistency가 성립합니다.
+
+- Contract #4는 ⑦에서 생성되고 ⑧에서 consume됩니다.
+  두 condition 모두 ⑦이 ⑧보다 먼저 실행될 것을 요구하며 여기서는 실제로 그렇습니다.
+</Tip>
+반면 다음 diagram은 [consistency violation example](#consistency-violation-example)의 ledger가 contract #1에 대해 internally consistent하지 않음을 보여줍니다.
+이 contract는 node ①, ②, ④에 나타납니다.
+n₁ = ④, n₂ = ②일 때 ④가 ②보다 먼저 실행되지 않으므로 두 번째 condition을 위반합니다.
+n₁ = ②, n₂ = ④일 때는 두 번째 condition이 충족되지만 정의는 pair (②, ④)와 (④, ②)를 모두 대상으로 한다는 점에 유의하세요.
+Create node ①이 다른 두 node ②와 ④보다 먼저 실행되므로 첫 condition은 충족됩니다.
+
+{/* https://lucid.app/lucidchart/8c9a03ef-6ab0-4105-811a-161e5587cf1c/edit */}
+![The execution order of the ledger where Alice double-spends her asset](/images/docs_website/asset-double-spend-execution-order.svg)
+
+<Note>
+Internal consistency는 execution order를 통해 Ledger commit의 순서를 제한합니다.
+Running DvP example에서 `TX 0`, `TX 1`, `TX 2`는 모두 `TX 3`이 사용하는 contract를 생성합니다.
+따라서 internal consistency는 이 create node들이 `TX 3`의 usage node보다 먼저 실행될 것을 요구합니다.
+Execution order의 정의에 따라 `TX 0`, `TX 1`, `TX 2`는 모두 `TX 3`보다 먼저 발생해야 합니다.
+다만 internal consistency는 `TX 0`, `TX 1`, `TX 2` 사이에 특정 순서를 부과하지 않습니다.
+</Note>
+## Definition
+
+Consistency는 사용되는 contract가 action, transaction 또는 ledger 안에서 실제로 생성되었어야 한다는 조건으로 internal consistency를 강화합니다.
+
+**Definition: consistency**
+
+Action, transaction 또는 ledger는 다음을 모두 충족하면 **contract에 대해 consistent**합니다.
+
+- 해당 contract에 대해 internally consistent합니다.
+
+- Node가 contract를 사용한다면 해당 contract를 생성하는 node도 있습니다.
+
+집합의 모든 contract에 대해 consistent하면 **contract 집합에 대해 consistent**합니다.
+모든 contract에 대해 consistent하면 **consistent**합니다.
+
+예를 들어 [DvP ledger](#ledger)는 internally consistent하고 사용되는 모든 contract가 생성되므로 consistent합니다.
+반면 DvP ledger가 첫 commit `TX 0`을 생략하여 `TX 1`부터 `TX 3`만 포함한다면 여전히 internally consistent하지만 consistent하지는 않습니다.
+`TX 3`이 contract #1을 사용하지만 `TX 1`부터 `TX 3`에는 #1의 create node가 없기 때문입니다.
+
+## Consistency and projection
+
+이 절에서는 projection이 internal consistency와 consistency를 preserve하고 reflect하는 condition을 살펴봅니다.
+
+### Projection은 stakeholder의 consistency를 preserve
+
+Preservation 관점에서 projection은 execution order를 유지하고 internal consistency를 preserve합니다.
+하지만 consistency 자체는 일반적으로 contract stakeholder에 대해서만 preserve됩니다.
+예를 들어 Alice의 [DvP workflow projection](#divulgence-when-non-stakeholders-see-contracts)은 `TX 1`과 그에 따른 `TX 3`에서 사용하는 contract #2 생성을 포함하지 않으므로 consistent하지 않습니다.
+
+다행히 party가 stakeholder인 contract만 보면 consistency는 projection에서도 잘 유지됩니다.
+구체적으로 action, transaction 또는 ledger가 contract 집합 `C`에 대해 internally consistent 또는 consistent하고, `C`의 모든 contract가 party 집합 `P`에 최소 한 명의 stakeholder를 가진다면 `P`에 대한 projection도 `C`에 대해 internally consistent 또는 consistent합니다.
+
+이를 이해하려면 action 또는 transaction을 `P`에 projection한 execution order가 projection되지 않은 원래 action 또는 transaction의 execution order를 projection 범위로 제한한 것임에 주목해야 합니다.
+즉 projection의 두 node n₁과 n₂에 대해 원래 (trans)action에서 n₁이 n₂보다 먼저 실행되는 경우에만 projection에서도 n₁이 n₂보다 먼저 실행됩니다.
+따라서 projection은 action 또는 transaction의 internal consistency도 preserve합니다.
+또한 stakeholder 중 하나가 `P`에 있으면 `P`에 대한 projection은 Create node를 제거하지 않습니다.
+그러므로 consistency도 preserve됩니다.
+현재처럼 totally ordered ledger로 단순화한 경우 ledger에도 같은 논리가 적용됩니다.
+[Causality section](/overview/reference/ledger-causality)은 ordering 요구 사항을 완화하면서도 projection이 party의 contract에 대한 internal consistency와 consistency를 계속 preserve하도록 보장합니다.
+
+### Signatory가 projection에서 consistency 검사
+
+Canton 관점에서는 reflection property도 똑같이 중요합니다.
+(Trans)action 또는 ledger를 party 집합 `P`에 projection한 결과가 contract 집합 `C`에 대해 internally consistent 또는 consistent하고, 각 contract가 `P`에 최소 한 명의 signatory를 가진다면 원래 (trans)action 또는 ledger도 마찬가지입니다.
+이는 비슷한 논리로 증명할 수 있습니다.
+
+중요한 점은 reflection이 단순 stakeholder가 아니라 `P`에 있는 contract의 *signatory*를 요구한다는 것입니다.
+다음 예제는 `P`에 stakeholder는 있지만 signatory가 없을 때 이 property가 성립하지 않음을 보여줍니다.
+이를 위해 issuer와 owner가 choice observer `viewer`에게 asset을 보여줄 수 있도록 `SimpleAsset` template에 non-consuming `Present` choice를 추가합니다.
+
+```haskell
+nonconsuming choice Present : SimpleAsset
+  with
+    actor : Party
+    viewer : Party
+  observer viewer
+  controller actor
+  do
+    assert $ actor == issuer || actor == owner
+    pure this
+```
+
+다음 script에서 Alice는 자신의 EUR asset을 Bob에게 transfer하고, 이후 Bank가 Alice의 EUR asset을 Vivian에게 보여주려 합니다.
+Alice가 transfer를 제출하는 동시에 Bank가 `Present` command를 제출하고 Synchronizer가 Alice의 제출을 먼저 ordering하면 이러한 workflow가 자연스럽게 발생할 수 있습니다.
+
+```haskell
+let eurAsset = SimpleAsset with
+      issuer = bank
+      owner = alice
+      asset = "1 EUR"
+aliceEur <- submit bank $ do createCmd eurAsset
+
+bobEur <- submit alice $ do
+  exerciseCmd aliceEur $ Transfer with
+      newOwner = bob
+
+submit bank $ do
+  exerciseCmd aliceEur $ Present with
+      actor = bank
+      viewer = vivian
+```
+
+다음 diagram은 해당 ledger와 Alice의 projection을 보여줍니다.
+Alice는 EUR asset #1의 signatory가 아니므로 ④의 informee가 아니며, 따라서 projection에는 non-consuming Exercise ④가 포함되지 않습니다.
+그러므로 Alice의 projection은 contract #1에 대해 consistent합니다.
+반면 원래 ledger는 #1에 대한 internal consistency의 두 번째 condition을 위반합니다.
+n₂가 ②이고 n₁이 ④일 때 consuming exercise ②가 ④ 이후에 실행되지 않습니다.
+
+{/* https://lucid.app/lucidchart/d9be439e-ae1b-4226-af8d-76a43222fed0/edit */}
+![An inconsistent ledger where Alice's projection is consistent](/images/docs_website/asset-projection-reflect-consistency.svg)
+
+Stakeholder 대신 signatory를 사용하면 이 문제가 발생하지 않습니다.
+Signatory는 contract의 모든 node에 대한 informee이므로 contract consistency와 관련된 모든 node가 signatory의 projection에 존재합니다.
+
+## Conformance
+
+*Conformance* condition은 ledger에서 발생할 수 있는 action을 제한합니다.
+이 절의 정의는 가능한 모든 action의 집합을 지정하는 **contract model**, 줄여서 **model**이 주어졌다고 가정합니다.
+실제로 Daml template은 다음과 같이 model을 정의합니다.
+
+- Choice는 controller와 choice observer를 선언하고 body를 통해 exercise된 contract와 choice argument의 valid value를 제한합니다.
+  Body는 contract 생성, fetch, exercise를 통해 subaction과 Exercise result를 정의합니다.
+
+- Template의 `ensure` clause는 Create node의 valid argument를 제한합니다.
+
+[Smart-contract upgrading](/appdev/deep-dives/smart-contract-upgrade)을 사용하면 특정 contract에 적용되는 template이 시간에 따라 바뀔 수 있습니다.
+단순화를 위해 Ledger Model은 어떤 template이 특정 contract의 가능한 action 집합을 정의하는지 모든 관련 party에게 항상 명확하다고 가정합니다.
+
+**Definition: conformance**
+
+Model이 action을 포함하면 해당 action은 model을 **conform**합니다.
+Transaction의 모든 action이 model을 conform하면 transaction도 model을 **conform**합니다.
+Ledger의 모든 top-level transaction이 model을 conform하면 ledger도 model을 **conform**합니다.
+
+위 [conformance violation example](#consistency-violation-example)은 이 정의가 적용되는 모습을 보여줍니다.
+`SimpleDvP.Settle`의 [choice implementation](#running-workflow-example)은 두 contract에서 `Transfer`를 exercise하므로 subaction 두 개가 필요합니다.
+하지만 ledger의 action은 두 subaction 중 하나만 가지므로 conformance를 위반합니다.
+이 예제는 contract model이 node가 아니라 action을 지정하는 이유를 보여줍니다.
+Node는 tree structure를 무시하므로 허용 가능한 node 집합만으로는 action에서 consequence가 누락된 경우를 찾을 수 없습니다.
+
+## Conformance and projection
+
+Consistency와 마찬가지로 Daml model에 대한 conformance는 projection에서도 잘 유지됩니다.
+Action, transaction 또는 ledger가 Daml model을 conform하면 모든 projection도 같은 Daml model을 conform합니다.
+
+실제로 Daml model에는 Daml-conformant action의 모든 subaction도 스스로 conform한다는 더 강한 property가 있습니다.
+이는 본질적으로 다음 두 관찰에서 도출됩니다.
+
+- Choice의 controller는 미리 정의된 workflow를 거치지 않고 모든 contract에서 choice를 공동 exercise할 수 있으며, contract의 signatory는 contract를 공동 생성할 수 있습니다.
+  따라서 contract creation과 choice는 본질적으로 public합니다.
+
+- Daml language는 referentially transparent합니다.
+  즉 transaction의 모든 input과 output이 contract, choice argument, exercise result에 명시적으로 capture됩니다.
+
+다만 이러한 모든 projection을 Ledger API command 집합으로 표현할 수 있는 것은 아닙니다.
+향후 Ledger API version이 이러한 제한을 제거할 수 있으므로 Ledger Model은 이 표현력 부족을 인위적인 것으로 봅니다.
+Ledger API command가 여기 정의된 ledger model보다 표현력이 낮은 경우는 두 종류입니다.
+첫째, Bank 2에 대한 [DvP projection](#ledger-projection)의 `AcceptAndSettle` choice처럼 projection의 root에 Fetch node가 포함될 수 있습니다.
+하지만 Ledger API에는 contract 생성과 exercise command만 있고 contract fetch command는 없습니다.
+둘째, Ledger API command language는 Exercise result를 이후 command의 argument로 전달하는 것을 지원하지 않습니다.
+예를 들어 `ProposeSimpleDvP`의 `AcceptAndSettle` choice가 아래처럼 helper template `AcceptAndSettleDvP`에 구현되었다고 가정합니다.
+
+```haskell
+template AcceptAndSettleDvP with
+    counterparty : Party
+  where
+    signatory counterparty
+
+    choice Execute : (ContractId SimpleAsset, ContractId SimpleAsset)
+      with
+        proposal : ContractId ProposeSimpleDvP
+        toBeAllocated: ContractId SimpleAsset
+      controller counterparty
+      do
+        dvp <- exercise proposal $ Accept with ..
+        exercise dvp $ Settle with actor = counterparty
+```
+
+그러면 Bob은 helper contract를 생성한 뒤 즉시 `Execute` choice를 exercise하여 단일 transaction에서 DvP acceptance와 settlement를 실행할 수 있습니다.
+
+```haskell
+(newUsd, newEur) <- submit (actAs bob <> disclose disclosedEur) $ do
+    createAndExerciseCmd (AcceptAndSettleDvP with counterparty = bob) $
+      Execute with
+        proposal = proposeDvP
+        toBeAllocated = usd
+```
+
+Running example과 다른 점은 Bob이 이 helper contract의 유일한 stakeholder라는 것입니다.
+따라서 Alice의 `TX 3` projection은 두 root action으로 구성되며, 두 번째 action은 첫 번째 action의 consequence에서 생성된 contract의 choice를 exercise합니다.
+
+{/* https://lucid.app/lucidchart/34c6c342-981d-474b-b05b-ad49e07aa50a/edit */}
+![Bob's transaction accepting and settling the DvP via the helper contract and Alice's projection thereof](/images/docs_website/dvp-accept-and-settle-helper-projection.svg)
+
+현재 이러한 transaction을 Ledger API command language로 표현할 수는 없지만 Ledger Model에서는 conformant Daml transaction으로 간주합니다.
+즉 conformance는 action 사이에서 value가 어떻게 흐르는지 검사하지 않으며, 이 때문에 projection에서도 conformance가 잘 유지됩니다.
+
+<Warning>
+**중요:** Daml model은 action 내부의 information flow만 제한할 수 있습니다.
+Action 사이에서 원하는 flow를 보장하는 것은 submitter의 판단에 달려 있습니다.
+Ledger는 이를 validate하지 않습니다.
+</Warning>
+Action 또는 transaction의 conformance는 관심 대상인 Daml model에만 의존하며 package ID로 명확히 참조됩니다.
+따라서 witness, informee, third party는 action의 conformance를 독립적으로 검사할 수 있습니다.
+그러므로 conformance는 common knowledge입니다.
+구조상 non-conformant action은 Ledger에서 발생할 수 없으므로 distributed implementation에서는 reflection property가 중요하지 않습니다.
+
+## Authorization
+
+마지막 validity condition은 의도된 party만 change를 요청할 수 있도록 보장하여 [authorization violation examples](#authorization-violation-examples)를 배제합니다.
+Authorization requirement는 Daml에서 contract의 signatory/observer와 choice의 controller를 사용해 표현합니다.
+
+이 절에서는 이를 형식화하기 위한 개념을 소개합니다.
+
+- [Required authorizers](#required-authorizers)는 action에 동의했어야 하는 party 집합을 정의합니다.
+
+- [Authorization context](#authorization-context)는 실제로 action을 authorize한 party를 capture합니다.
+
+- [Well-authorization](#well-authorization)은 authorization context가 모든 required authorizer를 포함하도록 요구합니다.
+
+[Bob이 propose-accept workflow를 생략하는](#skip-the-propose-accept-workflow) running example을 사용해 node ③이 authorization context가 제공하는 것보다 더 많은 authorizer를 요구하므로 well-authorized하지 않음을 보여줍니다.
+참고하기 쉽도록 ledger diagram을 아래에 다시 표시합니다.
+
+{/* https://lucid.app/lucidchart/cd2cef11-6f69-4f9c-8e1e-d79488547de2/edit */}
+![A ledger with an authorization violation on the creation of the DvP contract](/images/docs_website/dvp-ledger-create-auth-failure.svg)
+
+## Required authorizers
+
+모든 node는 해당 node의 action에 동의했어야 하는 비어 있지 않은 party 집합을 정의합니다.
+이 집합을 node의 **required authorizers**라고 하며 다음과 같이 정의합니다.
+Create node의 required authorizer는 contract signatory이고 Exercise/Fetch node의 required authorizer는 node actor입니다.
+
+[Bob이 propose-accept workflow를 생략하는 예제](#skip-the-propose-accept-workflow)에서 다음 table은 각 party가 required authorizer인 node를 나열합니다.
+예를 들어 Alice와 Bob은 contract #3의 signatory이므로 node ③의 required authorizer입니다.
+
+**Required authorizers in the [example where Bob tries to skip the propose-accept workflow](#skip-the-propose-accept-workflow)**
+
+| Node | Bank1 | Bank2 | Alice | Bob |
+| --- | --- | --- | --- | --- |
+| ① | signatory |   |   |   |
+| ② |   | signatory |   |   |
+| ③ |   |   | signatory | signatory |
+| ④ |   |   |   | actor |
+| ⑤ |   |   | actor |   |
+| ⑥ | signatory |   |   |   |
+| ⑦ |   |   |   | actor |
+| ⑧ |   | signatory |   |   |
+
+## Authorization context
+
+Canton ledger에서 party는 commit의 subaction을 두 방식으로 **authorize**할 수 있습니다.
+
+- Commit requester는 commit의 모든 top-level action을 authorize합니다.
+
+- Exercise action에서는 input contract signatory와 action actor가 action의 모든 consequence를 공동 authorize합니다.
+
+특정 action을 authorize하는 party 집합을 **authorization context**라고 합니다.
+Required authorizer 예제를 이어서 다음 table은 각 node의 authorization context를 보여줍니다.
+예를 들어 Bob이 commit의 유일한 requester이므로 node ③과 ④의 authorization context는 Bob으로 구성됩니다.
+Node ⑥의 authorization context에는 두 party가 있습니다.
+
+- Bank1은 parent node ⑤의 input contract signatory이기 때문에 포함됩니다.
+- Alice는 parent node ⑤의 actor이기 때문에 포함됩니다.
+
+마찬가지로 node ⑤와 ⑦의 authorization context에는 Alice와 Bob이 모두 포함됩니다. Alice는 parent node ④의 input contract #3 signatory이고, Bob은 #3의 signatory인 동시에 ④의 actor입니다.
+
+**Authorization contexts in the [example where Bob tries to skip the propose-accept workflow](#skip-the-propose-accept-workflow)**
+
+| Node | Bank1 | Bank2 | Alice | Bob |
+| --- | --- | --- | --- | --- |
+| ① | requester of `TX 0` |   |   |   |
+| ② |   | requester of `TX 1` |   |   |
+| ③ |   |   |   | requester of `TX 2` |
+| ④ |   |   |   | requester of `TX 2` |
+| ⑤ |   |   | signatory on #3 | signatory on #3 + actor of ④ |
+| ⑥ | signatory on #1 |   | actor of ⑤ |   |
+| ⑦ |   |   | signatory on #3 | signatory on #3 + actor of ④ |
+| ⑧ |   | signatory on #2 |   | actor of ⑦ |
+
+<Warning>
+**중요:** Authorization context는 Ledger에서 action이 발생하는 *context*, 즉 parent action 또는 commit을 요약합니다.
+Action 자체만으로는 도출할 수 없습니다.
+</Warning>
+## Well-authorization
+
+Well-authorization은 authorizing party와 required authorizer가 서로 부합하도록 보장합니다.
+
+**Definition: Well-authorization**
+
+모든 proper subaction에 대해 authorization context가 subaction의 모든 required authorizer를 포함하면 action은 **internally well-authorized**합니다.
+
+Action이 internally well-authorized하고 action의 authorization context가 action의 모든 required authorizer를 포함하면 **well-authorized**합니다.
+
+모든 root action이 well-authorized하면 commit도 **well-authorized**합니다.
+
+Running example에서 well-authorization은 [required authorizers table](#authorization-context)의 비어 있지 않은 모든 cell이 [authorization context table](#well-authorization)에서도 비어 있지 않을 것을 요구합니다.
+예를 들어 commit `TX 0`은 subaction ① 하나만 포함하고 required authorizer Bank1이 commit requester이기도 하므로 well-authorized합니다.
+반대로 commit `TX 2`는 ③의 required authorizer에 ③의 authorization context에 없는 Alice가 포함되므로 well-authorized하지 않습니다.
+이 authorization failure는 commit `TX 2`의 문제를 정확히 나타냅니다. Ledger에는 Alice가 DvP에 동의했다는 기록이 없습니다.
+
+반면 ④의 Exercise action은 well-authorized합니다.
+이는 authorization이 contract signatory에서 choice consequence로 흐르는 방식을 보여줍니다.
+Signatory Alice와 Bob이 `SimpleDvP` contract #3에 참여했다고 가정하면 authorization rule은 asset 중 하나인 #1을 Bob이 소유하지 않았더라도 `Settle` choice의 유일한 controller인 Bob이 두 asset을 교환하도록 허용합니다.
+즉 Alice는 `SimpleDvp` contract #3을 통해 Bob에게 자신의 asset #1을 transfer할 권한을 **delegate**합니다.
+
+[올바른 workflow](#ledger)의 `SimpleDvP` contract를 위한 propose-accept workflow에서도 비슷한 authorization flow가 발생합니다.
+`TX 2`에서 Alice는 signatory로서 `ProposeSimpleDvP` contract #3을 제안합니다.
+Bob이 `Accept` choice로 proposal을 수락하면 Alice의 authority는 Alice와 Bob이 모두 signatory인 `SimpleDvP` contract #4 생성으로 흐릅니다.
+
+## Well-authorization with projection
+
+[잘못 할당된 asset 예제](#interaction-with-projection)는 well-authorization과 internal well-authorization의 차이를 보여줍니다.
+Node ⑨를 root로 하는 action은 authorization context에 required authorizer Bank1이 포함된 node ⑩의 proper subaction 하나만 가지므로 internally well-authorized합니다.
+하지만 ⑨의 required authorizer에는 Carol이 포함되는 반면 authorization context에는 node ⑧의 input contract #4 signatory인 Alice와 Bob만 있으므로 action 자체는 well-authorized하지 않습니다.
+
+하지만 ledger projection은 commit requester를 잊으므로 Bank1에 대한 projection에서는 authorization failure가 사라집니다.
+따라서 Bank1 관점에서는 asset transfer에 문제가 없어 보입니다.
+
+{/* https://lucid.app/lucidchart/a12ccf62-7acd-45be-896e-588286b517e1/edit */}
+![Bank1's projection of the DvP with Carol's asset](/images/docs_website/dvp-ledger-nested-auth-error-project-bank1.svg)
+
+이 예제는 action의 well-authorization을 action 자체만으로 판단할 수 없으며 projection은 projection root action의 context를 유지하지 않는다는 점을 다시 보여줍니다.
+
+반면 internal well-authorization은 context와 무관하게 독립된 action의 property입니다.
+예를 들어 ⑧과 ④를 root로 하는 action은 ⑨의 action을 sub-action으로 포함하고 ⑨의 authorization context를 정의하므로 internally well-authorized하지 않습니다.
+따라서 internal well-authorization은 common knowledge이고 conformance와 유사하게 projection과 상호 작용합니다.
+Projection은 internal well-authorization을 preserve하며, 구조상 internally well-authorized한 action만 Ledger의 일부가 될 수 있으므로 reflection은 중요하지 않습니다.
+
+반대로 well-authorization은 common knowledge가 아니며 projection에서 잘 유지되지 않습니다.
+따라서 아래 [validity definition](#validity)에서 이를 명시적으로 다룹니다.
+
+## Authorization vs. conformance
+
+Ledger에 의도된 change만 포함되도록 보장하려면 well-authorization과 conformance가 모두 필요합니다.
+이를 설명하기 위해 [잘못 할당된 asset 예제](#interaction-with-projection)에서 node ⑨가 Carol 대신 Alice를 actor로 지정하도록 변경합니다.
+그러면 action과 ledger 전체는 well-authorized합니다.
+하지만 `Transfer` choice가 `controller`를 asset #1의 `owner`, 즉 이 경우 Carol로 정의하므로 더 이상 Daml model을 conform하지 않습니다.
+
+이 conformance failure는 이전 절의 well-authorization failure와 달리 Bank 1의 projection에도 나타납니다.
+
+## Validity
+
+Consistency, conformance, well-authorization의 세 condition을 형식화했으므로 이제 validity를 형식적으로 정의할 수 있습니다.
+
+**Definition: Valid Ledger**
+
+Canton Ledger는 다음을 모두 충족하면 **party 집합 `P`에 대해 valid**합니다.
+
+- Ledger는 signatory에 `P`의 party 중 하나가 포함된 contract에 대해 consistent합니다.
+
+- Ledger는 Daml template을 conform합니다.
+
+- Ledger의 모든 root action은 internally well-authorized하고 `P`에 속한 required authorizer는 commit requester입니다.
+
+Ledger가 모든 party에 대해 valid하면 **valid**합니다.
+
+Party 집합 `P`에 대한 제한은 privacy에서 비롯됩니다.
+앞서 설명했듯 consistency와 well-authorization은 common knowledge가 아닙니다.
+따라서 Canton protocol은 관련 party가 이 condition을 검사하도록 합니다.
+그러므로 protocol은 protocol을 따르는 party에 대해서만 이 property를 보장합니다.
+
+## Virtual Global Ledger
+
+Canton protocol은 honest party에 대해 valid하고 각 party가 자신의 VGL projection을 보는 Virtual Global Ledger(VGL)를 생성합니다.
+여기서 honesty는 topology에 설정된 Byzantine fault tolerance 조건에 따라 party와 그들이 사용하는 node가 Canton protocol을 올바르게 따른다는 의미입니다.
+
+Privacy 때문에 이 Virtual Global Ledger는 어느 곳에도 materialize되지 않으며 일반적으로 ledger 전체를 아는 node는 없습니다.
+예를 들어 [DvP ledger](#ledger)에서 Bank, Alice, Bob이 서로 다른 system에 host되면 각 system에는 [Bank, Alice, Bob의 projection](#divulgence-when-non-stakeholders-see-contracts)만 materialize되고 누구도 projection되지 않은 Ledger 전체를 볼 수 없습니다.
+
+따라서 Canton protocol은 Virtual Global Ledger 전체의 validity를 보장할 수 없습니다.
+예를 들어 signatory 집단이 contract의 double spend를 commit하기로 결정한다면 이는 그들의 결정입니다.
+각 spend를 서로 다른 honest party가 witness할 수 있으므로 VGL에는 두 spend가 모두 포함되어 해당 contract에 대해 inconsistent하게 됩니다.
+
+## Interaction with projection
+
+Projection은 commit requester를 버리므로 validity의 preservation과 reflection을 형식화하기 어렵습니다.
+따라서 commit requester에 대한 constraint를 제외한 validity인 weak validity에 대해 이 두 property를 분석합니다.
+Projection은 다음 의미에서 weak validity를 preserve합니다.
+Ledger가 party 집합 `P`에 대해 weakly valid하면 party 집합 `Q`에 대한 projection은 `P`와 `Q` 모두에 속한 party에 대해 weakly valid합니다.
+Party를 `P`와 `Q`의 intersection으로 제한하면 [consistency section](#consistency-and-projection)에서 설명한 projection으로 제거된 contract creation 문제를 해결할 수 있습니다.
+
+Honest party 집합에 대한 projection만 보면 일반적으로 weak validity의 reflection은 성립하지 않습니다.
+예를 들어 어떤 honest party도 볼 수 없는 root action이 있는 Ledger를 생각해 봅니다.
+어떤 projection에도 이 root action이 없으므로 projection은 그 conformance나 internal well-authorization을 판단할 수 없습니다.
+하지만 우리가 관심을 갖는 대상은 일부 honest party에게 보이는 Ledger 부분뿐이므로 이는 필요하지 않습니다.
+
+더 형식적으로 두 Ledger를 `Q`에 projection한 결과가 같으면 두 Ledger는 party 집합 `Q`에 대해 **equivalent**하다고 합니다.
+그러면 equivalent한 weakly valid Ledger가 존재한다는 의미에서 reflection이 성립합니다.
+Party 집합 `Q`를 포함하는 union을 가진 party 집합들의 집합을 `F`라고 합니다.
+`F`의 모든 집합 `P`에 대해 Ledger `L`을 `P`에 projection한 결과가 `P`와 `Q`의 intersection에 대해 weakly valid하면, `L`을 `Q`에 projection한 결과는 weakly valid합니다.
+[Projection의 absorption property](#transaction-projection)에 따라 `L`의 이 `Q` projection은 `Q`에 대해 `L`과 equivalent합니다.
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.5/overview/explanations/ledger-model/ledger-privacy.rst" hash="c61c1127" */}
+
+# Privacy
+
+Ledger structure 절은 party interaction을 change로 기록하는 hierarchical format을 소개해 "Ledger는 어떤 모습인가?"라는 질문에 답했습니다. 이 절은 "누가 어떤 change와 data를 보는가?"라는 질문을 다루며 Canton Ledger의 privacy model을 설명합니다.
+
+Canton Ledger의 privacy model은 **need-to-know basis**를 기반으로 하며 **subtransaction level**에서 privacy를 제공합니다. 즉 party는 자신이 stake를 가진 contract에 영향을 주는 party interaction 부분과 그 interaction의 consequence만 알게 됩니다. Hierarchical structure는 자연스러운 sub-transaction privacy 개념을 만들기 때문에 핵심적입니다. Sub-transaction privacy를 정확히 정의하기 위해 *informee*와 *witness* 개념을 소개합니다.
+
+## Informee
+
+Party는 Daml template과 choice에서 여러 role을 가질 수 있으며 `signatory`, choice `controller`, contract/choice `observer`로 선언될 수 있습니다. Party가 contract의 signatory 또는 contract observer이면 해당 contract의 **stakeholder**입니다.
+
+- Contract와 choice `observer`는 이름 그대로 각각 contract change, 즉 생성 또는 archival과 choice exercise를 관찰해야 합니다.
+- `Signatory`는 contract에 구속되고 stake를 가지므로 contract가 생성되거나 사용될 때 이를 알아야 합니다.
+- Choice의 `controller`인 Exercise actor는 action에 stake를 가지므로 exercise를 볼 수 있어야 하지만 contract 자체에는 stake가 없을 수 있습니다.
+
+이러한 관찰을 바탕으로 action에 대해 통지받아야 하는 party 집합인 **informee**를 다음과 같이 정의합니다. Node의 informee는 다음 table에서 X로 표시된 집합의 union입니다.
+
+<div id="def-informee">
+
+| Action                     | Signatories | Contract observers | Actors | Choice observers |
+|----------------------------|-------------|--------------------|--------|------------------|
+| **Create**                 | X           | X                  |        |                  |
+| consuming **Exercise**     | X           | X                  | X      | X                |
+| non-consuming **Exercise** | X           |                    | X      | X                |
+| **Fetch**                  | X           |                    | X      |                  |
+
+Definition: Node의 **informees**는 X로 표시된 집합의 union입니다.
+
+</div>
+
+예를 들어 **Create** node의 informee는 생성된 contract의 stakeholder, 즉 signatory와 observer입니다. Consuming **Exercise** node의 informee는 consume된 contract의 stakeholder, action actor, choice observer입니다.
+
+설계상 contract observer는 actor 또는 choice observer로 명시되지 않는 한 non-consuming **Exercise**와 **Fetch** action을 통지받지 않습니다. 이러한 action은 contract 자체의 state를 변경하지 않기 때문입니다.
+
+<Note>
+Template은 `preconsuming`, `postconsuming` choice를 선언할 수 있습니다. Daml은 이러한 choice를 첫 번째 또는 마지막 consequence가 template의 `Archive` choice를 exercise하는 non-consuming choice로 compile합니다. 따라서 contract observer는 `Archive` subaction의 informee일 뿐 main `Exercise` action 자체의 informee는 아닙니다.
+</Note>
+
+Informee 개념을 설명하기 위해 Alice와 Bob이 asset을 교환하는 running example을 사용합니다. `AcceptAndSettle` action의 node별 informee는 다음 figure의 파란색 hexagon에 표시됩니다. 예를 들어 Alice는 input contract \#3의 signatory이므로 root node ①의 informee이고, Bob은 choice actor이므로 informee입니다. 마찬가지로 Bank 2는 input contract \#2의 signatory이고 Bob은 actor이므로 둘 다 Fetch node ③의 informee입니다. Contract observer가 non-consuming Exercise와 Fetch의 informee가 자동으로 되는 것은 아니므로 Bob이 actor가 아니었다면 informee도 아니었을 것입니다.
+
+<img src="/images/docs_website/dvp-acceptandsettle-informees.svg" className="align-center" style={{width: "100.0%"}} alt="The informees of the nodes in the ``AcceptAndSettle`` action." />
+
+Action의 informee는 root node의 informee입니다. Ledger structure 절에서 설명했듯 node는 child 없이 Ledger에 존재할 수 없고 전체 tree인 action만 존재할 수 있습니다. 따라서 action informee는 개별 node 일부의 informee가 아니더라도 action의 모든 node를 볼 권한이 있습니다. 다음 절에서는 이러한 차이를 witness 개념으로 형식화합니다.
+
+## Witness
+
+단일 node는 여러 action의 일부가 될 수 있습니다. 아래 diagram은 각 subaction의 테두리 없는 box 오른쪽 위에 informee를 표시하여 subaction diagram을 확장합니다. 여기서 Create node ③은 node ①, ②, ③을 root로 하는 세 subaction에 포함됩니다. 따라서 node 자체의 informee가 아니더라도 이 모든 action의 informee에게 Create node가 표시됩니다. 이러한 party를 witness라고 합니다. 형식적으로 주어진 transaction `tx`에서 `tx`의 node에 대한 **witnesses**는 해당 node를 포함하는 `tx`의 모든 subaction informee의 union입니다. 특히 node의 모든 informee는 witness이기도 합니다.
+
+Diagram은 subaction의 witness를 root action에 보라색으로 표시합니다. Node ③에서 Bob은 ①과 ③, Bank 1은 ②와 ③, Alice는 ①과 ②의 informee이므로 witness는 Alice, Bob, Bank 1입니다.
+
+<img src="/images/docs_website/dvp-settle-witness.svg" className="align-center" style={{width: "60.0%"}} alt="The informees of the subactions of the ``Settle`` choice and the witnesses of the nodes." />
+
+## Projection
+
+Informee는 자신에게 권한이 있는 change를 볼 수 있어야 하지만 그러한 change를 포함하는 transaction 전체를 볼 권한이 있다는 뜻은 아닙니다. Party 집단이 transaction에서 얻는 view를 정의하는 transaction *projection*으로 이를 정확히 표현합니다. 직관적으로 commit 안의 transaction에서 party 집단은 informee에 자신들 중 한 명 이상이 포함된 contract action으로 구성된 subtransaction만 봅니다. 같은 의미로 witness에 자신들 중 한 명 이상이 포함된 node만 봅니다. 따라서 subtransaction level의 privacy가 제공됩니다.
+
+이 절에서는 먼저 transaction projection을 정의한 뒤 ledger projection을 정의합니다.
+
+### Transaction projection
+
+다음 diagram은 위에서 informee를 표시한 `AcceptAndSettle` Exercise action을 유일한 root action으로 가진 transaction 예제입니다.
+
+<img src="/images/docs_website/dvp-acceptandsettle-projection.svg" className="align-center" style={{width: "100.0%"}} alt="image" />
+
+Alice와 Bob은 모두 root action, 즉 Bob이 Alice의 `ProposeSimpleDvP` contract에서 `AcceptAndSettle` choice를 exercise하는 action의 informee입니다. 따라서 Alice, Bob 또는 둘 모두에 대한 projection은 Exercise action 전체로 구성됩니다. Action은 root node 아래의 전체 subtree로 구성되므로 Alice와 Bob은 각각 자신이 witness인 모든 node를 봅니다. 예를 들어 Alice의 projection에는 Fetch subaction, Bob이 \#2에서 수행한 `Transfer` exercise, Bob의 `SimpleAsset` contract \#5 생성이 포함됩니다. 마찬가지로 Bob의 projection에는 Alice가 \#1에서 수행한 `Transfer` Exercise와 Alice의 `SimpleAsset` contract \#6 생성이 포함됩니다.
+
+반면 bank는 root action의 informee가 *아닙니다*. Bank 1은 \#1의 `Transfer` Exercise action과 그 subaction인 Bob의 새 asset \#5 생성에서만 informee로 나타납니다. 따라서 Bank 1에 대한 projection은 이 Exercise action 하나로 구성됩니다. Bank 2는 tree에서 서로 관련 없는 두 action인 Fetch action과 \#2의 `Transfer` Exercise action의 informee입니다. 그러므로 Bank 2에 대한 projection은 이 두 action을 root action으로 가진 transaction으로 구성됩니다. 이는 projection이 단일 root action을 subaction 목록으로 바꿀 수 있음을 보여줍니다.
+
+<Note>
+Bank projection의 privacy 의미에 주목하세요. 각 bank는 Alice에서 Bob으로 또는 그 반대로 `Transfer`가 발생했다는 사실은 알지만 transfer가 *왜* 발생했는지는 알지 못합니다. 특히 Bank 2는 contract \#2의 Fetch와 Exercise 사이에 어떤 일이 일어나는지 알지 못합니다. 실제로 Bank 1과 Bank 2는 Alice와 Bob이 asset을 무엇과 교환하는지 알지 못하므로 bank에 대해 Alice와 Bob의 privacy가 제공됩니다.
+</Note>
+
+아래의 Bank 1과 Bank 2 모두에 대한 projection은 여러 party의 projection이 각 party의 개별 projection을 합친 것보다 더 많은 information을 포함할 수 있음을 보여줍니다. 즉 Bank 1 projection과 Bank 2 projection만으로 Bank 1/Bank 2 공동 projection을 재구성할 수 없습니다. 여기서는 개별 projection만으로 세 root action의 순서를 고유하게 결정할 수 없기 때문입니다. 이러한 이유로 projection은 party 집합에 대해 정의합니다.
+
+<div id="def-tx-projection">
+
+<Note>
+
+**Definition: projection**
+
+Party 집합 `P`에 대한 transaction의 **projection**은 transaction의 각 root action `act`에 다음을 적용하여 얻은 subtransaction입니다.
+
+1.  `P`에 `act`의 informee가 한 명 이상 포함되면 consequence를 포함한 `act`를 그대로 유지합니다.
+2.  그렇지 않고 `act`에 consequence가 있으면 `act`를 consequence의 `P`에 대한 projection으로 대체합니다. 결과는 비어 있을 수 있습니다.
+3.  그 외에는 consequence를 포함한 `act`를 제거합니다.
+
+</Note>
+
+</div>
+
+이 정의는 node가 아니라 node subtree인 action에 적용됩니다. 따라서 party 집합 `P`에 대한 transaction projection은 `P`에 node witness가 한 명 이상 포함된 경우에만 해당 node를 포함합니다.
+
+Projection은 transaction이므로 projection을 다시 projection할 수 있습니다. Projection operation에는 다음 **absorption** property가 있습니다. 더 작은 party subset으로의 projection은 absorbing합니다. 즉 party 집합 `P`가 `Q`의 subset이면 transaction을 먼저 `Q`에 projection하고 다시 `P`에 projection한 결과는 바로 `P`에 projection한 결과와 같습니다. 직관적으로 party 집단은 그 subgroup이 개별적으로 아는 것 이상을 공동으로 알게 된다는 뜻입니다. Bank 1과 Bank 2 projection 예제처럼 그 역은 성립하지 않습니다.
+
+반대로 `P`가 `Q`의 subset이 아니면 transaction을 먼저 `Q`에 projection한 뒤 `P`에 projection한 결과는 `P` projection의 subtransaction에 불과합니다. 예를 들어 위 Bank 1 projection을 Bob에게 projection하면 결과 transaction은 contract \#5의 Create action만으로 구성됩니다. 이는 Bob projection의 proper subtransaction입니다.
+
+이 차이는 Bank 1이 Exercise node에 대해 Bob보다 적은 information을 얻는다는 점을 나타냅니다. 특히 Bank 1은 자신의 projection만으로 Bob이 Exercise node의 witness라는 사실을 추론할 수 없습니다. 이는 일반적인 pattern입니다. Action의 informee는 그 안의 node witness를 알지 못할 수 있습니다. Transaction의 숨겨진 부분에 누가 관련되는지 감추므로 privacy 관점에서 중요합니다.
+
+### Ledger projection
+
+마지막으로 party 집합 `P`에 대한 ledger `l`의 **projection**은 다음과 같이 얻는 update의 DAG입니다.
+
+- `l`의 각 update transaction을 `P`에 projection하되 update ID는 유지합니다.
+- 결과에서 빈 transaction을 가진 update를 제거합니다.
+
+Projection의 edge 정의는 causality 절로 미룹니다. 그 전까지는 ledger가 totally ordered이고 projection이 같은 ordering을 유지한다고 가정합니다.
+
+Ledger projection은 ledger가 아니라 update의 DAG라는 점이 중요합니다. Commit requester는 일반적으로 projection action의 witness이지만 informee는 아니므로 유지할 수 없습니다. Action informee는 모든 witness를 알아서는 안 됩니다. 예를 들어 Bank 1 projection에 Bob이 마지막 commit requester라고 표시되면 Bank 1은 Bob이 Alice가 contract \#1에서 `Transfer` choice를 exercise한 action의 witness임을 추론할 수 있습니다.
+
+전체 DvP example의 ledger를 projection하면 각 party에 대해 다음 결과가 나옵니다.
+
+<div id="da-dvp-ledger-projections">
+
+</div>
+
+<img src="/images/docs_website/dvp-ledger-projections.svg" id="da-ledgers-projections-example" className="align-center" style={{width: "100.0%"}} alt="Time sequences for each party&#39;s projection, explained in-depth in the numbered list below." />
+
+각 party의 projection을 차례로 살펴봅니다.
+
+1.  Alice는 모든 root action의 informee이므로 첫 번째, 세 번째, 네 번째 commit 전체를 봅니다. 반면 Bob의 1 USD `SimpleAsset` stakeholder가 아니므로 두 번째 commit은 전혀 보지 못하고 Alice의 projection에는 해당 transaction이 없습니다. 하지만 이 transaction의 output인 contract \#2는 Alice projection의 마지막 commit에서 사용됩니다. 따라서 contract \#2는 ledger 외부 왼쪽에 input으로 표시됩니다. 이 효과는 아래 retroactive divulgence에서 설명합니다.
+2.  Bob의 projection은 Alice와 유사합니다. 두 번째, 세 번째, 네 번째 commit 전체를 보지만 첫 commit은 보지 못하며 contract \#1만 input으로 봅니다.
+3.  Bank 1과 Bank 2는 자신이 `SimpleAsset`을 생성하는 commit과 그 asset의 `Transfer` Exercise만 봅니다. 또한 Bank 2는 위 transaction projection에서 설명했듯 마지막 commit의 `SimpleAsset` Fetch를 봅니다.
+
+Update ID를 통해 서로 다른 projection을 연관 지을 수 있습니다. 예를 들어 Bank 1과 Bank 2는 모두 update ID `TX 3`을 봅니다. 따라서 두 projection이 node 하나도 공유하지 않더라도 같은 atomic transaction에서 발생했음을 추론할 수 있습니다.
+
+<Note>
+Participant Node user는 updates tree stream을 통해 자신의 party에 대한 Ledger projection을 요청할 수 있습니다.
+</Note>
+
+## Divulgence: When non-stakeholders see contracts
+
+Canton ledger privacy model의 기본 원칙은 contract가 stakeholder에게만 보여야 한다는 것입니다. 하지만 ledger projection 때문에 다른 party에게도 contract가 보일 수 있습니다. Ledger projection을 통해 non-stakeholder에게 contract를 보여주는 것을 **divulgence**라고 합니다. Divulgence는 Canton Ledger의 의도적인 설계 선택이며 두 형태가 있습니다.
+
+- **Immediate divulgence**는 witness가 자신이 informee가 아닌 contract creation을 보는 것을 의미합니다. DvP ledger projection 예제에서 Bob은 Alice의 새 `SimpleAsset`, 즉 contract \#6 Create action의 witness이지만 informee는 아닙니다. 개념적으로 Bob이 `Transfer` choice를 exercise하는 순간 `Transfer` 결과, 즉 asset이 이제 Alice에게 속한다는 사실에 일시적인 stake를 갖습니다.
+
+  일반적으로 action consequence를 숨기는 것은 의미가 없습니다. Daml은 deterministic하므로 Bob은 자신이 informee인 action의 consequence를 어차피 계산할 수 있습니다.
+
+- **Retroactive divulgence**는 contract를 사용하는 node의 non-informee witness에게 input contract가 표시되는 것을 의미합니다. 예를 들어 Bob의 `SimpleAsset`, 즉 contract \#2에 대한 Fetch는 Alice에게 보이므로 \#2의 Create action이 Alice projection의 일부가 아니더라도 해당 projection은 이 contract를 input으로 참조합니다.
+
+  Retroactive divulgence를 통해 Alice는 자신의 projection에 있는 transaction을 validate할 수 있습니다. Ledger integrity는 `da-model-consistency`를 참고하세요. 즉 Alice는 Bob이 자신의 proposal에 명시한 조건에 맞는 `SimpleAsset`을 할당했는지 검사할 수 있습니다.
+
+  Input contract는 Create action과 같지 않으므로 retroactive divulgence가 Alice를 Bob의 `SimpleAsset`, 즉 contract \#2 Create action의 witness로 만들지는 않습니다. Diagram에서는 input contract를 점선 경계와 함께 왼쪽에 배치하여 이 차이를 나타냅니다.
+
+Ledger API update service에서 user는 party projection tree에 Create node가 포함되므로 immediately divulged contract를 볼 수 있습니다. 반면 현재 Ledger API는 retroactive divulgence의 contract ID를 user가 lookup하는 방법을 제공하지 않습니다.
+
+## Disclosure: When non-stakeholders use contracts
+
+이전 절의 divulgence는 party가 자신이 stakeholder가 아닌 contract를 알게 되는 것을 의미합니다. Disclosure는 그러한 party가 자신의 transaction에서 contract를 사용하는 것에 관한 개념입니다.
+
+Running example에서 Bob은 `Settle` choice exercise를 위해 disclosure와 함께 `submit`을 사용했습니다. 일반적으로 Bob과 그의 Participant Node는 Alice가 proposal에 할당한 `SimpleAsset` contract \#2를 모르기 때문입니다. Disclosure는 Alice가 off-ledger communication channel을 통해 Bob에게 이 contract를 알리는 것을 의미합니다. Daml script running example에서는 script 자체가 communication channel입니다. 실제 환경에서는 Alice가 Bob이 관련 data를 가져올 수 있는 API를 제공할 수 있습니다.
+
+Immediate divulgence가 이후 transaction의 disclosure를 수반하지 않는 것은 의도적인 설계입니다. 예를 들어 DvP settlement 후 Alice가 Bob과 두 asset을 다시 교환하기 위한 DvP proposal을 하나 더 생성합니다.
+
+<LedgerModelSimpleDvPREVERTPROPOSAL />
+
+Bob이 Alice의 `SimpleAsset` 생성 witness이더라도 Bob의 command submission에는 Alice의 `SimpleAsset` disclosure가 포함되어야 합니다. Disclosure 없는 일반 `submit`은 동작하지 않습니다.
+
+Immediate divulgence를 disclosure로 암묵적으로 사용하지 않는 이유는 그렇게 하면 workflow가 brittle해지기 때문입니다. Non-stakeholder는 contract 생성만 알 뿐 archival 같은 이후 action은 알지 못합니다. 따라서 non-stakeholder가 contract를 얼마나 오래 보관해야 하는지에 대한 일반 rule이 없습니다. 너무 오래 보관하면 storage를 낭비하고 너무 짧게 보관하면 일부 application이 중단될 수 있습니다. 이 rule은 divulged contract라도 application이 disclosure를 명시적으로 설계하고 application에 맞는 rule을 정하도록 합니다.
+
+Disclosure의 대안은 원래 `SimpleAsset` contract를 Bob이 contract observer가 되는 contract로 교체하는 것입니다. 이를 위해 Alice가 선택한 observer와 함께 새 `SimpleAsset`을 생성하는 `SimpleAsset`의 consuming exercise action으로 contract model을 확장해야 합니다. Ledger action 수가 증가하는 것 외에도 두 접근 방식은 contract를 통지받는 party에 대해 누가 알게 되는지에서 차이가 있습니다.
+
+- Alice가 off-ledger channel로 자신의 `SimpleAsset`을 Bob에게 disclose하면 Alice와 Bob만 disclosure를 알면 됩니다. Alice가 같은 contract를 Charlie에게 disclose할 때 Charlie는 Alice가 이미 Bob에게 contract를 보여줬다는 사실을 알 필요가 없고 Bob도 Alice가 Charlie에게 disclose한다는 사실을 알 필요가 없습니다.
+- 반면 Alice가 Bob을 contract observer로 추가한 뒤 Charlie를 observer로 추가하면 contract observer인 Bob은 archival과 creation을 통지받습니다. Charlie도 Bob이 contract observer라는 사실을 알게 됩니다. 즉 모든 stakeholder가 서로를 알게 됩니다. Alice가 Bob과 Charlie가 서로를 알기를 원하지 않는 경우 privacy 문제가 됩니다.
+
+또한 모든 observer가 다른 모든 observer를 알게 되므로 party를 observer로 추가하는 방식은 수가 많을 때 잘 scale하지 않습니다. `N` observer가 있는 Create event는 최소 `N` party의 projection에 나타납니다. 최소 크기 `N`인 action이 서로 다른 `N`개 projection에 나타나므로 모든 projection의 총 size는 이미 `N`에 대해 quadratic합니다. Observer를 하나씩 추가하면 `N`번의 archive와 creation이 필요하므로 모든 projection의 총 size는 `N`에 대해 cubic합니다.
+
+## Shape-revealing projection
+
+앞서 설명했듯 projection은 party 집합이 볼 수 있는 ledger 부분과 그에 따라 볼 수 없는 부분도 정의합니다.
+예를 들어 위 [Bank 2 transaction projection](#ledger-projection)은 contract #2의 Fetch와 Exercise 사이에 발생하는 일을 생략하므로 Bank 2가 이를 스스로 알아낼 방법이 없음을 의미합니다.
+
+실제로 이 강한 privacy 설명은 Bank 2가 자신의 Participant Node Ledger API를 통해서만 Ledger와 interaction한다고 가정합니다.
+반면 Bank 2가 Participant Node 사이의 communication pattern을 관찰하면 Bank 1도 해당 transaction에 관여했음을 추론할 수 있습니다.
+마찬가지로 Global Synchronizer에서 일부 가능한 것처럼 Bank 2가 communication의 on-wire data를 검사할 수 있다면 projection에 보이는 범위를 넘어 원래 transaction의 *shape*와 관련 party에 대한 일부 information을 추론할 수 있습니다.
+Synchronizer의 two-phase commit protocol에 이 shape information이 필요하기 때문입니다.
+
+<Warning>
+**중요:** Party가 synchronizer를 통해 교환되는 message를 검사하더라도 transaction 내용은 confidential하게 유지됩니다.
+Party가 재구성할 수 있는 최대 범위는 ledger transaction의 shape입니다.
+</Warning>
+
+이 절에서는 synchronizer를 통해 교환되는 message에서 leak될 수 있는 information을 overapproximate하는 shape를 정의합니다.
+여기서 overapproximation은 synchronization protocol optimization 등의 이유로 curious party가 ledger transaction shape를 완전히 재구성하지 못할 수도 있다는 뜻입니다.
+
+Synchronization protocol은 informee의 subset인 node의 required confirmer 개념을 사용합니다.
+따라서 required confirmer는 shape의 일부이며 다음과 같이 정의합니다.
+
+**Definition: required confirmers**
+
+Create node의 **required confirmers**는 signatory이고 Exercise/Fetch node에서는 signatory와 actor입니다.
+
+Node shape는 다음과 같이 정의합니다.
+
+**Definition: node shape**
+
+Node의 **shape**는 다음 information으로 구성됩니다.
+
+- Node의 informee
+
+- Node 내용과 input contract가 있는 경우 그 encoding size
+
+- Node의 **required confirmers**
+
+Shape-revealing projection은 위에서 정의한 projection에 생략된 node의 shape를 추가합니다.
+
+**Definition: shape-revealing projection**
+
+Party 집합 `P`에 대한 **transaction의 shape-revealing projection**은 transaction의 각 root action `act`에 다음을 적용하여 얻습니다.
+
+1. `P`에 `act`의 informee가 한 명 이상 포함되면 consequence를 포함한 `act`를 그대로 유지합니다.
+
+1. 그렇지 않으면 `act`의 node를 shape로 대체하고 `act` consequence의 shape-revealing projection을 node shape의 child로 둡니다.
+
+Party 집합 `P`에 대한 ledger `l`의 **shape-revealing projection**은 update ID와 requester를 유지하면서 각 commit의 transaction을 `P`에 대한 shape-revealing projection으로 대체하여 얻습니다.
+
+예를 들어 [위 DvP ledger](#divulgence-when-non-stakeholders-see-contracts)를 Bank 2에 shape-revealing projection하면 다음과 같습니다.
+Node shape는 안에 `?`가 있는 빈 box로 표시하고 informee와 밑줄 친 required confirmer를 함께 표시합니다.
+일반 projection과 달리 shape-revealing projection은 requester와 빈 projected transaction을 유지한다는 점이 중요합니다.
+반대로 node shape는 input과 output을 보여주지 않습니다.
+따라서 개별 transaction shape가 모든 party에게 보이더라도 전체 transaction graph의 structure는 private하게 유지됩니다.
+
+![Shape-revealing projection for Bank 2](/images/docs_website/dvp-ledger-projection-reveal-shape.svg)
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/overview/explanations/ledger-model/interoperability.rst" hash="a2bb1cc4" */}
+
+# Synchronizer-aware projection
+
+<Note>
+- Ledger 용어의 혼용을 분리합니다. VSL과 synchronizer에서 coordination되는 대상을 구분합니다.
+- Synchronizer-aware projection, 즉 assign/unassign event를 정의합니다.
+</Note>
+
+일부 Daml ledger는 다른 Daml ledger와 interoperate할 수 있습니다. 즉 한 ledger에서 생성된 contract를 다른 ledger의 transaction에서 사용하고 archive할 수 있습니다. 일부 Participant Node는 여러 ledger에 연결하고 Ledger API를 통해 party에 통합 access를 제공할 수 있습니다. 예를 들어 조직이 처음에 두 workflow를 두 Daml ledger에 각각 deploy한 뒤 나중에 두 ledger를 모두 포함하는 더 큰 workflow로 결합할 수 있습니다.
+
+Party가 여러 Participant Node에 host되면 interoperability로 인해 Participant Node가 party의 ledger projection, 즉 local ledger에서 볼 수 있는 범위가 제한될 수 있습니다. 이 제한은 party가 각 Participant Node의 Ledger API를 통해 관찰할 수 있는 대상에 영향을 줍니다. 특히 interoperability는 party가 관찰하는 event와 그 순서에 영향을 줍니다. 이 문서는 예제와 interoperable causality graph/projection의 형식적 정의를 통해 interoperability로 인한 visibility 제한과 Update Service에 미치는 영향을 설명합니다.
+
+이 설명은 다음 개념을 알고 있다고 가정합니다.
+
+- Ledger API
+- Daml Ledger Model
+- Local ledger와 causality graph
+
+<Note>
+Daml ledger interoperability는 현재 개발 중입니다. 이 문서는 interoperability vision, Ledger API service의 변경 가능성, 제공되는 guarantee의 개요를 설명합니다. Interoperability 구현이 진행됨에 따라 설명된 service와 guarantee는 예고 없이 변경될 수 있습니다.
+</Note>
+
+## Interoperability Examples
+
+### Topology
+
+Participant Node는 Daml ledger에 연결되고 party는 Ledger API를 통해 이 ledger의 projection에 access합니다. 다음 그림은 이러한 setup을 보여줍니다.
+
+<Frame caption="Example topology with two interoperable ledgers">
+  <img src="/images/docs_website/multiple-domains.svg" id="multiple-ledgers" className="align-center" alt="./../images/multiple-domains.svg" />
+</Frame>
+
+Diagram의 component는 다음과 같습니다.
+
+- Interoperable **Daml ledger** 집합에는 초록색 Ledger 1과 노란색 Ledger 2가 있습니다.
+- 각 **Participant Node**는 Daml ledger의 subset에 연결됩니다.
+  - Participant Node 1과 3은 Ledger 1과 2에 연결됩니다.
+  - Participant Node 2는 Ledger 1에만 연결됩니다.
+- Participant Node는 연결된 Daml ledger의 subset에서 party를 host합니다. Participant Node는 자신이 party를 host하는 Daml ledger에 대한 access를 해당 party에 제공합니다.
+  - Participant Node 1은 Ledger 1과 2에서 Alice를 host합니다.
+  - Participant Node 2는 Ledger 1에서 Alice를 host합니다.
+  - Participant Node 3은 Ledger 1과 2에서 painter를 host합니다.
+
+### Aggregation at the Participant
+
+Participant Node는 이 ledger들의 update를 조합해 party의 Update Service와 State Service를 통해 output합니다. Participant Node가 interoperable Daml ledger의 subset에서만 party를 host하면 해당 Participant Node의 Update/State Service도 그 ledger들에서만 도출됩니다.
+
+예를 들어 위 topology에서 transaction이 Ledger 2에 stakeholder Alice가 있는 contract를 생성하면 `P1`의 Alice transaction stream은 transaction을 emit하고 contract를 active로 report하지만 `P2`의 Alice stream은 그렇지 않습니다.
+
+### Enter and Leave Events
+
+Interoperability를 사용하면 transaction이 다른 ledger에 creation이 기록된 contract를 사용할 수 있습니다. 위 topology에서 한 transaction이 Ledger 1에 stakeholder Alice가 있는 contract `c1`을 생성하고 다른 transaction이 Ledger 2에서 contract를 archive한다고 가정합니다. `P2`는 **Create** action을 `CreatedEvent`로 output하지만 Update Service에서 **Exercise**를 `ArchiveEvent` 형태로 output하지 않습니다. `P2`가 Ledger 2에서 Alice를 host하지 않아 Ledger 2가 `P2`에 통지할 수 없기 때문입니다. 반대로 한 transaction이 Ledger 2에 stakeholder Alice가 있는 contract `c2`를 생성하고 다른 transaction이 Ledger 1에서 이를 archive하면 `P2`는 `ArchivedEvent`를 output하지만 `CreatedEvent`는 output하지 않습니다.
+
+Transaction stream을 consistent하게 유지하기 위해 `P2`는 Alice의 transaction stream에 **Leave** `c1` action을 추가로 output합니다. 이 action은 Participant Node가 더 이상 이 contract 관련 event를 output하지 않으며 특히 archive 시점에도 output하지 않음을 나타냅니다. 따라서 contract는 State Service에 더 이상 report되지 않고 command submission에서 사용할 수 없습니다.
+
+반대로 `P2`는 transaction stream의 `ArchivedEvent`보다 앞선 어느 시점에 **Enter** `c2` action을 output합니다. 이 action은 Participant Node가 이 contract 관련 event output을 시작한다는 뜻입니다. Contract는 State Service에 report되고 command submission에서 사용할 수 있습니다.
+
+**Enter**와 **Leave** action은 각각 **Create**와 consuming **Exercise** action과 유사합니다. 다만 각 contract에 **Create** action과 consuming **Exercise** action은 최대 하나씩만 있어야 하는 반면 **Enter**와 **Leave**는 같은 contract에 여러 번 발생할 수 있습니다.
+
+이 **Enter**와 **Leave** event는 기반 interoperability protocol이 생성합니다. Command submission의 일부 또는 load balancing 같은 다른 이유로 발생할 수 있습니다. 기반 ledger와 interoperability protocol의 trust assumption 조건에서 **Enter** action이 contract usage보다 먼저 발생함을 보장합니다.
+
+Contract는 Participant Node의 visibility에 여러 번 들어오고 나갈 수 있습니다. 예를 들어 painter가 다음 command를 제출하고 commit이 지정된 ledger에 기록된다고 가정합니다.
+
+1.  Ledger 2에 Alice와 painter가 signatory인 contract `c`를 생성합니다.
+2.  Ledger 1에서 `c`의 non-consuming choice `ch1`을 exercise합니다.
+3.  Ledger 2에서 `c`의 non-consuming choice `ch2`를 exercise합니다.
+4.  Ledger 1에서 `c`의 consuming choice `ch3`을 exercise합니다.
+
+그러면 `P2`가 `A`에 제공하는 transaction tree stream에는 contract \`c\`와 관련된 다섯 action, 즉 **Enter**, non-consuming **Exercise**, **Leave**, **Enter**, consuming **Exercise**가 포함됩니다. 두 action이 서로 상쇄되는 것처럼 보여도 `P2`는 **Leave**와 뒤따르는 **Enter**를 생략해서는 안 됩니다. 이들이 존재한다는 사실은 `P2`의 Alice event stream이 그 사이의 일부 event, 이 예제에서는 choice `ch2` exercise를 놓칠 수 있음을 나타내기 때문입니다.
+
+`P2`의 flat transaction stream은 non-consuming exercise choice를 생략합니다. 그래도 consuming **Exercise** 전에 세 action **Enter**, **Leave**, **Enter**를 포함합니다. Participant Node는 **Leave** action 시점에 이후 다른 **Enter** action이 올지 알 수 없기 때문입니다.
+
+반면 `P1`은 두 ledger 모두에서 Alice를 host하므로 이 예제에서 **Enter**와 **Leave** action을 전혀 output하지 않아도 됩니다.
+
+### Cross-ledger Transactions
+
+Interoperability를 사용하면 cross-ledger transaction을 여러 interoperable Daml ledger에 동시에 commit할 수 있습니다. 이러한 cross-ledger transaction은 **Enter**와 **Leave** action의 synchronization overhead 일부를 피합니다. Cross-ledger transaction이 여러 Daml ledger의 contract를 사용하면 stakeholder는 Participant Node에 실제로 보이지 않는 자신의 contract action을 witness할 수 있습니다.
+
+예를 들어 causality example의 split paint counteroffer workflow가 다음과 같이 commit된다고 가정합니다. `CounterOffer`와 `PaintAgree` contract의 action은 Ledger 1에 commit됩니다. 어떤 Participant Node가 Ledger 2에서 Bank를 host한다고 가정하고 `Iou`의 모든 action은 Ledger 2에 commit됩니다. 마지막 transaction에서 `CounterOffer` archival과 `PaintAgree`ment 생성이 Ledger 1에 commit되는 동시에 Alice의 `Iou`가 Ledger 2에서 painter에게 transfer되므로 cross-ledger transaction입니다.
+
+마지막 transaction에서 Participant Node 1은 평소처럼 Update Service를 통해 Alice에게 transaction tree, 두 archival, `PaintAgree` creation을 통지합니다. Participant Node 2도 Alice의 `Iou` consuming **Exercise**가 포함된 전체 transaction tree를 Alice transaction tree stream에 output합니다. 하지만 `Iou` action은 Participant Node 2가 Alice를 host하지 않는 Ledger 2에 commit되므로 Alice의 `Iou` **Create**는 output하지 않았습니다. 따라서 Alice는 exercise의 informee이지만 archival은 단지 *witness*합니다. 그러므로 Participant Node 2의 transaction tree stream에서 **Exercise** action은 merely being witnessed로 표시됩니다.
+
+일반적으로 party가 action informee이지만 Participant Node가 해당 party를 host하는 ledger에 action이 commit되지 않으면 action을 **merely being witnessed**로 표시합니다. **Enter**와 **Leave**와 달리 이러한 witnessed action은 participant 관점의 causality에 영향을 주지 않으므로 더 약한 ordering guarantee를 제공합니다. 이러한 witnessed action은 flat transaction stream과 State Service 어느 쪽에도 나타나지 않습니다.
+
+예를 들어 **Create** `PaintAgree` action이 Ledger 1이 아닌 Ledger 2에 commit되어 Ledger 1에는 `CounterOffer` action만 commit된다고 가정합니다. 그러면 Participant Node 2는 transaction tree stream에서 **Create** `PaintAgree` action도 merely being witnessed로 표시합니다. 따라서 contract를 active로 report하지 않으며 Alice도 Participant Node 2를 통한 submission에서 이 contract를 사용할 수 없습니다.
+
+## Multi-ledger Causality Graphs
+
+이 절에서는 causality graph를 interoperability 환경으로 일반화합니다.
+
+모든 active Daml contract는 최대 하나의 Daml ledger에 reside합니다. Contract 사용은 해당 contract가 reside하는 Daml ledger에 commit되어야 합니다. Contract가 처음 생성되면 **Create** action이 commit된 Daml ledger에 residence를 가집니다. 서로 다른 Daml ledger에 reside하는 contract를 사용하려면 여러 Daml ledger에 cross-ledger transaction을 commit합니다.
+
+하지만 cross-ledger transaction에는 overhead가 있으며 contract가 residence가 아닌 Daml ledger에서 자주 사용되면 interoperability protocol이 contract를 다른 Daml ledger로 migrate할 수 있습니다. Contract가 origin Daml ledger의 residence를 포기하고 target Daml ledger에 residence를 얻는 과정을 **contract transfer**라고 합니다. 아래에서 설명하듯 transaction stream의 **Enter**와 **Leave** event는 이러한 contract transfer에서 비롯됩니다. 또한 contract transfer는 origin/target Daml ledger 사이의 synchronization point이므로 ordering guarantee에 영향을 줍니다. 따라서 interoperability를 위해 causality graph를 일반화합니다.
+
+Definition »Transfer action«
+Contract `c`의 **transfer action**은 **Transfer** `c`로 표기합니다. Transfer action의 **informees**는 `c`의 stakeholder입니다.
+
+이하에서 *action*은 transaction action인 **Create**, **Exercise**, **Fetch**, **NoSuchKey**와 transfer action을 모두 가리킵니다. 특히 contract `c`의 transfer action은 `c`의 action입니다. 다만 transfer action은 transaction에 나타나지 않습니다. 그러므로 transaction action은 transfer action을 consequence로 가질 수 없고 transfer action에는 consequence가 전혀 없습니다.
+
+Definition »Multi-Ledger causality graph«
+Daml ledger 집합 `Y`에 대한 **multi-ledger causality graph** `G`는 finite, transitively closed, directed acyclic graph입니다. Vertex는 transaction 또는 transfer action입니다. 모든 action에는 다음 table에 따라 `Y`의 **incoming ledger**와 **outgoing ledger**가 annotation될 수 있습니다.
+
+| Action                     | incoming ledger | outgoing ledger |
+|----------------------------|-----------------|-----------------|
+| **Create**                 | no              | yes             |
+| consuming **Exercise**     | yes             | no              |
+| non-consuming **Exercise** | yes             | yes             |
+| **Fetch**                  | yes             | yes             |
+| **NoSuchKey**              | no              | no              |
+| **Transfer**               | maybe           | maybe           |
+
+Non-consuming **Exercise**와 **Fetch** action에서는 incoming ledger와 outgoing ledger가 같아야 합니다. **Transfer** action에는 둘 중 하나 이상이 있어야 합니다. 둘 다 설정된 **transfer** action은 complete transfer를 나타냅니다. Incoming ledger만 설정되면 **Enter** event의 partial information을 나타내고 outgoing ledger만 설정되면 **Leave** event의 partial information을 나타냅니다. Incoming 또는 outgoing ledger annotation이 없는 **Transfer** action을 각각 **Enter** 또는 **Leave** action이라고 합니다.
+
+Action order도 이에 따라 multi-ledger causality graph로 일반화됩니다.
+
+Alice와 painter가 signatory인 contract `c`에서 painter가 choice 세 개를 exercise하는 Enter/Leave event 예제의 네 transaction은 다음 multi-ledger causality graph를 만듭니다. Incoming/outgoing ledger는 색으로 encode하며 Ledger 1은 초록색, Ledger 2는 노란색입니다. **Transfer** vertex는 circle로 표시하고 왼쪽 절반은 incoming ledger, 오른쪽 절반은 outgoing ledger 색으로 표시합니다.
+
+<div id="interoperable-causality-graph-linear">
+
+<Frame caption="Multi-Ledger causality graph with transfer actions">
+  <img src="/images/docs_website/interoperable-causality-graph-linear.svg" className="align-center" style={{width: "100.0%"}} alt="./../images/interoperable-causality-graph-linear.svg" />
+</Frame>
+
+</div>
+
+<Note>
+일반 causality graph와 마찬가지로 multi-ledger causality graph diagram은 가독성을 위해 transitive edge를 생략합니다.
+</Note>
+
+Cross-domain transaction 예제로 cross-domain transaction이 있는 split paint counteroffer workflow를 살펴봅니다. 해당 multi-ledger causality graph는 아래와 같습니다. 마지막 transaction `tx4`의 action에는 여러 색이 있으므로 cross-ledger transaction입니다.
+
+<div id="counteroffer-interoperable-causality-graph">
+
+<Frame caption="Multi-Ledger causality graph for the split paint counteroffer workflow on two Daml ledgers">
+  <img src="/images/docs_website/counteroffer-interoperable-causality-graph.svg" className="align-center" style={{width: "100.0%"}} alt="./../images/counteroffer-interoperable-causality-graph.svg" />
+</Frame>
+
+</div>
+
+### Consistency
+
+Definition »Ledger trace«
+**Ledger trace**는 모든 `i` \> 0에 대해 `b``i - 1` = `a``i`를 충족하는 pair `(a``i``, b``i``)`의 finite list입니다. 여기서 `a``i`와 `b``i`는 Daml ledger를 식별하거나 모든 Daml ledger identifier와 다른 special value `NONE`입니다.
+
+Definition »Multi-Ledger causal consistency for a contract«
+`G`가 multi-ledger causality graph이고 `X`가 `c`의 contract에 대한 `G`의 action 집합이라고 합니다. 다음을 모두 충족하면 graph `G`는 `X`에서 contract `c`에 대해 **multi-ledger consistent**합니다.
+
+1.  `X`가 비어 있지 않으면 **Create** 또는 최소 하나의 **Enter** action을 포함합니다. Create를 포함하면 이 create가 `X`의 다른 모든 action보다 먼저 발생합니다. 포함하지 않으면 `X`의 다른 모든 action보다 먼저 발생하는 **Enter** action 하나가 존재합니다.
+2.  `X`에는 **Create** action이 최대 하나 있습니다.
+3.  `X`에 consuming **Exercise** action `act`가 있으면 `G`의 action order에서 `act`는 `X`의 다른 모든 action 뒤에 옵니다.
+4.  `X`의 모든 **Transfer** action은 `X`의 다른 모든 action과 ordered 관계에 있습니다.
+5.  `X`의 모든 maximal chain, 즉 `X`의 maximal totally ordered subset에서 `(`incoming ledger, outgoing ledger`)` pair sequence는 ledger trace입니다. Action에 incoming 또는 outgoing ledger annotation이 없으면 `NONE`을 사용합니다.
+
+첫 세 condition은 일반 causality graph의 causal consistency condition을 따릅니다. **Create** action이 먼저 오고 consuming **Exercise** action이 마지막에 오도록 보장합니다. **Create**가 없으면 **Enter** action이 그 역할을 합니다. 네 번째 condition은 모든 transfer action이 contract의 synchronization point가 되도록 보장합니다. Ledger trace에 대한 마지막 condition은 contract가 Daml ledger 하나에만 reside하고 모든 usage가 residence ledger에서 발생하도록 보장합니다. 특히 **Leave** 다음의 contract action은 반드시 **Enter**여야 합니다.
+
+예를 들어 위의 transfer action이 있는 multi-ledger causality graph는 `c`에 대해 multi-ledger consistent합니다. 특히 `c`의 action에는 다음 maximal chain 하나만 있습니다.
+
+> **Create** `c` -\> `tf1` -\> **ExeN** `B` `c` `ch1` -\> `tf2` -\> **ExeN** `B` `c` `ch2` -\> `tf3` -\> **ExeN** `B` `c` `ch3`,
+
+각 edge `act``1` -\> `act``2`에서 `act``1`의 outgoing ledger 색은 `act``2`의 incoming ledger 색과 같습니다. Maximal chain으로 제한하면 어떤 node도 건너뛰지 않도록 보장합니다. 예를 들어 다음 non-maximal chain은
+
+> **Create** `c` -\> **ExeN** `B` `c` `ch1` -\> `tf2` -\> **ExeN** `B` `c` `ch2` -\> `tf3` -\> **Exe** `B` `c` `ch3`
+
+**Create** action의 outgoing ledger인 노란색이 `ch1`의 non-consuming **Exercise** action incoming ledger인 초록색과 다르므로 ledger trace가 아닙니다. 따라서 `tf1` vertex가 없는 subgraph는 multi-ledger causality graph이지만 `c`에 대해 multi-ledger consistent하지 않습니다.
+
+Definition »Consistency for a multi-ledger causality graph«
+`X`가 multi-ledger causality graph `G`의 action subset이라고 합니다. `G`가 `X`에서 `c`의 action 집합에 대해 모든 contract `c`에 multi-ledger consistent하면 `G`는 `X`에 대해 **multi-ledger consistent**, 또는 `X`-**multi-ledger consistent**합니다. `G`의 모든 action에 대해 multi-ledger consistent하면 `G`는 **multi-ledger consistent**합니다.
+
+<Note>
+아직 contract key에는 multi-ledger consistency requirement가 없습니다. 따라서 interoperability는 key가 참조하는 contract에서 도출되는 범위를 넘어 consistency를 보장하지 않습니다. 특히 contract key는 고유할 필요가 없고 **NoSuchKey** action은 contract key가 unassigned인지 검사하지 않습니다.
+</Note>
+
+Split paint counteroffer workflow의 multi-ledger causality graph는 multi-ledger consistent합니다. 특히 contract action의 모든 maximal chain이 ledger trace입니다.
+
+| contract                                             | maximal chains                            |
+|------------------------------------------------------|-------------------------------------------|
+| `Iou Bank A`            | **Create** -\> **Fetch** -\> **Exercise** |
+| `ShowIou A P Bank`      | **Create** -\> **Exercise**               |
+| `Counteroffer A P Bank` | **Create** -\> **Exercise**               |
+| `Iou Bank P`            | **Create**                                |
+| `PaintAgree P A`        | **Create**                                |
+
+### Minimality and Reduction
+
+`X`-multi-ledger consistent causality graph가 acyclic하고 transitively closed인 상태를 유지하도록 edge를 추가하면 결과 graph도 `X`-multi-ledger consistent합니다. 따라서 minimally consistent와 reduction 개념도 일반 causality graph에서 같은 방식으로 일반화됩니다.
+
+Definition »Minimal multi-ledger-consistent causality graph«
+`G`의 strict subgraph, 즉 같은 vertex와 더 적은 edge를 가진 graph 중 `X`-multi-ledger consistent causality graph가 없으면 `X`-multi-ledger consistent causality graph `G`는 `X`-**minimal**입니다. `X`가 `G`의 모든 action 집합이면 `X`를 생략합니다.
+
+Definition »Reduction of a multi-ledger consistent causality graph«
+`X`-multi-ledger consistent causality graph `G`에는 같은 vertex를 가지며 edge가 `G`의 subset인 고유한 minimal `X`-multi-ledger consistent causality graph `reduce``X``(G)`가 존재합니다. `reduce``X``(G)`를 `G`의 `X`-**reduction**이라고 합니다. 앞과 같이 `X`가 `G`의 모든 action을 포함하면 생략합니다.
+
+Multi-ledger causality graph는 acyclic하므로 vertex를 topological sort할 수 있으며 결과 list도 모든 vertex가 이후 모든 vertex로 outgoing edge를 가지는 causality graph입니다. Topological sorting은 edge만 추가하므로 원래 causality graph가 `X`-consistent하면 topological sort 결과도 그렇습니다.
+
+### From Multi-ledger Causality Graphs to Ledgers
+
+Multi-Ledger causality graph `G`는 topological sort와 reduction을 통해 Daml Ledger Model의 ledger `L`과 연결됩니다.
+
+- Multi-ledger causality graph `G`가 주어지면 incoming/outgoing ledger annotation과 모든 transfer vertex를 제거하고 transaction vertex를 topological sort한 뒤 결과 transaction list에 requester를 추가하여 commit sequence `L`을 얻습니다.
+- Commit sequence `L`이 주어지면 transaction을 vertex로 사용하고 sequence에서 `tx1`의 commit이 `tx2`의 commit보다 먼저 올 때마다 `tx1`에서 `tx2`로 edge를 추가합니다. 그런 다음 필요에 따라 transfer vertex와 incoming/outgoing ledger annotation을 추가하고 transaction vertex에 edge로 연결합니다.
+
+이 연결은 consistency를 일부만 preserve합니다. Multi-ledger causality graph가 contract `c`에 대해 multi-ledger consistent하면 해당 ledger도 contract `c`에 대해 consistent합니다. 하지만 key consistency를 위반할 수 있으므로 multi-ledger-consistent causality graph가 consistent ledger를 보장하지는 않습니다. 반대로 consistent ledger는 incoming/outgoing ledger annotation을 다루지 않으므로 annotation이 consistent하도록 강제할 수 없습니다.
+
+## Ledger-aware Projection
+
+Participant Node는 자신이 host하는 각 party의 local ledger를 유지하고 Update Service는 이 local ledger의 topological sort 결과를 output합니다. Participant Node가 여러 ledger에서 party를 host하면 이 local ledger는 multi-ledger causality graph입니다. 이 절에서는 이러한 local ledger를 생성하는 multi-ledger causality graph의 ledger-aware projection을 정의합니다.
+
+Definition »Y-labelled action«
+Incoming/outgoing ledger annotation이 있는 action은 incoming 또는 outgoing ledger annotation이 집합 `Y`의 element이면 `Y`에 대해 **Y-labelled**입니다.
+
+Definition »Ledger-aware projection for transactions«
+`Y`가 Daml ledger 집합이고 `tx`가 action에 incoming/outgoing ledger가 annotation된 transaction이라고 합니다. `Act`는 party `P`가 informee인 `tx`의 `Y`-labelled subaction 집합입니다. `Y`에서 `P`에 대한 `tx`의 **ledger-aware projection**, 즉 `P`-**projection on** `Y`는 subaction 관계에 따른 `Act`의 모든 maximal element를 execution order로 나열한 것입니다.
+
+<Note>
+모든 action은 자신의 모든 subaction을 포함합니다. 따라서 `act`가 `tx`의 `Y`에 대한 `P`-projection에 포함되면 `act`의 모든 subaction도 projection의 일부입니다. 다만 subaction `act'` 자체는 `Y`-labelled가 아닐 수 있으며 다른 ledger에 속할 수 있습니다. `P`가 `act'`의 informee이면 아래 설명처럼 Participant Node는 `P`의 transaction stream에서 `act'`를 merely being witnessed로 표시합니다.
+</Note>
+
+예를 들어 split paint counteroffer workflow의 cross-domain transaction은 Alice와 painter에 대해 노란색 `Iou` ledger와 초록색 painting ledger에서 다음 projection을 가집니다. Projection은 subaction을 포함하므로 초록색 ledger의 projection에 노란색 ledger action도 포함됩니다.
+
+<img src="/images/docs_website/projecting-transactions-paint-offer-ledger-aware.svg" className="align-center" style={{width: "60.0%"}} alt="Projections for various parties to the split paint counteroffer workflow. The green ledger projections include the yellow ledger, but the yellow ledger projections do not include the green ledger." />
+
+Definition »Projection for transfer actions«
+`act`가 incoming ledger 또는 outgoing ledger annotation이 있는 transfer action이라고 합니다. Ledger 집합 `Y`에 대한 `act`의 **projection**은 `Y`에 속하지 않는 annotation을 `act`에서 제거합니다. 모든 annotation이 제거되면 projection은 비어 있습니다.
+
+`Y`에서 party `P`에 대한 `act`의 **projection**, 즉 `P`-**projection** on `Y`는 `P`가 contract stakeholder이면 `Y`에 대한 `act` projection이고 그렇지 않으면 비어 있습니다.
+
+Definition »Multi-Ledger consistency for a party«
+Multi-ledger causality graph `G`가 `G`의 `Y`-labelled action 중 `P`가 stakeholder informee인 action 집합에서 multi-ledger consistent하면 `G`는 ledger 집합 `Y`에서 party `P`에 대해 **consistent**, 즉 `P`-**consistent** on `Y`입니다.
+
+`X`-minimality와 `X`-reduction 개념도 ledger 집합 `Y`의 party `P`에 대해 같은 방식으로 확장됩니다.
+
+Definition »Ledger-aware projection for multi-ledger causality graphs«
+`G`가 multi-ledger consistent causality graph이고 `Y`가 Daml ledger 집합이라고 합니다. `Y`에서 party `P`에 대한 `G`의 **projection**, 즉 `P`-**projection** on `Y`는 다음 causality graph `G'`의 `Y`에 대한 `P`-reduction이며 `G'`는 `Y`에서 `P`-consistent합니다.
+
+- `G'`의 vertex는 `G`의 vertex를 `Y`에서 `P`에 projection한 결과이며 빈 projection은 제외합니다.
+- `v``1`에 해당하는 `G` vertex에서 `v``2`에 해당하는 `G` vertex로 edge가 있으면 `G'`의 두 vertex `v``1`과 `v``2` 사이에도 edge가 있습니다.
+
+`G`가 multi-ledger consistent causality graph이면 `Y`의 `P`-projection도 `Y`에서 `P`-consistent합니다.
+
+예를 들어 split paint counteroffer workflow의 multi-ledger causality graph는 다음과 같이 projection됩니다.
+
+<img src="/images/docs_website/counteroffer-causality-ledgeraware-projection.svg" className="align-center" style={{width: "100.0%"}} alt="More projections for various parties to the split paint counteroffer workflow, showing greater detail. Alice and the painter have green and yellow, just green, and just yellow projections; the bank has only a yellow projection." />
+
+다음 사항에 주목할 필요가 있습니다.
+
+- 초록색 ledger에 대한 Alice projection에서 Alice는 자신의 `Iou` archival을 witness합니다. 아래 `interop-ordering-guarantees`에서 설명하듯 초록색 ledger에서는 Alice를 host하지만 노란색 ledger에서는 host하지 않는 Participant Node의 transaction stream에서 **Exercise** action은 merely being witnessed로 표시됩니다. 마찬가지로 초록색 ledger의 Painter projection에서 Painter는 자신의 `Iou` **Create**를 merely witness합니다.
+- 일반 causality graph와 마찬가지로 Painter projection에서 `ShowIou` transaction `tx3`은 `tx4`의 `CounterOffer` acceptance와 ordered 관계가 없습니다. Projection 중 reduction 단계에서 edge `tx3` -\> `tx4`가 제거됩니다.
+
+Transfer action projection은 `interoperable-causality-graph-linear`로 설명할 수 있습니다. 노란색/초록색 ledger의 `A`-projection은 다음과 같습니다. 흰색은 transfer action에 incoming 또는 outgoing ledger annotation이 없음을 나타냅니다. 즉 **Leave** action은 오른쪽이 흰색이고 **Enter** action은 왼쪽이 흰색입니다.
+
+<img src="/images/docs_website/transfer-projection.svg" className="align-center" style={{width: "100.0%"}} alt="Causality graphs showing only the green or only the yellow ledger." />
+
+## Ledger API Ordering Guarantees
+
+Update Service와 State Service는 Participant Node가 party를 위해 유지하는 local ledger에서 도출됩니다. `Y`를 Participant Node가 party를 host하는 ledger 집합이라고 합니다. Transaction tree stream은 `Y`에 있는 party local ledger의 topological sort 결과를 다음 변경과 함께 output합니다.
+
+1.  Incoming 또는 outgoing ledger annotation 중 하나만 있는 **Transfer** action은 **Enter**와 **Leave** event로 output합니다. Incoming/outgoing ledger annotation이 모두 있는 **Transfer** action은 생략합니다.
+2.  Incoming/outgoing ledger annotation은 output하지 않습니다. `Y`에 속하지 않는 incoming 또는 outgoing ledger annotation이 있는 transaction action에서 party가 action informee이면 merely being witnessed로 표시합니다.
+3.  **Fetch** node와 **NoSuchKey**를 생략합니다.
+
+Flat transaction stream에는 party가 영향을 받는 contract의 stakeholder이고 merely being witnessed로 표시되지 않은 transaction tree stream의 transaction tree에서 **Create**, consuming **Exercise**, **Enter**, **Leave** action에 해당하는 `CreatedEvent`, `ArchivedEvent`, **Enter**, **Leave** action만 정확히 포함됩니다.
+
+마찬가지로 State Service는 flat transaction stream에 따라 반환된 offset에서 active인 contract 집합을 제공합니다. 즉 제공되는 contract 집합에는 transaction event stream의 모든 event에 따른 contract state change가 반영됩니다.
+
+단일 Daml ledger의 ordering guarantee도 같은 방식으로 확장됩니다. 특히 interoperability는 모든 local ledger가 위에서 설명한 대로 Daml Ledger Model에 연결되는 virtual shared multi-ledger causality graph의 projection임을 보장합니다. 따라서 ledger validity guarantee는 local ledger를 통해 Ledger API까지 확장됩니다.
+
+
+{/* COPIED_END */}

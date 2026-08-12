@@ -1,0 +1,269 @@
+---
+title: "DA.Exception"
+description: "Daml module DA.Exception의 reference documentation"
+source_id: "SRC-CF0306AE57"
+source_path: "appdev/reference/daml-standard-library/da-exception"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "318401a2b46d39d62dc3cfbb6a86785978e81070e3bc092903dc3fe85550a97b"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-exception.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-exception-55791"></span>
+
+# DA.Exception
+
+Daml의 exception handling입니다.
+
+DEPRECATED: Daml Exception 대신 `failWithStatus`와 `FailureStatus`를 사용하세요.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+Deprecated입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `2`
+deprecated 시작 버전: `3.4.9`
+</Card>
+</CardGroup>
+
+<Warning>
+Exception은 deprecated입니다. `failWithStatus`를 선호하고 catch 사용을 피하세요.
+</Warning>
+
+<AccordionGroup>
+<Accordion title="All deprecations (2)">
+- Exception은 deprecated입니다. `failWithStatus`를 선호하고 catch 사용을 피하세요.
+- 이 warning을 disable하려면 `-Wno-deprecated-exceptions`를 사용하세요.
+</Accordion>
+</AccordionGroup>
+
+## Data Types
+
+<span id="type-da-internal-exception-exception-4133"></span>
+
+### `type Exception e`
+
+= ([`HasThrow`](#class-da-internal-exception-hasthrow-30284) `e`, [`HasMessage`](#class-da-internal-exception-hasmessage-3179) `e`, [`HasToAnyException`](#class-da-internal-exception-hastoanyexception-55973) `e`, [`HasFromAnyException`](#class-da-internal-exception-hasfromanyexception-16788) `e`)
+
+Exception typeclass입니다. 이를 직접 implementation하지 말고 `exception` syntax를 사용하세요.
+
+<span id="type-da-exception-arithmeticerror-arithmeticerror-68828"></span>
+
+### `data ArithmeticError`
+
+0으로 나누기나 overflow와 같은 arithmetic operation에서 발생하는 exception입니다.
+
+<Warning>
+Deprecated: Exception은 deprecated입니다. `failWithStatus`를 선호하고 catch 사용을 피하세요.
+</Warning>
+
+<Warning>
+Deprecated: 이 warning을 disable하려면 `-Wno-deprecated-exceptions`를 사용하세요.
+</Warning>
+
+Constructor:
+
+<span id="constr-da-exception-arithmeticerror-arithmeticerror-83141"></span>
+- `ArithmeticError`
+
+<ResponseField name="message" type="Text" />
+
+<span id="type-da-exception-assertionfailed-assertionfailed-69740"></span>
+
+### `data AssertionFailed`
+
+DA.Assert의 assert function에서 발생하는 exception입니다.
+
+<Warning>
+Deprecated: Exception은 deprecated입니다. `failWithStatus`를 선호하고 catch 사용을 피하세요.
+</Warning>
+
+<Warning>
+Deprecated: 이 warning을 disable하려면 `-Wno-deprecated-exceptions`를 사용하세요.
+</Warning>
+
+Constructor:
+
+<span id="constr-da-exception-assertionfailed-assertionfailed-2357"></span>
+- `AssertionFailed`
+
+<ResponseField name="message" type="Text" />
+
+<span id="type-da-exception-generalerror-generalerror-5800"></span>
+
+### `data GeneralError`
+
+`error`에서 발생하는 exception입니다.
+
+<Warning>
+Deprecated: Exception은 deprecated입니다. `failWithStatus`를 선호하고 catch 사용을 피하세요.
+</Warning>
+
+<Warning>
+Deprecated: 이 warning을 disable하려면 `-Wno-deprecated-exceptions`를 사용하세요.
+</Warning>
+
+Constructor:
+
+<span id="constr-da-exception-generalerror-generalerror-9293"></span>
+- `GeneralError`
+
+<ResponseField name="message" type="Text" />
+
+<span id="type-da-exception-preconditionfailed-preconditionfailed-61218"></span>
+
+### `data PreconditionFailed`
+
+contract가 잘못되어 ensure clause를 통과하지 못할 때 발생하는 exception입니다.
+
+<Warning>
+Deprecated: Exception은 deprecated입니다. `failWithStatus`를 선호하고 catch 사용을 피하세요.
+</Warning>
+
+<Warning>
+Deprecated: 이 warning을 disable하려면 `-Wno-deprecated-exceptions`를 사용하세요.
+</Warning>
+
+Constructor:
+
+<span id="constr-da-exception-preconditionfailed-preconditionfailed-18759"></span>
+- `PreconditionFailed`
+
+<ResponseField name="message" type="Text" />
+
+## Typeclasses
+
+<span id="class-da-internal-exception-hasthrow-30284"></span>
+
+### `class HasThrow e`
+
+`Exception` constraint의 일부입니다.
+
+Method:
+
+- `throwPure` : `e` -> `t`
+  pure context에서 exception을 throw합니다.
+
+Instance:
+
+- instance [`HasThrow`](#class-da-internal-exception-hasthrow-30284) [`ArithmeticError`](#type-da-exception-arithmeticerror-arithmeticerror-68828)
+- instance [`HasThrow`](#class-da-internal-exception-hasthrow-30284) [`AssertionFailed`](#type-da-exception-assertionfailed-assertionfailed-69740)
+- instance [`HasThrow`](#class-da-internal-exception-hasthrow-30284) [`GeneralError`](#type-da-exception-generalerror-generalerror-5800)
+- instance [`HasThrow`](#class-da-internal-exception-hasthrow-30284) [`PreconditionFailed`](#type-da-exception-preconditionfailed-preconditionfailed-61218)
+
+<span id="class-da-internal-exception-hasmessage-3179"></span>
+
+### `class HasMessage e`
+
+`Exception` constraint의 일부입니다.
+
+Method:
+
+- `message` : `e` -> [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+  exception에 연결된 error message를 얻습니다.
+
+Instance:
+
+- instance [`HasMessage`](#class-da-internal-exception-hasmessage-3179) [`AnyException`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-anyexception-7004)
+- instance [`HasMessage`](#class-da-internal-exception-hasmessage-3179) [`ArithmeticError`](#type-da-exception-arithmeticerror-arithmeticerror-68828)
+- instance [`HasMessage`](#class-da-internal-exception-hasmessage-3179) [`AssertionFailed`](#type-da-exception-assertionfailed-assertionfailed-69740)
+- instance [`HasMessage`](#class-da-internal-exception-hasmessage-3179) [`GeneralError`](#type-da-exception-generalerror-generalerror-5800)
+- instance [`HasMessage`](#class-da-internal-exception-hasmessage-3179) [`PreconditionFailed`](#type-da-exception-preconditionfailed-preconditionfailed-61218)
+
+<span id="class-da-internal-exception-hastoanyexception-55973"></span>
+
+### `class HasToAnyException e`
+
+`Exception` constraint의 일부입니다.
+
+Method:
+
+- `toAnyException` : `e` -> [`AnyException`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-anyexception-7004)
+  exception type을 AnyException으로 변환합니다.
+
+Instance:
+
+- instance [`HasToAnyException`](#class-da-internal-exception-hastoanyexception-55973) [`AnyException`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-anyexception-7004)
+- instance [`HasToAnyException`](#class-da-internal-exception-hastoanyexception-55973) [`ArithmeticError`](#type-da-exception-arithmeticerror-arithmeticerror-68828)
+- instance [`HasToAnyException`](#class-da-internal-exception-hastoanyexception-55973) [`AssertionFailed`](#type-da-exception-assertionfailed-assertionfailed-69740)
+- instance [`HasToAnyException`](#class-da-internal-exception-hastoanyexception-55973) [`GeneralError`](#type-da-exception-generalerror-generalerror-5800)
+- instance [`HasToAnyException`](#class-da-internal-exception-hastoanyexception-55973) [`PreconditionFailed`](#type-da-exception-preconditionfailed-preconditionfailed-61218)
+
+<span id="class-da-internal-exception-hasfromanyexception-16788"></span>
+
+### `class HasFromAnyException e`
+
+`Exception` constraint의 일부입니다.
+
+Method:
+
+- `fromAnyException` : [`AnyException`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-anyexception-7004) -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) `e`
+  가능한 경우 AnyException을 기반 exception type으로 다시 변환합니다.
+
+Instance:
+
+- instance [`HasFromAnyException`](#class-da-internal-exception-hasfromanyexception-16788) [`AnyException`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-anyexception-7004)
+- instance [`HasFromAnyException`](#class-da-internal-exception-hasfromanyexception-16788) [`ArithmeticError`](#type-da-exception-arithmeticerror-arithmeticerror-68828)
+- instance [`HasFromAnyException`](#class-da-internal-exception-hasfromanyexception-16788) [`AssertionFailed`](#type-da-exception-assertionfailed-assertionfailed-69740)
+- instance [`HasFromAnyException`](#class-da-internal-exception-hasfromanyexception-16788) [`GeneralError`](#type-da-exception-generalerror-generalerror-5800)
+- instance [`HasFromAnyException`](#class-da-internal-exception-hasfromanyexception-16788) [`PreconditionFailed`](#type-da-exception-preconditionfailed-preconditionfailed-61218)
+
+<span id="class-da-internal-exception-actionthrow-37623"></span>
+
+### `class Action m => ActionThrow m`
+
+`throw`를 지원하는 Action type입니다.
+
+Method:
+
+- `throw` : [`Exception`](#type-da-internal-exception-exception-4133) `e` => `e` -> `m` `t`
+
+Instance:
+
+- instance [`ActionThrow`](#class-da-internal-exception-actionthrow-37623) [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072)
+
+<span id="class-da-internal-exception-actioncatch-69238"></span>
+
+### `class ActionThrow m => ActionCatch m`
+
+`try ... catch ...`를 지원하는 Action type입니다.
+DEPRECATED: Daml code에서 catch 사용을 피하고 client에서 error를 handling하며 `failWithStatus`로 throw하는 방식을 선호하세요.
+
+Method:
+
+- `_tryCatch` : (() -> `m` `t`) -> ([`AnyException`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-anyexception-7004) -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) (`m` `t`)) -> `m` `t`
+  exception을 handling합니다. 이 method를 직접 호출하지 말고 `try ... catch ...` syntax를 사용하세요.
+
+Instance:
+
+- instance [`ActionCatch`](#class-da-internal-exception-actioncatch-69238) [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072)
+
+## Orphan Typeclass Instances
+
+- instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `message` [`GeneralError`](#type-da-exception-generalerror-generalerror-5800) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+- instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `message` [`GeneralError`](#type-da-exception-generalerror-generalerror-5800) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+- instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `message` [`ArithmeticError`](#type-da-exception-arithmeticerror-arithmeticerror-68828) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+- instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `message` [`ArithmeticError`](#type-da-exception-arithmeticerror-arithmeticerror-68828) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+- instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `message` [`PreconditionFailed`](#type-da-exception-preconditionfailed-preconditionfailed-61218) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+- instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `message` [`PreconditionFailed`](#type-da-exception-preconditionfailed-preconditionfailed-61218) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+- instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `message` [`AssertionFailed`](#type-da-exception-assertionfailed-assertionfailed-69740) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+- instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `message` [`AssertionFailed`](#type-da-exception-assertionfailed-assertionfailed-69740) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)

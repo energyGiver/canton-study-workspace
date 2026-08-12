@@ -1,0 +1,682 @@
+---
+title: "구성과 디자인 패턴"
+description: "여러 단계의 transaction을 구성하고 Daml의 실행 모델과 privacy를 이해하며 일반적인 multi-party workflow 패턴을 적용합니다"
+source_id: "SRC-B3D6566DFB"
+source_path: "appdev/modules/m3-design-patterns"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "76a4a27a8015928bca15221c45644ce77e441ecfbdedd741ac332fa5b7719cc0"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+이 문서는 비공식 한국어 번역입니다. 공식 영문 문서는 [Canton Documentation](https://docs.canton.network/appdev/modules/m3-design-patterns.md)에서 확인하세요.
+</Warning>
+
+import DamlAppdevModulesM3DesignPatternsL115 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L115.mdx";
+import DamlAppdevModulesM3DesignPatternsL155 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L155.mdx";
+import DamlAppdevModulesM3DesignPatternsL256 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L256.mdx";
+import DamlAppdevModulesM3DesignPatternsL282 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L282.mdx";
+import DamlAppdevModulesM3DesignPatternsL330 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L330.mdx";
+import DamlAppdevModulesM3DesignPatternsL347 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L347.mdx";
+import DamlAppdevModulesM3DesignPatternsL410 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L410.mdx";
+import DamlAppdevModulesM3DesignPatternsL426 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L426.mdx";
+import DamlAppdevModulesM3DesignPatternsL442 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L442.mdx";
+import DamlAppdevModulesM3DesignPatternsL464 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L464.mdx";
+import DamlAppdevModulesM3DesignPatternsL491 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L491.mdx";
+import DamlAppdevModulesM3DesignPatternsL504 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L504.mdx";
+import DamlAppdevModulesM3DesignPatternsL521 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L521.mdx";
+import DamlAppdevModulesM3DesignPatternsL541 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L541.mdx";
+import DamlAppdevModulesM3DesignPatternsL587 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L587.mdx";
+import DamlAppdevModulesM3DesignPatternsL598 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L598.mdx";
+import DamlAppdevModulesM3DesignPatternsL629 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L629.mdx";
+import DamlAppdevModulesM3DesignPatternsL74 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L74.mdx";
+import DamlAppdevModulesM3DesignPatternsL80 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L80.mdx";
+import DamlAppdevModulesM3DesignPatternsL86 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L86.mdx";
+import DamlAppdevModulesM3DesignPatternsL92 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L92.mdx";
+import DamlAppdevModulesM3DesignPatternsL454 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L454.mdx";
+import DamlAppdevModulesM3DesignPatternsL461 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L461.mdx";
+import DamlAppdevModulesM3DesignPatternsL498 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L498.mdx";
+import DamlAppdevModulesM3DesignPatternsL599 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L599.mdx";
+import DamlAppdevModulesM3DesignPatternsL673 from "/snippets/daml-docs/appdev_modules_m3-design-patterns_L673.mdx";
+
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/tutorials/smart-contracts/compose.rst" hash="f782af8e" */}
+
+# Choice 구성하기
+
+지금까지 배운 내용을 결합해 asset 발행, 관리, transfer, trading을 위한 완전하고 안전한 Daml model을 만들 차례입니다. 이 application은 [CN Quickstart](/sdks-tools/reference-projects/cn-quickstart)와 유사한 기능을 갖습니다. 이 과정에서 다음 개념을 더 배우게 됩니다.
+
+- Daml project, package, module
+- Transaction 구성
+- Observer와 stakeholder
+- Daml 실행 모델
+- Privacy
+
+이 섹션의 model은 하나의 Daml file이 아니라 서로 의존하는 여러 file로 구성된 Daml project입니다.
+
+<Tip>
+`dpm new intro-compose  --template daml-intro-compose`를 실행하면 이 섹션의 모든 code를 `intro-compose`라는 folder에 불러올 수 있습니다.
+</Tip>
+
+## Daml project
+
+Daml은 project, package, module로 구성됩니다. Daml project는 하나의 `daml.yaml` file로 정의되며, Daml의 중간 언어이자 bytecode에 해당하는 Daml-LF package로 compile됩니다. Project 안의 각 Daml file은 namespace와 비슷한 Daml module이 됩니다. 각 Daml project에는 project의 `daml.yaml` file에 있는 `source` parameter로 지정된 source root가 있습니다. Package에는 해당 source directory 아래의 `*.daml` file에 정의된 모든 module이 포함됩니다.
+
+Terminal에서 `dpm new project-name`을 사용해 기본 구조를 갖춘 새 project를 시작할 수 있습니다. 최소한의 project에는 `daml.yaml` file과 비어 있는 source file directory만 있습니다.
+
+> 이 chapter project의 `daml.yaml`을 살펴보세요.
+
+```yaml
+sdk-version: __VERSION__
+name: __PROJECT_NAME__
+source: daml
+version: 1.0.0
+dependencies:
+  - daml-prim
+  - daml-stdlib
+  - daml-script
+```
+
+일반적으로 project를 설명하도록 `name`과 `version`을 자유롭게 설정할 수 있습니다. `dependencies`는 이름이 뜻하는 대로 dependency를 포함합니다. `daml-prim`과 `daml-stdlib`은 항상 포함해야 합니다. 전자는 compiler와 Daml Runtime의 내부 요소를 포함하고, 후자는 Daml standard library에 접근할 수 있게 합니다. `daml-script`에는 Daml Script용 type과 function이 포함됩니다.
+
+Project root directory에서 `dpm build`를 실행해 Daml project를 compile합니다. 그러면 `.daml/dist/dist/${project_name}-${project_version}.dar`에 DAR file이 생성됩니다. DAR file은 Java의 JAR file에 해당하는 Daml artifact로, package와 그 dependency를 load하도록 ledger에 deploy됩니다. `dar` file은 main package의 모든 dependency를 포함하므로 완전히 독립적입니다. 자세한 내용은 [Build 및 Package 만들기](/appdev/modules/m3-building-packaging)를 참조하세요.
+
+## Project 구조
+
+이 project에는 transfer할 수 있는 fungible asset의 보유 model과 별도의 trade workflow가 포함됩니다. Template은 `Intro.Asset`, `Intro.Asset.Role`, `Intro.Asset.Trade`의 세 module로 구성됩니다.
+
+또한 `Test.Intro.Asset`, `Test.Intro.Asset.Role`, `Test.Intro.Asset.Trade` module에 test가 있습니다.
+
+Module name에서 `.`으로 구분된 마지막 segment를 제외한 모든 segment는 project source directory의 상대 path에 대응하고, 마지막 segment는 file name에 대응합니다. 따라서 folder 구조는 다음과 같습니다.
+
+``` none
+.
+├── daml
+│   ├── Intro
+│   │   ├── Asset
+│   │   │   ├── Role.daml
+│   │   │   └── Trade.daml
+│   │   └── Asset.daml
+│   └── Test
+│       └── Intro
+│           ├── Asset
+│           │   ├── Role.daml
+│           │   └── Trade.daml
+│           └── Asset.daml
+└── daml.yaml
+```
+
+각 file에는 module header가 있습니다. 예를 들어 `daml/Intro/Asset/Role.daml`은 다음과 같습니다.
+
+<DamlAppdevModulesM3DesignPatternsL74 />
+
+`import` keyword를 사용해 한 module을 다른 module로 import할 수 있습니다. `LibraryModules` module은 여섯 module을 모두 import합니다.
+
+<DamlAppdevModulesM3DesignPatternsL80 />
+
+Import는 항상 module declaration 바로 아래에 있어야 합니다. 선택한 name만 import하려면 import 뒤에 name 목록을 추가할 수 있습니다.
+
+<DamlAppdevModulesM3DesignPatternsL86 />
+
+Module에 Daml Script가 포함되어 있으면 해당 기능을 import해야 합니다.
+
+<DamlAppdevModulesM3DesignPatternsL92 />
+
+## Project 개요
+
+이 project는 [Authorization](/appdev/modules/m3-authorization)에서 소개한 `Iou` model을 변경하고 확장합니다.
+
+- Asset에는 `owner`가 보유분을 관리할 수 있는 `Merge` 및 `Split` choice가 있으므로 fungible합니다.
+
+- 이제 transfer proposal을 수락하려면 `issuer`와 `newOwner` 모두의 authority가 필요합니다. 따라서 issuer의 관점에서 `Asset`은 `Iou`보다 안전합니다.
+
+  `Iou` model에서는 `owner`와 `newOwner`만 transfer를 authorize했으므로 `issuer`가 누구에게든 현금을 빚지게 될 수 있었습니다. 이 project에서는 `AssetHolder` contract를 보유한 party만 asset을 소유할 수 있습니다. 따라서 `issuer`가 자신의 asset을 소유할 수 있는 party를 결정할 수 있습니다.
+
+- `Trade` template은 두 asset의 swap을 model에 추가합니다.
+
+## 구성된 choice와 script
+
+이 project는 [Authorization](/appdev/modules/m3-authorization)에서 배운 `Update` 및 `Script` action을 유용하게 활용하는 방법을 보여줍니다. 예를 들어 `Merge` 및 `Split` choice는 각각 consequence에서 여러 action을 수행합니다.
+
+- `Split`의 경우 create action 두 개
+- `Merge`의 경우 create action 하나와 archive action 하나
+
+<DamlAppdevModulesM3DesignPatternsL115 />
+
+`Split`에서 사용하는 `return` function은 모든 `Action` context에서 사용할 수 있습니다. `return x`의 결과는 값 `x`를 포함하는 no-op입니다. `pure`라는 alias도 있는데, 이는 side effect가 있는 값과 달리 pure value임을 나타냅니다. `do` block의 마지막 statement로 사용할 때 argument가 실제로 `do` block의 "return" value이므로 `return`이라는 이름이 잘 맞습니다.
+
+Transaction 구성을 한 단계 더 발전시키면 `Trade`의 `Trade_Settle` choice는 두 `exercise` action을 구성합니다.
+
+<DamlAppdevModulesM3DesignPatternsL155 />
+
+두 단계로 중첩된 consequence를 포함하는 결과 transaction은 `Test.Intro.Asset.Trade`의 `test_trade` script에서 확인할 수 있습니다.
+
+``` none
+TX 14 1970-01-01T00:00:00Z (Test.Intro.Asset.Trade:79:23)
+#14:0
+│   disclosed to (since): 'Alice' (14), 'Bob' (14)
+└─> 'Bob' exercises Trade_Settle on #12:0 (Intro.Asset.Trade:Trade)
+          with
+            quoteAssetCid = #9:1; baseApprovalCid = #13:1
+    children:
+    #14:1
+    │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'USD_Bank' (14)
+    └─> 'Alice' and 'USD_Bank' fetch #10:1 (Intro.Asset:Asset)
+
+    #14:2
+    │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'EUR_Bank' (14)
+    └─> 'Bob' and 'EUR_Bank' fetch #9:1 (Intro.Asset:Asset)
+
+    #14:3
+    │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'USD_Bank' (14)
+    └─> 'Alice' and 'Bob' exercise TransferApproval_Transfer on #13:1 (Intro.Asset:TransferApproval)
+                          with
+                            assetCid = #10:1
+        children:
+        #14:4
+        │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'USD_Bank' (14)
+        └─> 'Alice' and 'USD_Bank' fetch #10:1 (Intro.Asset:Asset)
+
+        #14:5
+        │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'USD_Bank' (14)
+        └─> 'Alice' and 'USD_Bank' exercise Archive on #10:1 (Intro.Asset:Asset)
+
+        #14:6
+        │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'USD_Bank' (14)
+        └─> 'Bob' and 'USD_Bank' create Intro.Asset:Asset
+                                 with
+                                   issuer = 'USD_Bank';
+                                   owner = 'Bob';
+                                   symbol = "USD";
+                                   quantity = 100.0000000000;
+                                   observers = []
+
+    #14:7
+    │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'EUR_Bank' (14)
+    └─> 'Alice',
+        'Bob' exercises TransferApproval_Transfer on #11:1 (Intro.Asset:TransferApproval)
+              with
+                assetCid = #9:1
+        children:
+        #14:8
+        │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'EUR_Bank' (14)
+        └─> 'Bob' and 'EUR_Bank' fetch #9:1 (Intro.Asset:Asset)
+
+        #14:9
+        │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'EUR_Bank' (14)
+        └─> 'Bob' and 'EUR_Bank' exercise Archive on #9:1 (Intro.Asset:Asset)
+
+        #14:10
+        │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'EUR_Bank' (14)
+        └─> 'Alice' and 'EUR_Bank' create Intro.Asset:Asset
+                                   with
+                                     issuer = 'EUR_Bank';
+                                     owner = 'Alice';
+                                     symbol = "EUR";
+                                     quantity = 90.0000000000;
+                                     observers = []
+```
+
+Choice와 마찬가지로, 이 project의 script가 서로를 바탕으로 구성되는 방식을 확인할 수 있습니다.
+
+<DamlAppdevModulesM3DesignPatternsL256 />
+
+위에서 `Test.Intro.Asset.Role`의 `test_issuance` script는 같은 module의 `setupRoles` script 출력을 사용합니다.
+
+같은 line은 새로운 종류의 pattern matching을 보여줍니다. `setupResult <- setupRoles`를 작성한 다음 `_1`, `_2` 등을 사용해 `setupResult`의 component에 접근하는 대신, component에 name을 지정할 수 있습니다. 이는 다음과 같습니다.
+
+<DamlAppdevModulesM3DesignPatternsL282 />
+
+`(alice, bob, bank, aha, ahb) <- setupRoles`만 작성해도 유효하지만 `setupResult`가 `test_issuance`의 return value에 사용되므로 전체에도 name을 지정하는 편이 적절합니다. `@` 표기법을 사용하면 전체 value와 그 구성 요소 모두에 한 번에 name을 지정할 수 있습니다.
+
+## Daml 실행 모델
+
+Daml의 실행 모델은 비교적 이해하기 쉽지만 몇 가지 중요한 consequence가 있습니다. Transaction의 lifecycle은 다음과 같이 생각할 수 있습니다.
+
+Command 제출
+User는 participant node의 Ledger API를 통해 command 목록을 제출하며, 해당 node에 hosted된 `Party`로서 행동합니다. 이 party를 requester라고 합니다.
+
+Interpretation
+각 command는 하나 이상의 action에 대응합니다. 이 단계에서는 각 action에 해당하는 `Update`를 ledger context에서 evaluate하여 전이적 consequence, 즉 consequence의 consequence 등을 포함한 모든 consequence를 계산합니다. 그 결과가 완전한 transaction입니다. Requester와 함께 이를 commit이라고도 합니다.
+
+Blinding
+강력한 privacy를 제공하는 ledger에서는 관련된 모든 party를 위한 projection을 만듭니다([Privacy Model](/overview/learn/privacy-model) 참조). 이를 *projecting*이라고도 합니다.
+
+Transaction 제출
+Transaction/commit이 network에 제출됩니다.
+
+Validation
+Network가 transaction/commit을 validate합니다. 정확히 누가 validate하는지는 implementation마다 다를 수 있습니다. Validation에는 scheduling과 collision detection도 포함되며, transaction이 commit의 부분 ordering 안에서 명확한 위치를 차지하고 double spend가 발생하지 않도록 보장합니다.
+
+Commitment
+Ledger의 commit 또는 consensus protocol에 따라 commit이 실제로 확정됩니다.
+
+Confirmation
+Network가 관련된 모든 participant node에 commitment confirmation을 돌려보냅니다.
+
+Completion
+User는 제출한 participant node의 Ledger API를 통해 confirmation을 받습니다.
+
+위 과정의 첫 번째 중요한 결과는 모든 transaction이 atomically commit된다는 점입니다. Transaction은 모든 participant에 대해 전체가 commit되거나 실패합니다.
+
+이는 위의 `Trade_Settle` choice에서 중요합니다. 이 choice는 `baseAsset`을 한 방향으로, `quoteAsset`을 반대 방향으로 transfer합니다. Transaction atomicity 덕분에 어느 한 party만 손해를 보는 상황은 발생하지 않습니다.
+
+두 번째 결과는 transaction requester가 자신이 제출한 transaction의 모든 consequence를 안다는 점입니다. Daml에는 예상하지 못한 결과가 없습니다. 하지만 이는 requester가 transaction을 interpret하는 데 필요한 모든 정보를 갖고 있어야 한다는 뜻이기도 합니다. 이 page의 뒤에서는 이를 Principle 2라고도 부릅니다.
+
+이 점은 `Trade`에서도 중요합니다. Alice의 현금을 Bob에게 transfer하는 transaction을 Bob이 interpret할 수 있으려면, Bob은 Alice의 `Asset` contract와 `Alice`가 transfer를 수락하는 방법을 모두 알아야 합니다. 이 예에서 transfer를 수락하려면 `issuer`의 authority가 필요하다는 점을 기억하세요.
+
+## Observer
+
+*Observer*는 contract를 다른 party에 disclose하는 Daml mechanism입니다. `Asset` template에서 보듯 signatory와 같은 방식으로 선언하지만 `observer` keyword를 사용합니다.
+
+<DamlAppdevModulesM3DesignPatternsL330 />
+
+`Asset` template은 `owner`에게 observer를 설정하는 choice도 제공합니다. Alice가 trade를 제안하기 직전에 이를 사용해 자신의 `Asset`을 Bob에게 보여주는 방식을 확인할 수 있습니다. 해당 transaction을 제거하면 이 작업을 하지 않았을 때 어떤 일이 일어나는지 시험할 수 있습니다.
+
+<DamlAppdevModulesM3DesignPatternsL347 />
+
+Daml에서 observer에는 보장이 따릅니다. 특히 자신이 observer인 contract를 create하고 archive하는 action을 볼 수 있음이 보장됩니다.
+
+Observer는 contract argument에서 계산되므로 서로의 존재를 항상 알게 됩니다. 따라서 Alice는 Bob을 자신의 `AssetHolder` contract observer로 추가하고 이를 `Trade_Settle`의 transfer authorize에 사용하는 대신, `TransferAuthorization` 형태로 일회성 authorization을 만듭니다. Alice에게 counterparty가 많다면 전자의 방식은 이들을 서로에게 노출하게 됩니다.
+
+Choice controller는 choice argument가 알려지는 시점에만 계산할 수 있으므로 자동으로 observer가 되지 않습니다.
+
+## Privacy
+
+Daml의 privacy model은 두 원칙을 기반으로 합니다.
+
+Principle 1. Party는 자신에게 이해관계가 있는 action을 봅니다. Principle 2. Action을 보는 모든 party는 해당 action의 전이적 consequence도 봅니다.
+
+Principle 2는 모든 party가 자신이 보는 모든 transaction의 validity를 독립적으로 verify할 수 있도록 보장하는 데 필요합니다.
+
+다음 중 하나에 해당하면 party는 action에 이해관계가 있습니다.
+
+- 해당 action에 필요한 authorizer인 경우
+- action이 수행되는 contract의 signatory인 경우
+- 해당 contract의 observer이고 action이 contract를 create하거나 archive하는 경우
+
+그렇다면 `test_trade`의 `exercise tradeCid Trade_Settle` action에서는 무엇을 의미할까요?
+
+Alice는 `tradeCid`의 signatory이고 Bob은 `Trade_Settled` action에 필요한 authorizer이므로 두 사람 모두 해당 action을 봅니다. 위 Principle 2에 따라 두 사람은 transaction의 모든 내용을 보게 됩니다.
+
+Consequence에는 일부 `fetch` action과 함께 `TransferApproval_Transfer` choice의 `exercise` action 두 개가 포함됩니다.
+
+관련된 두 `TransferApproval` contract에는 서로 다른 `issuer`가 서명하며, 각 issuer는 "자신의" contract에서 일어나는 action을 봅니다. 따라서 EUR_Bank는 EUR `Asset`의 `TransferApproval_Transfer` action을 보고, USD_Bank는 USD `Asset`의 `TransferApproval_Transfer` action을 봅니다.
+
+Script runner와 Sandbox 같은 일부 Daml ledger는 "data minimization" 원칙에 따라 동작하며, 이는 위 정보 외에는 아무것도 배포되지 않는다는 뜻입니다. 즉 `execution_model`의 4단계에서 EUR_Bank에 배포되는 전체 transaction의 "projection"은 `TransferApproval_Transfer`와 그 consequence로만 구성됩니다.
+
+다른 implementation, 특히 public blockchain 기반 implementation은 privacy constraint가 더 약할 수 있습니다.
+
+### Divulgence
+
+Privacy model의 Principle 2에 따라 party가 자신이 signatory나 observer가 아닌 contract를 보는 경우도 있습니다. 예를 들어 `test_trade` script의 최종 ledger state를 보면 각 열의 X로 표시된 것처럼 이제 Alice와 Bob 모두 두 asset을 볼 수 있습니다.
+
+| Alice | Bob | EUR_Bank | USD_Bank | id | status | issuer | owner | symbol | quantity |
+|-------|-----|----------|----------|----|--------|--------|-------|--------|----------|
+| X | X | - | X | #15:6 | active | USD_Bank | Bob | USD | 100.0 |
+| X | X | X | - | #15:10 | active | EUR_Bank | Alice | EUR | 90.0 |
+
+이는 이 contract의 `create` action이 두 사람 모두 이해관계를 갖는 `Trade_Settle` action의 전이적 consequence에 있기 때문입니다. 이런 종류의 disclosure를 흔히 "divulgence"라고 하며, privacy에 민감한 application을 위한 Daml model을 설계할 때 고려해야 합니다.
+
+{/* COPIED_END */}
+
+## 일반적인 Daml design pattern
+
+위의 구성 pattern에 더해, 이 섹션에서는 Daml에서 사용하는 일반적인 multi-party workflow pattern을 다룹니다. 아래의 모든 예에서는 `Coin` asset model로 각 pattern을 설명합니다.
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/sdlc-howtos/smart-contracts/develop/patterns/" hash="patterns-all" */}
+
+### Propose-Accept
+
+여러 party가 공유 contract에 합의하도록 하는 가장 일반적인 방법입니다. 한 party가 proposal contract를 만들면 다른 party가 이를 수락하거나 거부하거나 만료되도록 둘 수 있습니다. [Authorization module의](/appdev/modules/m3-authorization#use-propose-accept-workflow-for-one-off-authorization) `IouProposal`도 이 pattern의 예입니다.
+
+Issuer는 `CoinMaster` contract를 만든 다음 이를 사용해 owner를 초대합니다. Invitation은 issuer가 signatory이고 owner가 observer인 proposal contract입니다.
+
+<DamlAppdevModulesM3DesignPatternsL410 />
+
+Proposal은 owner에게 수락하는 choice를 제공합니다. 완전한 model이라면 `Reject` 및 `Counter` choice도 포함합니다.
+
+<DamlAppdevModulesM3DesignPatternsL426 />
+
+Owner가 수락하면 결과 contract에는 두 party가 모두 signatory로 포함됩니다. 어느 쪽도 동의 없이 agreement에 참여하도록 강제되지 않습니다.
+
+<DamlAppdevModulesM3DesignPatternsL442 />
+
+두 개보다 많은 signature가 필요할 때 이 pattern은 장황해질 수 있습니다. 그런 경우는 아래의 Multiple Party Agreement를 참조하세요.
+
+### Delegation
+
+한 party가 다른 party를 대신해 choice를 exercise할 권리를 부여합니다. Principal은 각 action을 직접 commit하지 않고 agent가 자신을 대신해 행동하도록 authorize하는 delegation contract를 만듭니다. 이는 은행이 고객을 대신해 증권을 보유하고 transaction을 settle하는 실제 custodian 관계를 model합니다.
+
+Delegation contract인 `CoinPoA`, 즉 Power of Attorney에는 principal이 signatory로 포함됩니다. Attorney는 principal의 coin에서 `Transfer`를 exercise하는 `TransferCoin` choice를 control합니다.
+
+<DamlAppdevModulesM3DesignPatternsL464 />
+
+Attorney가 위임된 choice를 exercise하려면 먼저 coin을 attorney에게 disclose해야 합니다. 이는 `Coin`의 `Disclose` choice를 통해 attorney를 observer로 추가하여 수행합니다.
+
+<DamlAppdevModulesM3DesignPatternsL491 />
+
+### Authorization
+
+Control하는 party가 특정 action을 수행하기 전에 올바른 permission을 갖고 있는지 verify합니다. Authorization contract가 증명 역할을 하며, choice body는 진행하기 전에 해당 contract의 존재와 validity를 확인합니다.
+
+예를 들어 issuer가 인가된 party만 coin transfer를 받을 수 있도록 하려 합니다. Issuer는 승인된 owner를 위한 authorization token을 만듭니다.
+
+<DamlAppdevModulesM3DesignPatternsL504 />
+
+`TransferProposal`의 `AcceptTransfer` choice에서는 new owner가 자신의 authorization token을 제공해야 합니다. Assert는 token이 issuer 및 new owner와 일치하는지 verify합니다.
+
+<DamlAppdevModulesM3DesignPatternsL521 />
+
+Transfer가 수락되기 전에 issuer가 authorization을 철회하면 transfer가 실패합니다.
+
+### Locking
+
+Contract가 locked state에 있는 동안 해당 contract에서 choice가 exercise되지 않도록 합니다. Clearing 중에 asset을 동결해야 하는 securities settlement 같은 scenario에 유용합니다.
+
+한 가지 접근 방식은 **state change를 통한 locking**입니다. Contract가 `locker` field를 보유합니다. `owner == locker`이면 coin이 unlocked되어 transfer할 수 있습니다. 두 값이 다르면 third-party locker가 unlock을 control합니다.
+
+<DamlAppdevModulesM3DesignPatternsL541 />
+
+그 밖에도 두 가지 접근 방식이 있습니다. **Archiving을 통한 locking**은 원본 contract를 archive하고 `Unlock` 및 `Clawback` choice가 있는 `LockedCoin` wrapper를 만듭니다. **Safekeeping을 통한 locking**은 unlock을 control하는 신뢰할 수 있는 third party에 custody를 transfer합니다.
+
+### Multiple party agreement
+
+둘보다 많은 party로부터 signature를 수집합니다. `Pending` contract는 최종 `Agreement`를 감싸고 누가 서명했는지 추적합니다. 각 party는 `Sign` choice를 exercise하여 서명하고, 모든 party가 서명하면 어느 party든 `Finalize`하여 agreement를 만들 수 있습니다.
+
+최종 agreement contract에는 여러 signatory가 포함됩니다.
+
+<DamlAppdevModulesM3DesignPatternsL587 />
+
+`Pending` contract는 signature를 하나씩 수집합니다. 필요한 모든 signatory가 이 contract를 observe할 수 있으므로 각자는 자신이 서명할 차례를 확인할 수 있습니다.
+
+<DamlAppdevModulesM3DesignPatternsL598 />
+
+한 party가 자신만 signed 상태로 기재된 `Pending` contract를 만들어 workflow를 시작합니다. 나머지는 순서와 관계없이 서명하고, 모두 완료되면 어느 signatory든 finalize할 수 있습니다.
+
+<DamlAppdevModulesM3DesignPatternsL629 />
+
+{/* COPIED_END */}
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/tutorials/smart-contracts/compose.rst" hash="f782af8e" */}
+
+# Choice 구성하기
+
+지금까지 배운 내용을 결합해 asset 발행, 관리, transfer, trading을 위한 완전하고 안전한 Daml model을 만들 차례입니다. 이 application은 [CN Quickstart](/sdks-tools/reference-projects/cn-quickstart)와 유사한 기능을 갖습니다. 이 과정에서 다음 개념을 더 배우게 됩니다.
+
+- Daml project, package, module
+- Transaction 구성
+- Observer와 stakeholder
+- Daml 실행 모델
+- Privacy
+
+이 섹션의 model은 하나의 Daml file이 아니라 서로 의존하는 여러 file로 구성된 Daml project입니다.
+
+<Tip>
+`dpm new intro-compose  --template daml-intro-compose`를 실행하면 이 섹션의 모든 code를 `intro-compose`라는 folder에 불러올 수 있습니다.
+</Tip>
+
+## Daml project
+
+Daml은 project, package, module로 구성됩니다. Daml project는 하나의 `daml.yaml` file로 정의되며, Daml의 중간 언어이자 bytecode에 해당하는 Daml-LF package로 compile됩니다. Project 안의 각 Daml file은 namespace와 비슷한 Daml module이 됩니다. 각 Daml project에는 project의 `daml.yaml` file에 있는 `source` parameter로 지정된 source root가 있습니다. Package에는 해당 source directory 아래의 `*.daml` file에 정의된 모든 module이 포함됩니다.
+
+Terminal에서 `dpm new project-name`을 사용해 기본 구조를 갖춘 새 project를 시작할 수 있습니다. 최소한의 project에는 `daml.yaml` file과 비어 있는 source file directory만 있습니다.
+
+> 이 chapter project의 `daml.yaml`을 살펴보세요.
+
+```yaml
+sdk-version: __VERSION__
+name: __PROJECT_NAME__
+source: daml
+version: 1.0.0
+dependencies:
+  - daml-prim
+  - daml-stdlib
+  - daml-script
+```
+
+일반적으로 project를 설명하도록 `name`과 `version`을 자유롭게 설정할 수 있습니다. `dependencies`는 이름이 뜻하는 대로 dependency를 포함합니다. `daml-prim`과 `daml-stdlib`은 항상 포함해야 합니다. 전자는 compiler와 Daml Runtime의 내부 요소를 포함하고, 후자는 Daml standard library에 접근할 수 있게 합니다. `daml-script`에는 Daml Script용 type과 function이 포함됩니다.
+
+Project root directory에서 `dpm build`를 실행해 Daml project를 compile합니다. 그러면 `.daml/dist/dist/${project_name}-${project_version}.dar`에 DAR file이 생성됩니다. DAR file은 Java의 JAR file에 해당하는 Daml artifact로, package와 그 dependency를 load하도록 ledger에 deploy됩니다. `dar` file은 main package의 모든 dependency를 포함하므로 완전히 독립적입니다. 자세한 내용은 `dependencies`를 참조하세요.
+
+## Project 구조
+
+이 project에는 transfer할 수 있는 fungible asset의 보유 model과 별도의 trade workflow가 포함됩니다. Template은 `Intro.Asset`, `Intro.Asset.Role`, `Intro.Asset.Trade`의 세 module로 구성됩니다.
+
+또한 `Test.Intro.Asset`, `Test.Intro.Asset.Role`, `Test.Intro.Asset.Trade` module에 test가 있습니다.
+
+Module name에서 `.`으로 구분된 마지막 segment를 제외한 모든 segment는 project source directory의 상대 path에 대응하고, 마지막 segment는 file name에 대응합니다. 따라서 folder 구조는 다음과 같습니다.
+
+``` none
+.
+├── daml
+│   ├── Intro
+│   │   ├── Asset
+│   │   │   ├── Role.daml
+│   │   │   └── Trade.daml
+│   │   └── Asset.daml
+│   └── Test
+│       └── Intro
+│           ├── Asset
+│           │   ├── Role.daml
+│           │   └── Trade.daml
+│           └── Asset.daml
+└── daml.yaml
+```
+
+각 file에는 module header가 있습니다. 예를 들어 `daml/Intro/Asset/Role.daml`은 다음과 같습니다.
+
+<DamlAppdevModulesM3DesignPatternsL454 />
+
+`import` keyword를 사용해 한 module을 다른 module로 import할 수 있습니다. `LibraryModules` module은 여섯 module을 모두 import합니다.
+
+<DamlAppdevModulesM3DesignPatternsL461 />
+
+Import는 항상 module declaration 바로 아래에 있어야 합니다. 선택한 name만 import하려면 import 뒤에 name 목록을 추가할 수 있습니다.
+
+<DamlAppdevModulesM3DesignPatternsL86 />
+
+Module에 Daml Script가 포함되어 있으면 해당 기능을 import해야 합니다.
+
+<DamlAppdevModulesM3DesignPatternsL92 />
+
+## Project 개요
+
+이 project는 `parties`에서 소개한 `Iou` model을 변경하고 확장합니다.
+
+- Asset에는 `owner`가 보유분을 관리할 수 있는 `Merge` 및 `Split` choice가 있으므로 fungible합니다.
+
+- 이제 transfer proposal을 수락하려면 `issuer`와 `newOwner` 모두의 authority가 필요합니다. 따라서 issuer의 관점에서 `Asset`은 `Iou`보다 안전합니다.
+
+  `Iou` model에서는 `owner`와 `newOwner`만 transfer를 authorize했으므로 `issuer`가 누구에게든 현금을 빚지게 될 수 있었습니다. 이 project에서는 `AssetHolder` contract를 보유한 party만 asset을 소유할 수 있습니다. 따라서 `issuer`가 자신의 asset을 소유할 수 있는 party를 결정할 수 있습니다.
+
+- `Trade` template은 두 asset의 swap을 model에 추가합니다.
+
+## 구성된 choice와 script
+
+이 project는 `parties`에서 배운 `Update` 및 `Script` action을 유용하게 활용하는 방법을 보여줍니다. 예를 들어 `Merge` 및 `Split` choice는 각각 consequence에서 여러 action을 수행합니다.
+
+- `Split`의 경우 create action 두 개
+- `Merge`의 경우 create action 하나와 archive action 하나
+
+<DamlAppdevModulesM3DesignPatternsL115 />
+
+`Split`에서 사용하는 `return` function은 모든 `Action` context에서 사용할 수 있습니다. `return x`의 결과는 값 `x`를 포함하는 no-op입니다. `pure`라는 alias도 있는데, 이는 side effect가 있는 값과 달리 pure value임을 나타냅니다. `do` block의 마지막 statement로 사용할 때 argument가 실제로 `do` block의 "return" value이므로 `return`이라는 이름이 잘 맞습니다.
+
+Transaction 구성을 한 단계 더 발전시키면 `Trade`의 `Trade_Settle` choice는 두 `exercise` action을 구성합니다.
+
+<DamlAppdevModulesM3DesignPatternsL498 />
+
+두 단계로 중첩된 consequence를 포함하는 결과 transaction은 `Test.Intro.Asset.Trade`의 `test_trade` script에서 확인할 수 있습니다.
+
+``` none
+TX 14 1970-01-01T00:00:00Z (Test.Intro.Asset.Trade:79:23)
+#14:0
+│   disclosed to (since): 'Alice' (14), 'Bob' (14)
+└─> 'Bob' exercises Trade_Settle on #12:0 (Intro.Asset.Trade:Trade)
+          with
+            quoteAssetCid = #9:1; baseApprovalCid = #13:1
+    children:
+    #14:1
+    │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'USD_Bank' (14)
+    └─> 'Alice' and 'USD_Bank' fetch #10:1 (Intro.Asset:Asset)
+
+    #14:2
+    │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'EUR_Bank' (14)
+    └─> 'Bob' and 'EUR_Bank' fetch #9:1 (Intro.Asset:Asset)
+
+    #14:3
+    │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'USD_Bank' (14)
+    └─> 'Alice' and 'Bob' exercise TransferApproval_Transfer on #13:1 (Intro.Asset:TransferApproval)
+                          with
+                            assetCid = #10:1
+        children:
+        #14:4
+        │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'USD_Bank' (14)
+        └─> 'Alice' and 'USD_Bank' fetch #10:1 (Intro.Asset:Asset)
+
+        #14:5
+        │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'USD_Bank' (14)
+        └─> 'Alice' and 'USD_Bank' exercise Archive on #10:1 (Intro.Asset:Asset)
+
+        #14:6
+        │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'USD_Bank' (14)
+        └─> 'Bob' and 'USD_Bank' create Intro.Asset:Asset
+                                 with
+                                   issuer = 'USD_Bank';
+                                   owner = 'Bob';
+                                   symbol = "USD";
+                                   quantity = 100.0000000000;
+                                   observers = []
+
+    #14:7
+    │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'EUR_Bank' (14)
+    └─> 'Alice',
+        'Bob' exercises TransferApproval_Transfer on #11:1 (Intro.Asset:TransferApproval)
+              with
+                assetCid = #9:1
+        children:
+        #14:8
+        │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'EUR_Bank' (14)
+        └─> 'Bob' and 'EUR_Bank' fetch #9:1 (Intro.Asset:Asset)
+
+        #14:9
+        │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'EUR_Bank' (14)
+        └─> 'Bob' and 'EUR_Bank' exercise Archive on #9:1 (Intro.Asset:Asset)
+
+        #14:10
+        │   disclosed to (since): 'Alice' (14), 'Bob' (14), 'EUR_Bank' (14)
+        └─> 'Alice' and 'EUR_Bank' create Intro.Asset:Asset
+                                   with
+                                     issuer = 'EUR_Bank';
+                                     owner = 'Alice';
+                                     symbol = "EUR";
+                                     quantity = 90.0000000000;
+                                     observers = []
+```
+
+Choice와 마찬가지로, 이 project의 script가 서로를 바탕으로 구성되는 방식을 확인할 수 있습니다.
+
+<DamlAppdevModulesM3DesignPatternsL599 />
+
+위에서 `Test.Intro.Asset.Role`의 `test_issuance` script는 같은 module의 `setupRoles` script 출력을 사용합니다.
+
+같은 line은 새로운 종류의 pattern matching을 보여줍니다. `setupResult <- setupRoles`를 작성한 다음 `_1`, `_2` 등을 사용해 `setupResult`의 component에 접근하는 대신, component에 name을 지정할 수 있습니다. 이는 다음과 같습니다.
+
+<DamlAppdevModulesM3DesignPatternsL282 />
+
+`(alice, bob, bank, aha, ahb) <- setupRoles`만 작성해도 유효하지만 `setupResult`가 `test_issuance`의 return value에 사용되므로 전체에도 name을 지정하는 편이 적절합니다. `@` 표기법을 사용하면 전체 value와 그 구성 요소 모두에 한 번에 name을 지정할 수 있습니다.
+
+## Daml 실행 모델
+
+Daml의 실행 모델은 비교적 이해하기 쉽지만 몇 가지 중요한 consequence가 있습니다. Transaction의 lifecycle은 다음과 같이 생각할 수 있습니다.
+
+Command 제출
+User는 participant node의 Ledger API를 통해 command 목록을 제출하며, 해당 node에 hosted된 `Party`로서 행동합니다. 이 party를 requester라고 합니다.
+
+Interpretation
+각 command는 하나 이상의 action에 대응합니다. 이 단계에서는 각 action에 해당하는 `Update`를 ledger context에서 evaluate하여 전이적 consequence, 즉 consequence의 consequence 등을 포함한 모든 consequence를 계산합니다. 그 결과가 완전한 transaction입니다. Requester와 함께 이를 commit이라고도 합니다.
+
+Blinding
+강력한 privacy를 제공하는 ledger에서는 관련된 모든 party를 위한 projection을 만듭니다(`privacy` 참조). 이를 *projecting*이라고도 합니다.
+
+Transaction 제출
+Transaction/commit이 network에 제출됩니다.
+
+Validation
+Network가 transaction/commit을 validate합니다. 정확히 누가 validate하는지는 implementation마다 다를 수 있습니다. Validation에는 scheduling과 collision detection도 포함되며, transaction이 commit의 부분 ordering 안에서 명확한 위치를 차지하고 double spend가 발생하지 않도록 보장합니다.
+
+Commitment
+Ledger의 commit 또는 consensus protocol에 따라 commit이 실제로 확정됩니다.
+
+Confirmation
+Network가 관련된 모든 participant node에 commitment confirmation을 돌려보냅니다.
+
+Completion
+User는 제출한 participant node의 Ledger API를 통해 confirmation을 받습니다.
+
+위 과정의 첫 번째 중요한 결과는 모든 transaction이 atomically commit된다는 점입니다. Transaction은 모든 participant에 대해 전체가 commit되거나 실패합니다.
+
+이는 위의 `Trade_Settle` choice에서 중요합니다. 이 choice는 `baseAsset`을 한 방향으로, `quoteAsset`을 반대 방향으로 transfer합니다. Transaction atomicity 덕분에 어느 한 party만 손해를 보는 상황은 발생하지 않습니다.
+
+두 번째 결과는 transaction requester가 자신이 제출한 transaction의 모든 consequence를 안다는 점입니다. Daml에는 예상하지 못한 결과가 없습니다. 하지만 이는 requester가 transaction을 interpret하는 데 필요한 모든 정보를 갖고 있어야 한다는 뜻이기도 합니다. 이 page의 뒤에서는 이를 Principle 2라고도 부릅니다.
+
+이 점은 `Trade`에서도 중요합니다. Alice의 현금을 Bob에게 transfer하는 transaction을 Bob이 interpret할 수 있으려면, Bob은 Alice의 `Asset` contract와 `Alice`가 transfer를 수락하는 방법을 모두 알아야 합니다. 이 예에서 transfer를 수락하려면 `issuer`의 authority가 필요하다는 점을 기억하세요.
+
+## Observer
+
+*Observer*는 contract를 다른 party에 disclose하는 Daml mechanism입니다. `Asset` template에서 보듯 signatory와 같은 방식으로 선언하지만 `observer` keyword를 사용합니다.
+
+<DamlAppdevModulesM3DesignPatternsL330 />
+
+`Asset` template은 `owner`에게 observer를 설정하는 choice도 제공합니다. Alice가 trade를 제안하기 직전에 이를 사용해 자신의 `Asset`을 Bob에게 보여주는 방식을 확인할 수 있습니다. 해당 transaction을 제거하면 이 작업을 하지 않았을 때 어떤 일이 일어나는지 시험할 수 있습니다.
+
+<DamlAppdevModulesM3DesignPatternsL673 />
+
+Daml에서 observer에는 보장이 따릅니다. 특히 자신이 observer인 contract를 create하고 archive하는 action을 볼 수 있음이 보장됩니다.
+
+Observer는 contract argument에서 계산되므로 서로의 존재를 항상 알게 됩니다. 따라서 Alice는 Bob을 자신의 `AssetHolder` contract observer로 추가하고 이를 `Trade_Settle`의 transfer authorize에 사용하는 대신, `TransferAuthorization` 형태로 일회성 authorization을 만듭니다. Alice에게 counterparty가 많다면 전자의 방식은 이들을 서로에게 노출하게 됩니다.
+
+Choice controller는 choice argument가 알려지는 시점에만 계산할 수 있으므로 자동으로 observer가 되지 않습니다.
+
+## Privacy
+
+Daml의 privacy model은 두 원칙을 기반으로 합니다.
+
+Principle 1. Party는 자신에게 이해관계가 있는 action을 봅니다. Principle 2. Action을 보는 모든 party는 해당 action의 전이적 consequence도 봅니다.
+
+Principle 2는 모든 party가 자신이 보는 모든 transaction의 validity를 독립적으로 verify할 수 있도록 보장하는 데 필요합니다.
+
+다음 중 하나에 해당하면 party는 action에 이해관계가 있습니다.
+
+- 해당 action에 필요한 authorizer인 경우
+- action이 수행되는 contract의 signatory인 경우
+- 해당 contract의 observer이고 action이 contract를 create하거나 archive하는 경우
+
+그렇다면 `test_trade`의 `exercise tradeCid Trade_Settle` action에서는 무엇을 의미할까요?
+
+Alice는 `tradeCid`의 signatory이고 Bob은 `Trade_Settled` action에 필요한 authorizer이므로 두 사람 모두 해당 action을 봅니다. 위 Principle 2에 따라 두 사람은 transaction의 모든 내용을 보게 됩니다.
+
+Consequence에는 일부 `fetch` action과 함께 `TransferApproval_Transfer` choice의 `exercise` action 두 개가 포함됩니다.
+
+관련된 두 `TransferApproval` contract에는 서로 다른 `issuer`가 서명하며, 각 issuer는 "자신의" contract에서 일어나는 action을 봅니다. 따라서 EUR_Bank는 EUR `Asset`의 `TransferApproval_Transfer` action을 보고, USD_Bank는 USD `Asset`의 `TransferApproval_Transfer` action을 봅니다.
+
+Script runner와 Sandbox 같은 일부 Daml ledger는 "data minimization" 원칙에 따라 동작하며, 이는 위 정보 외에는 아무것도 배포되지 않는다는 뜻입니다. 즉 `execution_model`의 4단계에서 EUR_Bank에 배포되는 전체 transaction의 "projection"은 `TransferApproval_Transfer`와 그 consequence로만 구성됩니다.
+
+다른 implementation, 특히 public blockchain 기반 implementation은 privacy constraint가 더 약할 수 있습니다.
+
+### Divulgence
+
+Privacy model의 Principle 2에 따라 party가 자신이 signatory나 observer가 아닌 contract를 보는 경우도 있습니다. 예를 들어 `test_trade` script의 최종 ledger state를 보면 각 열의 X로 표시된 것처럼 이제 Alice와 Bob 모두 두 asset을 볼 수 있습니다.
+
+![images/compose/divulgence.png](./images/compose/divulgence.png)
+
+이는 이 contract의 `create` action이 두 사람 모두 이해관계를 갖는 `Trade_Settle` action의 전이적 consequence에 있기 때문입니다. 이런 종류의 disclosure를 흔히 "divulgence"라고 하며, privacy에 민감한 application을 위한 Daml model을 설계할 때 고려해야 합니다.
+
+## 다음 단계
+
+`exceptions`에서는 model의 error를 Daml에서 처리하는 방법을 알아봅니다.
+
+{/* COPIED_END */}

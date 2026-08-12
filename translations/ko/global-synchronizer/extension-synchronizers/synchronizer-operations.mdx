@@ -1,0 +1,1542 @@
+---
+title: "Synchronizer 운영 가이드"
+description: "Canton synchronizer node의 configuration, bootstrap 및 운영"
+source_id: "SRC-5BD68409F6"
+source_path: "global-synchronizer/extension-synchronizers/synchronizer-operations"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "9f2ccf850d9b1f7ed1ae1649ca0a774bc579e99714a5fc6dbd73cbaa1235cc0a"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-0.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-1.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap3 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-3.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap4 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-4.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap5 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-5.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap6 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-6.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap7 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-7.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap8 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-8.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap9 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-9.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap10 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-10.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap11 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-11.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap12 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-12.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap13 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-13.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap14 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-14.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap15 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-15.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap16 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-16.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap17 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-17.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap18 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-18.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap19 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-19.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap20 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-20.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap21 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-21.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap22 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-22.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap23 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-23.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap24 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-24.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap25 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-25.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap26 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-26.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap27 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-27.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap28 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-28.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap29 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-29.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap30 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-30.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap31 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-31.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap32 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-32.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap33 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-33.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap34 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-34.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap35 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-35.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap36 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-36.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap37 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-37.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap38 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-38.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap39 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-39.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap40 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-40.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap41 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-41.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap42 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-42.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap43 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-43.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap44 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-44.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap45 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-45.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap46 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-46.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap47 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-47.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap48 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-48.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap49 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-49.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap50 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-50.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap51 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-51.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap52 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-52.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap53 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-53.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap54 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-54.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap55 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-55.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap56 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-56.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap57 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-57.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap58 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-58.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap59 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-59.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap60 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-60.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap61 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-61.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap62 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-62.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap63 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-63.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap64 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-64.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap65 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/bootstrap-65.mdx";
+
+
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/traffic-0.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/traffic-1.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic2 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/traffic-2.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic3 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/traffic-3.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic4 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/traffic-4.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic5 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/traffic-5.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic6 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/traffic-6.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic7 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/traffic-7.mdx";
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic8 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/traffic-8.mdx";
+
+import ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateOffboarding1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/synchronizer/howtos/operate/offboarding-1.mdx";
+
+import ExternalCantonMainCommunityAppSrcTestResourcesExternalHaSequencersRemoteAdminParsing from "/snippets/external/canton/main/community/app/src/test/resources/external-ha-sequencers-remote-admin-parsing.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/extension-synchronizers/synchronizer-operations.md)을 사용하세요.
+</Warning>
+
+이 page는 synchronizer node의 configuration, bootstrap 및 운영 reference입니다. Helm, database, initialization, validator 연결을 단계별로 설명하는 dedicated synchronizer walkthrough는 [Dedicated Synchronizer 배포](/global-synchronizer/extension-synchronizers/deployment)를 참조하세요.
+
+<Info>
+**설정 순서**
+
+1. **Configure** — Sequencer/Mediator API, Sequencer backend 및 TLS의 Canton config를 작성합니다.
+2. **Start** — 해당 config로 synchronizer node를 시작합니다.
+3. **Bootstrap** — Synchronizer topology를 initialize합니다. [Synchronizer Bootstrap](#bootstrap-a-synchronizer)을 참조하세요.
+4. **Connect** — Participant/Validator를 연결하고 검증합니다.
+5. **Operate** — Node 추가, traffic, pruning, HA, backup 같은 day-2 task를 수행합니다.
+
+</Info>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/howtos/configure/apis.rst" hash="b9b16858" */}
+
+# Synchronizer API 설정
+
+Synchronizer는 Admin API와 Public API라는 두 주요 API를 노출하며 Participant Node는 Ledger API와 Admin API를 노출합니다. 이 section에서는 각 API의 역할과 설정 방법을 설명합니다.
+
+Endpoint와 address, port, keep-alive 등의 설정 방법은 일반 API documentation을 참조하세요.
+
+## Sequencer Public API 설정
+
+Sequencer Public API는 다른 node가 Synchronizer에 연결하고 authenticate하며 message를 교환하는 service를 제공합니다. Sequencer 역할의 자세한 내용은 Sequencer overview page를 참조하세요.
+
+Sequencer node configuration 아래에 Public API `public-api`를 설정합니다.
+
+```scala
+sequencers {
+  sequencer1 {
+    storage.type = memory
+    public-api.port = 5001
+    admin-api.port = 5002
+    sequencer.type = BFT
+  }
+}
+```
+
+<div className="todo">
+
+{/* Link the reference documentation. \<[https://github.com/DACH-NY/canton/issues/26126](https://github.com/DACH-NY/canton/issues/26126)\> */}
+
+</div>
+
+모든 Sequencer Public API configuration parameter에는 기본값이 있습니다. 예를 들어 기본 listen address는 `127.0.0.1`입니다. Parameter의 자세한 내용은 reference documentation을 확인하세요.
+
+## Sequencer Admin API 설정
+
+Sequencer Admin API는 Sequencer node configuration 아래에서 Public API와 같은 level에 표준 방식으로 설정할 수 있습니다.
+
+## Mediator Admin API 설정
+
+Mediator Admin API는 Mediator node configuration 아래에서 표준 방식으로 설정할 수 있습니다.
+
+```scala
+mediators {
+  mediator1 {
+    storage.type = memory
+    admin-api.port = 5202
+  }
+}
+```
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/howtos/configure/sequencer_backend.rst" hash="a0176aae" */}
+
+# Sequencer Backend 설정
+
+다음 page에서는 Sequencer backend 설정의 기본 사항을 설명합니다. 고급 configuration은 다음 section을 참조하세요.
+
+> - High availability
+> - Pruning
+> - Optimization
+
+## Database Sequencer
+
+Database Sequencer는 현재 지원되지 않으므로 설정하면 안 됩니다.
+
+## BFT Sequencer
+
+### 최소 BFT Sequencer Backend Configuration
+
+Byzantine Fault Tolerant(BFT) Sequencer를 사용하려면 \`sequencer\` 아래의 `type` parameter를 `BFT`로 설정합니다.
+
+```scala
+sequencers {
+  sequencer1 {
+    sequencer.type = BFT
+    public-api.port = 5001
+    admin-api.port = 5002
+  }
+}
+```
+
+이 configuration은 single-node network용이므로 peer를 추가할 수 없습니다. Multi-node network는 다음 section을 참조하세요.
+
+### Initial Peer 설정, 선택 사항
+
+Network에 node가 둘 이상이면 `initial-network` 아래에 server endpoint를 설정합니다. 여기에서 peer endpoint도 설정하거나 나중에 admin command로 추가할 수 있습니다. Peer endpoint를 미리 설정하면 manual configuration 단계가 줄어 시간과 error를 줄이고 deployment를 가속할 수 있습니다.
+
+```scala
+server-endpoint {
+  address = "0.0.0.0"
+  port = 31030
+  external-address = "127.0.0.1"
+  external-port = 31030
+  external-tls-config.enabled = false
+}
+peer-endpoints = [
+  {
+    address = "127.0.0.1"
+    port = 31031
+    tls-config.enabled = false
+  }
+]
+```
+
+`address`와 `port` pair는 `server-endpoint` 아래에서 BFT Sequencer의 gRPC server가 listen하는 endpoint를 구성합니다. `port`를 지정하지 않으면 operating system이 선택합니다. `external-address`와 `external-port`는 다른 peer가 연결할 수 있는 external endpoint를 구성합니다. 일반적으로 `external-address`는 listening endpoint를 가리키는 reverse proxy의 domain name입니다. Client가 server를 성공적으로 authenticate하려면 external endpoint를 올바르게 설정해야 합니다.
+
+External endpoint와 peer endpoint에는 기본적으로 Transport Layer Security(TLS)가 활성화됩니다. Config example에서는 간단히 보여주기 위해 비활성화했지만 다음 항목을 사용해 표준 방식으로 설정하는 것을 권장합니다.
+
+> - Internal server endpoint: `tls`를 `server-endpoint` 아래에 설정
+> - External endpoint: `external-tls-config`를 `server-endpoint` 아래에 설정
+> - Peer endpoint: `tls-config`를 `peer-endpoints` 아래에 설정
+
+<div className="todo">
+
+{/* Link the reference documentation. \<[https://github.com/DACH-NY/canton/issues/26126](https://github.com/DACH-NY/canton/issues/26126)\> */}
+
+</div>
+
+`initial-network` configuration의 자세한 내용은 reference documentation을 확인하세요.
+
+### Authentication 설정, 선택 사항
+
+Authentication은 기본적으로 활성화됩니다. `endpoint-authentication`을 `initial-network` 아래에서 `server-endpoint`와 같은 level로 설정할 수 있습니다.
+
+```scala
+endpoint-authentication {
+  auth-token = {}
+}
+```
+
+Authentication의 자세한 내용은 Secure Synchronizer page를 참조하세요.
+
+### Dedicated Storage 설정, 선택 사항
+
+Dedicated storage를 사용하려면 top-level Sequencer storage configuration과 같은 방식으로 `storage`를 `config` 아래에 설정합니다.
+
+BFT Sequencer는 기본적으로 top-level Sequencer storage를 사용하지만 dedicated storage를 설정하면 다음과 같이 더 유연하게 운영할 수 있습니다.
+
+> - 서로 다른 database backend와 setting으로 별도의 data read/write pattern 지원
+> - Backup 분리
+
+### Network-wide Parameter 설정
+
+기본값을 변경한다면 다음 parameter를 network 전체에서 동일하게 유지합니다.
+
+> - \`epoch-length\`: 모든 epoch의 length
+> - \`max-requests-in-batch\`: batch당 최대 request 수, runtime에 검증
+> - \`max-batches-per-block-proposal\`: block proposal당 최대 batch 수, runtime에 검증
+
+위 parameter는 모두 `config` 아래에 있으며 모든 BFT Orderer node에서 같아야 합니다.
+
+관련 개념의 자세한 내용은 BFT Orderer explanation page를 확인하세요.
+
+### 기타 Local Parameter 설정
+
+`config` 아래에는 변경할 수 있는 다른 local configuration parameter도 있습니다.
+
+<div className="todo">
+
+{/* Link the reference documentation. \<[https://github.com/DACH-NY/canton/issues/26126](https://github.com/DACH-NY/canton/issues/26126)\> */}
+
+</div>
+
+자세한 내용은 reference documentation을 확인하세요.
+
+## External Sequencer
+
+CometBFT 같은 external Sequencer를 사용하려면 기반 Sequencer `type`을 `config` 아래의 `sequencer` configuration에 설정합니다.
+
+```scala
+sequencer {
+    config {
+        cometbft-node-host = "127.0.0.1"
+        cometbft-node-port = 26627
+    }
+    type = CometBFT
+}
+```
+
+모든 external Sequencer에는 classpath에 해당 Sequencer Driver가 필요합니다.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/howtos/secure/apis.rst" hash="ca814e1d" */}
+
+# Synchronizer API 보호
+
+## Sequencer Public API
+
+### Public API
+
+Synchronizer configuration에는 participant와 같은 `Admin API` configuration이 필요합니다. `Admin API`와 함께 모든 participant가 연결하는 `Public API`를 설정해야 합니다.
+
+#### TLS Encryption
+
+Admin API와 마찬가지로 network traffic은 TLS로 encryption할 수 있으며 그렇게 해야 합니다. Public API에서는 특히 중요합니다.
+
+TLS encryption과 server-side TLS authentication을 활성화하는 configuration section 예제는 다음과 같습니다.
+
+``` none
+canton.synchronizer.acme.public-api {
+  port = 5028
+  address = localhost // defaults to 127.0.0.1
+  tls {
+    cert-chain-file = "./tls/public-api.crt"
+    private-key-file = "./tls/public-api.pem"
+    // minimum-server-protocol-version = TLSv1.3, optional argument
+    // ciphers = null // use null to default to JVM ciphers
+  }
+}
+```
+
+Server side에서 self-signed certificate로 TLS를 사용한다면 participant connect call 중 certificate chain을 전달해야 합니다. 그렇지 않으면 Java runtime의 기본 root certificate를 사용합니다. 예제는 다음과 같습니다.
+
+<div className="todo">
+
+\#22917: 깨진 literalinclude 수정 literalinclude:: CANTON/enterprise/app/src/test/scala/com/digitalasset/canton/integration/tests/MultiSynchronizerIntegrationTests.scala start-after: architecture-handbook-entry-begin: TlsConnect end-before: architecture-handbook-entry-end: TlsConnect dedent:
+
+</div>
+
+#### Server Authentication
+
+Canton은 man-in-the-middle attack을 방지하기 위해 TLS와 synchronizer ID라는 두 방식으로 server authentication을 수행합니다.
+
+위 설명처럼 Public API에 TLS를 사용하면 TLS가 server authentication도 처리합니다. 이는 TLS의 핵심 기능 중 하나입니다.
+
+Synchronizer operator가 synchronizer identity를 participant node operator에게 전달하고, synchronizer가 participant node에 보고한 identity와 일치하는지 확인하는 방식으로도 server authentication을 수행할 수 있습니다. 모든 node와 마찬가지로 synchronizer는 namespace root key fingerprint에 해당하는 identity를 가집니다. 연결하는 participant node에 identity를 보고하고 topology ledger에서 해당 namespace root key가 authorize한 key로 모든 message에 서명합니다. Key compromise가 없다고 가정하면 participant는 보고된 identity가 authentic하다고 보장받습니다. 연결된 유일한 synchronizer의 synchronizer ID는 다음과 같은 console command로 확인할 수 있습니다.
+
+``` none
+participant1.synchronizers.list_connected.last.synchronizerId.filterString
+```
+
+#### Client Authentication
+
+Ledger API나 Admin API와 달리 Public API는 client authentication에 mutual TLS(mTLS) 대신 Canton cryptography와 topology state를 사용합니다. Client는 다음 단계로 Public API에 연결합니다.
+
+1.  Client가 `SequencerConnectService`를 호출해 Canton Protocol version을 맞추고 synchronizer ID를 얻습니다.
+2.  첫 connection에서 client가 최소 topology state(identity, key delegation, public key)를 sequencer에 보내 register합니다.
+3.  Client가 `SequencerAuthenticationService`를 호출해 challenge-response protocol로 authenticate하고 다른 sequencer service의 access token을 얻습니다.
+4.  Client가 3단계 access token으로 주요 `SequencerService`에 연결합니다.
+
+2단계에서 client가 제공하는 정보는 key certificate chain이므로 검증할 수 있습니다. 포함된 namespace root key fingerprint가 permissioned되지 않았거나 `permissioned-synchronizer`를 참조하세요, 제공된 topology state가 유효하지 않으면 synchronizer가 거부합니다.
+
+3단계에서 client는 namespace root key fingerprint인 identity를 claim합니다. 2단계처럼 해당 identity가 register되어 있으면 sequencer는 nonce와 topology ledger에 따라 member에게 authorize된 모든 signing key fingerprint로 구성된 challenge를 반환합니다. Authorized key 중 하나와 일치하는 key로 nonce에 올바르게 서명해 challenge에 성공하면 `SequencerAuthenticationService`가 다른 Public API service에서 더 효율적으로 authenticate하는 데 사용할 수 있는 time-limited token을 반환합니다.
+
+Restricted service의 authentication mechanism은 public sequencer API에 내장되어 있습니다. 별도 설정이 필요 없으며 자동으로 enforce되고 비활성화할 수 없습니다.
+
+2단계에서 생성된 token은 기본적으로 한 시간 동안 유효합니다. Node는 token이 만료되기 전에 background에서 자동 renew합니다. Token과 nonce의 lifetime은 다음 설정으로 변경할 수 있습니다.
+
+``` none
+canton.sequencers.sequencer1.public-api {
+    max-token-expiration-interval = 60m
+    nonce-expiration-interval = 1m
+}
+```
+
+그러나 기본값을 유지하는 것을 권장합니다.
+
+앞서 설명했듯이 발급된 token을 call 중 제시한 member는 public sequencer API service에서 authenticate할 수 있습니다. 따라서 token은 공개하면 안 되는 sensitive information입니다. Operator가 member의 authentication token이 유출되거나 compromise되었다고 의심한다면 `logout` console command로 해당 member의 모든 valid token을 즉시 revoke하고 sequencer connection을 닫아야 합니다. 정상 member는 자동 reconnect하고 위 challenge-response protocol로 새 token을 얻습니다.
+
+Command는 member가 participant인지 mediator인지에 따라 약간 다릅니다. 예를 들면 다음과 같습니다.
+
+<div className="todo">
+
+Command reference로 대체합니다. \#22919
+
+</div>
+
+``` text
+participant1.synchronizers.logout(mySynchronizerAlias)
+mediator1.sequencer_connections.logout()
+```
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/howtos/operate/bootstrap.rst" hash="42ffbcca" */}
+
+# Synchronizer Bootstrap
+
+<Note>
+Bootstrap 전에 [API](#configure-synchronizer-apis), [Sequencer backend](#configure-sequencer-backend), [TLS](#secure-synchronizer-apis) configuration을 완료하고 node를 시작하세요. End-to-end dedicated synchronizer 절차는 [Dedicated Synchronizer 배포](/global-synchronizer/extension-synchronizers/deployment)를 사용하세요.
+</Note>
+
+이 how-to는 일반 Synchronizer 개념에 익숙하다고 가정합니다. 자세한 내용은 Canton overview를 참조하세요.
+
+## Centralized Synchronizer 설정
+
+**Centralized** Synchronizer에서는 operator가 모든 Sequencer/Mediator node에 접근할 수 있습니다.
+
+Centralized Synchronizer는 설정과 관리가 가장 간단하지만 완전히 신뢰하는 단일 entity가 Synchronizer를 소유하고 운영한다고 가정합니다.
+
+Owner 하나와 `synchronizerThreshold` 1을 지정해 centralized Synchronizer를 bootstrap할 수 있습니다. 이는 해당 owner만 Synchronizer topology change를 authorize할 수 있고 signature 하나면 충분하다는 의미입니다.
+
+먼저 node가 새 상태이고 아직 initialize되지 않았는지 확인합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap0 />
+
+이제 다음과 같이 centralized Synchronizer를 initialize합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap1 />
+
+기본값 대신 static Synchronizer parameter를 customize할 수 있습니다. 사용할 수 있는 parameter와 value는 parameter configuration section을 참조하세요.
+
+이제 Participant Node가 Sequencer를 통해 Synchronizer에 연결할 수 있습니다. `ping` command로 Participant Node가 Synchronizer를 사용할 수 있는지 확인합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap3 />
+
+## Decentralized Synchronizer 설정
+
+이 subsection은 서로 다른 operator가 각 owner를 대신해 **decentralized** Synchronizer node를 관리하는 가장 일반적인 경우를 다룹니다. 각 node는 별도 console environment에서 관리됩니다.
+
+이 경우 Synchronizer node 사이에서 bootstrapping process를 lockstep으로 조정해야 하며 coordination과 data exchange는 secure communication channel을 통해 수행해야 합니다.
+
+별도 console을 사용하는 decentralized Synchronizer의 bootstrap 절차를 요약하면 operator는 다음을 수행합니다.
+
+1.  Initial parameter를 확정합니다.
+2.  Synchronizer identity를 교환합니다.
+3.  함께 decentralized namespace를 생성합니다. 자세한 내용은 Canton overview를 참조하세요. 각 operator는 다음을 수행합니다.
+    1.  Bootstrapping topology transaction에 서명합니다.
+    2.  다른 operator와 bootstrapping topology transaction을 교환합니다.
+    3.  자체 Synchronizer node를 initialize합니다.
+
+이 how-to는 Sequencer node 두 개와 Mediator node 두 개를 사용합니다. Sequencer node는 Synchronizer owner이며 각 entity를 대신하는 서로 다른 operator가 관리합니다.
+
+다음 diagram은 operator 사이 information exchange를 보여줍니다.
+
+<div style={{background: "#ffffff", padding: "1rem", borderRadius: "0.5rem", display: "inline-block", width: "80%"}}>
+  <img src="/images/docs_website/decentralized-synchronizer-bootstrap-data-exchange.png" alt="Sequence diagram of information exchange between Synchronizer operators during decentralized bootstrap" style={{width: "100%", display: "block"}} />
+</div>
+
+<Note>
+계속하기 전에 decentralized Synchronizer의 모든 node가 시작되었는지 확인하세요.
+</Note>
+
+모든 Synchronizer owner는 static Synchronizer parameter에 미리 합의해야 합니다. 예를 들어 parameter definition이 포함된 file을 export하고 공유할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap4 />
+
+이제 두 Sequencer console에서 Synchronizer topology를 bootstrap하기 위한 temporary topology store를 생성합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap5 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap6 />
+
+두 Sequencer console에서 Sequencer/Mediator identity를 export합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap7 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap8 />
+
+각 console에서 node identity를 해당 temporary topology store로 import합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap9 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap10 />
+
+첫 Sequencer signature로 decentralized namespace declaration을 propose하고 export합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap11 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap12 />
+
+두 번째 Sequencer console에서 첫 Sequencer의 decentralized namespace declaration을 load하고 서명한 뒤 다시 공유합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap13 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap14 />
+
+두 번째 Sequencer signature로 Synchronizer bootstrap transaction을 생성하고 첫 Sequencer와 공유합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap15 />
+
+첫 Sequencer console에서 두 번째 Sequencer의 decentralized namespace declaration과 Synchronizer bootstrap transaction을 load합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap16 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap17 />
+
+첫 Sequencer console에서 계속해서 genesis topology를 생성하고 다시 export합니다. 이 과정에서 두 Sequencer signature도 merge됩니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap18 />
+
+두 번째 Sequencer console에서 두 Sequencer signature가 모두 포함된 첫 Sequencer의 Synchronizer bootstrap transaction을 load합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap19 />
+
+각 console에서 fully authorized initial topology snapshot으로 두 Sequencer를 bootstrap합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap20 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap21 />
+
+Synchronizer bootstrap과 Sequencer initialization이 완료되었으므로 temporary topology store를 제거합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap22 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap23 />
+
+두 Sequencer console에서 각 Mediator를 관련 Sequencer에 연결해 initialize합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap24 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap25 />
+
+이제 decentralized Synchronizer가 완전히 initialize되었으며 Participant Node는 Sequencer connection을 통해 이 Synchronizer에서 operate할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap26 />
+
+## 일부 Sequencer만 Owner인 Decentralized Synchronizer 설정
+
+이전 subsection은 여러 Sequencer가 모두 Synchronizer owner인 decentralized Synchronizer bootstrap 방법을 설명했습니다. 이 subsection은 여러 Sequencer 중 일부만 Synchronizer owner인 경우를 설명합니다.
+
+이전 subsection과 마찬가지로 서로 다른 operator가 별도 console environment에서 각 Synchronizer node를 관리할 수 있습니다. Synchronizer node 사이 bootstrapping process를 lockstep으로 조정하고 secure communication channel로 coordination과 data exchange를 수행해야 합니다.
+
+이 how-to는 Sequencer node 네 개와 Mediator node 두 개를 사용합니다. 첫 번째와 두 번째 Sequencer node **두 개**만 Synchronizer owner이며 네 Sequencer node 모두 서로 다른 operator가 관리합니다. 이전 subsection과 많은 bootstrapping command를 공유하지만 owner/non-owner Sequencer node가 각각 수행할 command에는 세부적인 차이가 있습니다.
+
+<Note>
+계속하기 전에 decentralized Synchronizer의 모든 node가 시작되었는지 확인하세요.
+</Note>
+
+모든 Synchronizer owner는 static Synchronizer parameter에 미리 합의해야 합니다. 예를 들어 parameter definition file을 export하고 공유할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap27 />
+
+이제 네 Sequencer node console 모두에서 Synchronizer topology bootstrap용 temporary topology store를 생성합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap28 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap29 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap30 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap31 />
+
+네 Sequencer node console 모두에서 Sequencer/Mediator identity를 export합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap32 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap33 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap34 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap35 />
+
+각 console에서 node identity를 해당 temporary topology store로 import합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap36 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap37 />
+
+첫 Sequencer signature로 decentralized namespace declaration을 propose하고 export합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap38 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap39 />
+
+두 번째 Sequencer console에서 첫 Sequencer의 decentralized namespace declaration을 load하고 서명한 뒤 다시 공유합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap40 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap41 />
+
+두 번째 Sequencer signature로 Synchronizer bootstrap transaction을 생성하고 첫 Sequencer와 공유합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap42 />
+
+첫 Sequencer console에서 두 번째 Sequencer의 decentralized namespace declaration과 Synchronizer bootstrap transaction을 load합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap43 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap44 />
+
+첫 Sequencer console에서 계속해서 genesis topology를 생성하고 다시 export합니다. 이 과정에서 두 Sequencer signature도 merge됩니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap45 />
+
+두 번째 Sequencer console에서 두 Sequencer signature가 모두 포함된 첫 Sequencer의 Synchronizer bootstrap transaction을 load합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap46 />
+
+각 console에서 fully authorized initial topology snapshot으로 모든 Sequencer를 bootstrap합니다. Synchronizer owner인 두 Sequencer의 initial snapshot은 Synchronizer bootstrap process를 거쳐 각 temporary store에 이미 local로 존재합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap47 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap48 />
+
+Non-owner Sequencer에서는 *assign from genesis state* command를 사용할 수 있도록 initial topology snapshot을 external로 공유합니다. 이 예제에서는 첫 Sequencer가 작성된 file을 공유해 세 번째와 네 번째 Sequencer에 initial topology snapshot을 external로 전달한다고 가정합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap49 />
+
+Synchronizer bootstrap과 Sequencer initialization이 완료되었으므로 temporary topology store를 제거합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap50 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap51 />
+
+두 Sequencer owner console에서 각 Mediator를 관련 Sequencer에 연결해 initialize합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap52 />
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap53 />
+
+이제 decentralized Synchronizer가 완전히 initialize되었으며 Participant Node는 Sequencer connection을 통해 이 Synchronizer에서 operate할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap54 />
+
+## Permissioned Synchronizer Bootstrap
+
+Synchronizer security의 첫 layer는 Sequencer Public API network endpoint에 대한 access 제한입니다. Firewall rule이나 virtual private network 같은 표준 network tool을 사용할 수 있습니다.
+
+개별 Synchronizer는 Sequencer node에 연결할 수 있는 모든 Participant가 network에 join하고 참여하는 **open** 방식 또는 Participant가 Synchronizer에 register하고 사용하기 전에 Synchronizer owner가 명시적으로 authorize해야 하는 **permissioned** 방식일 수 있습니다.
+
+Canton architecture는 malicious Participant Node에 resilient하도록 설계되었지만 network에 join할 수 있는 Participant Node를 명시적으로 제한하면 효과적인 두 번째 방어선이 됩니다.
+
+이 subsection은 decentralized Synchronizer를 permissioned로 만드는 방법을 설명합니다. 단순화를 위해 신뢰하는 단일 operator가 하나의 console environment에서 모든 node에 접근한다고 가정합니다.
+
+먼저 모든 Synchronizer owner가 `onboardingRestriction` dynamic Synchronizer parameter를 `RestrictedOpen`으로 설정합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap55 />
+
+이제 알려지지 않은 Participant Node가 Synchronizer에 join하려 하면 거부됩니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap56 />
+
+Participant Node가 Synchronizer에 join하도록 허용하려면 Synchronizer owner가 authorize해야 합니다.
+
+먼저 Participant Node ID를 string으로 export합니다.
+
+Participant Node ID를 string으로 추출합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap57 />
+
+이 string을 Synchronizer owner에게 전달하면 다음과 같이 import합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap58 />
+
+모든 Synchronizer owner가 Participant Node를 authorize합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap59 />
+
+Participant Node가 아직 active 상태가 아닌지 확인합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap60 />
+
+특정 Participant Node에 Participant Node Synchronizer permission을 발급할 때 Synchronizer owner는 해당 Participant Node의 Synchronizer join에 동의한다고 선언합니다. 이 declaration을 검사합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap61 />
+
+<Note>
+Topology proposal 전파와 처리에는 시간이 걸릴 수 있으므로 submission authorization이 표시될 때까지 retry해야 할 수 있습니다.
+</Note>
+
+Synchronizer에서 Participant Node를 activate하려면 Participant Node의 signing key와 "Synchronizer trust certificate"를 register합니다. Participant Node는 initial handshake 중 이 certificate를 자동 생성해 Synchronizer에 보냅니다.
+
+Participant Node를 Synchronizer에 reconnect해 handshake를 다시 trigger합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap62 />
+
+이제 Participant Node가 active인지 확인합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap63 />
+
+다음 command로도 Participant Node의 active 상태를 확인할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap64 />
+
+마지막으로 Participant Node가 healthy하며 Synchronizer를 사용할 수 있는지 확인합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateBootstrap65 />
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/howtos/operate/new_nodes.rst" hash="bd9cb2c5" */}
+{/* DIVERGES FROM SOURCE at "HA Configuration": removed stale "Daml Enterprise only" gating on mediator HA, which contradicted the Note immediately below it (replication enabled by default since Canton 2.4.0). Related to github.com/canton-network/cf-docs/issues/1027 */}
+
+# 새 Node 추가
+
+## Distributed Synchronizer에 새 Sequencer 추가
+
+Sequencer는 일반 distributed Synchronizer bootstrapping process의 일부로 initialize하거나 이 section의 설명처럼 나중에 dynamic하게 추가할 수 있습니다.
+
+반대 절차는 Sequencer decommissioning section에 설명되어 있습니다.
+
+### Database Sequencer
+
+Database Sequencer는 현재 지원되지 않습니다.
+
+### BFT Sequencer
+
+1.  기존 Sequencer 하나 이상에 접근할 수 있다고 가정하고 새 Sequencer를 준비해 실행 중인지 확인합니다.
+
+2.  새 Sequencer, 기존 Sequencer, 현재 Synchronizer owner의 instance reference를 사용해 다음 `bootstrap` command를 실행합니다.
+
+    > ```scala
+    > bootstrap
+    >   .onboard_new_sequencer(
+    >     synchronizerId.logical,
+    >     newSequencerReference,
+    >     existingSequencerReference,
+    >     synchronizerOwners,
+    >     // Avoid issues if things are slow
+    >     customCommandTimeout = Some(config.NonNegativeDuration.tryFromDuration(2.minutes)),
+    >     isBftSequencer = true,
+    >   )
+    > ```
+
+3.  다음 command로 모든 Sequencer에 단방향 또는 양방향 새 connection을 설정합니다.
+
+    > ```scala
+    > newSequencerReference.bft.add_peer_endpoint(existingSequencerEndpoint)
+    > // existingSequencerReference.bft.add_peer_endpoint(newSequencerEndpoint) // Optional, one direction is enough
+    > ```
+    >
+    > 새로 onboarding한 Sequencer의 endpoint는 initial network의 일부로 설정할 수 있습니다.
+
+4.  새 Sequencer가 initialize될 때까지 기다립니다.
+
+    > ```scala
+    > newSequencerReference.health.wait_for_initialized()
+    > ```
+
+이 시점에는 다른 node가 새 Sequencer에 연결할 수 있어야 합니다. 문제를 방지하려면 새로 onboarding한 Sequencer에 node를 연결하기 전에 최소 "maximum decision duration"만큼 기다리는 것이 좋습니다. 이는 기본값이 각각 30초인 `participant_response_timeout`과 `mediator_reaction_timeout` dynamic synchronizer parameter의 합입니다.
+
+문제가 발생하면 troubleshooting guide를 참조하세요.
+
+<div className="todo">
+
+{/* Link the reference documentation. \<[https://github.com/DACH-NY/canton/issues/25963](https://github.com/DACH-NY/canton/issues/25963)\> */}
+
+</div>
+
+필요한 admin command의 자세한 내용은 reference documentation을 확인하세요.
+
+### 별도 Console 사용
+
+별도 console로 distributed synchronizer를 initialize하는 것과 마찬가지로, 다음과 같이 별도 console에서 새 Sequencer를 dynamic하게 onboarding할 수 있습니다.
+
+```scala
+// Third sequencer's console:
+// * write file with identity topology transactions
+{
+  sequencer3.topology.transactions.export_identity_transactionsV2(identityFile)
+}
+
+// Fist and second sequencers' (i.e., owners) console:
+// * load third sequencer's identity transactions
+// * add the third sequencer to the sequencer synchronizer state
+// * write the topology snapshot, sequencer snapshot and static synchronizer parameters to files
+{
+  // Store the third sequencer's identity topology transactions on the synchronizer
+  sequencer1.topology.transactions
+    .import_topology_snapshot_fromV2(identityFile, store = synchronizerId)
+  sequencer2.topology.transactions
+    .import_topology_snapshot_fromV2(identityFile, store = synchronizerId)
+
+  // wait for the identity transactions to become effective
+  sequencer1.topology.synchronisation.await_idle()
+  sequencer2.topology.synchronisation.await_idle()
+
+  // find the current sequencer synchronizer state
+  val sequencerSynchronizerState =
+    sequencer1.topology.sequencers
+      .list(store = synchronizerId)
+      .headOption
+      .getOrElse(sys.error("Did not find sequencer synchronizer state on the synchronizer"))
+
+  // add the third sequencer to the synchronizer state
+  val threshold = sequencerSynchronizerState.item.threshold
+  val activeSequencers = sequencerSynchronizerState.item.active :+ sequencer3.id
+  val newSerial = Some(sequencerSynchronizerState.context.serial.increment)
+  sequencer1.topology.sequencers.propose(
+    synchronizerId,
+    threshold,
+    activeSequencers,
+    serial = newSerial,
+  )
+  sequencer2.topology.sequencers.propose(
+    synchronizerId,
+    threshold,
+    activeSequencers,
+    serial = newSerial,
+  )
+  // wait for the topology change to be observed by the sequencer
+  utils.retry_until_true(commandTimeouts.bounded) {
+    sequencer1.topology.sequencers
+      .list(sequencer1.synchronizer_id)
+      .headOption
+      .map(_.item.allSequencers.forgetNE)
+      .getOrElse(Seq.empty)
+      .contains(sequencer3.id)
+  }
+
+  // fetch the onboarding state and write it to a file
+  val onboardingState = sequencer1.setup.onboarding_state_for_sequencer(sequencer3.id)
+  utils.write_to_file(onboardingState, onboardingStateFile)
+}
+
+// Third sequencer's console:
+// * read the onboarding state from file
+// * initialize the third sequencer with the onboarding state
+{
+  val onboardingState = utils.read_byte_string_from_file(onboardingStateFile)
+  sequencer3.setup.assign_from_onboarding_state(onboardingState)
+
+  sequencer3.health.initialized() shouldBe true
+}
+```
+
+## Distributed Synchronizer에 새 Mediator 추가
+
+Mediator는 일반 distributed synchronizer bootstrapping process의 일부로 initialize하거나 이 section의 설명처럼 나중에 dynamic하게 추가할 수 있습니다.
+
+1.  새 Mediator node를 준비하고 실행 중인지 확인합니다.
+
+2.  새 Mediator identity를 저장하고 관련 Sequencer로 load합니다.
+
+    > ```scala
+    > val mediator2Identity = mediator2.topology.transactions.identity_transactions()
+    > sequencer1.topology.transactions.load(
+    >   mediator2Identity,
+    >   store = synchronizer1Id,
+    >   ForceFlag.AlienMember,
+    > )
+    > ```
+
+3.  새로 onboarding하는 Mediator를 active Mediator에 포함하는 새 Mediator state를 propose합니다.
+
+    > ```scala
+    > sequencer1.topology.mediators.propose(
+    >   synchronizer1Id,
+    >   threshold = PositiveInt.one,
+    >   active = Seq(mediator1.id, mediator2.id),
+    >   group = NonNegativeInt.zero,
+    > )
+    > ```
+
+4.  새 Mediator를 initialize합니다.
+
+    > ```scala
+    > mediator2.setup.assign(
+    >   synchronizer1Id,
+    >   SequencerConnections.single(sequencer1.sequencerConnection),
+    > )
+    > mediator2.health.wait_for_initialized()
+    > ```
+
+반대 절차는 Mediator decommissioning section에 설명되어 있습니다.
+
+<div className="todo">
+
+{/* Link the reference documentation. \<[https://github.com/DACH-NY/canton/issues/25832](https://github.com/DACH-NY/canton/issues/25832)\> */}
+
+</div>
+
+필요한 admin command의 자세한 내용은 reference documentation을 확인하세요.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/howtos/operate/dynamic_params.rst" hash="e1dfd800" */}
+
+# Dynamic Synchronizer Parameter 관리
+
+<div id="dynamic_synchronizer_parameters">
+
+Synchronizer bootstrap 중 지정하는 static Synchronizer parameter 외에도 Synchronizer 실행 중 runtime에 일부 parameter를 변경할 수 있습니다. 이를 `dynamic synchronizer parameters`라고 합니다. Synchronizer를 bootstrap할 때 dynamic Synchronizer parameter에는 기본값이 사용됩니다.
+
+</div>
+
+## Dynamic Synchronizer Parameter 조회
+
+다음 command로 연결된 Synchronizer의 현재 parameter를 조회할 수 있습니다.
+
+```scala
+myParticipant.topology.synchronizer_parameters.get_dynamic_synchronizer_parameters(
+  synchronizerId
+)
+```
+
+## Dynamic Synchronizer Parameter 변경
+
+<div id="change_dynamic_synchronizer_parameters">
+
+여러 dynamic parameter를 동시에 설정할 수 있습니다.
+
+</div>
+
+<div className="todo">
+
+{/* Link to reference with all dynamic synchronizer parameters */}
+
+</div>
+
+<div className="todo">
+
+{/* \<[https://github.com/DACH-NY/canton/issues/25684](https://github.com/DACH-NY/canton/issues/25684)\> \#. Explain the concept of synchronizer owner and that for changes to become affective one needs a threshold of them to submit the same proposal */}
+
+</div>
+
+```scala
+mySequencer.topology.synchronizer_parameters
+  .propose_update(
+    synchronizerId,
+    _.update(
+      confirmationResponseTimeout = 40.seconds,
+      mediatorDeduplicationTimeout = 2.minutes,
+      preparationTimeRecordTimeTolerance = 1.minute,
+      mediatorReactionTimeout = 20.seconds,
+      assignmentExclusivityTimeout = 1.second,
+      reconciliationInterval = 5.seconds,
+      confirmationRequestsMaxRate = 100,
+      maxRequestSize = 100000,
+      sequencerAggregateSubmissionTimeout = 5.minutes,
+      trafficControl = Some(
+        TrafficControlParameters(
+          maxBaseTrafficAmount = NonNegativeLong.tryCreate(204800),
+          readVsWriteScalingFactor = 200,
+          maxBaseTrafficAccumulationDuration = 12.minutes,
+          setBalanceRequestSubmissionWindowSize = 10.minutes,
+          enforceRateLimiting = false,
+          baseEventCost = NonNegativeLong.zero,
+        )
+      ),
+    ),
+  )
+
+// For ledger time record time tolerance, use the dedicated set method
+mySequencer.topology.synchronizer_parameters
+  .set_ledger_time_record_time_tolerance(synchronizerId, 60.seconds)
+```
+
+<Note>
+`max request size`를 늘리면 새 value를 적용하기 위해 sequencer node를 restart해야 합니다.
+</Note>
+
+## 너무 작은 *Max Request Size*에서 Recovery
+
+`MaxRequestSize`는 dynamic parameter입니다. Sequencer node의 gRPC channel size와 Sequencer client가 transfer할 수 있는 최대 size를 모두 설정합니다.
+
+Parameter를 매우 작은 값, 대략 `30kb` 미만으로 설정하면 sequencer client 또는 sequencer node가 모든 message를 거부해 Canton이 crash할 수 있습니다. 변경 request도 sequencer를 통해 전송되어 거부되므로 console에서 더 큰 value를 설정하는 방식으로는 수정할 수 없습니다.
+
+이 crash에서 recover하려면 Sequencer node와 모든 Sequencer client에 `override-max-request-size`를 설정해야 합니다.
+
+즉 Synchronizer와 Participant Node configuration을 모두 다음과 같이 수정해야 합니다.
+
+``` none
+mediators {
+  mediator1 {
+    sequencer-client.override-max-request-size = 30000
+  }
+}
+participants {
+  participant1 {
+    sequencer-client.override-max-request-size = 30000
+  }
+  participant2 {
+    sequencer-client.override-max-request-size = 30000
+  }
+}
+mediators {
+  mediator1 {
+    sequencer-client.override-max-request-size = 30000
+  }
+}
+sequencers {
+  sequencer1 {
+    # overrides the maxRequestSize in bytes on the sequencer node
+    public-api.override-max-request-size = 30000
+  }
+}
+```
+
+Configuration을 수정한 뒤 모든 Participant Node를 Synchronizer에서 disconnect하고 모든 node를 restart합니다.
+
+```scala
+participants.all.synchronizers.disconnect(daName)
+nodes.local.stop()
+```
+
+그런 다음 restart를 수행합니다.
+
+```scala
+nodes.local.start()
+participants.all.synchronizers.reconnect_all()
+```
+
+Canton이 recover되면 admin command로 `maxRequestSize` value를 설정하고 이전 단계에서 추가한 configuration을 삭제한 뒤 다시 restart합니다.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/howtos/operate/traffic.rst" hash="b10a3160" */}
+
+# Sequencer Traffic 관리
+
+<Note>
+현재 traffic management는 Byzantine Fault Tolerant(BFT) Synchronizer에서만 지원됩니다.
+</Note>
+
+이 page에서는 Synchronizer의 traffic management 활성화/설정 방법과 member traffic balance 검사/관리 방법을 설명합니다.
+
+Participant Node/Mediator Node 같은 member 관점에서 Synchronizer member가 보유한 traffic을 검사하는 방법은 Manage Node Traffic에서 설명합니다.
+
+## Synchronizer Traffic Management 활성화
+
+기존 Synchronizer의 dynamic synchronizer parameter를 조정해 traffic management를 활성화하거나 비활성화할 수 있습니다. 자세한 내용은 Change Dynamic Synchronizer Parameters를 참조하세요.
+
+먼저 Synchronizer의 현재 traffic management status를 확인합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic0 />
+
+`trafficControl` field가 `TrafficControlParameters` type으로 설정되지 않았거나 위 output에 없거나 `enforceRateLimiting`이 `false`이면 traffic management가 inactive 상태입니다.
+
+Traffic management를 활성화하려면 dynamic synchronizer parameter를 update하고 `TrafficControlParameters`에
+`enforceRateLimiting = true`와 `configuration class Scaladoc
+reference`에 설명된 다른 parameter의 원하는 value를 설정합니다.
+
+<Note>
+Owner가 여러 명인 Synchronizer를 사용한다면 설정된 threshold 이상의 owner가 traffic management 활성화 command를 submit해야 합니다.
+</Note>
+
+`sequencer1`이 유일한 synchronizer owner라고 가정하고 다음 command로 traffic management를 활성화합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic1 />
+
+Synchronizer parameter를 다시 확인해 traffic management가 활성화되었는지 검증합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic2 />
+
+위 output의 `traffic control`을 확인하세요.
+
+## Synchronizer Member의 최신 Traffic Balance 확인
+
+`sequencer.traffic_control` 아래 Canton console command로 Synchronizer member의 traffic balance를 interactive하게 검사하고 수정할 수 있습니다.
+
+Synchronizer의 모든 member traffic balance를 검사하려면 다음 command를 사용합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic3 />
+
+특정 member의 traffic balance만 확인하려면 다음을 사용합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic4 />
+
+## Synchronizer Member의 Traffic Balance Top-up
+
+<Note>
+Member의 traffic balance entitlement는 external workflow에서 결정되며 하나 이상의 Sequencer를 통해 같은 traffic balance를 submit하는 방식으로 전달됩니다.
+</Note>
+
+<Note>
+Top-up이 effective해지려면 Sequencer quorum이 submit해야 합니다. 이는 `threshold` parameter로 설정하며 `SequencerSynchronizerState` topology mapping에 속합니다.
+</Note>
+
+<div className="todo">
+
+{/* \<[https://github.com/DACH-NY/canton/issues/25832](https://github.com/DACH-NY/canton/issues/25832)\> \#. Link to the reference documentation of the `SequencerSynchronizerState` topology mapping above. */}
+
+</div>
+
+예를 들어 `participant1` member에 traffic을 추가해 보겠습니다. 먼저 해당 member의 마지막 traffic balance top-up에 해당하는 현재 `serial`, 즉 member별로 monotonically increasing하는 `PositiveInt`를 알아야 합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic5 />
+
+이제 `participant1`의 traffic balance를 `newBalance`만큼 늘리는 command를 submit할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic6 />
+
+이제 `participant1`의 traffic balance가 update되었습니다. Traffic state를 다시 확인해 검증할 수 있습니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic7 />
+
+이제 participant 사이에 `ping`을 실행하고 traffic consumption을 관찰합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateTraffic8 />
+
+Participant와 Mediator의 traffic balance가 감소하는지 관찰합니다.
+
+Traffic control과 configuration parameter의 자세한 내용은 traffic control overview를 참조하세요.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/howtos/operate/pruning.rst" hash="f4d69914" */}
+
+# Synchronizer Pruning
+
+## Mediator State Pruning
+
+여기에 설명된 대로 각 Mediator에 scheduled automatic pruning을 설정할 수 있습니다.
+
+Schedule 없이 다음 command를 호출해 Mediator를 직접 prune할 수도 있습니다.
+
+``` none
+mediator1.pruning.prune()
+```
+
+이 operation은 설정된 기본 retention period를 기준으로 처리된 sequenced event와 finalized confirmation response aggregation을 prune합니다.
+
+기본값은 7일이며 다음과 같이 설정할 수 있습니다.
+
+``` none
+parameters {
+  retention-period-defaults {
+    mediator = "7 days"
+  }
+}
+```
+
+다른 value를 선택하려면 위 config를 변경하거나 `mediator.pruning.prune_with_retention_period` command로 retention period를 직접 지정할 수 있습니다. `mediator.pruning.prune_at`으로 정확한 pruning timestamp를 지정할 수도 있습니다.
+
+## Sequencer State Pruning
+
+다음 command를 호출해 Sequencer를 prune할 수 있습니다.
+
+``` none
+val result = sequencer1.pruning.prune()
+```
+
+이 command는 설정된 Sequencer 기본 retention period로 sequenced event를 prune할 timestamp를 계산하고 pruning 결과 description을 반환합니다.
+
+기본값은 7일이며 다음과 같이 설정할 수 있습니다.
+
+``` none
+parameters {
+  retention-period-defaults {
+    sequencer = "7 days"
+  }
+}
+```
+
+또는 `sequencer.pruning.prune_with_retention_period` command로 retention period를 직접 지정하거나 `sequencer.pruning.prune_at`으로 정확한 pruning timestamp를 지정할 수 있습니다.
+
+### Inactive Sequencer Member로 막힌 Pruning 해제
+
+Participant나 Mediator 같은 모든 Sequencer client는 Sequencer에서 받은 최신 event timestamp를 주기적으로 acknowledge합니다. 모든 Sequencer가 확인할 수 있는 이 acknowledgement를 사용해 모든 client가 도달한 가장 높은 timestamp를 계산합니다. 이 timestamp가 safe pruning point가 됩니다.
+
+다음과 같이 Sequencer pruning status를 확인할 수 있습니다.
+
+``` none
+val status = sequencer1.pruning.status()
+```
+
+Status에는 모든 active client의 최신 acknowledgement timestamp가 포함됩니다. `status.safePruningTimestamp`를 호출하면 계산된 safe pruning point를 확인할 수 있습니다. Sequencer는 해당 point보다 이전만 prune할 수 있으며 그렇지 않으면 하나 이상의 client가 operation을 계속할 수 없습니다.
+
+Sequencer client가 일정 시간 inactive 상태가 되면 모든 Sequencer는 해당 client의 최신 acknowledged timestamp 이후를 prune할 수 없습니다. 더 최근 timestamp를 prune하려면 client가 돌아와 새 event를 acknowledge하거나 Sequencer에서 해당 client를 disable해야 합니다.
+
+Sequencer에는 force-prune command가 있습니다. 일반 prune command와 달리 지정된 timestamp의 pruning을 막는 member를 disable합니다.
+
+다음과 같이 지정된 timestamp에서 force prune할 수 있습니다.
+
+``` none
+val result = sequencer1.pruning.force_prune_at(earliestAck, dryRun = false)
+```
+
+`dryRun`을 `true`로 설정하면 실제 pruning 없이 operation의 일부로 disable될 client list를 출력합니다. Pruning operation을 수행하려면 `dryRun`을 `false`로 설정해 실행합니다.
+
+Service할 필요가 없는 문제 client를 식별했다면 repair command `repair.disable_member(client)`를 호출해 직접 disable할 수 있습니다.
+
+Sequencer에서 client를 disable하는 것은 local operation입니다. 같은 operation을 수행하지 않은 다른 Sequencer에서는 client가 여전히 active 상태입니다.
+
+### BFT Orderer Pruning
+
+Sequencer의 BFT Orderer layer에서는 모든 Sequencer node가 transaction 순서에 대한 distributed consensus에 도달합니다. 별도의 database table set을 가지며 pruning 고려 사항도 다릅니다.
+
+BFT Orderer는 ordered event를 Sequencer layer에 제공하고 Sequencer layer는 이를 저장한 뒤 Sequencer client에 제공합니다. Catch-up이 뒤처진 다른 BFT Orderer node를 지원해야 할 수 있으므로 BFT Orderer는 Sequencer layer에 제공한 뒤에도 이 data를 보존해야 합니다.
+
+BFT Orderer node가 crash 후 복귀해 catch up할 수 있을 만큼 충분히 긴 pruning retention period를 선택해야 합니다.
+
+Admin command로 manual prune하고 status를 확인하는 방법은 다음과 같습니다.
+
+``` none
+sequencer1.bft.pruning.prune(retention = 30.days, minBlocksToKeep = 100)
+val status = sequencer1.bft.pruning.status()
+```
+
+아래 command와 여기에 설명된 command로 BFT Orderer의 scheduled automatic pruning도 설정할 수 있습니다.
+
+``` none
+sequencer1.bft.pruning.set_bft_schedule(
+  cron = "0 0 8 ? * SAT",
+  maxDuration = 8.hours,
+  retention = 90.days,
+  minBlocksToKeep = 50,
+)
+sequencer1.bft.pruning.set_min_blocks_to_keep(100)
+val schedule = sequencer1.bft.pruning.get_bft_schedule()
+```
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/howtos/operate/ha.rst" hash="f0d76dfc" */}
+
+# Synchronizer High Availability
+
+## Mediator
+
+Mediator service는 임의 수의 replica를 지원하는 hot standby mechanism을 사용합니다. Mediator failover 중 모든 in-flight request가 purge되므로 participant에서 timeout됩니다. Application은 기반 command를 retry해야 합니다.
+
+### Standalone Mediator Node 실행
+
+Synchronizer에는 embedded Mediator node 하나를 statically 설정하거나 external Mediator와 동작하도록 설정할 수 있습니다. Synchronizer가 initialize된 뒤 runtime에 Mediator를 더 추가할 수 있습니다.
+
+기본적으로 Synchronizer 자체에서 embedded Mediator node를 실행합니다. 모든 synchronizer 기능을 single host에 co-locate하는 간단한 deployment에 유용합니다. 여러 machine에서 synchronizer service를 운영하는 distributed setup에서는 synchronizer manager node를 설정하고 external로 실행되는 Mediator로 Synchronizer를 bootstrap할 수 있습니다.
+
+Mediator node는 Canton participant와 synchronizer와 같은 방식으로 정의할 수 있습니다.
+
+``` none
+mediators {
+  mediator1 {
+    admin-api.port = 5017
+  }
+```
+
+Synchronizer가 시작되면 embedded Mediator에 synchronizer 정보를 자동 제공합니다. External Mediator는 synchronizer initialization을 완료하기 위해 runtime administration으로 initialize해야 합니다.
+
+### HA Configuration
+
+Mediator HA는 PostgreSQL/Oracle 기반 storage만 지원합니다.
+
+Mediator node replica는 Canton configuration file에서 개별 standalone Mediator node로 설정하며 각 replica에 다음 두 변경이 필요합니다.
+
+- Shared database에 접근하도록 같은 storage configuration 사용
+- 각 Mediator node replica에 `replication.enabled = true` 설정
+
+<Note>
+Canton 2.4.0부터 지원되는 storage를 사용하면 Mediator replication이 기본적으로 활성화됩니다.
+</Note>
+
+Active Mediator node replica만 synchronizer bootstrap command로 initialize하면 됩니다. Passive replica는 shared database를 통해 initialization을 확인합니다.
+
+추가 설정 없이 runtime에 replica를 더 시작할 수 있습니다. 현재 active Mediator node replica가 실패할 때까지 passive 상태를 유지합니다.
+
+## Sequencer
+
+Database 기반 Sequencer는 horizontal scaling하고 load balancer 뒤에 배치해 high availability와 performance를 개선할 수 있습니다.
+
+다음 configuration으로 Synchronizer에 여러 Sequencer node를 배포합니다.
+
+> - 모든 Sequencer node가 같은 database를 공유하므로 각 Sequencer storage configuration이 일치해야 합니다.
+> - 모든 Sequencer node에 `high-availability.enabled = true`를 설정해야 합니다.
+
+<Note>
+Canton 2.4.0부터 지원되는 storage를 사용하면 Sequencer high availability가 기본적으로 활성화됩니다.
+</Note>
+
+<ExternalCantonMainCommunityAppSrcTestResourcesExternalHaSequencersRemoteAdminParsing />
+
+Synchronizer node는 embedded Sequencer만 지원하므로 synchronizer manager node를 사용하는 distributed setup은 이 external service를 가리켜 해당 Sequencer node를 사용하도록 설정해야 합니다.
+
+설정 후 bootstrap_synchronizer operational process로 새 external Sequencer를 사용해 Synchronizer를 bootstrap해야 합니다. 이 Sequencer들은 database를 공유하므로 bootstrap에는 instance 하나만 사용합니다. Shared database에 시작하기 충분한 state가 쌓이면 replica가 online 상태가 됩니다.
+
+이 node들은 별도 process에서 실행될 가능성이 크므로 remote administration configuration으로 command를 완전히 external에서 실행할 수 있습니다.
+
+``` none
+canton {
+  remote-sequencers {
+    sequencer1 {
+      # these details are provided to other nodes to use for how they should connect to the sequencer
+      public-api {
+        address = sequencer1.local
+        port = 1235
+      }
+      # the server used from running administration commands
+      admin-api {
+        address = sequencer1.local
+        port = 1235
+      }
+    }
+  }
+}
+```
+
+Horizontally scaled Sequencer instance를 participant에 노출하는 방법은 두 가지입니다.
+
+### Total Node Count
+
+`sequencer.high-availability.total-node-count` parameter는 database Sequencer 사이에 시간을 분할하는 데 사용합니다. Sequencer node set을 배포한 뒤에는 변경하면 안 됩니다. Sequencing되는 각 message에는 unique timestamp가 필요하므로 Sequencer node는 timestamp에 `modulo` 연산을 적용한 뒤 `total-node-count`와 자체 index를 사용해 parallel database insertion process에서도 다른 Sequencer node와 충돌하지 않는 timestamp를 생성합니다. Canton은 microsecond를 사용하므로 이론상 synchronizer당 초당 100만 message의 최대 throughput을 제공합니다. 이 throughput은 모든 Sequencer node, 즉 `total-node-count` 사이에 균등 분할됩니다. 따라서 `total-node-count`를 너무 높게 설정하면 Sequencer가 최대 이론 throughput으로 operate하지 못할 수 있습니다. 위 설명은 이론적이며 이 throughput을 처리하는 database/hard disk는 아직 확인되지 않았으므로 기본값 `10` 유지를 권장합니다. Message 하나에 여러 event가 포함될 수 있다는 점도 유의하세요.
+
+### External Load Balancer
+
+HTTP/2와 gRPC를 지원하는 load balancer가 있고 backend Sequencer detail을 client에 노출할 수 없거나 원하지 않는다면 load balancer 사용을 권장합니다. 고급 deployment에서는 available Sequencer 수를 elastic하게 scale하고 변경된 set에 맞게 load balancer를 dynamic하게 reconfigure할 수도 있습니다.
+
+TLS 없이 gRPC service를 노출하는 [HAProxy]() configuration 예제는 다음과 같습니다.
+
+    frontend domain_frontend
+      bind 1234 proto h2
+      default_backend domain_backend
+
+    backend domain_backend
+      option httpchk
+      http-check connect
+      http-check send meth GET uri /health
+      balance roundrobin
+      server sequencer1 sequencer1.local:1234 proto h2 check port 8080
+      server sequencer2 sequencer2.local:1234 proto h2 check port 8080
+      server sequencer3 sequencer3.local:1234 proto h2 check port 8080
+
+빠른 failover를 위해 HTTP health check도 추가해야 합니다. 그렇지 않으면 TCP timeout 후에야 failover가 발생합니다. Sequencer Public API는 표준 gRPC health [endpoint]()를 노출하지만 현재 HAProxy가 지원하지 않으므로 HTTP /health endpoint를 사용해야 합니다.
+
+### Client-side Load Balancing
+
+External load-balancing service를 사용할 수 없거나 HTTP/2와 gRPC를 지원하지 않고 Sequencer set이 static하며 client에서 설정할 수 있다면 client-side load balancing을 권장합니다.
+
+여러 Sequencer를 간단히 지정하려면 Synchronizer register/connect 시 `synchronizers.connect_multi` console command를 사용합니다.
+
+```scala
+myparticipant.synchronizers.connect_multi(
+  "my_synchronizer_alias",
+  Seq("https://sequencer1.example.com", "https://sequencer2.example.com", "https://sequencer3.example.com")
+)
+```
+
+다른 Synchronizer connection option과 함께 여러 Sequencer URL을 추가하는 방법은 Sequencer connectivity documentation을 참조하세요. Runtime에 Synchronizer connection configuration을 변경해 설정된 Sequencer connection을 추가하거나 교체할 수도 있습니다. 변경된 configuration을 사용하려면 participant에서 Synchronizer를 disconnect한 뒤 reconnect해야 합니다.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/howtos/secure/limits.rst" hash="6ff391dd" */}
+
+# Sequencer Resource Limit 설정
+
+## 큰 Request 방어
+
+Max request size는 dynamic Synchronizer parameter입니다. Dynamic Synchronizer parameter를 변경할 때 `maxRequestSize` field를 update합니다.
+
+## Rate Limiting으로 Sequencer 보호
+
+Confirmation request max rate는 dynamic Synchronizer parameter입니다. Dynamic Synchronizer parameter를 변경할 때 `confirmationRequestsMaxRate` field를 update합니다.
+
+## 과도한 Acknowledgement로부터 Sequencer 보호
+
+Network의 acknowledgement 양을 제한하기 위해 Sequencer는 같은 member가 짧은 간격으로 보낸 acknowledgement를 conflate할 수 있습니다. Config에서 다음 value로 window를 설정합니다.
+
+``` none
+sequencers.sequencer1.acknowledgements-conflate-window = "1 minute"
+```
+
+## Traffic Management로 Sequencer Submission 제한
+
+Traffic management를 활성화해 member의 과도한 traffic으로부터 Synchronizer를 보호할 수 있습니다.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/howtos/decommission/index.rst" hash="7aac3ee4" */}
+
+# Canton Node와 Synchronizer Entity Decommissioning
+
+이 guide는 Canton, 특히 Canton identity management 개념과 Canton console operation에 대한 일반적인 이해를 가정합니다.
+
+새 node onboarding은 언제든 가능하지만 **decommission된 node 또는 entity는 사실상 폐기되며 synchronizer에 다시 join할 수 없습니다.** 따라서 **decommissioning은 되돌릴 수 없는 operation**입니다.
+
+또한 **decommissioning procedure는 현재 experimental**입니다. 어떤 경우든 **decommission 전에 대상 node를 backup할 것을 강력히 권장합니다.**
+
+## Sequencer Decommissioning
+
+Sequencer는 Synchronizer messaging infrastructure의 일부이며 application contract를 저장하지 않으므로 synchronization service 중단을 방지하는 조치를 취하면 폐기할 수 있습니다. 구체적으로 다음을 보장해야 합니다.
+
+1.  Active participant와 active mediator가 decommission 대상 Sequencer에 연결되어 있지 않습니다.
+2.  모든 active participant와 mediator가 active Sequencer에 연결되어 있습니다.
+
+그 후 Synchronizer topology에서 Sequencer를 제거해 decommission하고 최종 폐기할 수 있습니다.
+
+### Decommission 대상 Sequencer에서 모든 Node Disconnect
+
+- Mediator connectivity 설명에 따라 decommission 대상 Sequencer에 연결된 Mediator의 Sequencer connection을 다른 active Sequencer로 변경합니다.
+
+<div className="todo">
+
+\#22917: 깨진 literalinclude 수정 literalinclude:: CANTON/enterprise/app/src/test/scala/com/digitalasset/canton/integration/tests/offboarding/SequencerOffboardingIntegrationTest.scala language: scala start-after: user-manual-entry-begin: SequencerOffboardingSwitchAwayMediator end-before: user-manual-entry-end: SequencerOffboardingSwitchAwayMediator dedent:
+
+</div>
+
+- Synchronizer connectivity 설명대로 다른 active Sequencer의 connection을 사용해 participant를 Synchronizer에 reconnect합니다.
+
+<div className="todo">
+
+\#22917: 깨진 literalinclude 수정 literalinclude:: CANTON/enterprise/app/src/test/scala/com/digitalasset/canton/integration/tests/offboarding/SequencerOffboardingIntegrationTest.scala language: scala start-after: user-manual-entry-begin: SequencerOffboardingSwitchAwayParticipant end-before: user-manual-entry-end: SequencerOffboardingSwitchAwayParticipant dedent:
+
+</div>
+
+### Sequencer Decommissioning
+
+Sequencer는 node ID가 synchronizer ID와 같으므로 Synchronizer의 일부이며 모든 Sequencer가 같은 node ID를 가집니다. Sequencer identity는 Synchronizer identity와 같으므로 identity/namespace mapping을 그대로 유지해야 합니다.
+
+그러나 Sequencer가 다른 Sequencer와 구별되는 자체 cryptographic material을 사용할 수 있습니다. 이 경우 decommission된 Sequencer의 key를 나열하는 owner-to-key mapping을 제거해야 합니다.
+
+1.  `filterKeyOwnerUid`와 decommission할 Sequencer UID로 filtering해 해당 Sequencer의 올바른 owner-to-key mapping을 찾습니다.
+2.  남은 Synchronizer owner가 `owner.topology.transactions.propose` command를 실행해 해당 mapping을 제거합니다.
+
+<ExternalCantonMainDocsOpenTargetSnippetJsonDataSynchronizerHowtosOperateOffboarding1 />
+
+마지막으로 decommission된 Sequencer만 소유한 cryptographic material도 폐기해야 합니다.
+
+- Decommission된 Sequencer에만 저장되었다면 Sequencer node와 함께 폐기합니다.
+- Decommission된 Sequencer의 cryptographic material을 KMS system으로 관리한다면 KMS를 통해 폐기해야 합니다. 관련 KMS documentation과 internal procedure를 참조하세요.
+
+## Mediator Decommissioning
+
+Mediator도 Synchronizer messaging infrastructure의 일부이며 application contract를 저장하지 않으므로 synchronization service 중단을 방지하는 조치를 취하면 폐기할 수 있습니다. Synchronizer에 Mediator가 하나 이상 남아 있도록 보장해야 합니다.
+
+<div className="todo">
+
+\#22917: 깨진 reference 수정 Synchronizer에 다른 Mediator가 있으면 single console command ref:setup.offboard_mediator로 Mediator를 decommission할 수 있습니다.
+
+</div>
+
+<div className="todo">
+
+\#22917: 깨진 literalinclude 수정 literalinclude:: CANTON/enterprise/app/src/test/scala/com/digitalasset/canton/integration/tests/offboarding/MediatorOffboardingIntegrationTest.scala language: scala start-after: user-manual-entry-begin: OffboardMediator end-before: user-manual-entry-end: OffboardMediator dedent:
+
+</div>
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/howtos/recover/index.rst" hash="34cdcd28" */}
+
+# Backup 및 Restore
+
+Disaster 발생 시 data를 restore할 수 있도록 database를 자주 backup하는 것을 권장합니다.
+
+Restore 시 Synchronizer backup이 participant backup보다 최신이면 participant는 Synchronizer에서 누락 data를 replay할 수 있습니다.
+
+<div className="todo">
+
+{/* Ability to recover from partial data loss on a synchronizer. */}
+
+</div>
+
+## Backup 순서
+
+Participant backup이 Sequencer backup보다 최신이면 ledger fork가 발생하므로 그렇게 해서는 안 됩니다. Participant/Mediator/Sequencer database를 순서대로 backup할 때는 다음 constraint가 적용됩니다.
+
+- Sequencer보다 먼저 Mediator와 participant를 backup합니다. 그렇지 않으면 Sequencer에 reconnect하지 못할 수 있습니다(`ForkHappened`). Mediator와 participant 사이의 상대 순서는 중요하지 않습니다.
+
+Cloud RDS 등을 사용해 한 단계에서 전체 system backup을 수행한다면 backup 중 어떤 component도 database에 write하지 않도록 해야 합니다.
+
+Backup에서 Synchronizer를 restore할 때 participant가 Synchronizer보다 앞서 있으면 participant가 Synchronizer connection을 거부합니다(`ForkHappened`). 이 경우 다음 중 하나를 수행해야 합니다.
+
+- Participant state를 Synchronizer disaster 전 backup으로 restore하거나
+- 유실된 Synchronizer에서 recover하는 repair strategy로 새 Synchronizer를 배포합니다.
+
+Participant Ledger API와 interact하는 application state는 participant보다 먼저 backup해야 하며 그렇지 않으면 application state를 reset해야 합니다.
+
+## Restore 주의 사항
+
+Canton node를 backup에서 restore할 때는 backup 시점과 node 최신 state 사이 data 유실로 인해 다음 주의 사항이 적용됩니다.
+
+### 불완전한 Command Deduplication State
+
+Restore 후 participant의 in-flight submission tracking은 backup 후 participant가 Sequencer에 보낸 내용과 sync되지 않습니다. Application이 duplicate command를 resubmit하면 participant가 deduplicate해야 하지만 accept될 수 있습니다.
+
+다음 조건을 충족하면 tracking이 다시 sync됩니다.
+
+> - Participant가 Sequencer의 모든 event를 처리했고
+> - Sequencer queue에 restore 전 transfer/transaction request 중 다시 sequence될 수 있는 submission request가 없습니다.
+
+이러한 submission request의 max sequencing time은 ledger time과 Synchronizer의 ledger-time-record-time-tolerance를 더한 값입니다. Restore 전 participant가 중지된 시점보다 tolerance 이상 늦은 Synchronizer timestamp를 확인하면 충분합니다. 이 timestamp가 확인되면 in-flight submission tracking이 다시 sync되고 application은 full command deduplication guarantee와 함께 command submit을 재개할 수 있습니다.
+
+### Application State Reset
+
+Application을 participant보다 나중에 backup했거나 다른 organization이 실행해 backup에서 restore하지 않아 application state가 participant state보다 최신이면 application state를 reset해야 합니다. 그렇지 않으면 backup 시점과 node disaster 사이 gap으로 participant가 잃은 transaction을 application이 이미 요청하고 처리한 상태가 됩니다.
+
+Participant의 Ledger API client인 모든 application이 포함됩니다.
+
+### Private Key
+
+현재 node database에 저장된 cryptographic private key를 rotate해야 하는 scenario를 가정합니다. Backup 전에 key rotation을 system에 announce하면 restore 시 새 key를 사용할 수 없지만 system의 다른 모든 node는 새 key 사용을 기대합니다.
+
+이 상황을 방지하려면 다음 순서로 key rotation을 수행합니다.
+
+1.  새 private key를 생성해 database에 저장
+2.  Database backup
+3.  Backup 완료 후 이전 key revoke
+
+## Postgres 예제
+
+Postgres로 Participant Node 또는 Synchronizer data를 persist한다면 다음과 같이 Postgres utility command `pg_dump`/`pg_restore`로 file backup을 생성하고 restore할 수 있습니다.
+
+Postgres database를 file로 backup합니다.
+
+```bash
+pg_dump -U <user> -h <host> -p <port> -w -F tar -f <fileName> <dbName>
+```
+
+File에서 Postgres database data를 restore합니다.
+
+```bash
+pg_restore -U <user> -h <host> -p <port> -w -d <dbName> <fileName>
+```
+
+위 방식은 작은 deployment에서는 동작하지만 큰 deployment에는 권장하지 않습니다. Incremental backup과 다음 resource를 살펴보는 것을 권장합니다.
+
+- PostgreSQL Documentation: Backup and Restore
+- PostgreSQL에서 incremental backup이 동작하는 방식
+
+## Disaster Recovery를 위한 Database Replication
+
+### Synchronous Replication
+
+Production에서는 최소한 Synchronizer를 offsite synchronous replication으로 실행해 Synchronizer state가 항상 participant state보다 최신이도록 하는 것을 권장합니다. 다만 backup restore와 유사한 주의 사항을 피하려면 participant도 synchronous replication을 사용하거나 manual disaster recovery failure procedure에서 해당 주의 사항을 처리해야 합니다.
+
+Database backup으로 마지막 backup 생성 시점까지 ledger를 recover할 수 있습니다. 하지만 backup 생성 후 accept된 command는 disaster 시 유실될 수 있으므로 backup restore는 data loss로 이어질 가능성이 큽니다.
+
+이러한 data loss를 허용할 수 없다면 state를 다른 site로 replicate하는 replicated database에서 Canton을 실행해야 합니다. Disaster로 원래 site가 중단되면 database의 replicated state를 기반으로 다른 site에서 Canton을 시작할 수 있습니다. Canton이 multiple writer와 data corruption을 방지하는 database mechanism은 site 사이에서 동작하지 않으므로 원래 site에 database writer가 남지 않아야 합니다.
+
+Replicated database 설정과 failover 방법의 상세 지침은 PostgreSQL high availability documentation 같은 database system documentation을 참조하세요.
+
+**Replication을 synchronous로 설정할 것을 강력히 권장합니다.** Database transaction은 모든 database replica에 persist된 후에만 successfully committed로 보고되어야 합니다. PostgreSQL에서는 `synchronous_commit = on` setting에 해당합니다. 이 권장을 따르지 않으면 database failover 후 data loss 또는 corrupt state가 발생할 수 있습니다. Synchronous replication 활성화는 primary/offsite database 사이 network latency에 따라 Canton performance에 영향을 줄 수 있습니다.
+
+PostgreSQL의 경우 Canton은 database replication configuration을 검증하고 잘못된 설정을 발견하면 error로 fail하도록 노력합니다. 하지만 best-effort validation이므로 잘못된 replication configuration을 발견하지 못할 수 있습니다. Oracle에서는 database configuration을 검증하지 않습니다. 전반적으로 Canton이 database configuration mistake를 발견할 것이라고 의존하면 안 됩니다.
+
+
+{/* COPIED_END */}

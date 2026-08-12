@@ -1,0 +1,1976 @@
+---
+title: "Smart Contract Upgrade(SCU)"
+description: "Daml package version 전반의 smart contract upgrade 개발, 배포 및 검증"
+source_id: "SRC-DDA2FFC60F"
+source_path: "appdev/deep-dives/smart-contract-upgrade"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "4f752ff6e05310d2e5113ecf9a70daa8543a0ba9f55d601bee29d1c937181f23"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/appdev/deep-dives/smart-contract-upgrade.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/sdlc-howtos/smart-contracts/upgrade/smart-contract-upgrades.rst" hash="ffdaf7cc" */}
+
+# Smart Contract Upgrade
+
+## 개요
+
+### Smart Contract Upgrade(SCU)란?
+
+Smart Contract Upgrade(SCU)는 변경 지침을 따르면 Daml model, 즉 DAR file의 package를 Canton에서 투명하게 update할 수 있게 합니다. 예를 들어 수정한 package의 DAR를 upload해 application bug를 고칠 수 있습니다.
+
+SCU는 Daml package author가 이전 version과의 compatibility를 유지하면서 template의 새 version을 publish할 수 있게 하는 기능입니다. Package user와 기존 contract에는 downtime이 발생하지 않습니다.
+
+이 기능은 incremental template change를 개발하고 rollout하는 데 적합합니다. DAR file 사이의 upgrade compatibility를 보장하는 지침이 있으며 compile time, DAR upload time, runtime에 compatibility를 검사합니다. 지침을 준수한다는 전제에서 data의 backward upgrade compatibility와 forward compatibility를 보장해 DAR를 새 version으로 안전하게 upgrade할 수 있게 합니다. Runtime downgrade가 발생할 때, 예를 들어 client는 template version 1.0.0을 사용하지만 participant node에는 최신 version 1.1.0이 있을 때 client의 예기치 않은 data loss도 방지합니다.
+
+SCU의 일반 지침은 additive application change는 허용하지만 기존 item은 제거할 수 없다는 것입니다. Template에서 허용되는 변경은 다음과 같습니다.
+
+- Template은 field list 끝에 새 `Optional` field를 추가할 수 있습니다.
+- `record` datatype은 field list 끝에 새 optional field를 추가할 수 있고, `variant` 또는 `enum` datatype은 끝에 새 constructor를 추가할 수 있습니다.
+- `ensure` predicate를 변경할 수 있으며 interpretation 시 다시 evaluate됩니다.
+- 끝에 `Optional` parameter를 추가해 choice signature를 변경할 수 있습니다.
+- Choice controller를 변경할 수 있습니다.
+- Choice observer를 변경할 수 있습니다.
+- Choice body를 변경할 수 있습니다.
+- Template에 새 choice를 추가할 수 있습니다.
+- Interface instance implementation을 변경할 수 있습니다.
+
+다음 table은 SCU가 지원하는 변경을 요약합니다. 자세한 내용은 아래 section을 참고하세요.
+
+| **Daml Model 변경** | **범위** | **SCU 지원 여부** | **설명** |
+|-----------------------|-----------|---------------------|--------------|
+| Module 이름 변경 | Template Definition | 아니요 |  |
+| Template 이름 변경 | Template Definition | 아니요 |  |
+| Field Type 변경 | Template Definition | 아니요 |  |
+| Field 순서 변경 | Template Definition | 아니요 |  |
+| Field 이름 변경 | Template Definition | 아니요 |  |
+| Signatory 변경 | Template Definition | 아니요 | 새 template version은 persisted contract에 대해 같은 signatory result를 return해야 합니다. 그렇지 않으면 upgraded package가 해당 contract를 사용할 수 없으며 runtime에 실패합니다.<br/><br/>Contract를 생성할 때는 새 field를 고려하는 등 signatory 계산 function을 변경할 수 있습니다. |
+| 변경 | Template | 아니요 | Key가 포함하는 record에 새 field를 추가하는 것처럼 key type을 변경할 수 없습니다.<br/><br/>Signatory 계산 function과 같은 방식으로 key 계산 function을 변경할 수 있습니다. Persisted contract는 function result가 변경되지 않을 때만 upgrade에서 사용할 수 있습니다. |
+| Observer 변경 | Template Definition | 아니요 | Template signatory와 동일합니다. |
+| Key Maintainer 변경 | Template Definition | 아니요 | Template signatory와 동일합니다. |
+| Ensure Predicate 변경 | Template Definition | 예 | Ensure는 사용 직전에 다시 계산되므로 V1 contract가 V2 contract로도 유효하도록 변경해야 합니다. |
+| 새 Definition Field, Enum, Variant Constructor 추가 | Template Definition | 예, 단 optional이어야 함 |  |
+| Template Field 삭제 | Template Definition | 아니요 |  |
+| Choice Implementation 변경 | Template Definition | 예 |  |
+| Choice Controller 변경 | Choice | 예 |  |
+| Choice Parameter 추가 | Choice | 예, 단 optional이어야 함 |  |
+| Choice Parameter 삭제 | Choice | 아니요 |  |
+| Consuming Choice와 Non-Consuming Choice 사이의 변경 | Choice | 아니요 |  |
+| Choice Body 변경 | Choice | 예 |  |
+| Choice Return Type 변경 | Choice | Tuple 또는 scalar type을 제외하고 예 | Return type에 포함된 user data type, 즉 Record, Variant, Enum을 변경할 수 있습니다. 이 경우 record에 field를 추가하거나 Variant/Enum에 새 case를 추가할 수 있습니다.<br/><br/>Collection, Optional, List, Map은 변경할 수 없습니다. 자체 type을 정의했다면 Tuple은 triple 등으로 변경할 수 있습니다. |
+| Interface Definition 변경 | Interface Definition | 아니요 | Interface는 static하며 변경할 수 없습니다. Interface definition을 분리하고 implementation은 template code에 둡니다. |
+| Template에 Interface 추가 | Template Definition | 예 |  |
+| Template에서 Interface 제거 | Template Definition | 아니요 | Implementation은 변경할 수 있습니다. |
+| Exception 변경 또는 삭제 | Exception Definition | 아니요 | Exception definition을 분리합니다. Exception은 upgrade할 수 없습니다. |
+
+이 방식을 사용하면 package author는 오류 가능성이 큰 migration, downtime, 추가 network traffic, downstream user와의 광범위한 communication 없이 contract functionality를 개선한 새 package version을 publish할 수 있습니다.
+
+SCU에서는 다음 중 하나로 package를 reference할 수 있습니다.
+
+- Package ID
+- Package name
+
+Package name은 같은 package의 version을 group화하는 데 사용합니다. 같은 package name을 갖는 두 package는 서로 다른 package version을 가져야 합니다.
+
+**참고:**
+
+- Daml package를 정의할 때 package의 `daml.yaml`에 있는 `name` field로 SCU package name을 지정합니다.
+
+Java와 TypeScript codegen에서는 package name과 필요할 경우 package ID를 사용할 수 있습니다.
+
+PQS는 package-id 대신 `daml.yaml`에 지정된 package-name 사용을 지원합니다. Template/interface/choice name을 지정할 때 기존 `deadbeefpackageidhex:DA.Register:Token` 형식의 package-id를 package-name으로 대체해 `register:DA.Register:Token`처럼 사용합니다. 이 규칙은 template filter와 `active()` function 등을 사용하는 SQL query에 적용됩니다. 이 function들은 주어진 identifier의 모든 version을 항상 return합니다. Qualified name은 다음 형식일 수 있습니다.
+
+- Fully qualified: `<package-name>:<module-path>:<template-name>`
+- Partially qualified: `<module-path>:<template-name>`
+
+Qualified name은 ambiguous할 수 없습니다.
+
+PQS Read API는 각 contract instance의 package-name, package-id, package-version을 return하므로 시간에 따른 version을 쉽게 식별하고 inspect할 수 있습니다. 특정 version만 query하던 기존 방식을 재현해야 한다면 SQL에서 filter predicate를 사용합니다.
+
+```sql
+SELECT *
+  FROM active('mypackage:My.App:MyTemplate')
+  WHERE package_id = 'deadbeefpackageidhex'
+```
+
+### Smart Contract Upgrade 기본
+
+Package를 upgrade하려면 package author가 기존 package를 수정해 새 field나 choice 같은 functionality를 추가합니다. 이전 version을 보유한 participant에 새 package를 upload하면 participant는 새 version의 모든 model 변경이 이전 version의 valid upgrade인지 확인합니다.
+
+Contract 또는 datatype을 자동 upgrade할 수 있도록 SCU는 새 package version이 이전 version에 대해 도입할 수 있는 변경 종류를 제한합니다.
+
+예를 들어 SCU가 지원하는 가장 단순한 data transformation은 template에 field를 추가하는 것입니다.
+
+다음과 같은 template의 첫 version이 있다고 가정합니다.
+
+```haskell
+template IOU
+  with
+    issuer: Party
+    owner: Party
+    value: Int
+  where
+    signatory issuer
+    observer owner
+```
+
+Currency를 위한 새 field를 추가할 수 있습니다.
+
+```haskell
+template IOU
+  with
+    issuer: Party
+    owner: Party
+    value: Int
+    -- New field:
+    currency: Optional String
+  where
+    signatory issuer
+    observer owner
+```
+
+SCU에서 새 template field는 모두 optional이어야 합니다. Old version template은 새 field를 `None`으로 설정해 new version으로 자동 upgrade됩니다. Optional field 요구사항은 package의 모든 record에 적용됩니다. 반대로 이 field가 `None`으로 설정된 new contract는 아직 update되지 않은 workflow에서 이전 template version으로 자동 downgrade할 수 있습니다.
+
+#### 자동 Data Upgrade와 Downgrade
+
+Daml model의 data를 확장할 때 SCU는 old model을 new model에서 표현할 수 있어야 한다고 요구합니다. Record를 확장할 때는 nullable한 `Optional` field만 추가할 수 있으므로 해당 field를 `None`으로 설정해 old data를 표현할 수 있습니다. Variant와 Enum에도 유사한 제약이 적용되며 constructor 추가만 허용됩니다. 다른 제약은 Continuing to Write Your [Upgrades]()에서 다룹니다. 이 방식은 [Protobuf]()와 `as`를 통해 초과 [field]()를 무시하는 TypeScript 동작에서 영감을 받았습니다.
+
+Automatic data upgrade는 다음 위치에서 발생합니다.
+
+**Ledger API submission**
+
+Command를 submit하면서 package-id 대신 package-name만 제공하면 Canton은 payload를 participant에 upload된 최신 package version에 맞게 자동 upgrade 또는 downgrade합니다. Ledger API를 통해 직접 exercise하는 choice argument도 자동 upgrade/downgrade하므로 choice의 최신 implementation을 사용합니다. Choice result upgrade/downgrade는 이 section의 뒤에서 설명하는 Consuming Client가 처리합니다. Package preference로 이 동작에 영향을 줄 수 있습니다.
+
+**Choice body의 update**
+
+Contract를 fetch할 때 contract payload는 DAR에 compile된 calling choice body가 예상하는 version에 맞게 자동 upgrade/downgrade됩니다. Contract의 choice를 exercise할 때도 contract payload는 calling choice body가 예상하는 choice version에 맞게 upgrade/downgrade됩니다. 따라서 choice body 내부에서 exercise된 choice argument나 return type은 upgrade/downgrade되지 않습니다.
+
+**Consuming Client, 예: Daml Script, TypeScript/Java codegen**
+
+Client가 Ledger API에서 contract를 query하면 return된 event payload format은 event 생성에 원래 사용된 template, 즉 contract create 또는 choice exercise에 사용된 template과 일치합니다. 받은 payload를 downstream이 예상하는 형식으로 upgrade/downgrade하는 것은 client의 책임이며 choice result에도 같은 원칙이 적용됩니다. Daml Script와 TypeScript/Java codegen은 Ledger API response를 자신이 run/build된 package version에 맞게 자동 변환합니다.
+
+### Stack 전반의 Upgrade
+
+다음은 SCU와 상호작용하는 component와 사용자가 알아야 할 동작입니다.
+
+#### Canton
+
+Canton ledger node 중 smart contract upgrade를 인식하는 것은 Canton participant node뿐입니다.
+
+Smart contract upgrade 기능을 지원하도록 조정된 participant node interaction은 다음과 같습니다.
+
+- DAR upload request는 포함된 새 package가 participant에 이전에 upload된 다른 package와 upgrade-compatible한지 검사하는 추가 validation stage를 거칩니다.
+- 같은 package-name에 여러 package가 존재하면 Ledger API command submission을 자동 또는 명시적으로 upgrade/downgrade할 수 있습니다.
+- Ledger API streaming query는 package-name으로 event를 더 일반적으로 fetch하도록 조정됩니다.
+
+#### Code Generation
+
+Java와 TypeScript CodeGen은 retrieve한 contract를 upgrade하도록 update되었으며 participant에 보내는 command에서 package-id보다 package-name을 사용합니다.
+
+#### JSON Ledger API
+
+JSON Ledger API도 gRPC Ledger API 변경에 맞춰 package-name query와 command submission을 지원합니다.
+
+#### PQS & Daml Shell
+
+PQS는 package-name을 통한 contract query만 지원하며 직접 package-id query는 지원하지 않습니다. 자세한 내용과 우회 방법은 PQS [section]()을 참고하세요.
+
+Daml Shell은 PQS 위에 구축되므로 이 동작을 그대로 따릅니다.
+
+#### Daml Script
+
+SCU 지원은 opt-in LTS version의 Daml Script에서 제공됩니다.
+
+이 version은 이전 Daml Script의 drop-in replacement로 동작하며 모든 query와 command submission에서 upgrade를 지원합니다.
+
+고급 upgrade interaction과 이전 submission 동작으로 되돌리기 위한 function도 제공합니다.
+
+#### Daml Compiler
+
+Daml compiler는 `upgrades:` configuration field를 지원합니다. `dpm build`를 호출할 때마다 current package가 `upgrades:` field에 지정된 package와 upgrade-compatible한지 validate합니다.
+
+Validation은 일반적인 upgrade 실수에 대한 custom error message를 내고 잠재적으로 unsafe한 방식으로 package를 upgrade하면 package author에게 warning을 표시합니다. 다만 upgrade validity는 participant package store에 depend하므로 이 validation만으로 완전할 수 없습니다. Upgrade validity의 최종 판정은 participant의 DAR upload check가 수행합니다.
+
+### Limitations
+
+SCU가 downtime을 최소화하고 하나의 package에 여러 version이 동시에 active하도록 하기 위해 live data에 수행할 수 있는 transformation 종류를 제한합니다. 다음 data transformation은 SCU upgrade로 수행할 수 없습니다.
+
+- Template field 이름 변경, 제거 또는 순서 변경
+- Record를 variant로 또는 variant를 record로 변환
+- Template/datatype을 다른 module로 이동
+- Interface와 exception definition upgrade
+- Template에서 interface instance 제거
+
+이 제약은 ambiguity와 예상하기 어려운 side effect를 피하면서 단순한 runtime upgrade model을 제공하는 데 필요합니다. 이런 변경이 필요하다면 Rolling out backwards-incompatible changes에서 제안하는 방식을 사용해 downtime을 수반하는 redeployment를 고려해야 할 수 있습니다.
+
+현재 SCU version에는 다음 functionality가 아직 구현되지 않았으며 future release에서 구현될 수 있습니다.
+
+- 일반 Daml Script는 SCU 또는 LF1.17을 지원하지 않으므로 Daml Script LTS를 사용해야 합니다.
+
+Running ledger의 package 관리에는 다음과 같은 추가 limitation이 있습니다.
+
+- Package version이 ledger에 upload되면 대체하거나 제거할 수 없습니다. 실수로 package를 upload했다면 더 최신 version을 upload해 override하는 방법만 사용할 수 있습니다.
+- 따라서 실수로 optional field를 추가해 record를 확장했다면 모든 future version에도 해당 field가 포함되어야 합니다.
+- Package version은 삭제할 수 없고 unvet만 할 수 있습니다. 일반적으로 각 package name의 highest version을 vet하는 것이 좋습니다.
+- 어떤 이유로 lower package version이 vetted/preferred 상태라면 grpc `Commands` message의 `package_id_selection_preference` field에 해당 package version을 command submission마다 명시해야 합니다.
+- 특정 transaction을 confirm하고 observe하는 participant는 submitting participant가 prefer한 package version을 vet해야 합니다. 그렇지 않으면 transaction이 거부됩니다.
+- Active contract stream과 transaction stream에 포함된 contract create event는 항상 생성 당시 사용한 package version의 template definition에 따라 표현됩니다.
+
+## 예제로 보는 Programming Model
+
+### 첫 Smart Contract Upgrade 작성
+
+#### 설정
+
+Smart Contract Upgrade [Basics]()에서 소개한 예시를 계속 사용합니다. 먼저 package의 첫 old version을 정의합니다.
+
+```bash
+> mkdir -p v1/my-pkg
+> cd v1/my-pkg
+> dpm init
+> dpm version
+SDK versions:
+  3.3.0  (project SDK version from daml.yaml)
+```
+
+`dpm version`을 실행하면 3.3.0 이상이 "project SDK version from daml.yaml"이라고 표시되어야 합니다.
+
+`v1/my-pkg/daml.yaml` dependency list에 `daml-script`를 추가하고 `build-options`에 `--target=2.1`을 추가합니다.
+
+```yaml
+...
+name: my-pkg
+...
+dependencies:
+- daml-prim
+- daml-stdlib
+- daml-script
+build-options:
+- --target=2.1
+```
+
+**참고:** 이 tutorial에서는 단순성을 위해 일부 best practice를 생략합니다. 특히 SCU를 적용하는 package name에는 version identifier도 포함하는 것을 권장하지만 여기서는 생략합니다. 자세한 내용은 package naming best practice section을 참고하세요. Ledger에 upload하는 package는 `daml-script`에 depend하지 않는 것도 권장합니다.
+
+이어서 `v1/my-pkg/daml/Main.daml`을 생성합니다.
+
+```haskell
+module Main where
+
+import Daml.Script
+
+template IOU
+  with
+    issuer: Party
+    owner: Party
+    value: Int
+  where
+    signatory issuer
+    observer owner
+    key issuer : Party
+    maintainer key
+```
+
+dpm build를 실행하면 `v1/my-pkg/.daml/dist/my-pkg-1.0.0.dar`에 DAR가 생성되어야 합니다.
+
+```bash
+> dpm build
+Running single package build of my-pkg as no multi-package.yaml was found.
+...
+Compiling my-pkg to a DAR.
+...
+Created .daml/dist/my-pkg-1.0.0.dar
+```
+
+이제 첫 version을 upgrade하는 두 번째 new package version을 생성합니다. Root directory로 돌아가 v1 package를 v2 directory에 copy합니다.
+
+```bash
+> cd ../..
+> cp -r v1 v2
+> cd v2/my-pkg
+```
+
+`daml.yaml`을 edit해 package version을 update하고 v1을 가리키는 `upgrades:` field를 추가합니다.
+
+```yaml
+version: 1.1.0
+...
+dependencies:
+- daml-prim
+- daml-stdlib
+- daml-script
+upgrades: ../../v1/my-pkg/.daml/dist/my-pkg-1.0.0.dar
+build-options:
+- --target=2.1
+```
+
+이제 v2의 모든 변경이 v1에 대한 올바른 upgrade인지 validate됩니다.
+
+#### 새 Field 추가
+
+먼저 `v2/my-pkg/daml/Main.daml`에 새 `currency` field를 추가합니다.
+
+```haskell
+...
+template IOU
+  with
+    issuer: Party
+    owner: Party
+    value: Int
+    currency: Text -- New field
+  where
+...
+```
+
+`dpm build`를 실행하면 error가 발생합니다.
+
+```bash
+> dpm build
+...
+error type checking template Main.IOU :
+  The upgraded template IOU has added new fields, but those fields are not Optional.
+ERROR: Creation of DAR file failed.
+```
+
+Template에 추가하는 새 field는 optional이어야 합니다. 이전 version의 old contract는 새 field를 `None`으로 설정해 자동 upgrade됩니다.
+
+`currency` field를 optional로 수정하고 `dpm build`를 다시 실행합니다.
+
+```haskell
+...
+    currency: Optional Text -- New field
+...
+```
+
+```bash
+> dpm build
+...
+Created .daml/dist/my-pkg-1.0.0.dar
+```
+
+Build에서 expression 변경 warning이 발생할 수 있으며 Continuing to Write Your [Upgrades]() section에서 설명합니다.
+
+#### Contract에서 Upgraded Field 확인
+
+Daml Sandbox를 사용해 old contract가 자동 upgrade되는 것을 확인할 수 있습니다.
+
+IOU를 생성하고 조회하는 script를 `v1/my-pkg/daml/Main.daml`에 추가합니다.
+
+```haskell
+module Main where
+
+import Daml.Script
+...
+mkIOU : Script Party
+mkIOU = do
+  alice <- allocateParty "alice"
+  alice `submit` createCmd (IOU alice alice 1)
+  pure alice
+
+getIOU : Party -> Script (Optional (ContractId IOU, IOU))
+getIOU key = queryContractKey @IOU key key
+```
+
+`v2/my-pkg/daml/Main.daml`을 열고 currency field가 있는 IOU와 없는 IOU를 생성하는 script, 모든 IOU를 조회하는 script를 추가합니다.
+
+```haskell
+module Main where
+
+import Daml.Script
+...
+mkIOU : Script Party
+mkIOU = do
+  alice <- allocateParty "alice"
+  alice `submit` createCmd (IOU alice alice 1 (Some "USD"))
+  pure alice
+
+mkIOUWithoutCurrency : Script Party
+mkIOUWithoutCurrency = do
+  alice <- allocateParty "alice"
+  alice `submit` createCmd (IOU alice alice 1 None)
+  pure alice
+
+getIOU : Party -> Script (Optional (ContractId IOU, IOU))
+getIOU key = queryContractKey @IOU key key
+```
+
+새 terminal을 열고 `dpm sandbox`를 실행해 upgrade test용 simple ledger를 시작합니다.
+
+```bash
+> dpm sandbox --json-api-port 7575
+Starting Canton sandbox.
+Listening at port 6865
+Canton sandbox is ready.
+```
+
+Sandbox가 실행 중인 terminal과 별도로 다른 terminal을 엽니다. `v1/my-pkg` 안에서 `mkIOU` script를 upload하고 실행한 뒤 생성된 Alice party를 output file `alice-v1`에 저장합니다.
+
+```bash
+> cd v1/my-pkg
+> curl -XPOST -T .daml/dist/my-pkg-1.0.0.dar http://localhost:7575/v2/packages
+> dpm script \
+    --ledger-host localhost --ledger-port 6865 \
+    --dar .daml/dist/my-pkg-1.0.0.dar \
+    --script-name Main:mkIOU \
+    --output-file alice-v1
+...
+```
+
+`v2/my-pkg` 안에서 `getIOU` script를 upload하고 실행하면서 `alice-v1` file을 script input으로 전달합니다.
+
+```bash
+> cd ../../v2/my-pkg
+> curl -XPOST -T .daml/dist/my-pkg-1.0.0.dar http://localhost:7575/v2/packages
+> dpm script \
+    --ledger-host localhost --ledger-port 6865 \
+    --dar .daml/dist/my-pkg-1.1.0.dar \
+    --script-name Main:getIOU \
+    --output-file /dev/stdout \
+    --input-file ../../v1/my-pkg/alice-v1
+...
+{
+  "_1": "...",
+  "_2": {
+  "issuer": "party-...",
+  "owner": "party-...",
+  "value": 1,
+  "currency": null
+  }
+}
+...
+```
+
+Return된 contract에는 `null`로 설정된 field `currency`가 있습니다. v1에서 `getIOU` script를 실행하면 이 field가 나타나지 않습니다.
+
+```bash
+> cd ../../v1/my-pkg
+> dpm script \
+    --ledger-host localhost --ledger-port 6865 \
+    --dar .daml/dist/my-pkg-1.0.0.dar \
+    --script-name Main:getIOU \
+    --output-file /dev/stdout \
+    --input-file alice-v1
+...
+{
+  "_1": "...",
+  "_2": {
+  "issuer": "party-...",
+  "owner": "party-...",
+  "value": 1
+  }
+}
+...
+```
+
+#### Downgrading Contracts
+
+New contract의 Optional field에 value가 있으면 downgrade할 수 없습니다. `v2/my-pkg` directory에서 currency가 `USD`인 새 v2 IOU contract를 생성합니다.
+
+```bash
+> # Create a new v2 IOU contract, with USD as currency
+> cd ../../v2/my-pkg
+> dpm script \
+    --ledger-host localhost --ledger-port 6865 \
+    --dar .daml/dist/my-pkg-1.1.0.dar \
+    --script-name Main:mkIOU \
+    --output-file alice-v2
+...
+```
+
+`v1/my-pkg` directory의 v1 script에서 query합니다.
+
+```bash
+> # Query from v1 package
+> cd ../../v1/my-pkg
+> dpm script \
+    --ledger-host localhost --ledger-port 6865 \
+    --dar .daml/dist/my-pkg-1.0.0.dar \
+    --script-name Main:getIOU \
+    --output-file /dev/stdout \
+    --input-file ../../v2/my-pkg/alice-v2
+...
+Exception in thread "main" com.daml.lf.engine.script.Script$FailedCmd: Command QueryContractKey failed: Failed to translate create argument:
+...
+An optional contract field with a value of Some may not be dropped during downgrading.
+```
+
+Error는 downgrade 중 optional field를 제거할 수 없다고 설명합니다.
+
+V2 package workflow에서 생성한 contract도 upgraded optional field가 `None`으로 설정되어 있으면 사용할 수 있습니다. 예를 들어 `mkIOUWithoutCurrency`로 currency field가 `None`인 IOU를 생성합니다.
+
+```bash
+> # Create a new v2 IOU contract, without USD as currency
+> cd ../../v2/my-pkg
+> dpm script \
+    --ledger-host localhost --ledger-port 6865 \
+    --dar .daml/dist/my-pkg-1.1.0.dar \
+    --script-name Main:mkIOUWithoutCurrency \
+    --output-file alice-v2
+...
+```
+
+그런 다음 v1에서 query합니다.
+
+```bash
+> # Query from v1 package
+> cd ../../v1/my-pkg
+> dpm script \
+  --ledger-host localhost --ledger-port 6865 \
+  --dar .daml/dist/my-pkg-1.0.0.dar \
+  --script-name Main:getIOU \
+  --output-file /dev/stdout \
+  --input-file ../../v2/my-pkg/alice-v2
+...
+  "issuer": "party-...",
+  "owner": "party-...",
+  "value": 1
+...
+```
+
+이 경우 모든 upgraded field가 `None`으로 설정되어 있으므로 v1 query가 성공합니다.
+
+#### Choice 추가
+
+SCU는 package author가 새 choice를 추가하는 것도 허용합니다. Current contract를 archive하고 value가 두 배인 새 contract를 생성하는 예시 choice `Double`을 `v2/my-pkg/daml/Main.daml`에 추가합니다.
+
+```haskell
+...
+    maintainer key
+    choice Double : ContractId IOU
+        controller issuer
+        do create this with value = value * 2
+...
+```
+
+이 choice를 호출하는 script도 추가합니다.
+
+```haskell
+import DA.Optional (fromSome)
+
+...
+
+doubleIOU : Party -> Script IOU
+doubleIOU alice = do
+  oIOU <- getIOU alice
+  case oIOU of
+    Some (cid, _) -> do
+      newCid <- alice `submit` exerciseCmd cid Double
+      fromSome <$> queryContractId alice newCid
+    None -> fail "Failed to find IOU"
+```
+
+Compile된 변경을 이전 version과 비교해 검사하며 통과합니다.
+
+```bash
+> dpm build
+...
+Compiling my-pkg to a DAR.
+...
+Created .daml/dist/my-pkg-1.1.0.dar
+...
+```
+
+Sandbox를 restart하고 v1과 v2를 모두 다시 upload합니다.
+
+```bash
+> cd v1/my-deps
+> curl -XPOST -T .daml/dist/my-pkg-1.0.0.dar http://localhost:7575/v2/packages
+> # Make a new IOU
+> dpm script \
+    --ledger-host localhost --ledger-port 6865 \
+    --dar .daml/dist/my-pkg-1.0.0.dar \
+    --script-name Main:mkIOU \
+    --output-file alice-v1
+...
+> cd ../../v2/my-deps
+> curl -XPOST -T .daml/dist/my-pkg-1.0.0.dar http://localhost:7575/v2/packages
+...
+> dpm script \
+    --ledger-host localhost --ledger-port 6865 \
+    --dar .daml/dist/my-pkg-1.1.0.dar \
+    --script-name Main:doubleIOU \
+    --output-file /dev/stdout \
+    --input-file ../../v1/my-pkg/alice-v1
+...
+  "issuer": "party-...",
+  "owner": "party-...",
+  "value": 2,
+  "currency": null
+...
+```
+
+이제 v1에서 생성한 contract에 v2에서 도입한 choice를 exercise할 수 있습니다.
+
+Upgraded field가 `None`으로 설정되어 있으면 v2 contract에서 v1 choice를 exercise할 수도 있습니다. 다만 다른 script function이 필요하므로 v1의 `doubleIOU` body에서 `exerciseCmd`를 `exerciseExactCmd`로 바꾸고 sandbox를 restart합니다.
+
+```bash
+> # Replace exerciseCmd with exerciseExactCmd in v1
+> # Do it using your editor, or use `sed`
+> sed -i -E 's/exerciseCmd/exerciseExactCmd/g' \
+    v1/my-pkg/daml/Main.daml
+```
+
+Sandbox를 restart한 뒤 V2에서 `mkIOUWithoutCurrency`를 사용해 currency가 없는 IOU를 만들고 V1에서 해당 contract에 `doubleIOU`를 실행합니다.
+
+```bash
+> # Create a new v2 IOU contract, without USD as currency
+> cd v2/my-pkg
+> curl -XPOST -T .daml/dist/my-pkg-1.0.0.dar http://localhost:7575/v2/packages
+> dpm script \
+    --ledger-host localhost --ledger-port 6865 \
+    --dar .daml/dist/my-pkg-1.1.0.dar \
+    --script-name Main:mkIOUWithoutCurrency \
+    --output-file alice-v2
+> cd ../../v1/my-pkg
+> curl -XPOST -T .daml/dist/my-pkg-1.0.0.dar http://localhost:7575/v2/packages
+> dpm script \
+  --ledger-host localhost --ledger-port 6865 \
+  --dar .daml/dist/my-pkg-1.0.0.dar \
+  --script-name Main:doubleIOU \
+  --output-file /dev/stdout \
+  --input-file ../../v2/my-pkg/alice-v2
+...
+  "issuer": "party-...",
+  "owner": "party-...",
+  "value": 2
+...
+```
+
+Existing choice도 upgrade할 수 있으며 Continuing to Write Your [Upgrades]()에서 설명합니다.
+
+### 첫 Upgrade 배포
+
+#### Smart Upgrade를 지원하도록 Canton 설정
+
+이 기능을 사용할 때는 Protocol Version 7을 사용해야 합니다.
+
+#### Smart Contract Upgrade가 활성화된 Package 사용
+
+Smart contract app 개발을 마치면 daml.yaml의 upgrade-enabled option으로 관련 DAR를 compile하고 생성합니다. 기존 gRPC endpoint를 수정하지 않고 upload할 수 있으며 즉시 사용할 수 있습니다.
+
+<Note>
+DAR가 성공적으로 upload되면 participant node에서 안전하게 제거할 수 없습니다. 새로 upload한 DAR는 upgrade lineage에 영향을 주므로 participant operator는 upload된 functionality가 의도한 lineage를 깨지 않는지 확인해야 합니다. 이후 모든 upload도 이 DAR와 compatible해야 합니다.
+</Note>
+
+<Note>
+Runtime package-name -\> package-id resolution은 deterministic해야 하므로 participant에 저장된 package는 unique package-id -\> (package-name, package-version) relationship을 만들어야 합니다. Ledger [API]()를 참고하세요. 따라서 main package가 특정 package-name/package-version을 갖는 DAR가 upload되면 이 relationship을 override할 수 없습니다. Participant의 기존 DAR와 name/version은 같지만 content가 다른 DAR를 upload하면 error code KNOWN_DAR_VERSION으로 거부됩니다.
+</Note>
+
+##### Running Participant Node에서 DAR Validate
+
+`PackageManagementService.validateDar` Ledger API endpoint를 사용하면 DAR를 participant에 upload하지 않고 current participant node state에 대해 validate할 수 있습니다. Participant node operator가 upload 전에 DAR를 먼저 검사할 수 있습니다.
+
+이 operation은 Canton Admin API와 Console에서도 사용할 수 있습니다.
+
+``` 
+participant.dars.validate("dars/CantonExamples.dar")
+```
+
+##### Upgrade와 Package Vetting
+
+Upgradable package에도 package vetting restriction이 적용됩니다. Smart contract upgrade가 포함된 Daml transaction에서 package를 사용하려면 transaction 정보를 받는 모든 participant가 해당 package를 vet해야 합니다. Contract 생성에 사용한 package와 target package 모두에 적용됩니다.
+
+**참고:** DAR upload operation에서는 package vetting이 기본적으로 활성화됩니다.
+
+### Upgrade 계속 작성하기
+
+SCU는 package author가 package의 더 많은 부분을 변경할 수 있게 합니다. Template, choice, data type definition의 field를 확장할 수 있고 choice body를 변경할 수 있습니다. Key definition과 signatory list 같은 다른 expression도 주의사항을 지키면 변경할 수 있습니다.
+
+#### 설정
+
+위 Writing Your First [Upgrade]() section에서 정의한 package를 계속 사용하되 v1과 v2 IOU module을 overwrite합니다. V1 IOU module은 다음과 같이 바꿉니다.
+
+```haskell
+module Main where
+
+import Daml.Script
+
+template IOU
+  with
+    issuer: Party
+    owner: Party
+    value: Int
+  where
+    signatory issuer
+    observer owner
+    key issuer : Party
+    maintainer key
+
+mkIOU : Script Party
+mkIOU = do
+  alice <- allocateParty "alice"
+  alice `submit` createCmd (IOU alice alice 1)
+  pure alice
+
+getIOU : Party -> Script (Optional (ContractId IOU, IOU))
+getIOU key = queryContractKey @IOU key key
+```
+
+V2 IOU module은 다음과 같이 바꿉니다.
+
+```haskell
+module Main where
+
+import Daml.Script
+import DA.Optional (fromOptional)
+
+template IOU
+  with
+    issuer: Party
+    owner: Party
+    value: Int
+    currency: Optional Text
+  where
+    signatory issuer
+    observer owner
+    key issuer : Party
+    maintainer key
+
+mkIOU : Script Party
+mkIOU = do
+  alice <- allocateParty "alice"
+  alice `submit` createCmd (IOU alice alice 1 (Some "USD"))
+  pure alice
+
+mkIOUWithoutCurrency : Script Party
+mkIOUWithoutCurrency = do
+  alice <- allocateParty "alice"
+  alice `submit` createCmd (IOU alice alice 1 None)
+  pure alice
+
+getIOU : Party -> Script (Optional (ContractId IOU, IOU))
+getIOU key = queryContractKey @IOU key key
+```
+
+다른 file은 모두 그대로 유지합니다.
+
+#### Choice 변경
+
+다음 choice `Duplicate`를 IOU의 v1과 v2 version 모두에 추가합니다.
+
+```haskell
+data DuplicateResult = DuplicateResult with
+  newCid : ContractId IOU
+
+choice Duplicate : DuplicateResult
+  controller issuer
+  do
+    cid <- create this with value = value * 2
+    return DuplicateResult with newCid = cid
+```
+
+`dpm build`는 error 없이 성공해야 합니다.
+
+```bash
+> cd v1/my-pkg
+> dpm build
+...
+Created .daml/dist/my-pkg-1.0.0.dar
+> cd ../../v2/my-pkg
+> dpm build
+...
+Created .daml/dist/my-pkg-1.1.0.dar
+```
+
+이어서 optional field `amount`를 추가하고 기본적으로 3배가 되도록 behavior를 변경해 `Duplicate` choice를 upgrade합니다. Old value를 포함하도록 `DuplicateResult` data type도 upgrade합니다. V2에서만 `DuplicateResult` data type과 `Duplicate` choice definition을 바꿉니다.
+
+```haskell
+...
+-- Add import to top of module
+import DA.Optional (fromOptional)
+...
+-- Replace DuplicateResult definition
+data DuplicateResult = DuplicateResult with
+  newCid : ContractId IOU
+  oldValue : Optional Int -- New optional oldValue field
+...
+   -- Replace Duplicate choice implementation
+   choice Duplicate : DuplicateResult
+     with
+       amount : Optional Int -- New optional amount
+     controller issuer
+     do
+       let amt = fromOptional 3 amount
+       cid <- create this with value = value * amt
+       return DuplicateResult with
+         newCid = cid
+         oldValue = Some value
+...
+```
+
+V1에 `duplicateIOU` script를 추가합니다.
+
+```haskell
+...
+duplicateIOU : Party -> Script (Optional (ContractId IOU, IOU))
+duplicateIOU key = do
+  mbIOU <- getIOU key
+  case mbIOU of
+    None -> pure None
+    Some (iouCid, _) -> do
+      res <- key `submit` exerciseExactCmd iouCid Duplicate
+      mbNewIOU <- queryContractId key res.newCid
+      case mbNewIOU of
+        Some newIOU -> pure (Some (newCid, newIOU))
+        None -> pure None
+```
+
+V2에도 `amount` field를 제공하는 유사한 `duplicateIOU` script를 추가합니다.
+
+```haskell
+...
+duplicateIOU : Party -> Script (Optional (ContractId IOU, Int, IOU))
+duplicateIOU key = do
+  mbIOU <- getIOU key
+  case mbIOU of
+    None -> pure None
+    Some (iouCid, _) -> do
+      res <- key `submit` exerciseExactCmd iouCid Duplicate { amount = Some 4 }
+      case res.oldValue of
+        None -> pure None -- This should never happen
+        Some oldValue ->
+          mbNewIOU <- queryContractId key res.newCid
+          case mbNewIOU of
+            Some newIOU -> pure (Some (newCid, oldValue, newIOU))
+            None -> pure None
+```
+
+`exerciseExactCmd`로 v1 `duplicateIOU` script를 실행하면 항상 `Duplicate` choice의 v1 implementation을 실행하며 v2도 같은 방식입니다.
+
+#### Signatory Definition 수정
+
+다른 definition도 변경할 수 있지만 unsafe할 수 있고 필요한 invariant를 보존하도록 주의해야 한다는 warning이 표시됩니다.
+
+Signatory와 observer expression은 변경할 수 있습니다. 중요한 점은 SCU가 새 definition이 계산된 signatory value를 바꾸지 않는다고 가정한다는 것입니다. 계산된 observer value는 한 가지 방식으로만 변경할 수 있습니다. Signatory이기도 한 observer는 제거할 수 있지만 non-signatory observer를 잃거나 observer를 추가하는 등 다른 변경은 허용되지 않습니다.
+
+예를 들어 v2 IOU template에 새 "outside observers" field를 추가하고 observer definition에 포함합니다.
+
+```haskell
+...
+    -- Add a new outsideObservers field
+    outsideObservers: Optional [Party]
+  where
+    signatory issuer
+    -- Add outsideObservers to the observer definition
+    observer owner, fromOptional [] outsideObservers
+...
+```
+
+새 observer definition은 v2 이후 contract가 outsideObservers field를 통해 새 observer를 추가할 수 있게 합니다. 그러나 existing contract의 `outsideObservers` field 기본값은 `None`이므로 모든 existing contract는 이전과 같은 단일 owner observer list를 갖습니다.
+
+Upgrade/downgrade 중 contract의 signatory 또는 observer가 위 constraint를 충족하지 않는 방식으로 변경되면 upgrade와 전체 transaction이 runtime에 실패합니다.
+
+#### Enum Upgrade
+
+SCU를 사용해 variant와 enum을 확장할 수 있습니다. Existing constructor에 field를 추가하거나 list 끝에 새 constructor를 추가합니다.
+
+이전 section과 비슷하게 v1과 v2 section을 overwrite해 IOU package를 다시 정의합니다. V1과 V2의 IOU package를 모두 다음 내용으로 바꿉니다.
+
+```haskell
+module Main where
+
+import Daml.Script
+
+template IOU
+  with
+    issuer: Party
+    owner: Party
+    value: Int
+    currency: Currency
+  where
+    signatory issuer
+    observer owner
+    key issuer : Party
+    maintainer key
+
+data Currency
+  = USD
+  | GBP
+  deriving (Show, Eq, Ord)
+
+mkIOU : Script Party
+mkIOU = do
+  alice <- allocateParty "alice"
+  alice `submit` createCmd (IOU alice alice 1 USD)
+  pure alice
+
+getIOU : Party -> Script (Optional (ContractId IOU, IOU))
+getIOU key = queryContractKey @IOU key key
+```
+
+Currency field에 `Text`를 사용하는 대신 constructor `USD`와 `GBP`를 갖는 enum data-type `Currency`를 사용합니다.
+
+`dpm build`는 error 없이 성공해야 합니다.
+
+```bash
+> cd v1/my-pkg
+> dpm build
+...
+Created .daml/dist/my-pkg-1.0.0.dar
+> cd ../../v2/my-pkg
+> dpm build
+...
+Created .daml/dist/my-pkg-1.1.0.dar
+```
+
+Contract가 새 currency를 지원하도록 확장하려면 `Currency` enum 끝에 새 entry를 추가할 수 있습니다.
+
+```haskell
+...
+data Currency
+  = USD
+  | GBP
+  | CHF -- Add a new currency type
+  deriving (Show, Eq, Ord)
+...
+```
+
+확장된 enum의 old version에서 new version으로의 upgrade는 항상 성공합니다. IOU에서는 v1 IOU의 `currency` field constructor가 v2 contract constructor의 subset이므로 v1 IOU를 항상 v2 IOU로 interpret할 수 있습니다.
+
+예를 들어 v1의 `mkIOU` script로 USD IOU를 생성하고 v2의 `getIOU` script로 query합니다.
+
+```bash
+> cd v1/my-pkg
+> dpm script
+    --ledger-host localhost --ledger-port 6865 \
+    --dar .daml/dist/my-pkg-1.0.0.dar \
+    --script-name Main:mkIOU \
+    --output-file alice-v1
+...
+> cd ../../v2/my-pkg
+> dpm script
+    --ledger-host localhost --ledger-port 6865 \
+    --dar .daml/dist/my-pkg-1.1.0.dar \
+    --script-name Main:getIOU \
+    --output-file /dev/stdout \
+    --input-file ../../v1/my-pkg/alice-v1
+...
+    "issuer": "party-...",
+    "owner": "party-...",
+    "value": 1,
+    "currency": "USD"
+...
+```
+
+V1과 v2 모두에 정의된 constructor만 v2에서 v1으로 downgrade할 수 있습니다. V1 package에 존재하지 않는 constructor는 runtime error로 downgrade에 실패합니다. 이 `IOU`에서는 `CHF`가 downgrade에 실패하므로 `CHF` currency를 가진 v2 contract는 v1 workflow에서 사용할 수 없습니다.
+
+예를 들어 v2의 `mkIOU` script로 `currency` field가 `CHF`인 contract를 생성합니다. V1의 `getIOU` script로 query하면 CHF variant lookup error가 발생합니다.
+
+```bash
+> cd v2/my-pkg
+> dpm script
+    --ledger-host localhost --ledger-port 6865 \
+    --dar .daml/dist/my-pkg-1.1.0.dar \
+    --script-name Main:mkIOU \
+    --output-file alice-v2
+...
+> cd ../../v1/my-pkg
+> dpm script
+    --ledger-host localhost --ledger-port 6865 \
+    --dar .daml/dist/my-pkg-1.0.0.dar \
+    --script-name Main:getIOU \
+    --output-file /dev/stdout \
+    --input-file ../../v2/my-pkg/alice-v2
+...
+Failed to translate create argument: Lookup(NotFound(DataVariantConstructor(c1543a5c2b7ff03650162e68e03e469d1ecf9f546565d3809cdec2e0255ed902:Main:Currency,CHF),DataEnumConstructor(c1543a5c2b7ff03650162e68e03e469d1ecf9f546565d3809cdec2e0255ed902:Main:Currency,CHF)))
+...
+```
+
+#### Variant Upgrade
+
+Algebraic data type이라고도 하는 variant는 structured data도 포함한다는 점을 제외하면 enum과 매우 유사합니다.
+
+예를 들어 다음 variant는 각각 unique field를 갖는 두 constructor로 구성됩니다. V1과 v2 module을 모두 다음 source로 overwrite합니다.
+
+```haskell
+module Main where
+
+data Shape
+  = Circle
+  | Polygon { sides : Int }
+```
+
+이 variant는 두 가지 방식으로 확장할 수 있습니다. Enum과 비슷하게 새 constructor를 추가할 수 있습니다. V2 module을 수정해 `len` field를 갖는 새 `Line` constructor를 추가합니다.
+
+```haskell
+module Main where
+
+data Shape
+  = Circle
+  | Polygon { sides : Int }
+  | Line { len : Numeric 10 } -- New line constructor
+```
+
+이전과 마찬가지로 build가 성공해야 합니다.
+
+```bash
+> cd v1/my-pkg
+> dpm build
+...
+Created .daml/dist/my-pkg-1.0.0.dar
+> cd ../../v2/my-pkg
+> dpm build
+...
+Created .daml/dist/my-pkg-1.1.0.dar
+```
+
+Template과 비슷하게 constructor에 새 field를 추가할 수도 있습니다. 예를 들어 polygon의 side length를 지정하는 `sideLen` field를 `Polygon` constructor에 추가합니다.
+
+```haskell
+data Shape
+  = Circle
+  | Polygon
+      { sides : Int
+      , sideLen : Numeric 10 -- New field
+      }
+  | Line { len : Numeric 10 }
+```
+
+새 `sideLen` field가 non-optional이므로 build가 실패합니다.
+
+```bash
+> cd v2/my-pkg
+> dpm build
+...
+error type checking data type Main.Shape:
+  The upgraded variant constructor Polygon from variant Shape has added a field.
+ERROR: Creation of DAR file failed.
+```
+
+새 `sideLen` field를 optional로 바꾸면 error가 해결됩니다.
+
+```haskell
+...
+      , sideLen : Optional (Numeric 10) -- New field
+...
+```
+
+```bash
+> cd v2/my-pkg
+> dpm build
+...
+Created .daml/dist/my-pkg-1.1.0.dar
+```
+
+#### Variant Upgrade의 Limitation
+
+Variant upgrade에는 몇 가지 limitation이 있습니다. `Circle` constructor는 curly brace 안에 field 없이 정의되었으므로 새 field로 upgrade할 수 없습니다.
+
+```haskell
+...
+  -- Add a field where no fields existed
+  = Circle { radius : Optional (Numeric 10) }
+...
+```
+
+```bash
+> cd v2/my-pkg
+> dpm build
+...
+error type checking data type Main.Shape:
+  The upgraded data type Shape has changed the type of a variant.
+ERROR: Creation of DAR file failed.
+```
+
+Unnamed field를 가진 variant에도 같은 규칙이 적용됩니다. `Line` constructor의 v1 definition이 다음과 같다면 upgrade할 수 없습니다.
+
+```haskell
+...
+  | Line (Numeric 10)
+```
+
+일반적으로 future upgrade를 위해 모든 constructor가 named field를 사용하고 최소 하나의 field를 갖도록 강하게 권장합니다. Initial v1 package의 constructor에 field가 없다면 dummy field를 지정할 수 있습니다.
+
+예를 들어 v1 `Circle` constructor는 다음과 같이 작성하는 것이 올바릅니다.
+
+```haskell
+...
+  = Circle { dummy : () }
+...
+```
+
+그러면 이후 v2 upgrade가 성공합니다.
+
+```haskell
+...
+  = Circle { dummy : (), radius : Optional (Numeric 10) }
+...
+```
+
+#### Nested Datatype
+
+Data type, choice 또는 template에 다른 data type을 reference하는 field가 있으면 해당 field의 data type이 upgradeable할 때 larger data type도 upgrade할 수 있습니다.
+
+예를 들어 data type `B`를 reference하는 field를 가진 data type `A`가 있다고 가정합니다.
+
+```haskell
+data A = A { b : B }
+data B = B { field : Text }
+```
+
+`B`에 대한 변경이 SCU에서 유효하면 `A`도 유효합니다.
+
+#### Dependency
+
+Package author는 package 자체뿐 아니라 dependency도 upgrade할 수 있습니다. 새 package version은 새 dependency를 추가할 수 있으며 old version의 non-utility-package dependency를 모두 가져야 합니다. 이 dependency가 upgrade 검사 대상 방식으로 사용된다면 각 existing dependency는 old DAR와 같거나 previous version의 upgrade여야 합니다.
+
+예를 들어 dependency package `dep`의 v1, v2, v3을 포함하는 dependencies folder가 있다고 가정합니다.
+
+```bash
+> ls ./dependencies
+dep-1.0.0.dar
+dep-2.0.0.dar
+dep-3.0.0.dar
+```
+
+이제 `dep` version `2.0.0`의 datatype에 depend하는 package `main` version `1.0.0`을 가정합니다.
+
+```haskell
+module Main where
+
+import qualified Dep
+
+data MyData = MyData
+  { depData : Dep.AdditionalData
+  }
+```
+
+```yaml
+...
+dependencies:
+- daml-prim
+- daml-stdlib
+- daml3-script
+data-dependencies:
+- dependencies/dep-2.0.0.dar
+...
+```
+
+Newer package version은 dependency를 newer version으로 upgrade하거나 같은 version으로 유지할 수 있으므로 `main` package version `2.0.0`은 dependency를 그대로 유지하거나 `dep`를 `3.0.0`으로 upgrade할 수 있습니다.
+
+```yaml
+...
+dependencies:
+- daml-prim
+- daml-stdlib
+- daml3-script
+data-dependencies:
+- dependencies/dep-3.0.0.dar # Can upgrade dep-2.0.0 to dep-3.0.0, or leave it unchanged
+...
+```
+
+Dependency의 datatype을 사용할 때 해당 dependency를 downgrade할 수 없습니다. 예를 들어 `main`은 `dep`를 version `1.0.0`으로 downgrade할 수 없으며 다음 `daml.yaml`은 유효하지 않습니다.
+
+```yaml
+...
+dependencies:
+- daml-prim
+- daml-stdlib
+- daml3-script
+data-dependencies:
+- dependencies/dep-1.0.0.dar # Cannot downgrade dep-2.0.0 to dep-1.0.0
+...
+```
+
+이 package를 build하면 Dep:AdditionalData reference가 original의 legitimate upgrade가 아닌 package로 변경되었으므로 typechecker가 Dep:AdditionalData field의 package ID mismatch error를 return합니다.
+
+```bash
+> dpm build
+...
+error type checking data type Main.MyData:
+The upgraded data type MyData has changed the types of some of its original fields:
+  Field 'depData' changed type from <dep-2.0.0 package ID>:Dep:AdditionalData to <dep-1.0.0 package ID>:Dep:AdditionalData
+```
+
+#### Interface Instance Upgrade
+
+SCU는 Interface instance 변경도 지원합니다. 먼저 `my-iface/daml.yaml`과 module `my-iface/daml/MyIface.daml`을 포함하는 새 package directory `my-iface`를 생성합니다.
+
+```yaml
+sdk-version: 3.3.0
+name: my-iface
+version: 1.0.0
+source: daml/MyIface.daml
+parties:
+- Alice
+- Bob
+dependencies:
+- daml-prim
+- daml-stdlib
+build-options:
+- --target=2.1
+```
+
+```haskell
+module MyIface where
+
+data HasValueView = HasValueView { hasValueView : Int }
+
+interface HasValue where
+  viewtype HasValueView
+  getValue : Int
+```
+
+Module을 build합니다.
+
+```bash
+> cd my-iface
+> dpm build
+...
+Created .daml/dist/my-iface-1.0.0.dar
+```
+
+새로 생성한 DAR reference를 `v1/my-pkg/daml.yaml`과 `v2/my-pkg/daml.yaml`에 모두 추가합니다.
+
+```yaml
+...
+dependencies:
+- daml-prim
+- daml-stdlib
+- daml3-script
+- ../../my-iface/.daml/dist/my-iface-1.0.0.dar
+...
+```
+
+`v1/my-pkg/daml/Main.daml`과 `v2/my-pkg/daml/Main.daml`을 모두 다음 내용으로 overwrite합니다.
+
+```haskell
+module Main where
+
+import Daml.Script
+import MyIface
+
+template IOU
+  with
+    issuer: Party
+    owner: Party
+    value: Int
+  where
+    signatory issuer
+    observer owner
+    key issuer : Party
+    maintainer key
+
+    interface instance HasValue for IOU where
+      view = HasValueView value
+      getValue = value
+```
+
+Interface instance는 upgrade로 변경할 수 있습니다. 예를 들어 v2는 `HasValue` instance의 `getValue` definition을 변경할 수 있습니다.
+
+V2 IOU package에 `quantity` field를 추가하고 이를 사용하도록 `getValue` definition을 수정합니다.
+
+```haskell
+...
+import DA.Optional (fromOptional)
+
+template IOU
+  with
+    issuer: Party
+    owner: Party
+    value: Int
+    quantity: Optional Int -- new quantity field
+  where
+...
+    interface instance HasValue for IOU where
+      view = HasValueView (value * fromOptional 1 quantity)
+      -- Use quantity field to calculate value
+      getValue = value * fromOptional 1 quantity
+```
+
+Daml sandbox를 종료하고 다시 시작한 뒤 두 DAR를 build하고 upload합니다. 두 작업 모두 성공해야 합니다.
+
+```bash
+> cd v1/my-pkg
+> dpm build
+> curl -XPOST -T .daml/dist/my-pkg-1.0.0.dar http://localhost:7575/v2/packages
+> cd ../../v2/my-pkg
+> dpm build
+> curl -XPOST -T .daml/dist/my-pkg-1.0.0.dar http://localhost:7575/v2/packages
+```
+
+New version package는 이미 존재하는 instance를 제거할 수 없습니다. 예를 들어 v2 IOU template은 `HasValue` instance를 제거할 수 없습니다. `v2/my-pkg/daml/Main.daml`에서 `HasValue` interface instance 전체를 comment 처리한 뒤 sandbox를 restart하고 두 version을 다시 upload합니다.
+
+```bash
+> cd v1/my-pkg
+> dpm build
+> curl -XPOST -T .daml/dist/my-pkg-1.0.0.dar http://localhost:7575/v2/packages
+> cd ../../v2/my-pkg
+> dpm build
+> curl -XPOST -T .daml/dist/my-pkg-1.0.0.dar http://localhost:7575/v2/packages
+...
+Implementation of interface ...:MyIface:HasValue by template IOU appears in package that is being upgraded, but does not appear in this package.
+```
+
+다른 예로 이전 단계에서 삭제한 instance를 복원하고 대신 `v2/my-pkg/daml/Main.daml`에서 `HasValue` interface를 제거합니다. 그런 다음 sandbox를 restart하고 두 version을 다시 upload합니다.
+
+```bash
+> cd v1/my-pkg
+> dpm build
+> curl -XPOST -T .daml/dist/my-pkg-1.0.0.dar http://localhost:7575/v2/packages
+> cd ../../v2/my-pkg
+> dpm build
+> curl -XPOST -T .daml/dist/my-pkg-1.0.0.dar http://localhost:7575/v2/packages
+```
+
+Choice와 마찬가지로 script는 `exerciseExactCmd`를 사용해 자체 version의 interface implementation을 호출할 수 있습니다.
+
+#### Interface Upgrade
+
+Interface instance는 upgrade할 수 있지만 interface definition은 upgrade할 수 없습니다. Package v1에 interface definition이 있으면 해당 package의 모든 subsequent version에서 제거해야 합니다.
+
+Subsequent version에는 interface definition을 정의할 수 없으므로 dependency package의 interface definition을 사용하는 package는 해당 dependency를 new version으로 upgrade할 수 없습니다.
+
+따라서 interface는 template과 분리된 자체 package에 정의할 것을 강하게 권장합니다.
+
+### Developer Workflow
+
+이 section은 project를 더 빠르게 iterate할 수 있도록 SCU development environment를 설정하는 방법을 제안합니다.
+
+#### Multi-Package Builds
+
+아래 best practice와 testing recommendation을 따르면 project의 package 수가 늘어납니다. Project를 iterate하면서 package를 안정적으로 rebuild하려면 Multi-Package build를 사용합니다. Multi-package build는 Daml Studio의 cross-package navigation도 활성화합니다.
+
+Multi-package builds for upgrades section에서는 SCU용 multi-package build 설정과 testing에 주는 도움을 자세히 설명합니다.
+
+#### Working with a Running Canton Instance
+
+SCU에서는 rebuild할 때마다 running participant에 package를 upload하며 iterate할 수 없습니다. Participant는 name과 version이 같지만 content가 다른 두 package를 거부합니다.
+
+다음 두 가지 우회 방법이 있습니다.
+- Rebuild할 때마다 participant restart
+- Rebuild 전에 package version name 변경
+
+DPM의 environment variable interpolation은 두 번째 방법에 도움이 됩니다. 각 package의 `daml.yaml` file에서 package name에 environment variable을 추가합니다.
+
+```haskell
+name: my-package-v${UNIQUE_BUILD_ID}
+```
+
+해당 package에 depend하는 `daml.yaml` file에서도 `my-package`가 생성하는 DAR file name에 이 variable을 추가해야 합니다.
+
+```haskell
+dependencies:
+- daml-prim
+- daml-stdlib
+data-dependencies:
+- ../my-package/.daml/dist/my-package-${UNIQUE_BUILD_ID}.dar
+```
+
+그런 다음 `dpm build --all`을 호출하기 전에 `UNIQUE_BUILD_ID` environment variable을 증가시킵니다. 그러면 build가 participant에 conflict 없이 upload할 수 있는 unique DAR file을 생성합니다.
+
+#### Working with the Daml Sandbox
+
+같은 이유로 Daml sandbox는 package hot-swap을 지원하지 않습니다.
+
+다음 두 가지 우회 방법이 있습니다.
+- Rebuild할 때마다 sandbox restart
+- 이전 section의 방식으로 rebuild할 때마다 package version name 변경
+
+### The Upgrade Model in Depth - Reference
+
+Valid upgrade reference로 사용할 수 있는 상세 upgrading model은 여기에서 확인할 수 있습니다.
+
+## Package Selection in the Ledger API
+
+SCU 도입 전에는 Ledger API request의 template ID가 모두 `<package-id>:<module-name>:<template-name>` 형식이었습니다. 구분을 위해 이 형식을 **by-package-id template ID**라고 합니다.
+
+SCU에서는 package-name으로 template scope를 지정하는 더 일반적인 reference 형식 `#<package-name>:<module-name>:<template-name>`, 즉 **by-package-name template ID**를 도입합니다. 이를 통해 Ledger API에서 version과 무관하게 template을 address할 수 있습니다. Ledger API server가 아는 name `package-name`의 모든 package에서 qualified name `<module-name>:<template-name>`을 갖는 모든 template ID를 reference합니다.
+
+`By-package-name template ID` addressing은 모든 package에서 지원되며 write path, 즉 command submission과 read path, 즉 Ledger API query 모두에서 사용할 수 있습니다.
+
+`by-package-name template ID`는 Ledger API의 API-level concept입니다. Canton은 내부적으로 모든 operation에 by-package-id template ID를 사용합니다. 따라서 Ledger API request에서 새 format을 사용하면 다음 section의 dynamic resolution을 수행합니다.
+
+### Package Preference
+
+Command submission을 처리할 때 Ledger API server가 `by-package-name template IDs`를 `by-package-id template IDs`로 resolve해야 하는 경우가 있습니다. `dynamic-package-resolution-in-command-submission`을 참고하세요. 이를 위해 participant가 아는 모든 package-name의 package-name에서 package ID로의 mapping인 **package preference** concept를 도입합니다.
+
+Package preference는 command submission마다 필요하며 다음 두 source로 구성됩니다.
+
+- Command를 받는 Ledger API server의 **default** package preference입니다. 기본적으로 Ledger API는 각 package name에 대해 transaction에 참여한 모든 participant가 아는 package version이 있으면 이를 선택합니다.
+
+- Submitted command의 package_id_selection_preference에 지정된 package-id selection preference list입니다. Client가 위 default package preference를 override하기 위해 명시적으로 제공하는 package-id resolution list입니다.
+
+  > - Daml-Script에서 제공하는 방법은 여기를 참고하세요.
+  > - **참고:** package_id_selection_preference가 package-name에 대해 ambiguous resolution을 만들면 안 됩니다. 같은 package-name을 가진 package를 가리키는 두 package-id를 포함하면 submission이 `INVALID_ARGUMENT` error로 실패합니다.
+
+### Dynamic Package Resolution in Command Submission
+
+Command submission 중 dynamic package resolution은 다음 두 경우에 발생할 수 있습니다.
+
+- Command의 templateId field에 `by-package-name template ID`를 사용하는 command submission, 예: create command
+- Daml interpretation에서 interface choice 또는 fetch-by-interface action을 execute해야 하는 command submission
+
+이 경우 package preference를 사용해 interface action의 target implementation package를 선택합니다.
+
+### Dynamic Package Resolution in Ledger API Queries
+
+Transaction 또는 active contract stream을 subscribe할 때 template-id request filter field에 `by-package-name template ID` format을 사용해 지정한 package-name에 속하는 모든 template event를 fetch할 수 있습니다. 이 template selection set은 dynamic하며 template/package가 upload될 때마다 확장됩니다.
+
+#### 예시
+
+Participant node에 다음 package가 있다고 가정합니다.
+
+- Package AppV1
+  - package-name: `app1`
+  - package-version: `1.0.0`
+  - template-ids: `pkgId1:mod:T`
+- Package AppV2
+  - package-name: `app1`
+  - package-version: `1.1.0`
+  - template-ids: `pkgId2:mod:T`
+
+TemplateId를 `#app1:mod:T`로 지정해 transaction query를 생성하면 event stream에 두 template-id `pkgId1:mod:T`와 `pkgId2:mod:T`의 event가 모두 포함됩니다.
+
+## Best Practices
+
+Future upgrade와 DAR lifecycle을 원활하게 관리하려면 다음 practice를 권장합니다.
+
+### Interface/Exception과 Template 분리
+
+Interface와 exception definition은 upgrade할 수 없습니다. 따라서 package version 2에서 interface 또는 exception을 변경하지 않은 채 다시 정의해도 package type check가 실패합니다. Version 2 package에서 interface를 제거하는 것도 문제가 되며 특히 interface에 choice가 있으면 더 그렇습니다.
+
+즉 interface와 exception definition이 같은 package에 있는 template definition은 upgrade할 수 없습니다. 이 문제를 피하려면 interface와 exception definition을 별도 package로 옮겨 template package의 subsequent version이 모두 같은 interface/exception package version에 depend하도록 합니다.
+
+예를 들어 다음과 같이 정의된 단일 package `main`은 upgrade할 수 없으므로 template `T`도 non-upgradeable 상태가 됩니다.
+
+```haskell
+module Main where
+
+interface I where
+  ...
+
+template T with
+  ...
+```
+
+```yaml
+sdk-version: 3.3.0
+name: main
+version: 1.0.0
+source: Main.daml
+dependencies:
+- daml-prim
+- daml-stdlib
+build-options:
+- --target=2.1
+```
+
+SCU type checker는 error를 내고 이 module compile을 거부합니다.
+
+``` text
+error type checking <none>:
+  This package defines both interfaces and templates. This may make this package and its dependents not upgradeable.
+
+  It is recommended that interfaces are defined in their own package separate from their implementations.
+  Downgrade this error to a warning with -Wupgrade-interfaces
+  Disable this error entirely with -Wno-upgrade-interfaces
+```
+
+**참고:** Interface 또는 exception을 template과 같은 package에서 compile하지 않을 것을 강하게 권장합니다. 다만 `-Wupgrade-interfaces` flag로 error를 warning으로 낮추거나 `-Wno-upgrade-interfaces` flag로 완전히 무시할 수 있습니다.
+
+권장 해결 방법은 `main` package를 `helper`와 `main` 두 package로 나누어 다시 정의하는 것입니다.
+
+```haskell
+module Helper where
+
+interface I where
+  ...
+```
+
+```yaml
+sdk-version: 3.3.0
+name: helper
+version: 1.0.0
+source: Helper.daml
+dependencies:
+- daml-prim
+- daml-stdlib
+build-options:
+- --target=2.1
+```
+
+```haskell
+module Main where
+
+import qualified Helper
+
+template T with
+  ...
+```
+
+```yaml
+sdk-version: 3.3.0
+name: main
+version: 1.0.0
+source: Main.daml
+dependencies:
+- daml-prim
+- daml-stdlib
+data-dependencies:
+- <path to helper DAR>
+build-options:
+- --target=2.1
+```
+
+여러 package를 동시에 다루는 complexity를 관리하려면 multi-package build를 권장합니다.
+
+### Avoid Contract Metadata Changes
+
+주어진 contract의 signatory, stakeholder, contract key, ensure clause는 runtime에 고정되어야 합니다. Daml code에서 definition을 변경하는 것은 권장하지 않으며 SCU typechecker warning을 발생시킵니다.
+
+Key type 변경을 강하게 권장하지 않습니다. Key type 변경을 피할 수 없다면 SCU 대신 off-ledger migration을 고려하세요.
+
+### Breaking Changes via Explicit Package Version
+
+Upgrade-compatible하지 않은 breaking change를 적용하려면 breaking version bump를 나타내도록 package name을 변경할 수 있습니다. 이를 위해 breaking change 발생 시 사용하는 version marker를 package name에 포함할 것을 권장합니다.
+
+예를 들어 package의 첫 iteration은 package version `1.0.0`으로 시작하면서 `main-v1`이라고 naming합니다. 여기서 `v1`은 package version이 아니라 *package name*의 일부입니다. `version:` field를 `1.0.0`에서 `2.0.0`, `3.0.0`으로 변경해 upgrade-compatible version을 publish할 수 있으며 이 version들은 서로 upgrade-compatible합니다.
+
+``` text
+main-v1-1.0.0
+main-v1-2.0.0
+main-v1-3.0.0
+```
+
+세 package에서 `v1`이 그대로 유지된다는 점에 유의하세요. Package name이 바뀌지 않았으므로 runtime과 type checker는 세 package와 datatype을 upgradeable하다고 판단합니다.
+
+Breaking change를 적용하려면 package name이 `main-v2`인 새 package version을 publish합니다. 이 package는 `main-v1` package와 name이 다르므로 서로 type check하지 않고 datatype도 자동 변환하지 않습니다. `main-v1` package의 value를 `main-v2`로 수동 migrate해야 합니다.
+
+### Do not depend on Daml Script Packages
+
+`daml-script` 같은 Daml Script package에는 Daml Script test 실행 전용 package에서만 depend할 것을 권장합니다. 이 package는 model의 일부가 아니어야 하며 ledger에 upload하면 안 됩니다.
+
+Daml Script package는 SDK version 사이의 upgradeability를 보장하지 않습니다. Serializable position, 예를 들어 template field에서 Daml Script datatype에 depend하면 해당 dependency를 제거하거나 next SDK version으로 upgrade할 수 없게 될 수 있습니다. 그러면 package와 모든 SCU upgrade가 해당 SDK version에 묶입니다.
+
+### Operational Design Guideline for Upgrading Daml Apps
+
+Upgrade 관점에서 각 Daml application은 다음 component로 구성됩니다.
+
+- **On-ledger component**: On-ledger logic을 실행하는 Daml code, 즉 app과 상호작용하는 모든 participant node에 upload된 DAR
+- **Off-ledger component**: Ledger API 또는 JSON Ledger API, PQS 같은 지원되는 Canton Ledger API client를 통해 ledger와 상호작용하는 component입니다. 일반적으로 off-ledger business logic을 구현한 Java 또는 TypeScript service입니다.
+
+#### Zero-Downtime Upgrades
+
+위 component가 다음 방식을 지원하도록 design하면 operational downtime 없이 application을 upgrade할 수 있습니다.
+
+- **Asynchronous rollout**: Micro-service environment의 기존 CI/CD practice처럼 operator가 각자 일정에 맞춰 updated software를 deploy합니다.
+- **Synchronous switch-over**: 모든 component가 동시에 updated Daml code 사용으로 전환합니다.
+
+**Asynchronous upgrade rollout을 위한 design**
+
+Asynchronous rollout을 위해 off-ledger component는 다음을 따라야 합니다.
+
+- **Ledger API request에서 package name 사용**: Ledger API와 상호작용하는 app component는 모든 command submission과 query에서 `by-package-id template IDs` 대신 `by-package-name template IDs`를 사용해야 합니다. 그러면 다음이 가능합니다.
+
+  > - Command submission에서 Ledger API server-side package preference version selection
+  > - Component가 개발된 version보다 newer version을 포함한 모든 template version query
+
+- **누락된 optional field 처리**: Ledger API 또는 Ledger API client에서 읽는 app component는 initial package의 field를 포함해 record에서 optional field가 누락된 경우를 처리해야 합니다. Daml value를 읽는 TypeScript와 Java codegen은 기본적으로 이를 처리합니다.
+
+- **Exhaustive package preference 사용**: 각 command submission에서 다음을 보장하도록 `package_id_selection_preference`를 설정합니다.
+
+  > - Command에서 사용하는 모든 package와 가능한 모든 interface instance가 사용하는 모든 package의 package ID를 package preference에 포함합니다.
+  > - 하나의 application 안에서 모든 submission이 같은 package preference를 사용합니다.
+
+<Note>
+이 recommendation을 따르면 command submission에 제공한 explicit/exhaustive package preference가 package resolution을 완전히 결정하므로 application behavior가 DAR upload와 decouple됩니다. Package Preference 관련 참고를 확인하세요.
+</Note>
+
+**Upgrade 운영 단계**
+
+Application의 새 Daml package version이 준비되면 updated component의 asynchronous rollout을 허용할 operational window를 정의합니다. 이 기간에 Canton node와 off-ledger app operator는 다음을 수행합니다.
+
+- Upgraded DAR를 participant node에 upload
+- Updated off-ledger component rollout
+
+Operational window가 끝나면 application은 다음과 같이 upgraded logic으로 switch-over할 수 있습니다.
+
+- Switch-over time을 결정하고 application의 upgraded DAR에 해당하는 updated package preference와 함께 모든 app client에 미리 알립니다. 예를 들어 모든 component에 설정한 config value에 switch-over time을 encode하거나 모든 component가 읽을 수 있는 well-known HTTP endpoint에 publish할 수 있습니다.
+- Switch-over time 이후 모든 Ledger API client가 package preference를 update하고 subsequent command submission에 사용합니다.
+
+<Note>
+Update switch-over time 전에 component rollout을 완료하지 못한 Ledger API client 또는 participant node는 upgraded workflow에 참여하지 못할 수 있습니다.
+</Note>
+
+#### Rolling out backwards-incompatible changes
+
+Observer set 확장처럼 template definition을 breaking 방식으로 변경하는 경우 등 일부 Daml workflow 변경은 backward-compatible하게 만들 수 없습니다.
+
+이런 변경은 다음 방식으로 existing contract를 target template의 upgraded contract로 교체해 처리할 수 있습니다.
+
+- Breaking changes via Explicit Package Version을 따라 target template을 새 template로 도입합니다.
+- Backward-compatible 방식으로 새 version을 rollout해 existing template에 consuming `OriginalTemplate_UpgradeToNewTemplate` choice를 추가합니다.
+- 필요한 경우 추가 choice argument로 `upgrade` choice에 reference data를 제공합니다.
+- Existing contract에서 `upgrade` choice를 exercise해 모든 old contract를 new contract로 migrate하는 backend automation을 구현합니다.
+
+<Note>
+이 section의 backwards-incompatible change rollout은 automation이 contract를 변환할 때까지 affected workflow에 downtime을 발생시킵니다. Business disruption을 피하려면 maintenance window에 실행해야 합니다.
+</Note>
+
+<Note>
+이 종류의 upgrade rollout에는 O(number-of-active-contracts) transaction이 필요합니다. ACS size에 따라 오래 걸리고 상당한 compute/storage resource를 사용할 수 있습니다. 반면 backwards-compatible upgrade는 ACS size와 무관하게 constant cost로 rollout할 수 있습니다.
+</Note>
+
+## Testing
+
+### Standalone Upgradeability Check
+
+<div id="upgrade-check-tool">
+
+Upgraded package를 추가 validate하기 위해 `upgrade-check` tool로 모든 DAR가 서로 올바르게 type check되는지 standalone check할 것을 권장합니다.
+
+</div>
+
+이 tool은 DAR list를 받아 Canton instance를 시작하지 않고 Canton participant-side upgrade typechecking을 실행합니다. Previous model을 구성하는 DAR list와 new model의 DAR list를 전달해야 합니다.
+
+예를 들어 변경되지 않는 helper package `helper`와 두 package `main`, `dep`가 있다고 가정합니다.
+
+``` text
+main-1.0.0.dar
+dep-1.0.0.dar
+helper-1.0.0.dar
+```
+
+Model upgrade 후 `main`의 새 DAR `main-2.0.0.dar`와 `dep`의 새 DAR `dep-2.0.0.dar`를 publish합니다. 그런 다음 다음과 같이 upgrade-check tool을 실행할 것을 권장합니다.
+
+```bash
+> dpm upgrade-check --participant helper-1.0.0.dar dep-1.0.0.dar main-1.0.0.dar dep-2.0.0.dar main-2.0.0.dar
+...
+```
+
+이 command는 ledger upload 시 실행될 것과 같은 upload validation을 DAR에 수행하고 같은 message와 error를 출력합니다. Ledger를 시작할 필요가 없어 훨씬 빠르게 실행됩니다.
+
+모든 DAR가 compiler-side check를 통과하는지도 검사할 수 있지만 DAR는 compilation 중에 type check되므로 문제를 발견할 가능성은 훨씬 낮습니다.
+
+```bash
+> dpm upgrade-check --compiler helper-1.0.0.dar dep-1.0.0.dar main-1.0.0.dar dep-2.0.0.dar main-2.0.0.dar
+...
+```
+
+### Test Environment Upload Dry Run
+
+접근할 수 없는 DAR가 있는 test environment라면 standalone `dpm upgrade-check` tool에 previous model의 전체 DAR list를 제공하지 못할 수 있습니다.
+
+여러 DAR가 포함된 workflow에서는 production participant와 같은 version/environment의 Canton sandbox를 실행하고 Daml app을 구성하는 old/new package를 모두 upload하는 더 robust한 testing을 권장합니다.
+
+DAR를 upload하지 않고 running ledger에 대해 package validity를 test하려면 validateDar gRPC endpoint를 호출할 수 있습니다.
+
+```bash
+> grpcurl -plaintext -d @ \
+  localhost:6865 \
+  com.daml.ledger.api.v2.admin.PackageManagementService.ValidateDarFile < helper-1.0.0.dar
+...
+```
+
+### Daml Script Testing
+
+이 문서에서는 demonstration을 위해 Daml Script를 사용했지만 live upgrade의 complexity는 보통 data transformation 자체보다 workflow에서 발생합니다. Daml Script와 Canton으로 일부 isolated simple case를 test할 수 있지만 SCU system을 철저히 test하려면 full Workflow [Testing](#testing)을 우선해야 합니다.
+
+Daml Script로 upgrade를 test할 때 모든 business logic version에 depend하는 별도 package에 Daml Script test를 둘 것을 권장합니다. 이 testing package는 `daml-script` package에 depend하므로 가능하면 ledger에 upload하지 않아야 합니다. Participant에서 목적이 없고 다른 package처럼 완전히 제거할 수 없으며 future version인 Daml 3에서는 ledger에 upload하지 못할 수 있으므로 upload 시 warning이 발생합니다. 이 limitation의 자세한 내용은 여기를 참고하세요.
+
+다만 같은 package의 여러 version에 depend하면 import ambiguity 문제가 발생합니다. Module prefix로 해결할 수 있습니다.
+
+```yaml
+name: my-testing-package
+...
+data-dependencies:
+  - my/v1/main-package.dar
+  - my/v2/main-package.dar
+module-prefixes:
+  main-1.0.0.dar: V11
+  main-1.1.0.dar: V12
+```
+
+Test를 작성할 때 new data와 new implementation에서도 old workflow가 동작하는지 verify하는 것이 중요합니다. Backward-compatible해야 하는 new workflow가 old data를 consume할 수 있는지도 verify해야 합니다. 상황에 맞게 testing structure를 구성하되 다음 recommendation을 starting point로 사용할 수 있습니다.
+
+New version에 choice body 또는 interface instance 변경만 포함된 patch release라면 다음을 수행합니다.
+
+- V2 choice를 호출하도록 update한 V1 existing test suite를 실행합니다. Rewrite하거나 package preference를 전달해 V1과 V2 package ID로 test를 호출할 수 있습니다.
+
+New version이 contract payload 또는 choice의 data change를 포함한 minor release라면 다음을 수행합니다.
+
+- Data change가 template payload에 영향을 준다고 가정하고 new field를 채우는 V1/V2 별도 setup code를 작성합니다.
+  `setupV1 : Script V1TestData`
+  `setupV2 : Script V2TestData`
+  이 new data type은 주로 Contract ID만 보유해야 합니다.
+
+- V1 existing test suite가 package preference를 받도록 update해 choice에 additional field가 없는 V2 implementation을 호출할 수 있게 합니다.
+  `testV1 : [PackageId] -> V1TestData -> Script ()`
+
+- 위 test suite를 V1 data에 대해 실행하면서 먼저 V1 preference, 이어서 V2 preference를 전달합니다.
+  변경이 existing workflow를 깨지 않았는지 확인합니다.
+
+- 다음으로 V2 choice implementation을 사용하는 new/modified workflow test를 작성합니다. Package preference는 필요하지 않습니다.
+  `testV2 : V2TestData -> Script ()`
+
+- New workflow가 existing/old template을 지원하는지 확인하기 위해 V1 setup과 V2 setup 모두에서 이 test를 실행합니다.
+  이를 위해 `V1TestData`를 upcast할 방법이 필요합니다.
+  `upcastTestData : V1TestData -> V2TestData`
+  이 function은 주로 contract ID에 `coerceContractId`를 호출하고 필요한 `None` value를 채워야 합니다.
+
+- 마지막으로 contract data가 이미 upgrade되어 new field가 채워져 있어야 하는 workflow를 다룹니다. 특별한 고려 없이 전부 V2로 작성합니다.
+
+### Upgrade용 Multi-package Build
+
+<div id="upgrades-multi-package">
+
+Upgrade를 개발할 때 함께 build해야 하는 여러 DAR가 scope에 포함될 수 있습니다. 특히 live 개발 중이거나 project가 커지면 DAR를 추적하고 올바른 순서로 build하기가 복잡합니다.
+
+</div>
+
+Multi-package build는 upgrade를 사용하는 project처럼 여러 DAR를 포함한 project에 도움이 됩니다.
+
+Multi-package build가 upgrade project 개발을 단순화하는 방식을 이해하려면 `upgrades-example` template로 새 Daml project를 생성합니다.
+
+```bash
+> dpm new upgraded-iou --template upgrades-example
+> cd upgraded-iou
+> tree
+.
+├── multi-package.yaml
+├── run-test.sh
+├── interfaces
+│   ├── daml/...
+│   └── daml.yaml
+├── main-v1
+│   ├── daml/...
+│   └── daml.yaml
+├── main-v2
+│   ├── daml/...
+│   └── daml.yaml
+└── test
+    ├── daml/...
+    └── daml.yaml
+```
+
+Example template에는 다음이 포함됩니다.
+
+- Interface `Asset`와 viewtype `Asset.View`를 정의하는 package `upgraded-iou-interfaces`
+- `upgraded-iou-interfaces:Main.Asset` instance를 갖는 template `IOU`를 정의하는 package `upgraded-iou-main`의 첫 version 1.0.0
+- 첫 version을 upgrade하는 `upgraded-iou-main`의 두 번째 version 2.0.0. `IOU`에 새 `description` field를 추가하고 field가 정의되었을 때 upgraded `Asset` implementation에서 사용합니다.
+- `upgraded-iou-main-1.0.0`과 `upgraded-iou-main-2.0.0` 모두에 depend하는 testing package `upgraded-iou-test`. V1.0.0과 v2.0.0 `IOU`를 `Asset` interface를 통해 exercise하는 script를 정의합니다.
+- `upgraded-iou-test`의 main test를 실행하는 script `run-test.sh`
+- 네 package를 나열하는 `multi-package.yaml` file
+
+Multi-package build가 없으면 다음과 같이 program을 test합니다.
+
+```bash
+> # Run sandbox in the background, wait until the three lines below are shown
+> dpm sandbox &
+Starting Canton sandbox.
+Listening at port 6865
+Canton sandbox is ready.
+> # Build all, run test
+> cd interfaces/; dpm build --enable-multi-package=no
+> cd ../main-v1/; dpm build --enable-multi-package=no
+> cd ../main-v2/; dpm build --enable-multi-package=no
+> cd ../test/; dpm build --enable-multi-package=no
+> cd ..
+> ./run-test.sh
+> # Modify v2, run test
+> cd main-v2/
+> ... modify main-v2 ...
+> dpm build --enable-multi-package=no
+> cd ../test/; dpm build --enable-multi-package=no
+> cd ..
+> # Modify test, run test
+> cd test/
+> dpm build --enable-multi-package=no
+> cd ..
+> ./run-test.sh
+...
+Test output:
+...
+> kill %1 # Kill backgrounded sandbox process
+```
+
+Source 변경 후 package rebuild를 잊어도 failure가 발생하지 않습니다. 예를 들어 `main-v2` source를 incompatible하게 변경하고 recompile하지 않으면 `test` package는 이전 `main-v2` DAR에 대해 계속 compile됩니다.
+
+```bash
+> # Modify main-v2 in an incompatible way
+> cd main-v2/
+> ... add a non-optional field `currency: Text` to template T in main-v2 ...
+> cd ../test/
+> dpm build --enable-multi-package=no
+...
+Created .daml/dist/upgraded-iou-upgrades-template-test-1.0.0.dar
+> # Compiling `test` succeeded even though main-v2 was changed incorrectly
+```
+
+Daml multi-package build를 사용하면 dependency source가 변경될 때 모든 build가 dependency를 자동 rebuild합니다.
+
+```bash
+> cd test/
+> dpm build # --enable-multi-package is set to true by default
+...
+Building /home/dylanthinnes/ex-upgrades-template/main-v2
+...
+Severity: DsError
+Message:
+error type checking template Main.IOU :
+  The upgraded template IOU has added new fields, but the following new fields are not Optional:
+    Field 'currency' with type Text
+...
+> # Compiling `test` failed as expected because main-v2 was changed incorrectly
+```
+
+`./run-test.sh` script는 package에서 rebuild가 필요한 모든 DAR를 자동 rebuild합니다.
+
+```bash
+> dpm sandbox & # Start sandbox in background
+Starting Canton sandbox.
+Listening at port 6865
+Canton sandbox is ready.
+> ... Fix main-v2 by dropping non-optional `currency` field ...
+> # Re-run test
+> ./run-test.sh
+...
+Building /home/dylanthinnes/ex-upgrades-template/main-v2
+...
+> # Modify test, run test
+> ... modify test ...
+> dpm build --all
+> ./run-test.sh
+```
+
+`dpm build --all`이 호출한 multi-package build는 stale dependency와 DAR를 항상 순서대로 recompile합니다. 따라서 `./run-test.sh` 실행 전에 package environment가 완전히 최신 상태가 됩니다.
+
+### Workflow Testing
+
+Workflow testing은 application-specific하지만 core workflow에 대해 다음 pattern을 따르는 test를 하나 이상 권장합니다.
+
+1.  DAR version 2.0으로 app을 시작하되 version 1.0만 upload합니다.
+2.  App을 initialize하고 모든 core workflow instance를 하나씩 시작합니다.
+3.  DAR version 2.0을 upload합니다.
+4.  Backend가 version 2.0을 사용하도록 전환합니다. 가능하면 flag로 제어합니다.
+5.  Core workflow가 같은 state에 있는지 validate하고 진행시켜 stuck 상태가 아닌지 확인합니다.
+
+## SCU Support in Daml Tooling
+
+### Codegen
+
+Generated code는 template ID에서 package ID 대신 package name을 사용합니다. Ledger에서 retrieve한 data에는 이전 section의 upgrade transformation이 적용됩니다.
+
+구체적인 implementation은 다음과 같습니다.
+
+#### Java
+
+각 template과 interface에 생성되는 class에는 `TEMPLATE_ID` field가 있으며 upgradable package에서는 package ID 대신 package name을 사용합니다. Package ID를 확인할 수 있도록 모든 class에 새 `PACKAGE_ID` field를 추가했습니다. Upgradable package에는 `PACKAGE_NAME`과 `PACKAGE_VERSION` field도 있습니다.
+
+Code가 생성된 DAR의 specific package ID로 template을 식별해야 한다면 모든 generated class와 companion object에 있는 `TEMPLATE_ID_WITH_PACKAGE_ID` field를 사용할 수 있습니다. Command submit 시 `packageIdSelectionPreference`로 ledger가 command interpretation에 사용할 package ID를 명시할 수도 있습니다. 이 option을 사용하면 application이 upgrade를 seamless하게 지원하지 못한다는 점에 유의하세요.
+
+#### TypeScript
+
+Generated template class의 `templateId` field는 upgrade-compatible package에서 package name을 package qualifier로 사용하도록 update되었습니다. Command submission과 query에서 사용합니다. 다만 query는 package name이 아니라 package ID를 package qualifier로 return합니다. Generated module은 package "reference"도 제공하며 upgrade-compatible package에서는 package name, 다른 package에서는 package ID입니다.
+
+Upgrade-compatible package에서 package ID-qualified command/query를 수행하려면 다음과 같이 template object copy를 생성합니다.
+
+``` typescript
+const MyTemplateWithPackageId = {
+  ...pkg.Mod.MyTemplate,
+  templateId: `${pkg.packageId}:Mod:MyTemplate`,
+}
+```
+
+### JSON Ledger API
+
+JSON Ledger API interaction에서는 package ID와 package name 모두로 package를 address할 수 있습니다.
+
+참고: Query result의 template ID는 항상 package ID를 사용하므로 특정 contract source를 구분할 수 있습니다. Request에서 package name을 가진 template을 사용하면 result의 template ID가 input template ID와 정확히 일치할 것으로 기대할 수 없습니다.
+
+Package ID selection preference: JSON Ledger API에도 preference가 적용되며 선호하는 package version selection을 지정할 수 있습니다.
+
+### PQS
+
+Ledger API의 package-name 변경에 맞춰 PQS는 query package selection 방식을 변경했습니다. `<package-id>:<module-name>:<template-name>` 형식의 Daml identity를 받던 모든 query는 이제 package ID 대신 package name을 받습니다. PQS는 direct package ID query를 제거했으므로 Ledger API와 달리 `\#` prefix가 필요하지 않습니다. Package name query는 주어진 contract의 모든 version과 각 contract의 package version/package ID를 return합니다.
+
+<Note>
+Explicit package ID로 query해야 한다면 이전 PQS version을 사용하거나 query에 다음 filter predicate를 추가합니다. `SELECT \* FROM active('my_package:My.App:MyTemplate') WHERE package_id = 'my_package_id'`
+</Note>
+
+PQS는 ledger content에 document-oriented model인 JSONB를 사용하므로 contract payload extension은 blob에 additional data를 return하는 방식으로 처리합니다.
+
+### Daml Shell
+
+Daml Shell은 PQS 위에서 package name으로 ledger를 inspect하는 shell interface를 제공해 모든 contract version의 integrated view를 만듭니다.
+
+### Daml-Script
+
+이 Daml Script version의 모든 command와 query는 upgrade/downgrade를 자동 사용해 올바른 choice version을 exercise하고 올바른 payload를 return합니다.
+
+SCU의 고급 사용을 위해 다음 additional functionality를 제공합니다.
+
+**Exact command**
+
+네 submission command에는 각각 "exact" variant인 `createExactCmd`, `exerciseExactCmd`, `exerciseByKeyExactCmd`, `createAndExerciseExactCmd`가 있습니다. 이 command는 participant가 script와 정확히 같은 package version을 사용하도록 강제하므로 호출하는 choice code를 확실히 알 수 있습니다. 같은 submission에서 exact command와 non-exact command를 함께 사용할 수 있습니다.
+
+<div id="daml-script-package-preference">
+
+**Daml Script Package Preference**
+
+</div>
+
+Submission은 package ID list로 package preference를 지정할 수 있습니다.
+
+```haskell
+(actAs alice <> packagePreference [myPackageId]) `submitWithOptions` createCmd ...
+```
+
+`submitWithOptions : SubmitOptions -> Commands a -> Script a` 사용에 유의하세요. `actAs`와 `packagePreference` function을 `<>`로 결합해 `SubmitOptions`를 만들 수 있습니다.
+
+`SubmitOptions` builder 전체 list는 다음과 같습니다.
+
+```haskell
+-- `p` can be `Party`, `[Party]`, etc.
+actAs : IsParties p => p -> SubmiOptions
+readAs : IsParties p => p -> SubmitOptions
+
+disclose : Disclosure -> SubmitOptions
+discloseMany : [Disclosure] -> SubmitOptions
+
+newtype PackageId = PackageId Text
+packagePreference : [PackageId] -> SubmitOptions
+```
+
+`PackageId`를 script에 hard-code할 수 있으며 이 경우 package가 변경될 때마다 update해야 합니다. 그렇지 않으면 `dpm script` command line tool의 `--input-file` flag로 제공할 수 있습니다.
+
+다음 예시는 DAR에서 package ID를 읽어 script에 전달하는 방법을 보여줍니다.
+
+```bash
+# Path to the dar you want to pass as package preference.
+PACKAGE_DAR=path/to/main/dar.dar
+# Path to the dar containing the Daml script for which you want to pass the package-id
+SCRIPT_DAR=path/to/script/dar.dar
+# Extract the package-id of PACKAGE_DAR's main package.
+dpm damlc inspect-dar ${PACKAGE_DAR} --json | jq '.main_package_id' > ./package-id-script-input.json
+# replace --ide-ledger with --ledger-host and --ledger-port for deployed Canton
+dpm script --dar ${SCRIPT_DAR} --script-name Main:main --ide-ledger --input-file ./package-id-script-input.json
+```
+
+이에 맞춘 script는 다음과 같습니다.
+
+```haskell
+module Main where
+
+import Daml.Script
+
+main : Text -> Script ()
+main rawPkgId = do
+  let pkgId = PackageId rawPkgId
+  alice <- allocateParty "alice"
+  -- Commands omitted for brevity
+  let submitOptions = actAs alice <> packagePreference [pkgId]
+  submitOptions `submitWithOptions` createCmd ...
+```
+
+### Daml Studio support
+
+Daml Studio는 IDE Ledger라는 Canton reference model을 실행합니다. 이 ledger는 Smart Contract Upgrade 기능의 관련 부분을 지원하도록 update되었습니다.
+
+
+{/* COPIED_END */}

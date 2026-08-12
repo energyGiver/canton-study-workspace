@@ -1,0 +1,277 @@
+---
+title: "DA.Crypto.Text"
+description: "Daml module DA.Crypto.Text의 reference documentation"
+source_id: "SRC-5528C6B0ED"
+source_path: "appdev/reference/daml-standard-library/da-crypto-text"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "866431e938e347772e2699375eb1611b19c84774da8c7bb41ac40e6f114de467"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-crypto-text.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-crypto-text-67266"></span>
+
+# DA.Crypto.Text
+
+Crypto builtin을 다루는 function입니다.
+
+예를 들어 CCTP functionality를 implementation할 때 사용합니다.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-da-crypto-text-byteshex-47880"></span>
+
+### `type BytesHex`
+
+= [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+<span id="type-da-crypto-text-publickeyhex-51359"></span>
+
+### `type PublicKeyHex`
+
+= [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+ECDSA signature verification에 사용할 DER format public key입니다.
+
+<span id="type-da-crypto-text-signaturehex-12945"></span>
+
+### `type SignatureHex`
+
+= [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+DER format SECP256K1 signature입니다.
+
+## Typeclasses
+
+<span id="class-da-crypto-text-hastohex-92431"></span>
+
+### `class HasToHex a`
+
+Method:
+
+- `toHex` : `a` -> [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+  typed data value를 hex encoded string으로 변환합니다.
+
+Instance:
+
+- instance [`HasToHex`](#class-da-crypto-text-hastohex-92431) [`Party`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-party-57932)
+- instance [`HasToHex`](#class-da-crypto-text-hastohex-92431) [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+- instance [`HasToHex`](#class-da-crypto-text-hastohex-92431) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952)
+
+<span id="class-da-crypto-text-hasfromhex-84972"></span>
+
+### `class HasFromHex a`
+
+Method:
+
+- `fromHex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> `a`
+  hex encoded string을 typed data value로 변환합니다.
+
+Instance:
+
+- instance [`HasFromHex`](#class-da-crypto-text-hasfromhex-84972) ([`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`Party`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-party-57932))
+- instance [`HasFromHex`](#class-da-crypto-text-hasfromhex-84972) ([`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261))
+- instance [`HasFromHex`](#class-da-crypto-text-hasfromhex-84972) ([`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952))
+
+## Functions
+
+<span id="function-da-crypto-text-ishex-17968"></span>
+
+### `isHex`
+
+`isHex` : [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+`t`가 비어 있지 않고 hex 문자로만 구성되어 있으면 `isHex`는 `True`입니다.
+
+<span id="function-da-crypto-text-sha256-84499"></span>
+
+### `sha256`
+
+`sha256` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+`Text`의 decoded UTF8 byte에 대한 SHA256 hash를 계산하고 hex-encoded 형태로 반환합니다. hex encoding은 소문자를 사용합니다.
+
+<span id="function-da-crypto-text-keccak256-57106"></span>
+
+### `keccak256`
+
+`keccak256` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+`Text`의 UTF8 byte에 대한 KECCAK256 hash를 계산하고 hex-encoded 형태로 반환합니다. hex encoding은 소문자를 사용합니다.
+
+<span id="function-da-crypto-text-secp256k1withvalidation-31956"></span>
+
+### `secp256k1WithValidation`
+
+`secp256k1WithValidation` : [`SignatureHex`](#type-da-crypto-text-signaturehex-12945) -> [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`PublicKeyHex`](#type-da-crypto-text-publickeyhex-51359) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+hex encoded message와 hex encoded DER format public key가 주어지면 SECP256K1 signature를 validate합니다. signature validation 전에 public key를 validate하고 SECP256K1 curve에 있는지 확인합니다.
+
+<span id="function-da-crypto-text-secp256k1withecdsaonly-56908"></span>
+
+### `secp256k1WithEcdsaOnly`
+
+`secp256k1WithEcdsaOnly` : [`SignatureHex`](#type-da-crypto-text-signaturehex-12945) -> [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`PublicKeyHex`](#type-da-crypto-text-publickeyhex-51359) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+hex encoded message와 hex encoded DER format public key가 주어지면 SECP256K1 signature를 validate합니다.
+
+<span id="function-da-crypto-text-secp256k1-38075"></span>
+
+### `secp256k1`
+
+`secp256k1` : [`SignatureHex`](#type-da-crypto-text-signaturehex-12945) -> [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`PublicKeyHex`](#type-da-crypto-text-publickeyhex-51359) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+hex encoded message의 SHA256 hash와 hex encoded DER format public key가 주어지면 SECP256K1 signature를 validate합니다.
+
+<span id="function-da-crypto-text-numericviastringtohex-44461"></span>
+
+### `numericViaStringToHex`
+
+`numericViaStringToHex` : [`NumericScale`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-numericscale-83720) `n` => [`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n` -> [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+<span id="function-da-crypto-text-numericviastringfromhex-60098"></span>
+
+### `numericViaStringFromHex`
+
+`numericViaStringFromHex` : [`NumericScale`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-numericscale-83720) `n` => [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) ([`Numeric`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-numeric-891) `n`)
+
+<span id="function-da-crypto-text-bytecount-29784"></span>
+
+### `byteCount`
+
+`byteCount` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261)
+
+byte encoded string에 있는 byte 수입니다.
+
+<span id="function-da-crypto-text-minbytes32hex-29458"></span>
+
+### `minBytes32Hex`
+
+`minBytes32Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+Bytes32 hex의 최솟값입니다.
+
+<span id="function-da-crypto-text-maxbytes32hex-56560"></span>
+
+### `maxBytes32Hex`
+
+`maxBytes32Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+Bytes32 hex의 최댓값입니다.
+
+<span id="function-da-crypto-text-isbytes32hex-1801"></span>
+
+### `isBytes32Hex`
+
+`isBytes32Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+byte encoded string이 Bytes32Hex인지 validate합니다.
+
+<span id="function-da-crypto-text-minuint32hex-58146"></span>
+
+### `minUInt32Hex`
+
+`minUInt32Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+UInt32 hex의 최솟값입니다.
+
+<span id="function-da-crypto-text-maxuint32hex-80016"></span>
+
+### `maxUInt32Hex`
+
+`maxUInt32Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+UInt32 hex의 최댓값입니다.
+
+<span id="function-da-crypto-text-isuint32hex-65583"></span>
+
+### `isUInt32Hex`
+
+`isUInt32Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+byte encoded string이 UInt32Hex인지 validate합니다.
+
+<span id="function-da-crypto-text-minuint64hex-67161"></span>
+
+### `minUInt64Hex`
+
+`minUInt64Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+UInt64 hex의 최솟값입니다.
+
+<span id="function-da-crypto-text-maxuint64hex-40555"></span>
+
+### `maxUInt64Hex`
+
+`maxUInt64Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+UInt64 hex의 최댓값입니다.
+
+<span id="function-da-crypto-text-isuint64hex-49912"></span>
+
+### `isUInt64Hex`
+
+`isUInt64Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+byte encoded string이 UInt64Hex인지 validate합니다.
+
+<span id="function-da-crypto-text-minuint256hex-23801"></span>
+
+### `minUInt256Hex`
+
+`minUInt256Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+UInt256 hex의 최솟값입니다.
+
+<span id="function-da-crypto-text-maxuint256hex-58651"></span>
+
+### `maxUInt256Hex`
+
+`maxUInt256Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+UInt256 hex의 최댓값입니다.
+
+<span id="function-da-crypto-text-isuint256hex-33362"></span>
+
+### `isUInt256Hex`
+
+`isUInt256Hex` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`Bool`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-bool-66265)
+
+byte encoded string이 UInt256Hex인지 validate합니다.
+
+<span id="function-da-crypto-text-packhexbytes-55939"></span>
+
+### `packHexBytes`
+
+`packHexBytes` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153) [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+byte encoded string을 주어진 byte count size로 packing합니다. byte string이 padding size보다 짧으면 00 byte string을 앞에 덧붙이고, 더 길면 byte string을 잘라냅니다.
+
+<span id="function-da-crypto-text-slicehexbytes-22633"></span>
+
+### `sliceHexBytes`
+
+`sliceHexBytes` : [`BytesHex`](#type-da-crypto-text-byteshex-47880) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> [`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) [`Text`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-text-51952) [`BytesHex`](#type-da-crypto-text-byteshex-47880)
+
+startByte에서 시작해 endByte 직전까지의 byte string을 추출합니다. byte indexing은 1에서 시작합니다.

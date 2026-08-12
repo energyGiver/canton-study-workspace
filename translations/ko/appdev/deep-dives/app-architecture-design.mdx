@@ -1,0 +1,211 @@
+---
+title: "Canton Network Application Architecture 설계"
+description: "Canton Network Application component 및 deployment topology 설계 시 고려 사항"
+source_id: "SRC-E077DDE543"
+source_path: "appdev/deep-dives/app-architecture-design"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "4ac4e30a2adddf88cbbbcb762a3177da02c84a6a2719d81760419ceca538d00e"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/deep-dives/app-architecture-design.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/manual/build/3.4/sdlc-howtos/system-design/daml-app-arch-design.rst" hash="1493fac1" */}
+
+# Canton Network Application Architecture 설계 고려 사항
+
+Production 수준의 Canton Network Application을 build하고 운영하려면 각 component를 신중하게 설계해야 합니다. 이 document에서는 Canton Network Application의 기본 component를 소개하고 Backend의 핵심 책임에 초점을 맞춥니다. 또한 App Provider와 App User의 관점에서 실현 가능한 tech stack 및 architecture option의 비용과 이점을 설명합니다. Technical Solution Architect certification path의 *Daml Application Architecture* 및 *Daml Application Backend* lesson에 대한 cross-reference 역할도 합니다.
+
+## Canton Network Application component
+
+<img src="/images/docs_website/tsa-master-arch-with-user-backend.png" className="align-center" alt="아래에서 설명하는 Canton Network Application Architecture diagram" />
+
+### Frontend
+
+Frontend를 사용하면 human end user가 Canton Network Application의 business process와 효율적으로 상호 작용할 수 있습니다. System-to-system integration solution만을 위해 설계된 App에는 Frontend가 필요하지 않을 수 있지만 그 밖의 모든 App에는 필요합니다.
+
+Non-repudiation을 달성하려면 end user가 App Provider 또는 App User organization을 대신해 수행한 모든 action을 해당 organization이 제어하는 Frontend에서 그 organization의 Participant Node를 통해 제출해야 합니다. 그렇지 않으면 organization이 Transaction record가 end user가 수행한 action과 일치하지 않는다고 주장하며 이의를 제기할 수 있습니다. 가능한 최상의 non-repudiation guarantee를 보장하려면 App Provider와 각 App User가 자신이 제어하는 web server에서 App Frontend를 hosting해야 합니다. 같은 이유로 각 organization의 Frontend는 해당 organization의 IAM을 통해 login하도록 구성해야 합니다. IAM은 organization의 Participant Node에 command를 제출할 때 사용할 access token을 발행합니다. Frontend는 Ledger와 직접 통신하지 않습니다. Frontend가 Backend에 command를 보내면 Backend가 다시 Ledger에 command를 보냅니다.
+
+### Daml Model
+
+Daml Model은 organization 간 workflow를 정의하며 이러한 workflow와 상호 작용하는 component의 API definition 역할을 합니다. Daml Model은 DAR file, 즉 Daml Package로 compile됩니다. DAR file은 모든 App User의 Canton Participant Node에 upload해야 합니다.
+
+### Backend
+
+Backend는 Ledger API와 직접 상호 작용하여 Participant Node access를 관리합니다. Backend는 App Provider와 App User를 나타내는 Daml Party, 그리고 이 organization 사이의 workflow state를 나타내는 Daml Contract를 활용합니다.
+
+Daml Party는 organization level에서 Ledger에 action을 수행하고 data를 읽습니다. Backend를 단일 monolithic component로 구현할 필요는 없습니다. Backend는 microservice architecture 또는 development team이 선호하는 다른 service architecture로 구현할 수 있는 logical component입니다.
+
+Backend는 일반적으로 다음 목적 중 하나 이상을 담당합니다.
+
+- Higher-level API 제공
+- On-ledger workflow 자동화
+- Off-ledger system 통합
+
+Backend 기능과 설계 고려 사항의 상세 내용은 다음과 같습니다.
+
+#### Higher-level API 제공
+
+Participant Node와 Synchronizer는 공유 Application data가 organization 전체에서 실시간으로 synchronize되도록 합니다. Frontend나 다른 system이 이 data에 특정 query를 실행해야 할 때 Backend로 request를 보냅니다. Backend는 적절한 access control 및 performance 특성을 갖춘 Application-specific API를 통해 query를 처리합니다.
+
+App이 Ledger와 통신할 때 여러 공통 고려 사항을 higher-level API로 abstract할 수 있습니다. 그러면 Backend의 다른 logical component, Frontend 또는 external App과 system에서 이 API를 사용할 수 있습니다.
+
+이러한 고려 사항은 read path, 즉 Ledger data 읽기와 write path, 즉 Ledger에 쓰기에 따라 다릅니다.
+
+##### Read
+
+Read path에서 가장 중요한 고려 사항은 Participant Query Store(PQS)를 사용하여 Ledger data를 읽는 것입니다. Application-specific index를 활용하면 Application 요구에 맞게 scale되는 방식으로 query를 구현할 수 있습니다. PQS는 Ledger API가 제공하는 capability를 확장하고 보완합니다.
+
+- Ledger API는 Ledger의 현재 state와 변경 사항을 filtering 없이 노출하도록 최적화되어 있습니다. Canton Network Application에는 흔히 개별 Contract 조회를 포함하는 Application-specific query 요구 사항이 있습니다.
+- PQS는 operational datastore로 기능하도록 설계되어 Participant Node의 Ledger data를 유연하고 효율적으로 query할 수 있게 합니다. 예를 들어 PQS를 사용하면 JDBC connection을 통해 SQL로 Ledger data를 조회할 수 있습니다. 따라서 read path를 구현하는 일이 SQL database가 뒷받침하는 일반적인 web service 구현만큼 단순하고 표준적입니다.
+
+PQS는 Private Contract Store(PCS)에서 ingest하도록 구성되고 허용된 모든 data에 access할 수 있지만 PQS client를 위한 별도의 access control은 구현하지 않습니다. 그러나 조회한 data를 upstream component에 제공할 때 API service가 적절한 end-user authentication과 access control을 강제해야 합니다. End-user access control 구현을 PQS에 포함하지 않고 Canton Network Application Backend developer에게 위임하면 원하는 granularity level에서 access control을 구현할 수 있습니다. 특히 organization 내부 business requirement를 기반으로 access control을 구현할 수 있습니다. 따라서 organization 간 access control에 초점을 맞춘 Daml Model의 schema에 access control을 한정하지 않고, 같은 organization의 서로 다른 user가 서로 다른 dataset에 access할 수 있습니다.
+
+PQS는 Active Contract Set(ACS)과 PQS pruning window 이내의 Ledger history에 모두 access할 수 있습니다. Business requirement와 예상 data volume을 기준으로 pruning window를 선택하는 것이 좋습니다. 필요한 경우 PQS는 analytical processing을 위한 filtered event의 유연한 source 또는 data warehouse를 채우는 source가 될 수 있습니다. PQS는 Contract와 해당 Contract의 creation 및 archival을 정당화하는 exercise event를 모두 저장합니다.
+
+Daml Model 설계에서는 완료된 workflow step의 정보를 active Contract 형태로 저장하지 않는 것이 좋습니다. 그렇게 하면 ACS가 무한히 증가하기 때문입니다. 대신 PQS의 historical event를 golden source로 사용하여 Application-specific Transaction log를 제공하거나 완료된 workflow step의 notification을 end user에게 전달해야 합니다. 경우에 따라 workflow stakeholder에게 전달해야 할 특정 workflow event나 notification을 나타내기 위해 non-consuming exercise event를 추가하는 것이 유용합니다.
+
+PQS는 다양한 use case에 적합한, query 가능한 Ledger history 및 state의 general-purpose view를 제공합니다. Automation 및 integration component가 Ledger data에 access할 때 권장되는 path는 PQS입니다. 다만 일부 specialized high-scale read use case에서는 특정 read requirement에 맞춘 형식으로 data를 저장하고 index하기 위해 custom operational data store(ODS) solution을 설계해야 할 수 있습니다.
+
+##### Write
+
+Write path에서 higher-level API를 구현할 때 가장 중요한 고려 사항은 reliability이며, 이는 command failure 시 retry behavior와 command submission의 idempotency라는 서로 관련된 두 항목으로 나뉩니다.
+
+- Retry behavior: Ledger에 command를 보내야 하는 모든 Application component는 실패한 command submission을 retry해야 하므로, 일반적으로 이 capability를 재사용 가능한 방식으로 package하는 것이 좋습니다.
+
+- Idempotency: Retry 또는 crash로 인해 Ledger command가 다시 계산되고 재제출될 수 있으므로 Ledger write가 idempotent하도록 보장하는 것이 중요합니다.
+
+  이를 달성하는 간단한 방법은 Ledger에 보내는 command가 input 일부를 consume하게 하는 것입니다. 예를 들어 command 전송의 원인이 된 Contract에서 consuming Choice를 exercise할 수 있습니다.
+
+  또 다른 방법은 Command Deduplication을 사용하는 것입니다. Participant Node는 command를 최대 한 번 실행하도록 보장하는 Command Deduplication mechanism을 Ledger API에 제공합니다. Participant Node는 Command ID를 저장하고 같은 Command ID를 가진 이후 submission을 deduplicate합니다. Command Deduplication 작동 방식의 자세한 내용은 Ledger API documentation을 참조하세요.
+
+##### Reference data Contract 제공
+
+Higher-level API 제공의 특별한 사례는 App User가 Daml Transaction을 제출할 때 필요한 reference data Contract를 제공하는 것입니다. Daml Model에는 reference data를 제공하는 Contract가 포함될 때가 있습니다. 예를 들어 App Provider가 over-the-counter trade에 참여 가능한 counterparty directory를 on-ledger Contract로 저장할 수 있습니다. 또 다른 예로 Oracle Party가 제공하고 on-ledger Contract로 저장한 stock index closing value, foreign exchange 또는 interest rate fixing 같은 financial market data가 있습니다.
+
+이러한 Contract는 일반적으로 App User의 Daml Party에 보이지 않습니다. App User Party에 대한 on-ledger visibility를 유지하기가 어렵고 observer가 많은 Contract는 performance를 위해 피해야 하기 때문입니다. 이러한 Contract의 visibility를 on-ledger에서 관리하는 대신 "Explicit Disclosure"라는 Daml feature를 사용합니다. 이 feature를 통해 Contract stakeholder가 다른 Party와 Contract를 out-of-band로 공유할 수 있습니다. 그러면 해당 Party가 Daml Transaction submission에 Contract를 포함하고 Daml Transaction processing 중에 그 Contract에 access할 수 있습니다. Explicit Disclosure를 사용하면 제출 Party가 Contract의 stakeholder가 아니더라도 Contract visibility가 필요한 Transaction이 성공합니다.
+
+#### On-ledger workflow 자동화
+
+Human intervention이 필요하지 않은 on-ledger workflow step은 Backend를 사용해 자동화합니다. 예를 들어 financial services App의 customer onboarding workflow에서 Backend가 새로운 on-ledger customer onboarding request를 listen하고 Provider의 off-ledger Know Your Customer(KYC) compliance system이 customer onboarding을 승인하면 자동으로 진행할 수 있습니다.
+
+Daml code에는 독립적인 execution thread가 없습니다. Ledger의 Contract는 shared workflow를 진행할 수 있는 주체를 지정하는 synchronized data와 right의 passive record입니다. External component가 진행시키기 전까지 workflow는 static 상태로 유지됩니다. Ledger의 모든 action은 external component가 시작해야 합니다.
+
+Canton Network Application Backend에서 automation을 구현할 때는 retriable task, 즉 automation이 완료할 것을 보장하는 well-defined independent work unit으로 modularize하는 것이 좋습니다. 그런 다음 이 code를 기반으로 bounded parallelism을 적용하여 task를 처리할 수 있습니다.
+
+- External event가 trigger하는 automation: External event가 automation task를 trigger할 수 있습니다. 일반적인 external event의 예로 off-ledger system에서 수신한 message와 특정 시각 또는 schedule에 automation task를 실행하게 하는 time event가 있습니다.
+
+- State-triggered automation: Task는 흔히 Backend가 on-ledger workflow를 진행해야 한다는 필요를 나타냅니다. 예를 들어 App User onboarding request를 처리하려고 제공된 정보를 off-ledger KYC system과 대조하고 check가 성공하면 request를 자동 accept할 수 있습니다. On-ledger workflow는 Daml Contract로 state를 나타내므로 Daml Contract가 생성될 때, 또는 Backend가 시작된 뒤 Contract의 존재를 발견할 때 이 task가 trigger됩니다. 이러한 task를 "state-triggered automation"이라고 합니다. Automation을 trigger하는 Daml Contract는 automation loop를 방지하기 위해 trigger된 command processing에서 consume해야 합니다.
+
+  기술적으로 state-triggered automation은 흔히 time-triggered로도 볼 수 있습니다. 일반적으로 PQS에서 새 task를 polling 방식으로 주기적으로 query하여 구현하기 때문입니다. 이러한 task를 retry할 때는 새 attempt가 가장 최신 data에 기반하도록 PQS에 대한 전체 query를 다시 실행해야 합니다. Concurrent action으로 Ledger state가 변경될 수 있기 때문입니다. Automation task는 항상 PQS에서 사용할 수 있는 가장 최신 Ledger state를 사용해야 합니다. 같은 automation task run에서 여러 query를 실행해야 한다면 모든 query에 일관된 Ledger offset을 사용해야 합니다.
+
+각 task는 retry 가능한 error 발생 시 limit까지 자동으로 retry해야 합니다. Block 안의 Ledger command submission뿐 아니라 task를 처리하는 전체 code block을 retry해야 합니다. 이렇게 하면 제출하는 command가 최신 Ledger state를 반영하며, Ledger에서 concurrent action이 발생하여 task가 이미 완료되었거나 더 이상 유효하지 않다는 사실을 발견할 수도 있습니다. 이러한 경우 retry loop를 종료해야 합니다.
+
+#### Off-ledger system과 통합
+
+Backend 기능에는 off-ledger system과의 통합도 포함됩니다. 예를 들어 off-ledger anti-money laundering compliance check 실행, on-ledger financial Transaction을 처리하면서 reporting database 채우기, 또는 off-ledger pre-trade analytics system에서 on-ledger financial Transaction 시작 등이 있습니다. Canton Network Application을 설계할 때는 App User와 App Provider organization의 구체적인 integration requirement를 이해하고 이를 지원하는 Backend infrastructure를 갖추는 것이 중요합니다.
+
+이 Backend 기능에는 특별한 고려 사항이 없습니다. Canton Network Application Backend가 deploy될 IT landscape에 따라 기존 integration technology를 적절히 사용하세요.
+
+Integration option은 다양합니다.
+
+- 일반적으로 Backend가 on-ledger workflow 자동화의 일부로 off-ledger system을 query합니다. 예를 들어 KYC database를 query하거나 이미 구현된 system을 사용해 복잡한 computation을 실행할 수 있습니다. 이러한 computation의 예로 financial position의 margin calculation이나 financial market의 Transaction settlement를 최적화하는 netting computation이 있습니다.
+- API call을 사용하거나 Backend가 message queue의 message를 consume하도록 하여 off-ledger system의 data를 Ledger로 push할 수 있습니다. 예를 들어 이 approach로 message queue에서 pricing data를 ingest하고 on-ledger workflow에 pricing data를 제공하는 reference data Contract를 생성할 수 있습니다.
+- Backend가 webhook을 사용하거나 message queue에 write하여 Ledger data를 off-ledger system으로 push할 수 있습니다. PQS와 Ledger API가 제공하는 offset 기반 event access를 활용한 pull 방식 consumption도 가능합니다. 이러한 dataflow의 예로 on-ledger Registry의 securities registration data를 order book matching service로 replicate하는 작업이 있습니다. 다른 예로 accounting system에 data를 공급하거나 reporting database를 채우는 작업이 있습니다.
+- 이 option이 전부는 아닙니다. Ledger와 off-ledger system 사이에 data를 교환하는 다른 방법도 있습니다. App Provider와 App User가 App을 쉽게 개발하고 deploy할 수 있는 technology를 사용하세요. 어떤 technology를 사용하든 read path와 write path를 분리하고 off-ledger system이 Ledger API를 직접 사용하도록 허용하는 대신 Backend service를 통해 off-ledger system과 Ledger를 통합하는 것이 좋습니다.
+
+## 2. Backend tech stack 선택
+
+### Enterprise Application build를 위한 standard stack 사용
+
+- Ledger API와 상호 작용할 때 gRPC service interaction의 standard로 간주되는 library를 사용합니다.
+- IAM integration을 위한 standard tech stack을 채택합니다.
+- On-ledger state 변경에 반응하고 external source data를 Ledger에 ingest하려면 background processing이 필요합니다.
+- Idempotent command와 retry를 구현하여 Ledger와의 모든 interaction이 crash-fault tolerant하도록 보장합니다.
+
+### 모든 programming language로 Canton Network Application Backend service 구현 가능
+
+- HTTP를 지원하는 모든 programming language에서 JSON Ledger API로 Ledger에 access합니다.
+- 일부 language는 `component-howtos-application-development-daml-codegen-java` 같은 higher-level programming tool을 제공합니다.
+- Daml Codegen은 Daml Model에 구현된 type과 programming language type의 mapping을 생성하므로 Daml Contract payload와 상호 작용할 때 특히 유용합니다. 예를 들어 Codegen utility는 Daml Model의 Daml Contract Template에 대응하는 Java class를 생성할 수 있습니다. 이 class에는 Daml Contract argument의 Ledger API representation을 encode/decode하고 Contract Choice를 exercise하는 command를 생성하는 데 필요한 모든 boilerplate code가 포함됩니다.
+
+## 3. Architecture option
+
+Canton Network Application에 모든 경우에 맞는 단 하나의 architecture는 없습니다. 대신 가능한 architecture의 continuum이 존재합니다. 각 architecture 선택에는 tradeoff가 있으며 가장 적합한 option은 구체적인 business requirement에 따라 달라집니다. Tradeoff를 평가하려면 다음 세 architecture를 고려합니다.
+
+- App Provider가 Backend 운영
+- App User가 App Provider가 build한 Backend 운영
+- 각 organization이 자체 Backend를 build하고 운영
+
+### App Provider가 Backend 운영
+
+첫 번째 option은 build할 component가 가장 적습니다. App User는 Frontend만 운영하고 App Provider가 Backend를 독점적으로 운영합니다.
+
+이 architecture에서 App User Frontend는 Ledger API 또는 HTTP JSON API를 사용해 Ledger에 command를 제출합니다. Ledger data를 읽을 때 App User Frontend는 App Provider Backend에 의존합니다. Deploy하기 가장 간단한 방식이면서 App Provider와 App User 모두에게 App data의 non-repudiation과 self-sovereignty를 보장합니다. 그러나 App User의 off-ledger system과 통합할 수 없고 on-ledger workflow 자동화 가능성도 제한됩니다. 이 configuration에서 Backend는 App Provider Daml Party를 대신해서만 Ledger에 command를 제출할 수 있으며 App User Daml Party는 Frontend를 통해서만 Ledger에 command를 보낼 수 있습니다.
+
+### App User가 App Provider가 build한 Backend 운영
+
+App User가 App Provider가 build한 Backend를 운영하면 Participant Node 운영으로 제공되는 non-repudiation과 App data self-sovereignty 외에도 다음 이점을 얻습니다.
+
+- App data에 대한 self-sovereign query: App User가 보유한 App data copy를 공급받는 자체 Backend에서 App data query를 처리할 수 있습니다. 필요 여부는 use case에 따라 다릅니다. 예를 들어 low-trust environment에서 중대한 의사 결정을 내리거나 compliance 목적으로 decision-making infrastructure를 엄격히 통제해야 하는 App User에게 필요할 수 있습니다.
+- App User system integration: App User가 제어하는 off-ledger system과의 integration은 이 system과 Application 사이의 bridge 역할을 하는 local Backend를 운영하여 지원할 수 있습니다.
+- Contended resource에 대한 batch access: 많은 end user가 App User 소유의 같은 on-ledger resource에 access할 때 Backend가 access를 batch 처리하여 throughput을 높일 수 있습니다. 예를 들어 여러 trader가 회사의 on-ledger account에서 fund를 allocate할 수 있습니다. Local Backend를 사용하면 request를 batch 처리하여 단일 Daml Transaction이 여러 allocation request를 동시에 처리할 수 있으므로 순차 처리보다 processing speed가 크게 향상됩니다.
+- 세밀한 end-user permission 관리: App User organization을 나타내는 Daml Party를 사용하여 on-ledger data를 읽고 on-ledger action을 수행하는 end user의 세밀한 access control은 App User Participant Node와 hosted Daml Party에 대한 access를 관리하는 Backend에서 가장 잘 구현할 수 있습니다.
+
+App User가 App Provider가 build한 Backend를 운영할 때의 단점은 다음과 같습니다.
+
+- App User 운영 비용: App User가 Backend monitoring 및 maintenance resource를 배정해야 합니다.
+
+- Multi-version deployment: App User가 Backend의 새 release upgrade를 미루면 여러 Backend version이 동시에 실행될 수 있습니다. 이로 인해 workflow 변경과 upgrade testing이 복잡해집니다.
+
+- App Provider의 on-prem software 과제: App User가 운영할 Backend를 개발하는 App Provider는 on-prem software provider 역할을 해야 하므로 추가 과제가 생깁니다.
+
+  App Provider support staff: App Provider는 App User의 business hour 중 Backend 운영 문제를 처리할 client-facing support team을 유지해야 합니다.
+
+  App Provider release management: Customer의 on-prem operation을 위한 software release에는 internal release 관리보다 더 많은 communication과 주의가 필요하므로 release process가 복잡해집니다.
+
+### 각 organization이 자체 Backend를 build하고 운영
+
+각 organization이 자체 App Frontend와 Backend를 build하고 운영하는 architecture는 automation 및 off-ledger system integration과 관련된 구체적인 requirement를 충족할 때 가장 유연합니다. 하지만 이 flexibility에는 비용이 따릅니다.
+
+자체 Backend 또는 Frontend를 build하고 운영하는 App User는 다음 추가 이점을 얻습니다.
+
+- Customization: App User가 구체적인 필요에 맞게 App Backend 또는 Frontend를 조정할 수 있습니다. Custom system integration이나 세밀한 end-user access control이 포함될 수 있습니다.
+- 낮은 software supply chain risk: 자체 개발 software를 운영하면 third-party code 의존도가 낮아져 supply chain risk가 줄어듭니다. Third-party code audit 비용이 너무 높거나 audit이 현실적이지 않을 때 중요할 수 있습니다.
+
+이처럼 매우 유연한 architecture의 단점은 다음과 같습니다.
+
+- App User software development 비용: App Provider는 항상 자체 Frontend와 Backend를 build하고 운영해야 합니다. 반면 App User는 반드시 그럴 필요가 없을 수 있습니다. App User가 자체 Frontend와 Backend를 개발해야 한다면 development와 maintenance에 상당한 budget 및 expertise가 필요합니다. 이 requirement는 App의 total addressable market을 크게 줄일 수 있습니다.
+- Organization 간 software development: App의 initial development와 향후 변경에는 App Provider와 App User organization 간 coordination이 필요합니다. Daml이 organization 간 workflow API를 지정하기 쉽게 해주지만 organization 간 software development의 복잡성을 과소평가해서는 안 됩니다.
+- 제한된 App evolution: App은 새로운 business requirement를 처리하도록 계속 발전해야 합니다. 하지만 App User가 Frontend와 Backend code를 수정할 의지나 capability가 부족할 수 있어 기존 workflow를 변경하거나 decommission하기가 복잡해집니다.
+
+### 속성 요약
+
+#### Architecture 속성
+
+<img src="/images/docs_website/properties-of-arch.png" className="align-center" alt="아래에서 설명하는 architecture 속성" />
+
+이 table은 검토한 세 architecture의 속성을 요약합니다. 그 사이에도 가능한 architecture의 continuum이 있다는 점에 유의하세요. App Architecture는 시간이 지나며 발전할 수도 있습니다. 필요한 최소 속성을 제공하는 단순한 architecture로 시작하고 business requirement가 발전함에 따라 complexity를 추가하는 것이 좋습니다.
+
+#### 비용 관점에서 본 Architecture 속성
+
+<img src="/images/docs_website/properties-of-arch-from-cost-perspective.png" className="align-center" alt="아래에서 비용 관점으로 설명하는 architecture 속성" />
+
+이 table은 같은 세 architecture의 속성을 cost 및 기타 software engineering 고려 사항의 관점에서 요약합니다. App User의 requirement를 충족하면서 engineering 및 operational effort를 가장 적게 요구하는 architecture를 선호하는 것이 좋습니다.
+
+"X"는 항목에 문제가 있음을 나타내고 "XX"는 문제가 더 심각함을 뜻합니다. 예를 들어 각 organization이 자체 Backend를 build할 때 organization 간 coordination의 어려움은 App User가 App Provider 제공 Backend를 운영하는 경우보다 훨씬 커집니다.
+
+## 4. 핵심 요점
+
+1.  Canton Network Application에는 일반적으로 App Frontend, Daml Model, App Backend라는 세 component가 필요합니다. Daml Model은 App Provider와 각 App User의 Participant Node에 deploy해야 합니다.
+2.  Canton Network Application Backend는 Ledger와의 통신을 위한 higher-level API 제공, on-ledger workflow 자동화, off-ledger system 통합이라는 세 가지 주요 목적을 담당합니다.
+3.  Higher-level API를 구현할 때 Ledger read에는 PQS를 사용합니다. Ledger write path에서는 reliability가 가장 중요하며, 여기에는 command failure 시 retry behavior와 command submission idempotency라는 서로 관련된 두 요소가 포함됩니다.
+4.  Canton Network Application Backend가 수행하는 기능은 특별하지 않으며 구현에 필요한 tech stack도 standard입니다. Canton Network Application Backend를 build할 때 standard enterprise application stack을 사용하세요.
+5.  App Backend와 Frontend를 개발하고 운영하는 option은 다양하며 App Architecture는 시간이 지나며 발전할 수 있습니다. 처음에는 App User requirement를 충족하면서 software engineering 및 operational effort를 최소화하는 architecture를 선택하는 것이 좋습니다. 이 approach는 delivery risk를 줄이고 App의 total addressable market을 극대화하는 데 도움이 됩니다.
+
+
+{/* COPIED_END */}
