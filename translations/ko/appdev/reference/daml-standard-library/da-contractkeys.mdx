@@ -1,0 +1,57 @@
+---
+title: "DA.ContractKeys"
+description: "Daml module DA.ContractKeys의 reference documentation"
+source_id: "SRC-050E6D030F"
+source_path: "appdev/reference/daml-standard-library/da-contractkeys"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "b1b648bc9f28bca9fdaf291119412e636e25b2730afd5828d64cdbdd45f6bc5b"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-contractkeys.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-contractkeys-19667"></span>
+
+# DA.ContractKeys
+
+참고: documentation TODO (https://github.com/digital-asset/daml/issues/22673)
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.5.1`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Functions
+
+<span id="function-da-internal-template-functions-lookupnbykey-93090"></span>
+
+### `lookupNByKey`
+
+`lookupNByKey` : [`HasLookupNByKey`](/appdev/reference/daml-standard-library/prelude#class-da-internal-template-functions-haslookupnbykey-35508) `t` `k` => [`Int`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-int-37261) -> `k` -> [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072) [([`ContractId`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-contractid-95282) `t`, `t`)]
+
+전달된 key와 연결된 contract를 최대 n개까지 조회합니다. transaction 내에서 생성된 contract가 먼저 최신 순서로 반환되고, 그다음은 disclosed contract, 마지막은 nonlocal contract 순입니다.
+
+명시적 type application을 사용해 `t`를 전달해야 합니다. 예를 들어 key `k`로 지정된 template `Account`의 contract 3개를 query하려면 `lookupNByKey @Account 3 k`를 호출해야 합니다.
+
+<span id="function-da-internal-template-functions-lookupallbykey-2641"></span>
+
+### `lookupAllByKey`
+
+`lookupAllByKey` : [`HasLookupNByKey`](/appdev/reference/daml-standard-library/prelude#class-da-internal-template-functions-haslookupnbykey-35508) `t` `k` => `k` -> [`Update`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-update-68072) [([`ContractId`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-contractid-95282) `t`, `t`)]
+
+key에 존재할 수 있는 contract 수(1000000)보다 큰 n을 사용하는 `lookupNByKey`의 축약형이며, 따라서 모든 contract를 반환합니다.

@@ -1,0 +1,83 @@
+---
+title: "3.5.2"
+description: "Canton 3.5.2 release note"
+source_id: "SRC-EE3102F00C"
+source_path: "global-synchronizer/release-notes/canton-releases/3-5-2"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "c99dbb8293ac04780279514483b403074aa1de09cddf4d947383b6307efa9154"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/release-notes/canton-releases/3-5-2.md)을 사용하세요.
+</Warning>
+
+# Canton 3.5.2 Release
+
+Canton 3.5.2는 2026년 6월 3일에 release되었습니다.
+
+## Summary
+
+Synchronizer reconnect 중 발생하는 out-of-memory issue를 수정하고 Canton Docker base image의 security vulnerability를 해결하며 minor improvement를 제공하는 maintenance release입니다.
+
+## Minor Improvement
+
+- BusyBox vulnerability CVE-2025-46394와 CVE-2025-60876을 해결하도록 Docker base image를 1.0.8로 update했습니다.
+- Sequencer subscription 종료 error `Timeout 9 seconds expired, but readers are still active in Task closing flushing direct-sequencer-subscription`을 수정했습니다.
+- PQS에서 `ContractId Void` decoding을 처리합니다.
+- Contract key lookup caching을 개선했습니다.
+
+## Deprecation
+
+### Mediator의 synchronous processing 제거
+Mediator의 synchronous processing mode가 더 나은 performance를 제공하는 asynchronous mode로 대체되어 제거되었습니다.
+
+Config path `myMediator.config.asynchronous-processing`은 이제 default로 활성화되므로 deprecated되었습니다.
+
+## Bugfix
+
+### (26-002, Medium): Synchronizer disconnect/reconnect 후 높은 memory usage로 인한 OOM
+
+#### Issue Description
+Periodic time proof retrieval task(interval: minObservationDuration) 때문에 Synchronizer disconnect/reconnect 후 ConnectedSynchronizer instance를 즉시 garbage collection할 수 없습니다.
+
+이로 인해 memory consumption이 증가하고 OOM이 발생할 수 있습니다.
+
+#### Affected Deployment
+Participant Node
+
+#### Affected Version
+3.5.2 이전의 모든 version
+
+#### Impact
+높은 memory consumption 및 잠재적 Participant OOM
+
+#### Symptom
+Heap dump에 이전에 disconnect된 Synchronizer의 ConnectedSynchronizer instance가 표시됩니다.
+Call stack은 PeriodicAcknowledgements, TimeProofRequestsSubmitterImpl, SynchronizerTimeTracker, 마지막으로 Clock을 참조합니다.
+
+#### Workaround
+Participant를 restart합니다.
+
+#### Likeliness
+때때로 발생
+
+#### Recommendation
+3.5.2로 upgrade하세요.
+
+## Compatibility
+
+다음 Canton protocol version이 지원됩니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Canton protocol version    | 34, 35          |
+
+Canton은 다음 dependency version을 대상으로 test되었습니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Java Runtime               | OpenJDK 64-Bit Server VM (build 21.0.12+2-nixos, mixed mode, sharing)               |
+| Postgres                   | 권장: PostgreSQL 17.10 (Debian 17.10-1.pgdg13+1) – 추가 test: PostgreSQL 14.23 (Debian 14.23-1.pgdg13+1), PostgreSQL 15.18 (Debian 15.18-1.pgdg13+1), PostgreSQL 16.14 (Debian 16.14-1.pgdg13+1)           |

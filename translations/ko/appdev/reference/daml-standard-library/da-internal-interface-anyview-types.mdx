@@ -1,0 +1,77 @@
+---
+title: "DA.Internal.Interface.AnyView.Types"
+description: "Daml module DA.Internal.Interface.AnyView.Types의 reference documentation"
+source_id: "SRC-D2B1F5DE1F"
+source_path: "appdev/reference/daml-standard-library/da-internal-interface-anyview-types"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "b91b7b41847e40b0f1500a5cf3a93cfb3b7a7996541c35b47d8623904658f332"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-internal-interface-anyview-types.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-internal-interface-anyview-types-13315"></span>
+
+# DA.Internal.Interface.AnyView.Types
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Data Types
+
+<span id="type-da-internal-interface-anyview-types-anyview-16883"></span>
+
+### `data AnyView`
+
+임의의 contract key를 wrapping할 수 있는 existential contract key type입니다.
+
+Constructor:
+
+<span id="constr-da-internal-interface-anyview-types-anyview-58868"></span>
+- `AnyView`
+
+<ResponseField name="getAnyView" type="Any" />
+
+<ResponseField name="getAnyViewInterfaceTypeRep" type="InterfaceTypeRep" />
+
+Instance:
+
+- instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `getAnyView` [`AnyView`](#type-da-internal-interface-anyview-types-anyview-16883) `Any`
+- instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `getAnyViewInterfaceTypeRep` [`AnyView`](#type-da-internal-interface-anyview-types-anyview-16883) [`InterfaceTypeRep`](#type-da-internal-interface-anyview-types-interfacetyperep-5047)
+- instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `getAnyView` [`AnyView`](#type-da-internal-interface-anyview-types-anyview-16883) `Any`
+- instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `getAnyViewInterfaceTypeRep` [`AnyView`](#type-da-internal-interface-anyview-types-anyview-16883) [`InterfaceTypeRep`](#type-da-internal-interface-anyview-types-interfacetyperep-5047)
+
+<span id="type-da-internal-interface-anyview-types-interfacetyperep-5047"></span>
+
+### `data InterfaceTypeRep`
+
+Constructor:
+
+<span id="constr-da-internal-interface-anyview-types-interfacetyperep-24802"></span>
+- `InterfaceTypeRep`
+
+<ResponseField name="getInterfaceTypeRep" type="TypeRep" />
+
+Instance:
+
+- instance [`GetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-getfield-53979) `getAnyViewInterfaceTypeRep` [`AnyView`](#type-da-internal-interface-anyview-types-anyview-16883) [`InterfaceTypeRep`](#type-da-internal-interface-anyview-types-interfacetyperep-5047)
+- instance [`SetField`](/appdev/reference/daml-standard-library/da-record#class-da-internal-record-setfield-4311) `getAnyViewInterfaceTypeRep` [`AnyView`](#type-da-internal-interface-anyview-types-anyview-16883) [`InterfaceTypeRep`](#type-da-internal-interface-anyview-types-interfacetyperep-5047)
+- instance [`Eq`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-eq-22713) [`InterfaceTypeRep`](#type-da-internal-interface-anyview-types-interfacetyperep-5047)
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) [`InterfaceTypeRep`](#type-da-internal-interface-anyview-types-interfacetyperep-5047)

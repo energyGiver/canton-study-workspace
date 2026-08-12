@@ -1,0 +1,110 @@
+---
+title: "External Signing"
+description: "External cryptographic key로 Canton Transaction에 서명하는 방법의 개요, onboarding 및 제출"
+source_id: "SRC-9DC6874E1C"
+source_path: "appdev/deep-dives/external-signing"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "0a092acb11bd75a0112cf92072e62aecbe4c5194743880ac54fd0592e091776e"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/deep-dives/external-signing.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="canton:docs-open/src/sphinx/sdk/tutorials/app-dev/external_signing_overview.rst@5f96e9893" hash="0f8c62b0" */}
+
+# External Signing
+
+## 학습 내용
+
+이 tutorial 모음에서는 다음 방법을 알아봅니다.
+
+- Ledger API를 사용하여 External Key로 Transaction에 서명하는 Party onboarding
+- Ledger API를 사용하여 multi-hosted External Party onboarding
+- External Signing으로 contract 생성
+- External Signing으로 contract의 choice exercise
+
+더 고급 use case에서는 다음 tutorial이 더 일반적인 Topology Transaction을 생성하고 외부에서 서명하는 과정을 안내합니다.
+
+- Topology Transaction build, sign 및 submit
+
+## 배경
+
+Canton의 ledger state는 **Party가 소유한 contract**로 정의됩니다. 각 contract는 여러 Party가 shared ledger를 일방적으로 변경할 수 있는 right를 규정합니다. Party의 관점에는 **Transaction 시작**과 **Transaction 검증**이라는 두 가지 핵심 activity가 있습니다.
+
+**Party**는 ledger의 논리적 actor입니다. Party는 추상적인 개념이지만 on-ledger representation과 state management는 Party가 선택한 하나 이상의 **Validator**에 위임됩니다. Canton의 privacy 특성 때문에 이러한 Validator만 Party가 소유한 contract 전체를 알고 있습니다. 따라서 이들만 Party의 contract에 영향을 미치는 Transaction을 authoritative하게 validate하고 confirm할 수 있습니다.
+
+Transaction은 active하게 host되는 Party만 대상으로 할 수 있습니다. 유효하지 않은 Party를 참조하는 Transaction은 system이 reject합니다.
+
+### Topology와 Identity
+
+Canton의 Party, Validator 및 Synchronizer identity는 **Unique Identifier**로 표현됩니다. 각 identifier는 Topology Management overview에서 설명하는 것처럼 이름과 public key fingerprint로 구성된 `<prefix>::<fingerprint>` 쌍입니다. 아래에서 설명하듯 public key는 궁극적으로 identity에 관한 authorization을 verify하는 데 사용됩니다.
+
+Party가 정확히 어떻게 설정되는지는 Topology Transaction 집합으로 정의됩니다. 이러한 Transaction에는 영향을 받는 모든 Party와 Validator가 서명해야 하며 ledger에 제출해야 합니다. 모든 Topology Transaction의 합이 Topology state를 정의합니다. Topology state는 ledger의 Party, key, Validator 및 package에 관해 공유되는 지식의 state입니다.
+
+Topology state는 변화할 수 있습니다. Party는 초기 configuration에 고정되지 않습니다. 다만 여러 node에 Party를 복제하는 것은 Validator operator 간의 운영 절차이며 이 section에서는 다루지 않습니다.
+
+### Hosting Relationship
+
+Party를 설정하려면 user가 하나 이상의 Validator와 **hosting relationship**을 수립해야 합니다. 이 hosting relationship은 **Party to Participant Mapping**이라는 Topology Transaction으로 표현되며, 관련 Party와 Validator가 서명해야 합니다. Party는 이 hosting relationship의 일부로 자신의 contract에 영향을 미치는 Transaction을 authorize하는 데 사용할 private key를 정의합니다. Party user가 이 private key를 관리하거나 signing을 Validator에 위임할 수 있습니다. 이에 따라 Party authorization key의 관리 방식에 기반하여 두 가지 hosting 설정을 구분할 수 있습니다.
+
+- **External Party**: Authorizing private key를 Party user가 소유하고 운영합니다. User는 end-user wallet 또는 backend application일 수 있습니다.
+- **Internal Party**: Validator key를 사용하여 Party를 대신해 Transaction을 authorize하고, user는 Ledger API에서 JWT token으로 자신을 authenticate합니다.
+
+Internal Party는 추가 private key를 안전하게 보관할 필요가 없어 운영 관점에서 사용하기 쉽습니다. 그러나 궁극적으로는 Validator가 private key를 오용하여 Transaction을 authorize하지 않을 것이라고 신뢰합니다. Party와 Participant 사이의 hosting relationship은 세 가지 Validator permission category로 정의됩니다.
+
+- **Submission**: Validator signing key를 사용하여 Transaction을 authorize합니다.
+- **Confirmation**: Validator signing key를 Transaction confirm에만 사용합니다.
+- **Observation**: Validator는 통지를 받고 state를 validate하기만 하며 confirm할 필요는 없습니다.
+
+Validator에 **Submission** right를 부여하면 해당 Party는 Internal Party가 됩니다. Validator에 **Confirmation** 또는 **Observation** right를 부여하면 해당 Party는 External Party가 되며, authorizing key를 **Party to Participant Mapping** 안에서 정의해야 합니다.
+
+Ledger API로 External Party를 onboarding하는 방법은 다음 tutorial에서 계속 알아보세요.
+
+Internal Party는 Party Management documentation에서 다룹니다.
+
+### Multi-Hosted Party
+
+단일 Validator를 완전히 신뢰해야 하는 필요성을 줄이기 위해 Party는 Transaction을 유효한 것으로 간주하기 전에 지정된 수의 Validator가 승인하도록 hosting relationship을 구성할 수 있습니다. 이는 deployment의 또 다른 차원을 정의합니다.
+
+- **Single-hosted Party**: 하나의 Validator만 Party를 host합니다. 가장 단순한 설정이며 Party owner가 Validator를 완전히 신뢰하는 scenario에 적합합니다.
+- **Multi-hosted Party**: 여러 Validator가 Party를 host합니다. 여러 Validator에 trust를 분산하여 security와 availability를 높이는 설정입니다.
+
+Ledger API로 multi-hosted Party를 설정하는 방법은 다음 tutorial을 따르세요.
+
+요약하면 Party가 ledger를 사용하도록 구성하려면 다음 Topology state를 정의해야 합니다.
+
+- Party 이름과 Party가 Transaction authorize에 사용할 signing key
+- 어느 Validator 집합이 어떤 permission과 threshold로 Party를 host할지
+- 필요한 경우 Topology Transaction의 signature를 verify하는 데 필요한 namespace delegation
+
+Hosting 방식은 Party의 security와 availability에 큰 영향을 미칩니다. Party Trust Model에 설명된 trust assumption을 참조하세요.
+
+### Admin API를 통한 Topology 관리
+
+Topology system은 매우 유연하고 강력하지만 복잡하기도 합니다. 여러 독립 actor의 서명이 필요한 Topology Transaction은 build, sign, submit 과정이 번거로울 수 있습니다. 그러나 Topology Transaction은 ledger 자체를 통해 proposal로 배포할 수도 있습니다. Proposal은 필요한 모든 actor가 아직 서명하지 않은 Topology Transaction입니다.
+
+Party와 관련된 여러 Topology Management task에 Admin API를 사용하는 방법은 다음 tutorial에서 다룹니다.
+
+- Admin API를 사용하여 External Party onboarding
+- Topology Transaction build, sign 및 submit
+
+### Transaction 제출
+
+Party 설정이 끝나면 contract를 생성하거나 choice를 exercise하는 Transaction을 제출하여 ledger 사용을 시작할 수 있습니다. External Key로 authorize하는 Party의 Transaction 제출 과정에는 다음 단계가 포함됩니다.
+
+- 선택한 Validator Node에 command를 제출하여 command를 interpret하고 그 결과인 Transaction을 생성합니다. Transaction은 아직 ledger로 전송되지 않고 user에게 반환됩니다.
+- 결과 Transaction 전체(command 및 result)에 대한 commitment인 Transaction hash를 validate하고 Party private key로 서명합니다.
+- 미리 계산된 Transaction과 signature를 Validator Node에 보내 ledger에 제출합니다.
+- Party를 host하는 Validator Node를 통해 Transaction 결과를 관찰합니다.
+
+더 자세한 설명은 External Signing overview를 참조하세요.
+
+Signature는 command만이 아니라 전체 Transaction output에 대한 commitment입니다. Interpreter에 결함이 있으면 Validator가 Transaction을 reject합니다. Party를 host하는 node뿐 아니라 어느 node를 통해서든 제출할 수 있습니다.
+
+External signing key로 command를 제출하는 방법은 다음 tutorial에서 다룹니다. - External Signing으로 contract 생성 - External Signing으로 contract의 choice exercise
+
+{/* COPIED_END */}

@@ -1,0 +1,113 @@
+---
+title: "Daml Party 할당 및 조회 방법"
+description: "Participant에서 새 Party를 할당하고 Party metadata를 조회합니다."
+source_id: "SRC-C144C75424"
+source_path: "appdev/deep-dives/manage-daml-parties"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "7e812c9e57109c2817057c665feeef35d2931e7d4c18f59fad177823baa9b17f"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/deep-dives/manage-daml-parties.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/sdk/sdlc-howtos/applications/develop/manage-daml-parties.rst" hash="a4233d59" */}
+
+# Daml Party 할당 및 조회 방법
+
+Canton Participant Node는 Daml Party를 생성하고 검색할 수 있는 Party Management Service를 제공합니다. 이 가이드에서는 OpenAPI specification으로 설명되는 JSON Ledger API를 사용하여 프로그래밍 방식으로 Party를 관리하는 방법을 설명합니다.
+
+Daml Party와 user에 대해 알아보려면 핵심 개념 section의 Daml Party 및 user를 참조하세요.
+
+Canton Console을 사용하여 Party를 생성하는 방법은 운영 가이드의 Party Management section을 참조하세요.
+
+## Canton Participant Node 시작
+
+Canton Participant startup에 flag를 추가하여 Canton Participant Node가 JSON Ledger API HTTP port를 열도록 합니다.
+
+``` sh
+-C canton.participants.participant1.http-ledger-api.port=7575
+```
+
+또는 [JSON Ledger API](/appdev/quickstart/json-api)를 [Canton configuration](/global-synchronizer/reference/canton-configuration-guide) file에서 활성화합니다.
+
+Canton Participant Node를 시작하고 Synchronizer에 연결합니다. 이 절차가 익숙하지 않다면 [Participant Node와 Synchronizer 연결](/global-synchronizer/canton-console/getting-started-tutorial#connecting-the-participant-nodes-and-synchronizers)을 검토하세요.
+
+## 기존 Party 조회 방법
+
+Participant가 알고 있는 모든 Party를 나열하려면 `v2/parties` endpoint로 GET request를 보냅니다.
+
+``` sh
+curl http://localhost:7575/v2/parties
+```
+
+Participant는 알고 있는 모든 Party가 포함된 message로 응답합니다.
+
+```json
+{
+  "partyDetails": [
+    {
+      "party": "Alice::122091f5d8d174bc0d624616d4f366904f8d4c56d56e33508878db3156c3dd9b8ae9",
+      "isLocal": true,
+      "localMetadata": {
+        "resourceVersion": "0",
+        "annotations": {}
+      },
+      "identityProviderId": ""
+    },
+    {
+      "party": "Bob::122091f5d8d174bc0d624616d4f366904f8d4c56d56e33508878db3156c3dd9b8ae9",
+      "isLocal": true,
+      "localMetadata": {
+        "resourceVersion": "0",
+        "annotations": {}
+      },
+      "identityProviderId": ""
+    },
+    {
+      "party": "ee1d49e9-fa52-480a-8e85-033738a1fc75::122091f5d8d174bc0d624616d4f366904f8d4c56d56e33508878db3156c3dd9b8ae9",
+      "isLocal": true,
+      "localMetadata": {
+        "resourceVersion": "",
+        "annotations": {}
+      },
+      "identityProviderId": ""
+    }
+  ],
+  "nextPageToken": ""
+}
+```
+
+Participant가 Party를 host하고 request를 보낸 user와 Party가 동일한 Identity Provider를 공유하면 `isLocal` attribute가 true로 설정됩니다.
+
+## 새 local Party 생성 방법
+
+새 Party를 생성하려면 `v2/parties` endpoint로 POST request를 보냅니다.
+
+``` sh
+curl -d '{"partyIdHint":"Alice"}' http://localhost:7575/v2/parties
+```
+
+생성되는 Party ID는 제공된 `partyIdHint`와 해당 Party를 관할하는 entity의 namespace fingerprint로 구성됩니다. 일반적으로 Canton Participant Node와 연결된 fingerprint입니다.
+
+```json
+{
+  "partyDetails": {
+    "party": "Alice::122091f5d8d174bc0d624616d4f366904f8d4c56d56e33508878db3156c3dd9b8ae9",
+    "isLocal": true,
+    "localMetadata": {
+      "resourceVersion": "0",
+      "annotations": {}
+    },
+    "identityProviderId": ""
+  }
+}
+```
+
+Request에서 `partIdHint`를 생략하면 Participant Node가 임의의 hint string을 선택합니다.
+
+
+{/* COPIED_END */}

@@ -1,0 +1,45 @@
+---
+title: "3.5.3"
+description: "Canton 3.5.3 release note"
+source_id: "SRC-FFA44B4C3C"
+source_path: "global-synchronizer/release-notes/canton-releases/3-5-3"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "398a3c4a17d927a80d21b03b9720e4935b538762c9fdbeca50eade389909c46c"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/release-notes/canton-releases/3-5-3.md)을 사용하세요.
+</Warning>
+
+# Canton 3.5.3 Release
+
+Canton 3.5.3은 2026년 6월 3일에 release되었습니다.
+
+## Summary
+
+Mediator restart 및 LSU 관련 issue를 수정하는 maintenance release입니다.
+
+## Bugfix
+
+### LSU sequencing test message 처리 후 Mediator가 Sequencer에 다시 연결할 수 없음
+
+LSU 중 sequencing test message를 처리한 후 Mediator가 Sequencer에 다시 연결할 수 없습니다.
+Upgrade time에 도달하고 Sequencer에서 traffic이 initialize되면 connection issue가 저절로 해결됩니다.
+
+## Compatibility
+
+다음 Canton protocol version이 지원됩니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Canton protocol version    | 34, 35          |
+
+Canton은 다음 dependency version을 대상으로 test되었습니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Java Runtime               | OpenJDK 64-Bit Server VM (build 21.0.12+2-nixos, mixed mode, sharing)               |
+| Postgres                   | 권장: PostgreSQL 17.10 (Debian 17.10-1.pgdg13+1) – 추가 test: PostgreSQL 14.23 (Debian 14.23-1.pgdg13+1), PostgreSQL 15.18 (Debian 15.18-1.pgdg13+1), PostgreSQL 16.14 (Debian 16.14-1.pgdg13+1)           |

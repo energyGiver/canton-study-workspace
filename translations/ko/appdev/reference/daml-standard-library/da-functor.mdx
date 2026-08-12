@@ -1,0 +1,71 @@
+---
+title: "DA.Functor"
+description: "Daml module DA.Functor의 reference documentation"
+source_id: "SRC-2DB155525C"
+source_path: "appdev/reference/daml-standard-library/da-functor"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "39972c3cf9988b1053e308f446aa7dcb72f8d434713266e8b581fce0f8b0167d"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-functor.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-functor-63823"></span>
+
+# DA.Functor
+
+`Functor` class는 mapping을 적용할 수 있는 type에 사용됩니다.
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Functions
+
+<span id="function-da-functor-dollargt-48161"></span>
+
+### `$>`
+
+`$>` : [`Functor`](/appdev/reference/daml-standard-library/prelude#class-ghc-base-functor-31205) `f` => `f` `a` -> `b` -> `f` `b`
+
+입력(왼쪽)의 모든 위치를 주어진 값(오른쪽)으로 바꿉니다.
+
+<span id="function-da-functor-ltampgt-91298"></span>
+
+### `<&>`
+
+`<&>` : [`Functor`](/appdev/reference/daml-standard-library/prelude#class-ghc-base-functor-31205) `f` => `f` `a` -> (`a` -> `b`) -> `f` `b`
+
+functor에 function을 mapping합니다. 값 `as`와 function `f`가 주어지면 `as <&> f`는 `f <$> as`입니다. 즉 `<&>`는 `<$>`와 비슷하지만 argument 순서가 반대입니다.
+
+<span id="function-da-functor-ltdollardollargt-89503"></span>
+
+### `<$$>`
+
+`<$$>` : ([`Functor`](/appdev/reference/daml-standard-library/prelude#class-ghc-base-functor-31205) `f`, [`Functor`](/appdev/reference/daml-standard-library/prelude#class-ghc-base-functor-31205) `g`) => (`a` -> `b`) -> `g` (`f` `a`) -> `g` (`f` `b`)
+
+중첩된 `<$>`입니다.
+
+<span id="function-da-functor-void-91123"></span>
+
+### `void`
+
+`void` : [`Functor`](/appdev/reference/daml-standard-library/prelude#class-ghc-base-functor-31205) `f` => `f` `a` -> `f` ()
+
+입력의 모든 위치를 `()`로 바꿉니다.

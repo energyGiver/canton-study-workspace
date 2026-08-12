@@ -1,0 +1,46 @@
+---
+title: "3.5.10"
+description: "Canton 3.5.10 release note"
+source_id: "SRC-7DEA45EB3E"
+source_path: "global-synchronizer/release-notes/canton-releases/3-5-10"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "19803a471686ba526de2233a2b6ecb1f393f39fafcff21474af365707f2fd2b4"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/release-notes/canton-releases/3-5-10.md)을 사용하세요.
+</Warning>
+
+# Canton 3.5.10 Release
+
+Canton 3.5.10은 2026년 7월 23일에 release되었습니다.
+
+## Summary
+
+UX 및 hardening 개선을 제공하는 maintenance release입니다.
+
+## 새로운 기능
+
+### Minor Improvement
+- Proto duration deserialization이 실패할 수 있는 edge case를 수정했습니다.
+- Max serial이 있는 Topology Transaction을 올바르게 처리하지 못하던 issue를 수정했습니다.
+- 이제 Ledger JSON API `/v2/state/active-contracts-page`를 POST로 사용할 수 있습니다. Request body를 요구하는 GET variant는 deprecated되었습니다.
+- Postgres 18 지원을 활성화하기 위해 Flyway dependency를 12.0.2로 올렸습니다.
+
+## Compatibility
+
+다음 Canton protocol version이 지원됩니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Canton protocol version    | 34, 35          |
+
+Canton은 다음 dependency version을 대상으로 test되었습니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Java Runtime               | OpenJDK 64-Bit Server VM (build 21.0.12+2-nixos, mixed mode, sharing)               |
+| Postgres                   | 권장: PostgreSQL 17.10 (Debian 17.10-1.pgdg13+1) – 추가 test: PostgreSQL 14.23 (Debian 14.23-1.pgdg13+1), PostgreSQL 15.18 (Debian 15.18-1.pgdg13+1), PostgreSQL 16.14 (Debian 16.14-1.pgdg13+1), PostgreSQL 18.4 (Debian 18.4-1.pgdg13+1)           |

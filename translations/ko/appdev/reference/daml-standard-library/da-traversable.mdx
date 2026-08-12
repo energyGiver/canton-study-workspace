@@ -1,0 +1,81 @@
+---
+title: "DA.Traversable"
+description: "Daml module DA.Traversable의 reference documentation"
+source_id: "SRC-0E9FF5E4E4"
+source_path: "appdev/reference/daml-standard-library/da-traversable"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "d8186c1fec413b2a5b9df2dc2ccbb7ce2d268162259f162674b3b85f3555c113"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-traversable.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-traversable-75075"></span>
+
+# DA.Traversable
+
+왼쪽에서 오른쪽으로 traverse하며 각 element에 action을 수행할 수 있는 data structure의 class입니다.
+
+`Prelude`에 정의된 function과의 충돌을 피하기 위해 보통은 이 module을 qualified import하는 것이 좋습니다. 예:
+
+```
+
+import DA.Traversable   qualified as F
+
+```
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Typeclasses
+
+<span id="class-da-traversable-traversable-18144"></span>
+
+### `class (Functor t, Foldable t) => Traversable t`
+
+왼쪽에서 오른쪽으로 traverse할 수 있는 data structure를 표현하는 functor입니다.
+
+Method:
+
+- `mapA` : [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `f` => (`a` -> `f` `b`) -> `t` `a` -> `f` (`t` `b`)
+  structure의 각 element를 action으로 mapping하고, 이 action을 왼쪽에서 오른쪽으로 평가한 다음 결과를 모읍니다.
+- `sequence` : [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `f` => `t` (`f` `a`) -> `f` (`t` `a`)
+  structure의 각 action을 왼쪽에서 오른쪽으로 평가하고 결과를 모읍니다.
+
+Instance:
+
+- instance [`Ord`](/appdev/reference/daml-standard-library/prelude#class-ghc-classes-ord-6395) `k` => [`Traversable`](#class-da-traversable-traversable-18144) ([`Map`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-map-90052) `k`)
+- instance [`Traversable`](#class-da-traversable-traversable-18144) [`TextMap`](/appdev/reference/daml-standard-library/prelude#type-da-internal-lf-textmap-11691)
+- instance [`Traversable`](#class-da-traversable-traversable-18144) [`Optional`](/appdev/reference/daml-standard-library/prelude#type-da-internal-prelude-optional-37153)
+- instance [`Traversable`](#class-da-traversable-traversable-18144) [`NonEmpty`](/appdev/reference/daml-standard-library/da-nonempty-types#type-da-nonempty-types-nonempty-16010)
+- instance [`Traversable`](#class-da-traversable-traversable-18144) ([`Validation`](/appdev/reference/daml-standard-library/da-validation#type-da-validation-types-validation-39644) `err`)
+- instance [`Traversable`](#class-da-traversable-traversable-18144) ([`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020) `a`)
+- instance [`Traversable`](#class-da-traversable-traversable-18144) [`[]`](/appdev/reference/daml-standard-library/prelude#type-ghc-types-x-2599)
+- instance [`Traversable`](#class-da-traversable-traversable-18144) `a`
+
+## Functions
+
+<span id="function-da-traversable-fora-19271"></span>
+
+### `forA`
+
+`forA` : ([`Traversable`](#class-da-traversable-traversable-18144) `t`, [`Applicative`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-applicative-9257) `f`) => `t` `a` -> (`a` -> `f` `b`) -> `f` (`t` `b`)
+
+`forA`는 argument 순서를 바꾼 `mapA`입니다.

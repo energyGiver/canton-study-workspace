@@ -1,0 +1,141 @@
+---
+title: "DA.Bifunctor"
+description: "Daml module DA.Bifunctor의 reference documentation"
+source_id: "SRC-CA542942B2"
+source_path: "appdev/reference/daml-standard-library/da-bifunctor"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "814d228f96db050e1811a0f5604775d9f8f0d087cadb093bc1f32ab5b8c40ed0"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-bifunctor.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-bifunctor-44306"></span>
+
+# DA.Bifunctor
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Typeclasses
+
+<span id="class-da-bifunctor-bifunctor-68312"></span>
+
+### `class Bifunctor p`
+
+bifunctor는 두 개의 type argument를 받고 양쪽 argument *모두*에서 functor인 type constructor입니다. 즉 `Functor`와는 달리 `Either`와 같은 type constructor는 `Bifunctor` instance를 위해 부분 적용할 필요가 없습니다. 이 class의 method를 사용하면 Left 값, `Right` 값 또는 두 값 모두에 function을 mapping할 수 있습니다.
+
+첫 번째와 두 번째 argument가 모두 covariant인 bifunctor입니다.
+
+`bimap`을 정의하거나 `first`와 `second`를 모두 정의해 `Bifunctor`를 정의할 수 있습니다.
+
+`bimap`을 제공하는 경우 다음을 보장해야 합니다.
+
+```daml-force
+`bimap identity identity` ≡ `identity`
+```
+
+`first`와 `second`를 제공하는 경우 다음을 보장해야 합니다.
+
+```daml-force
+first identity ≡ identity
+second identity ≡ identity
+
+```
+
+모두 제공하는 경우 다음도 보장해야 합니다.
+
+```daml-force
+bimap f g ≡ first f . second g
+```
+
+parametricity에 따라 이 조건들은 다음을 보장합니다.
+
+```daml-force
+
+bimap  (f . g) (h . i) ≡ bimap f h . bimap g i
+first  (f . g) ≡ first  f . first  g
+second (f . g) ≡ second f . second g
+
+```
+
+Method:
+
+- `bimap` : (`a` -> `b`) -> (`c` -> `d`) -> `p` `a` `c` -> `p` `b` `d`
+  두 argument에 동시에 mapping을 적용합니다.
+
+  ```daml-force
+  bimap f g ≡ first f . second g
+  ```
+
+  예:
+
+  ```
+  >>> bimap not (+1) (True, 3)
+  (False,4)
+
+  >>> bimap not (+1) (Left True)
+  Left False
+
+  >>> bimap not (+1) (Right 3)
+  Right 4
+  ```
+- `first` : (`a` -> `b`) -> `p` `a` `c` -> `p` `b` `c`
+  첫 번째 argument에 covariant mapping을 적용합니다.
+
+  ```daml-force
+  first f ≡ bimap f identity
+  ```
+
+  예:
+
+  ```
+  >>> first not (True, 3)
+  (False,3)
+
+  >>> first not (Left True : Either Bool Int)
+  Left False
+  ```
+- `second` : (`b` -> `c`) -> `p` `a` `b` -> `p` `a` `c`
+  두 번째 argument에 covariant mapping을 적용합니다.
+
+  ```daml-force
+  second ≡ bimap identity
+  ```
+
+  예:
+
+  ```
+  >>> second (+1) (True, 3)
+  (True,4)
+
+  >>> second (+1) (Right 3 : Either Bool Int)
+  Right 4
+  ```
+
+Instance:
+
+- instance [`Bifunctor`](#class-da-bifunctor-bifunctor-68312) [`Either`](/appdev/reference/daml-standard-library/prelude#type-da-types-either-56020)
+- instance [`Bifunctor`](#class-da-bifunctor-bifunctor-68312) ()
+- instance [`Bifunctor`](#class-da-bifunctor-bifunctor-68312) `x1`
+- instance [`Bifunctor`](#class-da-bifunctor-bifunctor-68312) (`x1`, `x2`)
+- instance [`Bifunctor`](#class-da-bifunctor-bifunctor-68312) (`x1`, `x2`, `x3`)
+- instance [`Bifunctor`](#class-da-bifunctor-bifunctor-68312) (`x1`, `x2`, `x3`, `x4`)
+- instance [`Bifunctor`](#class-da-bifunctor-bifunctor-68312) (`x1`, `x2`, `x3`, `x4`, `x5`)

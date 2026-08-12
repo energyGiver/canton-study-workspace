@@ -1,0 +1,97 @@
+---
+title: "Error Codes"
+description: "Canton error code, category, gRPC status mapping, retry strategy reference"
+source_id: "SRC-A95EB2D688"
+source_path: "appdev/reference/error-codes"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "f5676893d840bf16422ee922644c1bb2977b97115830ea4842f0540601841ce0"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import DamlDocsAppdevReferenceErrorCodesL76 from "/snippets/daml-docs/appdev_reference_error-codes_L76.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/error-codes.md)을 사용하세요.
+</Warning>
+
+Canton은 gRPC response를 통해 structured error information을 반환합니다. 모든 error에는 machine-readable code, gRPC status code를 결정하는 category, human-readable description이 있습니다. 이 component를 활용해 application의 automated error handling을 구축할 수 있습니다.
+
+## Machine-readable error detail
+
+각 gRPC error response는 [rich gRPC error model](https://cloud.google.com/apis/design/errors#error_details)을 따르는 structured detail을 포함합니다.
+
+- `ErrorInfo`, mandatory -- `reason`에 error code ID를, `metadata["category"]`에 category ID를 포함합니다.
+- `RequestInfo`, mandatory -- `requestId`에 truncate되지 않은 전체 correlation ID를 포함합니다.
+- `RetryInfo`, optional -- error를 retry할 수 있는 경우 권장 retry interval을 포함합니다.
+- `ResourceInfo`, optional -- failure에 관련된 resource를 식별합니다. 예를 들어 contract, contract key, package, party, synchronizer 등이 있습니다.
+
+<Warning>
+보안을 위해 일부 error는 redact됩니다. API response는 sensitive detail을 제외하지만 server-side log에는 전체 error message가 나타납니다. 전체 error context가 필요하면 operator와 협업하세요.
+</Warning>
+
+## Category별 Retry Strategy
+
+### Automatic retry, category 1-3
+
+Category 1, 2, 3은 transient condition을 나타냅니다. Application은 이를 automatic retry해야 합니다. Category 1, UNAVAILABLE은 load balancer가 처리할 수 있으므로 빠르게 retry합니다. Category 2, ABORTED는 resource contention 문제이므로 exponential backoff를 사용합니다. Category 3, DEADLINE_EXCEEDED는 제한된 횟수로 retry하고 duplicate submission을 방지하려면 command deduplication을 사용합니다.
+
+### 수정 후 retry, category 6-8
+
+이 error는 request 자체의 문제를 나타냅니다. Category 6, UNAUTHENTICATED은 JWT token이 누락되었거나 유효하지 않다는 뜻입니다. Category 7, PERMISSION_DENIED는 token에 필요한 right가 없다는 뜻입니다. Category 8, INVALID_ARGUMENT는 system state와 관계없이 request의 형식이 잘못되었다는 뜻입니다. Retry하기 전에 application 또는 configuration의 문제를 수정하세요.
+
+### State-dependent, category 9-12
+
+이 error는 ledger의 현재 state에 따라 달라집니다. `CONTRACT_NOT_FOUND`, category 11은 다른 party가 contract를 archive한 multi-party workflow에서 예상된 결과일 수도 있고 application bug를 나타낼 수도 있습니다. Handling strategy는 application logic에 따라 달라집니다.
+
+### Retry 금지, category 4, 5, 14
+
+이 category는 internal error, security issue, unimplemented operation을 나타냅니다. Operator에게 escalate하거나 server-side log에서 detail을 확인하세요.
+
+## App developer가 자주 접하는 Error Code
+
+### Authentication and authorization
+
+| Error code | Category | Description |
+|---|---|---|
+| `UNAUTHENTICATED` | 6 | Authentication을 요구하는 participant에 JWT token이 제공되지 않음 |
+| `PERMISSION_DENIED` | 7 | JWT token에 operation을 위한 right가 부족함 |
+| `ACCESS_TOKEN_EXPIRED` | 2 | JWT token이 expired됨. 새 token을 획득할 것 |
+| `INVALID_TOKEN` | 8 | JWT token이 malformed되었거나 다른 이유로 invalid함 |
+| `STALE_STREAM_AUTHORIZATION` | 2 | Active stream 중 user right가 변경됨. Reconnect할 것 |
+
+### Contract and transaction
+
+| Error code | Category | Description |
+|---|---|---|
+| `CONTRACT_NOT_FOUND` | 11 | Contract가 존재하지 않거나 request한 party에게 visible하지 않음 |
+| `TRANSACTION_NOT_FOUND` | 11 | Transaction이 존재하지 않거나 visible하지 않음 |
+| `CONTRACT_KEY_NOT_FOUND` | 11 | 주어진 key에 해당하는 active contract가 없음 |
+| `DUPLICATE_CONTRACT_KEY` | 10 | 같은 key를 가진 contract가 이미 존재함. Canton 3.x에서 contract key semantics가 변경 중이므로 아래 note를 참고할 것 |
+| `INCONSISTENT_CONTRACTS` | 9 | Command가 reference하는 contract가 변경됨 |
+
+### Submission and processing
+
+| Error code | Category | Description |
+|---|---|---|
+| `ABORTED_DUE_TO_SHUTDOWN` | 1 | Node가 shutdown 중임. Available node로 retry할 것 |
+| `SERVER_OVERLOADED` | 2 | Node가 capacity에 도달함. Exponential backoff로 retry할 것 |
+| `SEQUENCER_REQUEST_FAILED` | 2 | Sequencer request가 fail함. 예를 들어 batch size를 초과함 |
+| `PACKAGE_SELECTION_FAILED` | 9 | Required package를 찾을 수 없거나 package가 vetted되지 않음 |
+
+## gRPC response에서 Error Detail 추출
+
+다음 Scala 예시는 `StatusRuntimeException`에서 error component를 추출하는 방법을 보여줍니다.
+
+다음 Java 예시는 동일한 extraction을 보여줍니다. Java는 Canton에서 first-class codegen support를 제공하므로 가장 일반적인 non-Scala pattern입니다.
+
+<DamlDocsAppdevReferenceErrorCodesL76 />
+
+이 error code는 동일한 error detail structure로 JSON API, HTTP Ledger API에서도 노출됩니다. 다른 language에서는 동일한 gRPC status 및 protobuf utility를 사용해 trailing metadata의 `com.google.rpc.Status` detail을 unpack하세요.
+
+## 추가 자료
+
+- [Troubleshooting cheat sheet](/appdev/troubleshooting) -- 특정 error code를 포함한 일반적인 문제의 quick-reference solution
+- [gRPC status codes](https://grpc.github.io/grpc/core/md_doc_statuscodes.html) -- 공식 gRPC status code definition
+- [gRPC rich error model](https://cloud.google.com/apis/design/errors#error_details) -- Canton response가 사용하는 error detail type

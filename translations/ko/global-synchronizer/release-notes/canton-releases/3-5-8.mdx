@@ -1,0 +1,57 @@
+---
+title: "3.5.8"
+description: "Canton 3.5.8 release note"
+source_id: "SRC-D70658ED92"
+source_path: "global-synchronizer/release-notes/canton-releases/3-5-8"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "33093be63d4eca5f67f65f31b25fda3a291dfa4e27c440c0e4927f6cbaa6f553"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/release-notes/canton-releases/3-5-8.md)을 사용하세요.
+</Warning>
+
+# Canton 3.5.8 Release
+
+Canton 3.5.8은 2026년 7월 9일에 release되었습니다.
+
+## Summary
+
+여러 operational improvement를 제공하는 maintenance release입니다.
+
+## 새로운 기능
+
+#### `TopologyManagerReadService` 및 `TopologyAggregationService` improvement
+- Topology store가 아직 initialize되지 않은 경우 service가 `TOPOLOGY_STORE_NOT_INITIALIZED` error를 반환합니다.
+  이는 다음 두 경우에 발생할 수 있습니다.
+  - Synchronizer onboarding 중 initial Topology state download 및 processing이 완료되기 전
+  - Logical Synchronizer upgrade 중 local Topology copy 또는 successor Sequencer의 Topology state download를 통해 successor store가 initialize되기 전
+- Node가 알지 못하는 Synchronizer의 Topology data를 요청하면 service가 `TOPOLOGY_STORE_NOT_FOUND` error를 반환합니다.
+- 이제 request에 Synchronizer가 지정되지 않은 경우 service는 모든 active Synchronizer의 data만 반환합니다.
+  이전에는 LSU 후 inactive predecessor Synchronizer를 포함하여 모든 Synchronizer의 data가 반환되었습니다.
+
+#### Database connection error reporting improvement
+Database call이 구성된 `postgres_data_source.network_timeout`보다 오래 걸리면 더 구체적인 새 `INDEX_DB_SQL_NETWORK_TIMEOUT_ERROR`가 log에 기록됩니다. 이는 이전에 발생하던 `INDEX_DB_SQL_NON_TRANSIENT_ERROR`를 대체합니다.
+
+### Minor Improvement
+- JSON Ledger API의 log trace correlation을 개선했습니다. 이전에 빈 trace context로 log를 남기던 package 및 health endpoint가 이제 caller의 `TraceContext`를 propagate합니다.
+- JSON Ledger API endpoint `GET /v2/interactive-submission/preferred-package-version`이 OpenAPI specification에서도 deprecated로 표시됩니다. 이전에는 textual description에서만 deprecated로 표시되었습니다. 대신 `POST /v2/interactive-submission/preferred-packages`를 사용하세요. Endpoint는 계속 작동하지만 Canton 3.6에서 제거될 예정입니다.
+
+
+## Compatibility
+
+다음 Canton protocol version이 지원됩니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Canton protocol version    | 34, 35          |
+
+Canton은 다음 dependency version을 대상으로 test되었습니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Java Runtime               | OpenJDK 64-Bit Server VM (build 21.0.12+2-nixos, mixed mode, sharing)               |
+| Postgres                   | 권장: PostgreSQL 17.10 (Debian 17.10-1.pgdg13+1) – 추가 test: PostgreSQL 14.23 (Debian 14.23-1.pgdg13+1), PostgreSQL 15.18 (Debian 15.18-1.pgdg13+1), PostgreSQL 16.14 (Debian 16.14-1.pgdg13+1)           |

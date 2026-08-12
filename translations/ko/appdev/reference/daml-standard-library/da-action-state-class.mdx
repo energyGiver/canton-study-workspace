@@ -1,0 +1,69 @@
+---
+title: "DA.Action.State.Class"
+description: "Daml module DA.Action.State.Class의 reference documentation"
+source_id: "SRC-9931B9D088"
+source_path: "appdev/reference/daml-standard-library/da-action-state-class"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "79bd17d6cfd7ed054d5bf90493fdbbf9ae9d856258ff418b25651914602cbd9e"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-standard-library/da-action-state-class.md)을 사용하세요.
+</Warning>
+
+<span id="module-da-action-state-class-12696"></span>
+
+# DA.Action.State.Class
+
+DA.Action.State.Class
+
+## Module Snapshot
+
+<CardGroup cols={2}>
+<Card title="Lifecycle">
+안정적입니다.
+</Card>
+<Card title="Notices">
+상태: `active`
+도입 버전: `3.4.9`
+제거 버전: `-`
+Warning: `0`
+Deprecation: `0`
+deprecated 시작 버전: `-`
+</Card>
+</CardGroup>
+
+## Typeclasses
+
+<span id="class-da-action-state-class-actionstate-80467"></span>
+
+### `class ActionState s m`
+
+Action `m`에는 type `s`의 state variable이 있습니다.
+
+규칙:
+  * `get *> ma  =  ma`
+  * `ma <* get  =  ma`
+  * `put a >>= get   =  put a $> a`
+  * `put a *> put b  =  put b`
+  * `(,) <$> get <*> get  =  get <&> \a -> (a, a)`
+
+비공식적으로 이 규칙들은 일반적인 할당 가능 변수와 같이 동작함을 의미합니다.
+값을 조회한다고 마법처럼 변하지 않고, 특정 값을 넣으면 이후 읽을 때도 항상 그 값을 얻으며, 값을 할당하고도 그 값을 한 번도 읽지 않으면 해당 할당은 효과가 없는 등의 성질을 가집니다.
+
+Method:
+
+- `get` : `m` `s`
+  state variable의 현재 값을 가져옵니다.
+- `put` : `s` -> `m` ()
+  state variable의 값을 설정합니다.
+- `modify` : (`s` -> `s`) -> `m` ()
+  주어진 function으로 state variable을 변경합니다.
+- `modify` : [`Action`](/appdev/reference/daml-standard-library/prelude#class-da-internal-prelude-action-68790) `m` => (`s` -> `s`) -> `m` ()
+
+Instance:
+
+- instance [`ActionState`](#class-da-action-state-class-actionstate-80467) `s` ([`State`](/appdev/reference/daml-standard-library/da-action-state#type-da-action-state-type-state-76783) `s`)

@@ -1,0 +1,85 @@
+---
+title: "3.5.6"
+description: "Canton 3.5.6 release note"
+source_id: "SRC-2F377A2035"
+source_path: "global-synchronizer/release-notes/canton-releases/3-5-6"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "d4081897dfb9fd150316ec2e2a81321e3bb914c0d14ecf1bbc3e0b47801fef0a"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/release-notes/canton-releases/3-5-6.md)을 사용하세요.
+</Warning>
+
+# Canton 3.5.6 Release
+
+Canton 3.5.6은 2026년 6월 24일에 release되었습니다.
+
+## Summary
+
+Logical Synchronizer upgrade와 관련된 드물고 심각한 bug를 수정하고 몇 가지 improvement를 제공하는 maintenance release입니다.
+
+## 새로운 기능
+
+### Minor Improvement
+- Connection pool metric:
+  - Connection 시 제공된 경우 해당 값으로 채워지는 `psid` label을 추가했습니다. Synchronizer에 두 번째로 연결할 때부터 또는 LSU 시에 해당합니다.
+  - Pool이 시작될 때 기존 metric을 모두 닫는 대신 pool이 닫힐 때 `psid`와 연결된 `connection-health` 및 `subscription-health` metric을 닫습니다.
+- com.google.protobuf library를 3.25.5 --&gt; 3.25.9로 update했습니다.
+- LSU: Upgrade time 이전 timestamp로 `AcknowledgeSigned`를 call하면 acknowledgement를 수행하지 않고 즉시 반환합니다.
+- Last activation 계산용 JDBC query를 수정했습니다. 불리한 조건(data corruption)에서는 이 query가 빈 input으로 call될 수 있으며 PostgreSQL server version 14에서 실행에 실패했습니다.
+- 잠재적인 *BREAKING* 변경: Bandwidth를 보존하기 위해 aggregatable submission이 이제 조기에 reject됩니다.
+  즉 aggregation state도 ordering 전에 check되므로 Sequencer의 synchronous submission 중에도 submission error code `SEQUENCER_AGGREGATE_SUBMISSION_ALREADY_SENT`가 반환될 수 있습니다. 또한 error 특성을 더 잘 반영하도록 gRPC error code가 `FAILED_PRECONDITION`에서 `ALREADY_EXISTS`로 변경되었습니다. Client는 이 error code를 처리하도록 update해야 합니다. Backward compatibility를 위해 PV35 이하의 async path에서는 이전 gRPC error code가 반환되며, 모든 Node를 이 변경을 지원하는 Canton version으로 upgrade한 후에만 새 capability를 활성화해야 합니다. Mediator에서는 `canton.sequencers.seq.parameters.enable-reject-delivered-aggregations-on-pv-35 = []`를 사용하여 새 capability를 비활성화할 수 있습니다. 이를 새 Mediator configuration option `canton.mediators.mymediator.parameters.delayed-verdict-sender.enabled = false`와 함께 사용할 수 있습니다. 일반적으로 Sequencer는 threshold에 도달한 후 verdict를 전송하며 이후 전송된 모든 verdict는 버려집니다. 새 option을 사용하면 threshold와 extra verdict를 즉시 전송하고 나머지 Mediator는 잠시 기다릴 수 있습니다. 이를 통해 Sequencer load를 30% 줄이고 다른 Transaction을 위한 capacity를 늘릴 수 있습니다.
+- Offline root key가 있는 Participant에서 Ledger API의 `PartyManagementService.AllocateExternalParty` endpoint를 통해 External Party를 allocate하지 못하던 issue를 수정했습니다.
+- Write 실패 후 Sequencer가 더 이상 진행하지 못하던 issue를 수정했습니다. 이제 이러한 state의 Sequencer는 `liveness` unhealthy를 report합니다.
+- User에게 CanReadAsAnyParty 및 CanExecuteAsAnyParty 권한을 부여하려면 IDP Admin permission뿐 아니라 Participant Admin permission도 필요합니다.
+
+## Bugfix
+
+### (26-004, High): LSU: Topology local copy와 purging 간 synchronization 누락
+
+#### Issue Description
+Synchronization이 없기 때문에 Topology state의 local copy가 완료되기 전에 Topology purging이 시작되어 successor에 잘못된 Topology state가 생성될 수 있습니다.
+
+이 issue는 default로 활성화되지 않는 Topology purging을 활성화한 경우에만 발생할 수 있습니다.
+
+#### Affected Deployment
+Participant Node
+
+#### Affected Version
+3.5.6 이전의 모든 version
+
+#### Impact
+Topology fork
+
+#### Symptom
+
+- Participant Node가 LSU 전에 valid했던 Topology Transaction 누락에 관한 warning/error를 발생시킵니다.
+- LSU 전에 valid했던 Topology Transaction이 누락되어 Transaction submission이 reject됩니다.
+
+#### Workaround
+Backup에서 restore하고 Topology purging이 비활성화되어 있는지 확인합니다.
+
+#### Likeliness
+드물게 발생
+
+#### Recommendation
+3.5.6으로 upgrade하세요.
+
+## Compatibility
+
+다음 Canton protocol version이 지원됩니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Canton protocol version    | 34, 35          |
+
+Canton은 다음 dependency version을 대상으로 test되었습니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Java Runtime               | OpenJDK 64-Bit Server VM (build 21.0.12+2-nixos, mixed mode, sharing)               |
+| Postgres                   | 권장: PostgreSQL 17.10 (Debian 17.10-1.pgdg13+1) – 추가 test: PostgreSQL 14.23 (Debian 14.23-1.pgdg13+1), PostgreSQL 15.18 (Debian 15.18-1.pgdg13+1), PostgreSQL 16.14 (Debian 16.14-1.pgdg13+1)           |

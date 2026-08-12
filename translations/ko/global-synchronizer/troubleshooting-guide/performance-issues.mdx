@@ -1,0 +1,167 @@
+---
+title: "Performance Issue"
+description: "느린 Transaction, resource exhaustion 및 database bottleneck 해결"
+source_id: "SRC-0CB4C1616D"
+source_path: "global-synchronizer/troubleshooting-guide/performance-issues"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "0585c90bbd93bf363cbb2fd319ffd8ddf639a93f147d18780549cb4470a7e74f"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_PERFORMANCE_ISSUES_0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-troubleshooting-guide-performance-issues-0.mdx";
+import CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_PERFORMANCE_ISSUES_POOL_HOCON_0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/docs-global-synchronizer-troubleshooting-performance-issues-pool-hocon-0.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/troubleshooting-guide/performance-issues.md)을 사용하세요.
+</Warning>
+
+Performance는 점진적으로 저하되므로 Transaction이 timeout되기 시작하거나 Validator의 event processing이 뒤처질 때까지 알아차리지 못하는 경우가 많습니다. 이 페이지에서는 가장 일반적인 performance problem과 해결 방법을 다룹니다.
+
+## 느린 Transaction
+
+Transaction latency가 증가했다면 다음 영역을 순서대로 확인하세요.
+
+### Traffic Balance
+
+Traffic balance가 낮으면 Sequencer가 Validator message를 throttle합니다. 다음 방법으로 확인하세요.
+
+<CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_PERFORMANCE_ISSUES_0 />
+
+
+`availableTraffic`이 0에 가깝거나 traffic limit을 모두 사용했다면 즉시 top-up하고 재발 방지를 위해 auto-top-up을 활성화하세요.
+
+### Database Performance
+
+Database에서 active slow query를 조회합니다.
+
+```sql
+SELECT pid, now() - query_start AS duration, query
+FROM pg_stat_activity
+WHERE state = 'active'
+ORDER BY duration DESC
+LIMIT 10;
+```
+
+몇 초 넘게 실행되는 query가 있다면 database가 bottleneck일 가능성이 큽니다. 일반적인 원인은 다음과 같습니다.
+
+- **Table이 너무 커졌습니다.** Pruning을 활성화하세요(아래 참조).
+- **Index가 누락되었습니다.** Version 또는 protocol upgrade 후 Participant database에서 `ANALYZE`를 실행하여 query planner statistic을 update하세요.
+- **IOPS가 부족합니다.** Cloud infrastructure에서 실행하는 경우 storage class를 upgrade하세요. 예를 들어 AWS에서 gp2를 gp3로 전환하고 provisioned IOPS를 늘립니다.
+
+### JVM Heap Pressure
+
+Validator process가 garbage collection에 상당한 시간을 사용하면 Transaction processing이 느려집니다. Log에서 GC pressure를 확인하세요.
+
+```
+GC overhead limit exceeded
+```
+
+또는 잦은 `Full GC` entry를 확인하세요. Heap allocation을 늘립니다.
+
+```bash
+# In Docker Compose, set JAVA_OPTS
+JAVA_OPTS="-Xmx4g -Xms4g"
+
+# In Kubernetes, set in the values file
+jvmOptions: "-Xmx4g -Xms4g"
+```
+
+JMX를 통해 heap usage를 monitor하거나 `-Xlog:gc*`를 사용해 GC logging을 활성화하세요.
+
+## Resource Exhaustion
+
+### Disk Space
+
+새 Transaction이 처리되면서 Participant database가 계속 커집니다. Pruning하지 않으면 결국 disk space가 고갈됩니다.
+
+**Symptom:**
+
+- PostgreSQL error: `could not extend file ... No space left on device`
+- Ephemeral storage limit으로 인한 Kubernetes Pod eviction
+
+**Disk usage 확인:**
+
+```bash
+# On the database host
+df -h /var/lib/postgresql/data
+
+# In Kubernetes
+kubectl exec -n validator statefulset/postgres -- df -h /var/lib/postgresql/data
+```
+
+Space를 회수하려면 **pruning을 활성화**합니다.
+
+```yaml
+participantPruningSchedule:
+  cron: "0 */10 * * * ?"
+  maxDuration: 30m
+  retention: 90d
+```
+
+Pruning을 활성화한 후 첫 실행은 이후 실행보다 훨씬 오래 걸릴 수 있습니다. Initial prune에는 `maxDuration`을 충분히 길게 설정하세요(60분 이상).
+
+### Memory
+
+Validator Pod가 OOM killer에 의해 종료된다면(exit code 137) memory limit을 늘립니다.
+
+```yaml
+# In Kubernetes values
+resources:
+  limits:
+    memory: "8Gi"
+  requests:
+    memory: "4Gi"
+```
+
+Docker Compose에서는 Docker의 total memory allocation을 최소 8GB로 늘립니다.
+
+### CPU
+
+높은 CPU usage는 일반적으로 runaway automation(tight loop에서 retry하는 script) 또는 과도한 ACS(Active Contract Set) processing 때문에 발생합니다.
+
+**원인 식별:**
+
+```bash
+# Check which threads are consuming CPU
+jcmd <pid> Thread.print | grep -A2 "java.lang.Thread.State: RUNNABLE"
+```
+
+Application에 failed Command를 retry하는 automation이 포함되어 있다면 fixed-interval retry loop 대신 exponential backoff를 사용하는지 확인하세요.
+
+## Database Query Optimization
+
+### 누락된 Index
+
+Upgrade 또는 migration 후 새 column의 index가 생성되지 않았을 수 있습니다. 대형 table에서 sequential scan을 확인하세요.
+
+```sql
+SELECT relname, seq_scan, idx_scan
+FROM pg_stat_user_tables
+WHERE seq_scan > 1000
+ORDER BY seq_scan DESC;
+```
+
+`seq_scan` count가 높고 `idx_scan` count가 낮은 table은 index 누락 candidate입니다. 필요한 index 추가 사항은 Canton release note를 참조하세요.
+
+### Connection Pool Exhaustion
+
+다음과 같은 error가 표시되는 경우:
+
+```
+HikariPool-1 - Connection is not available, request timed out after 30000ms
+```
+
+Database connection pool이 완전히 사용되고 있습니다. 원인은 다음과 같습니다.
+
+- Long-running query가 connection을 점유
+- 구성된 pool size에 비해 concurrent operation이 너무 많음
+- Database-side connection limit에 도달
+
+Canton configuration에서 pool size를 늘립니다.
+
+<CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_PERFORMANCE_ISSUES_POOL_HOCON_0 />
+
+
+PostgreSQL `max_connections` setting이 deployment의 모든 connection pool을 수용하는지도 확인하세요.

@@ -1,0 +1,97 @@
+---
+title: "Active Contracts Head Snapshot(ACHS)"
+description: "Canton Participant Node에서 ACS query를 가속하도록 ACHS 기능을 구성하고 조정합니다."
+source_id: "SRC-36C32BB4D0"
+source_path: "appdev/deep-dives/achs"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "5833801a79f47f805cafef2687817ac69131ac0d9ba8631f97c9f12b61c97a52"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/deep-dives/achs.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/optimize/achs.rst" hash="d78cfe76" */}
+
+
+Active Contracts Head Snapshot(ACHS)은 현재 active 상태인 contract의 snapshot을 지속적으로 update하여 유지하는 선택적 기능입니다. ACHS를 활성화하면 전체 event log를 scan하여 Active Contract Set을 재구성하는 대신 미리 계산된 snapshot에서 직접 읽을 수 있으므로 `GetActiveContracts`(ACS) query가 빨라집니다.
+
+ACHS는 기본적으로 비활성화되어 있습니다.
+
+## ACHS 활성화
+
+ACHS를 활성화하려면 Participant의 indexer setting 아래에서 `achs-config` block을 구성합니다.
+
+``` none
+canton.participants.<participant>.parameters.ledger-api-server.indexer.achs-config {
+    valid-at-distance-target = 1000000
+    last-populated-distance-target = 500000
+}
+```
+
+## Parameter 조정
+
+### valid-at-distance-target
+
+`valid-at-distance-target` parameter는 snapshot의 validity point를 ledger end보다 얼마나 뒤에 유지할지 event sequential ID 단위로 제어합니다. 이 validity point 이전의 offset을 대상으로 하는 ACS query는 ACHS를 사용하지 않고 filter table을 사용하는 기존 방식으로 fallback합니다.
+
+이 값은 일반적인 ACS query offset을 포함할 만큼 충분히 커야 합니다. 값이 너무 작으면 오래 실행되는 ACS query가 stream 도중 ACHS validity point가 요청한 offset을 지나가는 것을 확인하여 stream이 filter table로 fallback할 수 있습니다. 값이 너무 크면 ACHS validity point와 요청한 offset 사이에 있는 ACS tail 부분을 filter table에서 resolve해야 하므로 마지막 segment의 처리 비용이 커집니다.
+
+### last-populated-distance-target
+
+`last-populated-distance-target` parameter는 snapshot validity point보다 얼마나 뒤에 있는 contract를 ACHS에 populate할지 event sequential ID 단위로 제어합니다. Validity point 자체가 이미 ledger end보다 `valid-at-distance-target`만큼 뒤에 있으므로 population이 이루어지는 지점과 ledger end 사이의 총 거리는 `valid-at-distance-target` + `last-populated-distance-target`입니다. 이 추가 lag는 ACHS에 저장되는 수명이 짧은 contract를 제한합니다. Snapshot validity point부터 그보다 `valid-at-distance-target` event 이전까지의 window 안에서 생성되고 archive되는 contract는 snapshot에 삽입되지 않기 때문입니다.
+
+이 값을 너무 낮게 설정하면 수명이 짧은 contract를 snapshot에 기록한 직후 곧바로 삭제하여 I/O가 낭비됩니다. 너무 높게 설정하면 새로 생성되어 여전히 active인 contract가 snapshot에 나타나는 시점이 늦어지며, 이에 따라 남은 ACS tail의 비용이 증가합니다. 마지막 populated point와 ACHS validity point 사이의 gap을 채우기 위해 filter table에서 더 많은 data를 가져와야 하기 때문입니다.
+
+`daml.participant.api.indexer.deactivation_distances` histogram을 사용해 contract lifetime 분포를 확인합니다. 이상적으로 `last-populated-distance-target`은 수명이 짧은 contract 대부분이 이미 deactivation되어 snapshot에 추가되지 않을 만큼 충분히 커야 합니다.
+
+### 추가 Parameter
+
+다음 parameter로 ACHS maintenance를 세부 조정할 수 있습니다.
+
+- `population-parallelism`: 정상 operation 중 activation을 ACHS에 추가하는 parallel thread 수
+- `removal-parallelism`: 정상 operation 중 deactivation된 activation을 ACHS에서 제거하는 parallel thread 수
+- `aggregation-threshold`: ACHS maintenance work를 내보내기 전 최소 batch size(event sequential ID 단위). ACHS update 빈도를 제어합니다.
+- `init-parallelism`: 초기화 중 ACHS population 및 removal을 위한 parallel thread 수
+- `init-aggregation-threshold`: 초기화 중 ACHS maintenance를 위한 최소 batch size(event sequential ID 단위)
+- `buffer-size`: Indexer pipeline과 ACHS maintenance flow 사이의 internal buffer size
+
+## Monitoring
+
+### Log Message
+
+Query 시 ACHS validity point가 요청한 offset을 이미 지난 경우 다음 INFO-level message가 기록됩니다.
+
+``` none
+ACHS for <filter> skipped since validAt (...) already surpassed requested activeAt (...)
+```
+
+오래 실행되는 ACS query가 stream 도중 ACHS validity point가 요청한 offset을 지나가는 것을 확인하면 filter table로 fallback하고 INFO level에서 다음 message를 기록합니다.
+
+``` none
+ACHS stream for <filter> fell back to filter tables from (...) since validAt (...) surpassed activeAtEventSeqId (...)
+```
+
+### Metric
+
+ACHS 동작을 monitoring하고 조정하는 데 사용할 수 있는 metric은 다음과 같습니다.
+
+`daml.participant.api.index` 아래:
+
+- `achs_skips`: ACHS를 완전히 건너뛴 query 수(validity point 이전을 대상으로 함)
+- `achs_midstream_fallbacks`: ACHS에서 시작했지만 stream 도중 filter table로 fallback한 query 수
+
+두 counter 중 하나라도 증가하고 있다면 `valid-at-distance-target`을 높이는 방안을 고려하세요.
+
+`daml.participant.api.indexer` 아래:
+
+- `achs_valid_at`: 현재 ACHS가 유효한 범위의 마지막 event sequential ID. 요청한 offset이 이 값 이후의 event sequential ID에 mapping되는 ACS query는 ACHS에서 직접 처리할 수 있습니다.
+- `achs_last_populated`: ACHS에 activation이 추가된 마지막 event sequential ID
+- `achs_last_removed`: Deactivation을 조회하고 해당 activation을 ACHS에서 제거한 마지막 event sequential ID
+- `deactivation_distances`: Contract lifetime, 즉 activation과 deactivation 사이의 event sequential ID 거리 histogram. `last-populated-distance-target` 조정에 유용합니다.
+
+
+{/* COPIED_END */}

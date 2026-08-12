@@ -1,0 +1,87 @@
+---
+title: "Daml에서 Multi-Party Workflow 구성"
+description: "Propose-accept, delegation, authorization chain 및 atomic multi-party composition을 위한 고급 Daml pattern"
+source_id: "SRC-895203F638"
+source_path: "appdev/deep-dives/composition-multi-party"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "976c32d94df3b668dd625d9414af8ddf2f4af319947f83d102784fea8b876d77"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/deep-dives/composition-multi-party.md)을 사용하세요.
+</Warning>
+
+import DamlAppdevDeepDivesCompositionMultiPartyL117 from "/snippets/daml-docs/appdev_deep-dives_composition-multi-party_L117.mdx";
+import DamlAppdevDeepDivesCompositionMultiPartyL132 from "/snippets/daml-docs/appdev_deep-dives_composition-multi-party_L132.mdx";
+import DamlAppdevDeepDivesCompositionMultiPartyL154 from "/snippets/daml-docs/appdev_deep-dives_composition-multi-party_L154.mdx";
+import DamlAppdevDeepDivesCompositionMultiPartyL50 from "/snippets/daml-docs/appdev_deep-dives_composition-multi-party_L50.mdx";
+import DamlAppdevDeepDivesCompositionMultiPartyL78 from "/snippets/daml-docs/appdev_deep-dives_composition-multi-party_L78.mdx";
+
+
+실제 Daml application에는 서로 다른 역할, permission 및 trust relationship을 가진 여러 Party가 참여합니다. 이 deep dive에서는 단순한 양자 간 합의부터 여러 조직에 걸친 다단계 authorization chain까지, 복잡한 multi-party workflow를 구현하는 Daml design pattern을 다룹니다.
+
+## Propose-Accept Pattern
+
+Propose-accept의 대표적인 walkthrough는 [Module 2: Multi-Party Workflow](/appdev/modules/m2-multi-party-workflows#the-propose-accept-pattern)를 참조하세요. 이 deep dive에서는 해당 토대를 확장하는 추가 composition pattern에 집중합니다.
+
+## Delegation
+
+Delegation을 사용하면 한 Party가 정의된 범위 내에서 자신을 대신해 행동할 권한을 다른 Party에 부여할 수 있습니다. 공유 합의를 생성하는 propose-accept pattern과 달리 delegation은 단방향 trust relationship을 생성합니다.
+
+<DamlAppdevDeepDivesCompositionMultiPartyL50 />
+
+Owner는 operator에게 특정 operation을 허용합니다. Operator는 허용된 operation에 대해서만 `Operate` choice를 exercise할 수 있습니다. Owner는 `OperatorLicense`를 archive하여 delegation을 취소할 수 있습니다.
+
+## Multi-Step Workflow
+
+많은 business process에는 서로 다른 Party가 수행하는 일련의 action이 필요합니다. 각 단계의 output이 다음 단계의 input이 되는 contract chain으로 이를 modeling합니다.
+
+<DamlAppdevDeepDivesCompositionMultiPartyL78 />
+
+Workflow의 각 단계는 별도의 template입니다. 따라서 workflow state를 확인하고 audit할 수 있으며, ledger를 query하여 특정 trade가 어느 단계에 있는지 알 수 있습니다.
+
+## Atomic Composition
+
+Daml Transaction은 atomic합니다. Transaction의 모든 create와 archive가 성공하거나 어느 것도 실행되지 않습니다. 반드시 함께 실행되어야 하는 복잡한 operation을 구현할 때 이 특성을 사용합니다.
+
+<DamlAppdevDeepDivesCompositionMultiPartyL117 />
+
+어느 한 transfer라도 실패하면(controller가 잘못되었거나 contract가 이미 archive되었거나 assertion이 실패한 경우) 둘 다 실행되지 않습니다. 이는 delivery-versus-payment(DvP)와 다른 settlement pattern의 토대입니다.
+
+## Interface를 통한 Authorization
+
+Interface는 template가 구현할 수 있는 추상 capability를 정의합니다. 이를 사용하여 조합 가능한 authorization pattern을 만듭니다.
+
+<DamlAppdevDeepDivesCompositionMultiPartyL132 />
+
+`Transferable`을 구현하는 모든 template에는 `TransferTo` choice가 제공됩니다. Backend는 구체적인 template type을 알지 못해도 interface를 사용할 수 있으므로 여러 asset type에서 범용 transfer logic을 구현할 수 있습니다.
+
+<Note>
+Interface definition은 interface만 포함하고 template는 없는 독립 package에 배치하세요. Interface의 구조(method 및 view type)는 배포 후 수정할 수 없습니다. 변경해야 한다면 새 package에 새 interface version을 도입하세요.
+</Note>
+
+## Multi-Party Visibility Pattern
+
+Canton의 privacy model에 따라 각 Party는 자신이 stakeholder(signatory 또는 observer)인 contract만 볼 수 있습니다. Party에게 행동 권한을 부여하지 않고 더 넓은 visibility가 필요한 workflow에서는 observer pattern을 사용합니다.
+
+<DamlAppdevDeepDivesCompositionMultiPartyL154 />
+
+제3자가 Participant가 아니면서 Transaction을 확인해야 하는 규제 또는 compliance scenario에서는 해당 Party를 observer로 추가합니다. Observer는 Ledger API를 통해 contract data를 읽을 수 있지만 choice를 exercise할 수는 없습니다.
+
+## 설계 시 고려 사항
+
+Multi-party workflow를 구성할 때는 다음 사항을 고려합니다.
+
+- Signatory set을 최소화하세요. Signatory가 추가될 때마다 coordination overhead가 늘어납니다.
+- Party를 signatory로 만드는 대신 read-only access에는 observer를 사용하세요.
+- 각 Party의 choice가 template declaration에서 명확하도록 template를 설계하세요.
+- 깊은 Transaction tree, 즉 중첩된 exercise가 많은 구조는 Transaction size와 latency를 늘리므로 피하세요.
+- Workflow 단계가 ledger에 있어야 하는지, off-ledger에서 처리할 수 있는지 고려하세요.
+
+## 다음 단계
+
+- [Decentralization](/appdev/deep-dives/decentralization): 각 layer의 decentralization 전략
+- [Multi-Hosting](/appdev/deep-dives/multi-hosting): 복원력을 위해 여러 Validator에 Party 분산

@@ -1,0 +1,76 @@
+---
+title: "Admin API Reference"
+description: "Node administration에 사용하는 Canton Admin API reference documentation"
+source_id: "SRC-E94F4D6373"
+source_path: "appdev/reference/admin-api-reference"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "1f8f198a92de719d08cfedc3071001a7313e510e583f9db3ca646ee77e80a1fe"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import CantonAppdevReferenceAdminApiReferenceL58 from "/snippets/canton-docs/appdev_reference_admin-api-reference_L58.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/reference/admin-api-reference.md)을 사용하세요.
+</Warning>
+
+Admin API는 Canton participant, sequencer, mediator node에 대한 administrative access를 제공합니다. Ledger API에서 노출하지 않는 node configuration, topology management, key management, operational task에 사용됩니다.
+
+<Warning>
+Admin API를 public internet에 절대 노출하지 마세요. VPN 또는 private network에서만 access를 허용하세요. Admin API는 node에 대한 전체 administrative control을 제공합니다.
+</Warning>
+
+## Access
+
+Admin API는 gRPC를 사용하며 participant의 Admin API port에서 제공됩니다. 기본 port는 5002입니다. Admin API call을 Scala REPL로 감싸는 Canton Console을 통해서도 access할 수 있습니다.
+
+## 핵심 Service Group
+
+### Health and Status
+
+- **StatusService** - node health, readiness, connected synchronizer를 확인합니다.
+
+### Topology Management
+
+Topology command는 party-to-participant mapping, package vetting, synchronizer parameter를 제어하는 distributed topology state를 관리합니다.
+
+- **TopologyManagerReadService** - 현재 topology state를 조회합니다. 여기에는 party mapping, vetted package, namespace delegation이 포함됩니다.
+- **TopologyManagerWriteService** - topology 변경을 제안합니다. 적절한 authorization이 필요합니다.
+
+### Synchronizer Connection
+
+- **SynchronizerConnectivityService** - synchronizer에 connect, disconnect, reconnect하고 connected/registered synchronizer를 목록화합니다.
+
+### Package Management
+
+- **PackageService** - DAR package를 upload하고 package를 목록화하며 package vetting을 관리합니다.
+- **DarService** - DAR file을 upload하고 관리합니다.
+
+### Key Management
+
+- **VaultService** - cryptographic key를 관리합니다. 새 key를 생성하고, 기존 key를 목록화하며, key를 rotate합니다. External KMS integration을 지원합니다.
+
+### Pruning
+
+- **PruningService** - storage 증가를 관리하기 위해 오래된 ledger data를 prune합니다. Automatic pruning schedule을 설정합니다.
+
+### Repair
+
+- **RepairService** - disaster recovery를 위한 low-level repair operation을 제공합니다. ACS snapshot을 import/export하고 contract를 purge합니다.
+
+<Warning>
+Repair operation을 잘못 사용하면 data inconsistency가 발생할 수 있습니다. Operational documentation 또는 Canton Network support의 지시가 있을 때만 사용하세요.
+</Warning>
+
+## Canton Console Access
+
+Canton Console은 Admin API operation에 더 편리한 interface를 제공합니다. 자주 사용하는 console command는 [Essential Commands](/global-synchronizer/canton-console/essential-commands)를 참고하세요.
+
+<CantonAppdevReferenceAdminApiReferenceL58 />
+
+## 다음 단계
+
+- [API Reference](/api-reference) - Ledger API를 포함한 모든 generated API documentation의 중앙 hub
+- [Canton Console](/global-synchronizer/reference/canton-console-reference) - interactive console access

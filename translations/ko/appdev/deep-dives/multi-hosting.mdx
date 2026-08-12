@@ -1,0 +1,131 @@
+---
+title: "Multi-Hosting과 복원력"
+description: "High availability, failover 및 data resilience를 위해 여러 Validator에 Party를 분산합니다."
+source_id: "SRC-2977190F90"
+source_path: "appdev/deep-dives/multi-hosting"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "4dd43f96fc5225f7b14f986c8e83ce9b77d37a642064a8bd21fccb4a3377a65d"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/deep-dives/multi-hosting.md)을 사용하세요.
+</Warning>
+
+import CANTON_DOCS_CN_MULTI_HOSTING_0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/multi-hosting-0.mdx";
+import CANTON_DOCS_CN_MULTI_HOSTING_1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/multi-hosting-1.mdx";
+import CANTON_DOCS_CN_MULTI_HOSTING_2 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/multi-hosting-2.mdx";
+
+
+
+Multi-hosting을 사용하면 하나의 Party를 여러 Validator가 동시에 host할 수 있습니다. 한 Validator가 중단되어도 Daml logic을 변경하지 않고 다른 Validator에서 Party operation이 계속됩니다. 이 deep dive에서는 multi-hosting의 작동 방식, 사용 시점 및 설정 방법을 다룹니다.
+
+## Multi-Host가 필요한 이유
+
+단일 Validator에서 host되는 Party에는 single point of failure가 있습니다. 해당 Validator가 offline 상태가 되면 복구될 때까지 Party는 Transaction을 제출하거나 update를 받을 수 없습니다. Multi-hosting은 여러 Validator에 Party를 분산하여 이 문제를 해결합니다.
+
+Multi-hosting을 사용하는 일반적인 이유는 다음과 같습니다.
+
+- **High availability**: Downtime을 허용할 수 없는 business-critical Party
+- **Geographic redundancy**: 지역 장애를 견디기 위해 서로 다른 지역에 배치한 Validator
+- **Validator migration**: Downtime 없이 한 Validator에서 다른 Validator로 Party를 점진적으로 이전
+- **조직 복원력**: 독립적으로 관리되는 여러 Validator에 운영 risk 분산
+- **Malicious operator 방어**: Threshold 값을 1보다 크게 설정하면 단일 malicious operator의 유효하지 않은 activity를 방지할 수 있습니다.
+
+## Multi-Hosting 작동 방식
+
+Multi-hosting은 Canton Topology system을 통해 관리됩니다. Party-to-Participant Mapping은 특정 Party를 어느 Validator가 host하며 각 Validator가 어떤 permission(Submission, Confirmation 또는 Observation)을 갖는지 선언합니다.
+
+Local Party를 Submission permission이 있는 여러 Validator가 host하면 그중 어느 Validator든 Party를 대신하여 command를 제출할 수 있습니다. External Party의 경우 Party를 Confirmation permission으로 host하는 어느 Validator에서든 제출할 수 있습니다. Synchronizer는 모든 host Validator에 Transaction view를 전달하므로 각 Validator가 Party contract에 대한 일관된 view를 유지합니다.
+
+### Confirmation Threshold
+
+Transaction이 진행되기 전에 몇 개의 host Validator가 confirm해야 하는지 정하는 Confirmation Threshold를 구성할 수 있습니다. Threshold가 1이면(지정하지 않았을 때의 기본값) 하나의 host Validator가 confirm하면 됩니다. Threshold가 더 높으면 여러 Validator가 독립적으로 validate하고 confirm해야 하므로 latency가 추가되는 대신 integrity 보장이 강화됩니다. Threshold가 1보다 크면 malicious Validator로부터 보호합니다.
+
+### Permission Level
+
+각 host Validator에는 세 가지 permission level 중 하나가 할당됩니다.
+
+- **Submission**: Validator가 Party를 대신하여 command를 제출할 수 있습니다. 이 permission은 local Party, 즉 Validator가 key를 관리하는 Party에만 사용할 수 있습니다.
+- **Confirmation**: Validator가 Party의 Transaction을 confirm할 수 있습니다. Active hosting의 표준 permission입니다.
+- **Observation**: Validator가 Party의 Transaction data를 받지만 submit하거나 confirm할 수 없습니다. Read-only replica, audit node 또는 migration target 사전 준비에 유용합니다.
+
+## 새 Party의 Multi-Hosting 설정
+
+Multi-hosting에는 Party를 여러 Validator에 mapping하는 Topology Transaction이 필요합니다. 모든 host Validator가 mapping에 서명해야 하며, 모든 당사자가 동의해야 active 상태가 되는 proposal입니다.
+
+<Note>
+아래 지침은 **새 External Party**에 적용됩니다. 기존 Party에 host node를 추가하는 작업은 [Party Replication](/global-synchronizer/production-operations/party-management#simple-party-replication)이라고 하며 더 복잡한 별도 workflow입니다. External Party의 경우 자체 key로 Party to Participant Mapping을 authorize, 즉 서명해야 합니다. 자세한 내용은 [External Signing onboarding documentation](/appdev/deep-dives/external-signing-onboarding)을 참조하세요.
+</Note>
+
+### Ledger API 사용
+
+External Party를 onboarding할 때 Topology request에 추가 Validator를 포함합니다.
+
+```json
+{
+  "otherConfirmingParticipantUids": ["PAR::participant2::1220a4d7..."],
+  "confirmationThreshold": 1
+}
+```
+
+{/* COPIED_START source="docs-website:canton/3.5/sdk/tutorials/app-dev/external_signing_onboarding_multihosted.rst" hash="multi-hosting-lapi" */}
+
+생성된 Topology Transaction은 각 host Validator의 Ledger API에 upload해야 합니다. Local Validator를 명시한 Party-to-Participant Mapping을 allocate endpoint를 통해 upload하면 Local Validator가 자동으로 서명하고 network로 전달합니다. Topology Transaction이 완전히 authorize되지 않아 일부 signature가 아직 누락된 경우 proposal로 취급됩니다.
+
+Proposal이 network에 이미 존재하면 새 signature가 proposal에 merge됩니다. 충분한 signature가 모이면 Topology Transaction이 accept되어 state에 추가됩니다.
+
+{/* COPIED_END */}
+
+### Canton Console 사용
+
+Canton Console에서 직접 multi-hosting을 설정할 수도 있습니다. 두 Validator 모두에 대한 console access가 있는 Internal Party에 유용한 방식입니다.
+
+첫 번째 Validator에서 hosting proposal을 생성합니다.
+
+
+<CANTON_DOCS_CN_MULTI_HOSTING_0 />
+
+
+두 번째 Validator에서 pending proposal을 나열하고 authorize합니다.
+
+
+<CANTON_DOCS_CN_MULTI_HOSTING_1 />
+
+
+두 Validator가 모두 서명하면 Party가 두 node에서 모두 host되는 것으로 표시됩니다. 다음과 같이 verify할 수 있습니다.
+
+
+<CANTON_DOCS_CN_MULTI_HOSTING_2 />
+
+
+## Data Resilience Pattern
+
+Multi-hosting은 compute resilience, 즉 Transaction을 제출할 수 있는지를 해결합니다. 하지만 data resilience, 즉 Party의 contract state를 query할 수 있는지도 필요합니다. Participant Query Store(PQS)는 Canton application의 주요 query layer이며 그 availability는 Validator 자체만큼 중요합니다.
+
+Host Validator 전반의 high availability 및 PQS database와 application table 공유를 포함한 PQS deployment pattern은 [PQS(Participant Query Store)](/sdks-tools/development-tools/pqs#high-availability-and-database-sharing)를 참조하세요.
+
+## Multi-Hosting과 다른 복원력 전략의 선택 기준
+
+Multi-hosting은 여러 복원력 접근 방식 중 하나입니다. Requirement에 따라 선택하세요.
+
+- **Database backup이 있는 Single Validator**: 일부 downtime을 허용할 수 있고 backup에서 복원할 수 있을 때 충분합니다. 운영이 가장 간단합니다.
+- **Multi-hosting(둘 이상의 Validator)**: 지속적인 availability와 malicious Validator에 대한 방어가 필요한 Party에 적합합니다. 두 Validator가 독립적으로 state를 유지하므로 failover가 즉시 이루어집니다.
+- **Observation node가 있는 Multi-hosting**: Confirmation overhead를 늘리지 않고 query scaling 또는 audit 목적으로 Observation permission이 있는 Validator를 read-only replica로 추가합니다.
+- **여러 Synchronizer에 걸친 Multi-hosting**: 여러 Synchronizer에 걸친 workflow에서는 각 host Validator를 서로 다른 Synchronizer에 연결하여 복원력과 Multi-Synchronizer access를 모두 제공할 수 있습니다.
+
+## 운영 시 고려 사항
+
+- **비용**: Confirmation permission이 있는 각 host Validator는 독립적으로 Transaction을 처리하고 confirm하므로 Traffic consumption이 비례하여 증가합니다. 정확한 비용 증가는 Confirming Validator 수와 Confirmation Threshold에 따라 달라집니다.
+- **일관성**: 모든 host Validator는 동일한 Transaction을 봅니다. Synchronizer가 이를 보장하지만 PQS query에서는 offset이 약간 다를 수 있다는 점을 고려해야 합니다.
+- **Key Management**: 각 host Validator는 자체 signing key를 보유합니다. 한 Validator의 key가 compromise되어도 다른 Validator에는 영향을 주지 않지만 Party security는 Threshold configuration에 따라 달라집니다.
+- **Host 제거**: Validator에서 Party hosting을 중지하려면 mapping에서 해당 Validator를 제거하는 새 Topology Transaction을 제출합니다. Party contract는 다른 host Validator에서 계속 접근할 수 있습니다.
+
+## 다음 단계
+
+- [Decentralization](/appdev/deep-dives/decentralization): Multi-hosting이 Canton decentralization 범위에서 차지하는 위치
+- [Composition 및 Multi-Party Workflow](/appdev/deep-dives/composition-multi-party): Multi-party interaction을 위한 Daml pattern
+
+{/* Mintlify preview rebuild marker. */}

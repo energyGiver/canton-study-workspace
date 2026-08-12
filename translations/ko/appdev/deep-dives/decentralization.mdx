@@ -1,0 +1,100 @@
+---
+title: "Decentralization"
+description: "Single Validator부터 BFT Synchronizer까지 Canton stack의 각 layer에 적용하는 decentralization 전략"
+source_id: "SRC-474FE426C5"
+source_path: "appdev/deep-dives/decentralization"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "347aa0f52bb0d1a873c10b648beee4a729bbe1ee86e0f999499d5a79ee73f179"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/deep-dives/decentralization.md)을 사용하세요.
+</Warning>
+
+Canton은 다양한 수준의 decentralization을 지원합니다. 처음부터 완전한 decentralization을 선택할 필요는 없습니다. 단순한 Single Validator 설정으로 시작한 뒤 application의 trust requirement가 변화함에 따라 점진적으로 decentralize할 수 있습니다.
+
+## Decentralization 범위
+
+Canton architecture에는 decentralization 방식을 선택할 수 있는 여러 layer가 있으며, 각각 trust에 미치는 영향이 다릅니다.
+
+- **Application layer**: Application의 Party를 몇 개의 Validator가 host하는지(예: multi-hosted Party 또는 decentralized Party)
+- **Synchronizer layer**: Synchronizer 자체를 하나의 entity가 운영하는지 여러 entity가 운영하는지
+- **Network layer**: Application이 Global Synchronizer, 전용 Synchronizer 또는 둘 다 사용하는지
+
+각 layer에서 decentralization 수준이 높아질수록 단일 entity에 대한 trust는 줄지만 운영 복잡성은 커집니다.
+
+## Single Validator
+
+가장 단순한 deployment입니다. Application의 모든 Party를 Global Synchronizer에 연결된 하나의 Validator가 host합니다.
+
+**Trust model:** Validator operator(자신 또는 제3자)가 Transaction을 정직하게 처리하고 data를 사용 가능한 상태로 유지할 것이라고 신뢰합니다. Global Synchronizer의 BFT 특성은 여전히 Synchronizer layer attack으로부터 보호하지만, application 입장에서 해당 Validator는 single point of failure입니다.
+
+**적합한 경우:**
+- 초기 개발 및 prototype
+- 모든 Party가 같은 조직에 속한 application
+- 신뢰할 수 있는 단일 operator를 허용할 수 있는 scenario
+
+## Multi-Validator
+
+Application의 서로 다른 Party를 각기 독립적으로 운영되는 서로 다른 Validator가 host합니다. 이는 Canton Network에서 조직 간 application을 운영할 때의 표준 deployment입니다.
+
+**Trust model:** 각 조직은 자체 Validator를 운영하고 자체 data를 제어합니다. Canton privacy model에 따라 각 Validator는 자체 Party와 관련된 Transaction만 볼 수 있으므로 어느 단일 Validator도 모든 Transaction을 볼 수 없습니다. Synchronizer는 암호화된 Transaction view를 적절한 Validator로 routing합니다. 각 Party는 자체 Validator operator를 신뢰합니다.
+
+**적합한 경우:**
+- 조직 간 workflow(trade, settlement, supply chain)
+- Party가 단일 operator에게 자신의 data를 맡기고 싶지 않은 application
+- Canton Network의 production application
+
+## Multi-Hosted Party
+
+하나의 Party를 여러 Validator가 동시에 host할 수 있습니다. 한 Validator가 중단되어도 해당 Party의 operation은 다른 Validator에서 계속됩니다. Application의 Daml logic을 변경하지 않으면서 복원력을 제공합니다.
+
+**Trust model:** Party는 자신을 host하는 Validator 중 적어도 하나를 신뢰합니다. 합의 threshold에 도달하려면 Party를 host하는 모든 Validator가 동의해야 하므로 Validator operator에 대한 trust가 약화됩니다.
+Threshold가 1이면 Party와 관련된 Transaction을 host Validator 중 어느 것이든 처리할 수 있습니다. 이는 single point of failure risk를 줄이지만 여러 Validator를 신뢰해야 합니다.
+
+**적합한 경우:**
+- 단일 Validator의 downtime을 허용할 수 없는 high availability requirement
+- Geographic redundancy를 원하는 조직
+- Validator 간 점진적 migration
+
+구현에 대한 자세한 내용은 [Multi-Hosting](/appdev/deep-dives/multi-hosting)을 참조하세요.
+
+## BFT Synchronizer
+
+Global Synchronizer 자체가 decentralized되어 있습니다. Byzantine Fault Tolerant(BFT) consensus protocol인 CometBFT를 사용하는 Super Validator(SV) 집합이 이를 운영합니다. 어느 단일 SV도 Transaction을 censor하거나 ordering을 조작할 수 없습니다.
+
+**Trust model:** Global Synchronizer는 SV 중 최대 3분의 1이 faulty하거나 malicious한 상황을 허용합니다. SV의 3분의 2가 정직한 한 Synchronizer는 올바르게 작동합니다. 이는 Canton이 infrastructure layer에서 제공하는 가장 높은 수준의 decentralization입니다.
+
+**적합한 경우:**
+- Global Synchronizer는 이미 BFT이므로 이를 사용하는 모든 application이 자동으로 이점을 얻습니다.
+- 여러 operator가 전용 Synchronizer를 공동 운영하려는 경우 전용 Synchronizer도 BFT로 구성할 수 있습니다.
+
+## Multi-Synchronizer
+
+Canton은 Validator를 여러 Synchronizer에 동시에 연결하는 기능을 지원합니다. Party는 Global Synchronizer와 하나 이상의 private(extension) Synchronizer에 contract를 보유하고 이들 사이에서 contract를 Reassignment할 수 있습니다.
+
+**Trust model:** 서로 다른 workflow에 서로 다른 trust 특성을 적용할 수 있습니다. 민감한 양자 간 Transaction은 두 Party가 운영하는 전용 Synchronizer를 사용할 수 있고, Canton Coin을 이용한 settlement는 public Global Synchronizer에서 이루어질 수 있습니다.
+
+**적합한 경우:**
+- Privacy/performance requirement가 혼합된 application
+- Public settlement와 private processing을 모두 활용하는 workflow
+- Data 처리 위치에 관한 규제 requirement 또는 특정 privacy requirement가 있는 조직
+
+## 수준 선택
+
+적절한 decentralization 수준은 application의 구체적인 requirement에 따라 달라집니다.
+
+- **단순하게 시작**: 조직 간 workflow가 Canton의 주요 use case이므로 대부분 application은 Multi-Validator deployment로 시작합니다.
+- **복원력 추가**: Application에 high availability가 필요하면 multi-hosting으로 전환합니다.
+- **BFT 기본 제공**: Global Synchronizer의 application은 별도의 application-level configuration 없이 BFT 특성의 이점을 얻습니다.
+- **Privacy 추가**: 일부 workflow에 private processing이 필요하면 Multi-Synchronizer deployment를 사용합니다.
+
+처음부터 가장 높은 수준의 decentralization을 목표로 설계할 필요는 없습니다. Canton architecture를 사용하면 Daml code를 변경하지 않고도 Validator를 추가하거나, 추가 node에 Party를 host하거나, 새 Synchronizer에 연결하여 점진적으로 decentralize할 수 있습니다.
+
+## 다음 단계
+
+- [Multi-Hosting](/appdev/deep-dives/multi-hosting): 여러 Validator에 Party를 분산하는 구현 세부 정보
+- [Composition 및 Multi-Party Workflow](/appdev/deep-dives/composition-multi-party): Multi-party interaction을 위한 Daml pattern

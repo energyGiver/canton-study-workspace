@@ -1,0 +1,51 @@
+---
+title: "Splice Metrics Reference"
+description: "Canton Network Validator 및 Super Validator Node가 expose하는 monitoring metric reference"
+source_id: "SRC-0D4FC00DE4"
+source_path: "global-synchronizer/reference/metrics-reference"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "7415f1e384b7b04b9f7892173f6ae86a2a24bef4e2b942ba37aabf69fed4b6c4"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/reference/metrics-reference.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/deployment/observability/validator_health.rst" hash="eed61697" */}
+
+Readiness endpoint를 사용하여 Validator health를 확인할 수 있습니다. 모든 CN application은 readiness 및 liveness probe에 사용하는 `/readyz`와 `/livez` endpoint를 제공합니다.
+
+- **Readiness 확인**
+
+  - Kubernetes에서는 readiness 및 liveness probe가 이미 구성되어 있습니다.
+
+    다음 Command를 사용하여 Validator readiness를 수동으로 확인할 수도 있습니다.
+
+    ```yaml
+    kubectl exec <pod-name> -n <namespace> -- curl -v http://localhost:5003/api/validator/readyz
+    ```
+
+  - Docker에서는 예를 들어 다음 Command를 실행하여 container 내부의 Validator liveness를 확인합니다.
+
+    ```yaml
+    docker exec <container-name> -- curl -v http://localhost:5003/api/validator/livez
+    ```
+
+  두 경우 모두 Validator가 ready 및 live 상태이면 HTTP status code 200이 반환되어야 합니다.
+
+- **[Metric](/global-synchronizer/production-operations/splice-metrics-overview) 사용**
+
+  `splice_store_last_ingested_record_time_ms` metric은 각 Validator store에 마지막으로 ingest된 record time을 나타냅니다. Node의 일반적인 activity를 추적하는 데 사용할 수 있습니다.
+
+  {/* DIVERGENCE: updated locally to reflect CIP-0096 (validator liveness rewards discontinued, $0 cap effective 2026-04-30); upstream splice source (docs/src/deployment/observability/validator_health.rst, hash eed61697) still describes liveness rewards as an active mechanism. See cf-docs issue #1049. */}
+
+  - 이 값이 시간에 따라 계속 증가하면 Node가 active 상태이며 Network와 동기화를 유지하고 있는 것입니다. Node가 실제로 새 Transaction을 ingest할 때만 이 값이 증가한다는 점에 유의하세요. 이전에는 Validator liveness reward가 매 round마다 mint Transaction을 보장하여 live Validator의 lag를 20분 이내로 유지했습니다. [CIP-0096](https://github.com/canton-foundation/cips/blob/main/cip-0096/cip-0096.md)에 따라 2026년 4월 30일부터 liveness reward가 중단되었으므로 다른 Transaction activity가 없는 Validator는 더 이상 매 round마다 Transaction을 ingest하지 않을 수 있습니다. 고정된 lag bound를 가정하지 말고 이 metric으로 activity를 확인하세요.
+  - 값이 계속 고정되어 있다면 추가 조사가 필요할 수 있습니다.
+
+  이 metric에 관한 자세한 내용과 전용 dashboard `Splice Store Last Ingested Record Time`에서 이를 시각화하는 방법은 Metrics documentation을 참조하세요.
+
+
+{/* COPIED_END */}

@@ -1,0 +1,80 @@
+---
+title: "3.5.5"
+description: "Canton 3.5.5 release note"
+source_id: "SRC-CB66A7296E"
+source_path: "global-synchronizer/release-notes/canton-releases/3-5-5"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "d6deb785bcaf16b013ccfb0d84d0f7a3fd85359654cf24e20cb10d21d980470a"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/release-notes/canton-releases/3-5-5.md)을 사용하세요.
+</Warning>
+
+# Canton 3.5.5 Release
+
+Canton 3.5.5는 2026년 6월 17일에 release되었습니다.
+
+## Summary
+
+Logical Synchronizer upgrade와 관련된 드물지만 심각한 bug를 수정하고 몇 가지 improvement를 제공하는 maintenance release입니다.
+
+## 새로운 기능
+
+### Vetted package의 dependency를 unvet 가능(PV35 이상)
+Protocol version 35 이상을 실행하는 Synchronizer에서는 API의 vetting state 변경 operation(예: ``/package-vetting/update``)을 통해 force flag를 사용하지 않고도 vetted package의 dependency를 안전하게 unvet할 수 있습니다.
+이는 PV35 이상에서 Daml Transaction Node package의 dependency가 vet 상태일 것을 요구하지 않는 Transaction protocol과 일치합니다.
+**Note**: Protocol version 34 이하에서는 package dependency vetting restriction이 변경되지 않습니다.
+
+### Minor Improvement
+
+- Docker base image를 1.0.8에서 1.0.9로 update하여 grpc-health-probe를 v0.4.52로 올렸습니다.
+- 전체 response buffering을 피하고 대형 gRPC response를 streaming하여 memory footprint를 줄였습니다.
+- Closed subscription 때문에 event signal을 queue에 넣을 수 없는 경우 Sequencer log message를 개선하고 이를 error로 설명하지 않도록 했습니다.
+- 새 Participant config `canton.participants.myParticipant.parameters.connect-to-synchronizers-on-startup`을 사용하여 startup 시 Synchronizer 자동 연결을 비활성화할 수 있습니다.
+
+## Bugfix
+
+### (26-003, High): Stuck Sequencer restart로 인한 Sequencer fork
+
+#### Issue Description
+LSU 전후에 block을 처리하지 않는 Sequencer가 upgrade time 이후이면서 아직 어떤 block도 처리하기 전에 restart되면 crash recovery의 일부로 traffic data entry를 삭제합니다.
+
+#### Affected Deployment
+Sequencer Node
+
+#### Affected Version
+3.5.5 이전의 모든 version
+
+#### Impact
+Sequencer fork
+
+#### Symptom
+Participant가 연결할 수 없거나(traffic에 대한 consensus를 얻지 못함) `SEQUENCER_FORK_DETECTED`로 disconnect됩니다.
+
+#### Workaround
+Backup에서 restore합니다.
+
+#### Likeliness
+드물게 발생
+
+#### Recommendation
+3.5.5로 upgrade하세요.
+
+## Compatibility
+
+다음 Canton protocol version이 지원됩니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Canton protocol version    | 34, 35          |
+
+Canton은 다음 dependency version을 대상으로 test되었습니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Java Runtime               | OpenJDK 64-Bit Server VM (build 21.0.12+2-nixos, mixed mode, sharing)               |
+| Postgres                   | 권장: PostgreSQL 17.10 (Debian 17.10-1.pgdg13+1) – 추가 test: PostgreSQL 14.23 (Debian 14.23-1.pgdg13+1), PostgreSQL 15.18 (Debian 15.18-1.pgdg13+1), PostgreSQL 16.14 (Debian 16.14-1.pgdg13+1)           |

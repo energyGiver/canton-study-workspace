@@ -1,0 +1,65 @@
+---
+title: "3.5.4"
+description: "Canton 3.5.4 release note"
+source_id: "SRC-7057D52C66"
+source_path: "global-synchronizer/release-notes/canton-releases/3-5-4"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "c3520ac579e1c2d13fa7139932eaf9e08628d81f6e9ca091d577dc383c85b415"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/release-notes/canton-releases/3-5-4.md)을 사용하세요.
+</Warning>
+
+# Canton 3.5.4 Release
+
+Canton 3.5.4는 2026년 6월 10일에 release되었습니다.
+
+## Summary
+
+Synchronizer 수정 관련 bug를 해결하고 몇 가지 improvement를 제공하는 maintenance release입니다.
+
+## 새로운 기능
+
+### Minor Improvement
+- Config flag `canton.participants.participant.parameter.alpha-multi-synchronizer-support`의 name이 `enable-all-ledger-api-reassignments`로 변경되었습니다.
+- Participant Topology feature flag `EnableAlphaMultiSynchronizer`의 name이 `EnableMultiSynchronizer`로 변경되었습니다.
+- ACS commitment processor와 store 사이의 coordination을 개선하여 Participant shutdown 중 benign `DB_STORAGE_DEGRADATION` warning이 발생하지 않도록 했습니다.
+
+#### Synchronizer 목록 조회 관련 improvement
+
+- Message `ListRegisteredSynchronizersRequest`에 새 `all_statuses` attribute가 추가되어 active 상태인 Synchronizer뿐 아니라 등록된 모든 Synchronizer를 retrieve할 수 있습니다.
+- 등록된 모든 Synchronizer를 나열하는 새 Console Command `participant1.synchronizers.list_all_registered`가 추가되었습니다.
+
+#### BFT Orderer database pruning 및 performance 관련 improvement
+
+- BFT Orderer database table에 database table partitioning이 도입되었습니다.
+- 이러한 변경으로 pruning operation 및 optimize된 여러 다른 query의 performance가 크게 개선됩니다.
+- 중요: 이러한 변경에는 새 automatic database migration 실행이 필요하며, migration 시점에 영향받는 table에 있는 data 양에 따라 상당한 시간이 걸릴 수 있습니다.
+
+## Bugfix
+
+- Physical Synchronizer ID가 설정된 경우 `ModifySynchronizer` request가 실패하던 issue를 수정했습니다.
+
+## Compatibility
+
+다음 Canton protocol version이 지원됩니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Canton protocol version    | 34, 35          |
+
+Canton은 다음 dependency version을 대상으로 test되었습니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Java Runtime               | OpenJDK 64-Bit Server VM (build 21.0.12+2-nixos, mixed mode, sharing)               |
+| Postgres                   | 권장: PostgreSQL 17.10 (Debian 17.10-1.pgdg13+1) – 추가 test: PostgreSQL 14.23 (Debian 14.23-1.pgdg13+1), PostgreSQL 15.18 (Debian 15.18-1.pgdg13+1), PostgreSQL 16.14 (Debian 16.14-1.pgdg13+1)           |
+
+
+## 향후 예정 사항
+
+현재 다음 항목을 작업하고 있습니다.

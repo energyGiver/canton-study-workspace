@@ -1,0 +1,173 @@
+---
+title: "Ledger API Client Application의 Open Tracing"
+description: "Ledger API와 interaction하는 Daml application에 OpenTelemetry 기반 distributed tracing을 추가합니다."
+source_id: "SRC-E8D7EF08B2"
+source_path: "appdev/deep-dives/open-tracing"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "bdef149459f2d7fc5bd7303a42e7b7cd5d9172d43eab0bcf29e1f0849408522d"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/deep-dives/open-tracing.md)을 사용하세요.
+</Warning>
+
+{/* DIVERGENCE: replaced "Daml Enterprise" with "Canton" -- there's no more separate Enterprise product/edition as of Canton 3.5; upstream docs-website source (docs/replicated/daml/3.4/sdk/sdlc-howtos/applications/observe/open-tracing.rst, hash 03a5f726) still uses the old name. Related to issue #615. */}
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/sdlc-howtos/applications/observe/open-tracing.rst" hash="03a5f726" */}
+
+## 소개
+
+Distributed tracing은 Canton과 같은 microservice 환경의 performance issue를 해결하는 데 사용되는 기법입니다. Canton의 tracing은 monitoring 전용 page(Canton Monitoring / Tracing)에서 설명합니다. 이 가이드에서는 client와 Canton software component 사이에서 distributed trace와 span이 끊김 없이 이어지도록 **Ledger API** client application을 작성하는 방법을 설명합니다.
+
+OpenTelemetry를 지원하는 **Ledger API** client application을 자세히 알아보려면 이 [GitHub example](https://github.com/digital-asset/ex-java-bindings-with-opentelemetry)을 참조하세요.
+
+이 example은 익숙한 `PingPong` application의 변형을 구현합니다. **Ledger API**에 대한 모든 call을 OpenTelemetry trace context로 장식하고 과거 Transaction에서 trace context를 가져오는 방법을 보여줍니다.
+
+Open tracing이라는 더 넓은 주제에 익숙해지려면 [OpenTelemetry project의 공식 page](https://opentelemetry.io/)를 참조하세요. Java의 open tracing에 대해 더 알아보려면 [Java OpenTelemetry instrumentation](https://opentelemetry.io/docs/instrumentation/java/) documentation이 훌륭한 reference와 example을 제공합니다.
+
+## OpenTelemetry 환경 설정
+
+Distributed tracing의 실제 동작을 관찰하려면 먼저 OpenTelemetry backend server를 시작해야 합니다. Canton은 Jaeger, Zipkin 또는 OTLP format을 지원합니다. 다음 Docker command로 Jaeger server를 시작할 수 있습니다.
+
+    docker run --rm -it --name jaeger\
+      -p 16686:16686 \
+      -p 14250:14250 \
+      jaegertracing/all-in-one:1.22.0
+
+또한 OpenTelemetry exporting을 활성화하여 Canton을 시작해야 합니다. 새 `jaeger.conf` configuration file을 정의하면 됩니다.
+
+```
+canton.monitoring.tracing.tracer.exporter {
+  type = jaeger
+  address = "localhost" // it's the default, so can be omitted
+  port = 14250 // it's the default, so can be omitted
+}
+```
+
+다음으로 `jaeger.conf`를 configuration 조합에 포함하여 소규모 Canton installation을 실행합니다.
+
+    bin/canton -c examples/01-simple-topology/simple-topology.conf -c jaeger.conf
+
+## Project Dependency 추가
+
+OpenTelemetry library를 사용하려면 project의 `pom.xml`에 다음 **Maven** dependency를 추가합니다.
+
+```java
+<dependency>
+    <groupId>io.opentelemetry</groupId>
+    <artifactId>opentelemetry-api</artifactId>
+    <version>1.29.0</version>
+</dependency>
+<dependency>
+    <groupId>io.opentelemetry</groupId>
+    <artifactId>opentelemetry-exporter-jaeger</artifactId>
+    <version>1.29.0</version>
+</dependency>
+<dependency>
+    <groupId>io.opentelemetry</groupId>
+    <artifactId>opentelemetry-sdk</artifactId>
+    <version>1.29.0</version>
+</dependency>
+<dependency>
+    <groupId>io.opentelemetry.instrumentation</groupId>
+    <artifactId>opentelemetry-grpc-1.6</artifactId>
+    <version>1.29.0-alpha</version>
+</dependency>
+```
+
+<Note>
+각 dependency의 version number를 사용하려는 version으로 바꾸세요. 사용할 수 있는 version은 [Maven Central Repository](https://search.maven.org/artifact/io.opentelemetry/opentelemetry-api)에서 확인합니다.
+</Note>
+
+## 초기화
+
+OpenTelemetry를 사용하려는 application은 span 생성, propagation 및 export와 같은 distributed tracing process의 여러 측면을 orchestrate하는 다수의 global controller object를 초기화해야 합니다. 필요한 정확한 controller 집합은 application마다 다를 수 있습니다. Example에서 선택한 [OpenTelemetryUtil.createOpenTelemetry method](https://github.com/digital-asset/ex-java-bindings-with-opentelemetry/blob/master/src/main/java/examples/pingpong/codegen/OpenTelemetryUtil.java)를 참고할 수 있습니다. 이는 완전하게 작동하는 Jaeger trace reporting에 필요한 최소 집합입니다.
+
+다음 단계는 gRPC communication의 HTTP2 header 안에서 trace context를 propagate하는 GRPCTelemetry controller를 초기화하는 것입니다.
+
+Example은 필요한 초기화 단계를 OpenTelemetryUtil class constructor로 감쌉니다. 다음만 호출하면 됩니다.
+
+```java
+OpenTelemetryUtil openTelemetry = new OpenTelemetryUtil(APP_ID);
+```
+
+GRPCTelemetry controller는 gRPC communication에 사용하는 **Netty** channel 위에 mount해야 하는 client call interceptor를 구성할 수 있습니다. Example은 channel builder level에서 interceptor를 inject하는 `withClientInterceptor`라는 유용한 helper method를 제공합니다.
+
+```java
+ManagedChannel channel = openTelemetry.withClientInterceptor(
+    ManagedChannelBuilder
+        .forAddress(host, port)
+        .usePlaintext()
+    )
+    .build();
+```
+
+이제 자체 span을 생성하고 **Jaeger** server로 report하며 **Ledger API**에도 투명하게 propagate할 준비가 되었습니다.
+
+## 새 Span 시작
+
+gRPC call을 보내기 전에 곧 시작할 multi-component interaction을 포괄하는 새 span을 생성해야 합니다. Example은 임의 function 실행을 새로 생성된 span으로 감싸는 `runInNewSpan`이라는 유용한 combinator를 제공합니다.
+
+```java
+public <R> R runInNewSpan(String spanName, Supplier<R> body) {
+    Span span = tracer.spanBuilder(spanName).startSpan();
+    try(Scope ignored = span.makeCurrent()) {
+        return body.get();
+    } finally {
+        span.end();
+    }
+}
+```
+
+Command 제출에는 다음과 같이 사용할 수 있습니다.
+
+```java
+openTelemetry.runInNewSpan("createInitialContracts", () -> submissionService.submit(request));
+```
+
+초기화 단계에서 mount한 gRPC interceptor가 나머지 작업을 내부적으로 처리하여 span이 Canton까지 전달되도록 보장합니다.
+
+## 서로 다른 Application에서 Span 이어가기
+
+경우에 따라 하나의 workflow를 구성하는 여러 Daml Transaction에 걸쳐 같은 span을 이어가고 싶을 수 있습니다. 서로 다른 client application instance가 ledger를 통해 interaction하지만 전체 대화를 하나의 일관된 span 연속으로 보아야 할 때 특히 유용할 수 있습니다. 이 경우 다음 **Ledger API** call이 반환하는 Transaction, TransactionTree 또는 Completion record에서 과거 Transaction과 연결된 trace context를 추출할 수 있습니다.
+
+- `UpdateService.GetUpdates`
+- `UpdateService.GetUpdateTrees`
+- `UpdateService.GetTransactionByOffset`
+- `UpdateService.GetTransactionById`
+- `UpdateService.GetTransactionTreeByOffset`
+- `UpdateService.GetTransactionTreeById`
+- `UpdateService.GetUpdateByOffset`
+- `UpdateService.GetUpdateById`
+- `CommandCompletionService.CompletionStream`
+
+Example에 구현된 helper function으로 context를 추출할 수 있습니다.
+
+```java
+Context extractedContext = openTelemetry.contextFromDamlTraceContext(tx.getTraceContext());
+```
+
+그런 다음 추출한 context를 current context 상태로 승격해야 합니다. 그러면 원래 trace context를 현재 operation으로 이어갈 수 있습니다. 여기에서도 example이 편리한 combinator를 제공합니다.
+
+```java
+openTelemetry.runInOpenTelemetryScope(extractedContext, () -> ... );
+```
+
+마지막으로 원래 context 안에서 새 span을 생성합니다. 이미 익숙한 `runInNewSpan` method를 사용할 수 있습니다.
+
+```java
+openTelemetry.runInNewSpan("follow", () ->
+  submissionService.submit(SubmitRequest.toProto(ledgerId, commandsSubmission))
+)
+```
+
+## 전체 조합
+
+Client application이 규칙을 따르고 trace context를 중단 없이 전달하면 Jaeger UI에서 전체 workflow를 하나의 긴 span 연속으로 볼 수 있습니다. Example application을 실행하면서 수집한 span diagram은 다음과 같습니다.
+
+![images/jaegerPingSpans.png](./images/jaegerPingSpans.png)
+
+{/* COPIED_END */}

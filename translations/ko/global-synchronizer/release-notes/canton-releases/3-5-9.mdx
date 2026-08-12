@@ -1,0 +1,52 @@
+---
+title: "3.5.9"
+description: "Canton 3.5.9 release note"
+source_id: "SRC-A5FC80C9C1"
+source_path: "global-synchronizer/release-notes/canton-releases/3-5-9"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "8718a1b27777fc85488270e00c42f68a670b0ca00f37ef6c66cccc63f66e6eb6"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/release-notes/canton-releases/3-5-9.md)을 사용하세요.
+</Warning>
+
+# Canton 3.5.9 Release
+
+Canton 3.5.9는 2026년 7월 16일에 release되었습니다.
+
+## Summary
+
+몇 가지 minor improvement를 제공하는 maintenance release입니다.
+
+## 새로운 기능
+
+### Minor Improvement
+- `pg_dump` 실행과 충돌하지 않도록 DB locking scheme을 개선하고 완화했습니다. 또한 lock contention이 발생하면 ERROR log에 `INDEX_DB_LOCK_TIMEOUT_ERROR`를 emit하여 더 잘 확인할 수 있도록 했습니다.
+- TRUNCATE query에서 VACUUM 및 opportunistic REINDEX DB query로 전환했습니다. 이 접근 방식은 external process와 충돌할 가능성이 더 낮은 lower-level DB lock을 사용합니다.
+- 대형 Transaction indexing에 대한 tolerance를 높이기 위해 Indexer Database call의 default Network timeout을 20초에서 40초로 늘렸습니다(`canton.participants.<participant_name>.parameters.ledger-api-server-parameters.indexer.postgres-data-source.network-timeout`).
+- Crash 이전의 uncommitted update를 하나 이상 처리하거나 그러한 update가 없을 때까지 crash 후 Indexer를 unhealthy 상태로 report합니다. Queue의 problematic update로 인해 Indexer가 crash loop에 들어가면 Participant가 unhealthy status가 됩니다.
+- Traffic enforcement service에 `ReadAsAnyParty` permission을 부여하는 internal 변경을 도입했습니다. 이에 따라 authentication을 활성화한 local traffic enforcement를 실행하기 위해 non-standard config option을 사용할 필요가 없습니다.
+  ```
+  canton.participants.<participant_name>.ledger-api.admin-token-config.act-as-any-party-claim=true
+  canton.participants.parameters.non-standard-config=true
+  ```
+- 이제 Participant Admin Party는 submission 중 traffic enforcement balance check에서 제외됩니다.
+
+## Compatibility
+
+다음 Canton protocol version이 지원됩니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Canton protocol version    | 34, 35          |
+
+Canton은 다음 dependency version을 대상으로 test되었습니다.
+
+| Dependency                 | Version                    |
+|----------------------------|----------------------------|
+| Java Runtime               | OpenJDK 64-Bit Server VM (build 21.0.12+2-nixos, mixed mode, sharing)               |
+| Postgres                   | 권장: PostgreSQL 17.10 (Debian 17.10-1.pgdg13+1) – 추가 test: PostgreSQL 14.23 (Debian 14.23-1.pgdg13+1), PostgreSQL 15.18 (Debian 15.18-1.pgdg13+1), PostgreSQL 16.14 (Debian 16.14-1.pgdg13+1)           |
