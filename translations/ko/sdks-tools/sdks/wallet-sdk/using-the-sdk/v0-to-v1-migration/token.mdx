@@ -1,0 +1,411 @@
+---
+title: "Token Namespace"
+description: "Token transfer, holding, UTXO 및 allocation을 v0에서 v1으로 migration"
+source_id: "SRC-14369D9C5E"
+source_path: "sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/token"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "71ed40c3305eff6974647a60f31621dbd903d07b0855c131a1dcd4e6351ffb82"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/token.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="splice-wallet-kernel:docs/wallet-integration-guide/src/wallet-sdk-v1-migration-guide/token.rst" hash="7742b4ca" */}
+
+
+Token namespace는 Canton Network의 transfer, holding, UTXO 및 allocation을 포함한 token operation을 manage하는 method를 제공합니다. v1의 Token namespace는 v0의 `tokenStandard` controller를 대체합니다.
+
+## Availability and extensibility
+
+Token namespace는 configuration이 필요한 extended namespace입니다. SDK 생성 중 또는 나중에 `extend()` method를 사용해 initialize할 수 있습니다.
+
+**Option 1: SDK 생성 중 initialize**
+
+``` typescript
+import { SDK, localNetStaticConfig } from '@canton-network/wallet-sdk'
+
+export default async function () {
+    const sdk = await SDK.create({
+        auth: global.TOKEN_PROVIDER_CONFIG_DEFAULT,
+        ledgerClientUrl: localNetStaticConfig.LOCALNET_APP_USER_LEDGER_URL,
+        token: global.TOKEN_NAMESPACE_CONFIG,
+    })
+
+    const partyId = EXISTING_PARTY_1
+
+    // token namespace is now available
+    await sdk.token.utxos.list({ partyId })
+}
+```
+
+**Option 2: extend()로 나중에 Token namespace 추가**
+
+``` typescript
+import { SDK, localNetStaticConfig } from '@canton-network/wallet-sdk'
+
+export default async function () {
+    // Create basic SDK first
+    const basicSDK = await SDK.create({
+        auth: global.TOKEN_PROVIDER_CONFIG_DEFAULT,
+        ledgerClientUrl: localNetStaticConfig.LOCALNET_APP_USER_LEDGER_URL,
+    })
+
+    // Extend with token namespace when needed
+    const extendedSDK = await basicSDK.extend({
+        token: global.TOKEN_NAMESPACE_CONFIG,
+    })
+
+    const partyId = EXISTING_PARTY_1
+
+    // Now token namespace is available
+    await extendedSDK.token.utxos.list({ partyId })
+}
+```
+
+## Key changes from v0 to v1
+
+v0는 `sdk.setPartyId()`로 설정하는 implicit Party context와 `tokenStandard` controller를 사용했습니다.
+
+v1의 `token` namespace는 다음 방식을 사용합니다.
+
+- 각 operation에 `partyId`를 명시적으로 전달
+- Configuration으로 namespace initialize
+- Logical grouping인 `transfer`, `utxos`, `allocation`을 통해 operation에 접근
+
+<div className="before-after">
+
+``` javascript
+sdk.setPartyId(myPartyId)
+const holdings = await sdk.tokenStandard?.listHoldingTransactions()
+```
+
+---
+
+``` javascript
+const holdings = await sdk.token.holdings({ partyId: myPartyId })
+```
+
+</div>
+
+이를 통해 thread-safe concurrent operation과 더 명확한 code organization을 제공합니다.
+
+## Transfers
+
+**Transfer 생성**
+
+<div className="before-after">
+
+``` javascript
+const transfer = await sdk.tokenStandard.createTransfer(
+    senderPartyId,
+    recipientPartyId,
+    amount.toString(),
+    {
+      instrumentId: 'Amulet',
+      instrumentAdmin: instrumentAdminPartyId
+    },
+    registryUrl,
+    memo
+)
+```
+
+---
+
+``` javascript
+const [command, disclosedContracts] = await sdk.token.transfer.create({
+    sender: senderPartyId,
+    recipient: recipientPartyId,
+    amount: amount.toString(),
+    instrumentId: 'Amulet',
+    registryUrl,
+    inputUtxos: ['utxo-1', 'utxo-2'],
+    memo: 'Payment for services',
+})
+```
+
+</div>
+
+**Transfer accept, reject 또는 withdraw**
+
+<div className="before-after">
+
+``` javascript
+await sdk.tokenStandard.exerciseTransferInstructionChoice(transferCid, choiceType /* 'Accept' | 'Withdraw' | 'Reject' */)
+```
+
+---
+
+``` javascript
+// Accept transfer
+const [acceptCommand, disclosed1] = await sdk.token.transfer.accept({
+    transferInstructionCid,
+    registryUrl,
+})
+
+// Reject transfer
+const [rejectCommand, disclosed2] = await sdk.token.transfer.reject({
+    transferInstructionCid,
+    registryUrl,
+})
+
+// Withdraw transfer
+const [withdrawCommand, disclosed3] = await sdk.token.transfer.withdraw({
+    transferInstructionCid,
+    registryUrl,
+})
+```
+
+</div>
+
+**Pending transfer list**
+
+<div className="before-after">
+
+``` javascript
+await sdk.setPartyId(partyId)
+const pending = await sdk.tokenStandard
+    .fetchPendingTransferInstructionView()
+```
+
+---
+
+``` javascript
+const pending = await sdk.token.transfer.pending(myPartyId)
+```
+
+</div>
+
+## Holdings
+
+Holding은 Party의 token ownership transaction history를 나타냅니다.
+
+<div className="before-after">
+
+``` javascript
+await sdk.setPartyId(partyId)
+const holdings = await sdk.tokenStandard
+    .listHoldingTransactions()
+```
+
+---
+
+``` javascript
+const holdings = await sdk.token.holdings({ partyId })
+```
+
+</div>
+
+Pagination을 위한 offset도 지정할 수 있습니다.
+
+``` javascript
+const holdings = await sdk.token.holdings({
+    partyId,
+    afterOffset: 10,
+    beforeOffset: 100,
+})
+```
+
+Update ID별 transaction은 다음과 같습니다.
+
+<div className="before-after">
+
+``` javascript
+await sdk.setPartyId(partyId)
+const tx = await sdk.tokenStandard.getTransactionById('my-update-id')
+```
+
+---
+
+``` javascript
+const tx = await sdk.token.transactionsById({ updateId, partyId })
+```
+
+</div>
+
+## UTXOs
+
+UTXO(Unspent Transaction Output)는 token balance를 나타내는 실제 Holding Contract입니다.
+
+**UTXO list**
+
+<div className="before-after">
+
+``` javascript
+await sdk.setPartyId(partyId)
+// List all UTXOs including locked ones
+const allUtxos = await sdk.tokenStandard?.listHoldingUtxos()
+
+// List only unlocked UTXOs
+const usableUtxos = await sdk.tokenStandard?.listHoldingUtxos(false)
+```
+
+---
+
+``` javascript
+// List only unlocked UTXOs (default)
+const usableUtxos = await sdk.token.utxos.list({
+    partyId
+})
+
+// List all UTXOs including locked ones
+const allUtxos = await sdk.token.utxos.list({
+    partyId,
+    includeLocked: true,
+})
+```
+
+</div>
+
+Pagination과 limit를 위한 추가 parameter를 지정할 수 있습니다.
+
+``` javascript
+const utxos = await sdk.token.utxos.list({
+    partyId,
+    includeLocked: false,
+    limit: 100,
+    offset: 0,
+    continueUntilCompletion: false,
+})
+```
+
+**UTXO merge**
+
+Merge는 작은 UTXO 여러 개를 더 큰 UTXO로 consolidate해 performance를 개선합니다.
+
+<div className="before-after">
+
+``` javascript
+await sdk.setPartyId(partyId)
+const [commands, disclosedContracts] =
+    await sdk.tokenStandard.mergeHoldingUtxos(nodeLimit)
+```
+
+---
+
+``` javascript
+const [commands, disclosedContracts] = await sdk.token.utxos.merge({
+    partyId,
+    nodeLimit: 200,
+    memo: 'merge-utxos',
+})
+```
+
+</div>
+
+Merge operation은 UTXO를 instrument별로 group화하고 self-transfer를 생성해 consolidate합니다. Merge할 특정 UTXO를 선택적으로 제공할 수 있습니다.
+
+``` javascript
+const [commands, disclosedContracts] = await sdk.token.utxos.merge({
+    partyId,
+    inputUtxos,
+    memo: 'custom merge',
+})
+```
+
+## Allocation
+
+Allocation은 새 token의 issuance와 distribution을 처리합니다.
+
+**Pending allocation list**
+
+<div className="before-after">
+
+``` javascript
+await sdk.setPartyId(partyId)
+// Allocation requests
+const requests = await sdk.tokenStandard
+    .fetchPendingAllocationRequestView()
+
+// Allocation instructions
+const instructions = await sdk.tokenStandard
+    .fetchPendingAllocationInstructionView()
+
+// Allocations
+const allocations = await sdk.tokenStandard
+    .fetchPendingAllocationView()
+```
+
+---
+
+``` javascript
+// All pending allocations (default)
+const allocations = await sdk.token.allocation.pending(myPartyId)
+```
+
+</div>
+
+`pending` method는 allocation type별 filter를 위한 선택적 Interface ID를 받습니다.
+
+``` javascript
+import {
+    ALLOCATION_REQUEST_INTERFACE_ID,
+    ALLOCATION_INSTRUCTION_INTERFACE_ID,
+    ALLOCATION_INTERFACE_ID,
+} from '@canton-network/core-token-standard'
+
+// Filter by specific type
+const requests = await sdk.token.allocation.pending(
+    myPartyId,
+    ALLOCATION_REQUEST_INTERFACE_ID
+)
+```
+
+**Allocation execute, withdraw 또는 cancel**
+
+<div className="before-after">
+
+``` javascript
+const [command, disclosedContracts] = await sdk.tokenStandard.exerciseAllocationChoice(allocationCid, choice /* 'ExecuteTransfer' | 'Withdraw' | 'Cancel' */)
+```
+
+---
+
+``` javascript
+// Execute allocation
+const [executeCommand, disclosedContracts1] = await sdk.token.allocation.execute({
+    allocationCid,
+    asset
+})
+
+ // Withdraw allocation
+const [withdrawCommand, disclosedContracts2] = await sdk.token.allocation.withdraw({
+    allocationCid,
+    asset,
+})
+
+// Cancel allocation
+const [cancelCommand, disclosedContracts3] = await sdk.token.allocation.cancel({
+    allocationCid,
+    asset,
+})
+```
+
+</div>
+
+## Migration reference
+
+| v0 method                                                 | v1 method                                                                                 |
+|-----------------------------------------------------------|-------------------------------------------------------------------------------------------|
+| `sdk.tokenStandard.createTransfer`                        | `sdk.token.transfer.create`                                                               |
+| `sdk.tokenStandard.exerciseTransferInstructionChoice`     | `sdk.token.transfer.accept` / `sdk.token.transfer.reject` / `sdk.token.transfer.withdraw` |
+| `sdk.tokenStandard.fetchPendingTransferInstructionView`   | `sdk.token.transfer.pending`                                                              |
+| `sdk.tokenStandard.listHoldingTransactions({partyId})`    | `sdk.token.holdings({partyId})`                                                           |
+| `sdk.tokenStandard.listHoldingUtxos()`                    | `sdk.token.utxos.list({partyId})`                                                         |
+| `sdk.tokenStandard.mergeHoldingUtxos`                     | `sdk.token.utxos.merge`                                                                   |
+| `sdk.tokenStandard.fetchPendingAllocationRequestView`     | `sdk.token.allocation.pending(partyId, ALLOCATION_REQUEST_INTERFACE_ID)`                  |
+| `sdk.tokenStandard.fetchPendingAllocationInstructionView` | `sdk.token.allocation.pending(partyId, ALLOCATION_INSTRUCTION_INTERFACE_ID)`              |
+| `sdk.tokenStandard.fetchPendingAllocationView`            | `sdk.token.allocation.pending(partyId)`                                                   |
+
+
+## See also
+
+- [v0 to v1 migration overview](/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration)
+- [Migration cheat sheet](/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/migration-cheat-sheet)
+- [Configuration](/sdks-tools/sdks/wallet-sdk/using-the-sdk/configuration): SDK configuration
+- [Preparing and signing a transaction](/sdks-tools/sdks/wallet-sdk/guides/preparing-and-signing-a-transaction): Transaction lifecycle
+
+{/* COPIED_END */}

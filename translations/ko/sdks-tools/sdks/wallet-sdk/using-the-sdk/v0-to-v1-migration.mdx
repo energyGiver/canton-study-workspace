@@ -1,0 +1,239 @@
+---
+title: "SDK v0 to v1 Migration Guide"
+description: "Wallet SDK v0에서 v1으로 migration"
+source_id: "SRC-F57434C830"
+source_path: "sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "727aa94affa2746769720041c69036fd5f51c49b1f7d141e76912895cf7964a9"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration.md)을 함께 확인하세요.
+</Warning>
+
+Wallet SDK v1은 v0과 backward-compatible하지 않습니다.
+
+**Quick link**
+
+- [Configuration](/sdks-tools/sdks/wallet-sdk/using-the-sdk/configuration): 상세 configuration guide
+- [Preparing and signing a transaction](/sdks-tools/sdks/wallet-sdk/guides/preparing-and-signing-a-transaction): Transaction prepare 및 signing
+- [Migration cheat sheet](/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/migration-cheat-sheet): 전체 v0 → v1 method lookup
+
+Configure() 및 connect() pattern을 제거하고 static configuration 또는 Ledger API capability가 있는 Provider를 전달하도록 변경했습니다.
+
+Auth config와 ledgerClientUrl을 제공하는 static configuration initialization은 다음과 같습니다.
+
+```typescript
+import { SDK, localNetStaticConfig } from "@canton-network/wallet-sdk";
+
+export default async function () {
+  const sdk = await SDK.create({
+    auth: {
+      method: "self_signed",
+      issuer: "unsafe-auth",
+      credentials: {
+        clientId: "ledger-api-user",
+        clientSecret: "unsafe",
+        audience: "https://canton.network.global",
+        scope: "",
+      },
+    },
+    ledgerClientUrl: new URL("http://localhost:2975"),
+    token: {
+      registries: [
+        new URL("http://localhost:2000/api/validator/v0/scan-proxy"),
+      ],
+      auth: global.TOKEN_PROVIDER_CONFIG_DEFAULT,
+    },
+    amulet: {
+      scanApiUrl: localNetStaticConfig.LOCALNET_SCAN_API_URL,
+      auth: TOKEN_PROVIDER_CONFIG_DEFAULT,
+      registryUrl: localNetStaticConfig.LOCALNET_REGISTRY_API_URL,
+    },
+    asset: {
+      registries: [localNetStaticConfig.LOCALNET_REGISTRY_API_URL],
+      auth: TOKEN_PROVIDER_CONFIG_DEFAULT,
+    },
+  });
+
+  const myParty = global.EXISTING_PARTY_1;
+
+  await sdk.token.utxos.list({ partyId: myParty });
+
+  await sdk.amulet.traffic.status();
+
+  // OR, you can defer loading config by calling .extend()
+
+  const basicSDK = await SDK.create({
+    auth: {
+      method: "self_signed",
+      issuer: "unsafe-auth",
+      credentials: {
+        clientId: "ledger-api-user",
+        clientSecret: "unsafe",
+        audience: "https://canton.network.global",
+        scope: "",
+      },
+    },
+    ledgerClientUrl: new URL("http://localhost:2975"),
+  });
+
+  // Extend with token namespace
+  const tokenExtendedSDK = await basicSDK.extend({
+    token: {
+      validatorUrl: new URL("http://localhost:2000/api/validator"),
+      registries: [
+        new URL("http://localhost:2000/api/validator/v0/scan-proxy"),
+      ],
+      auth: global.TOKEN_PROVIDER_CONFIG_DEFAULT,
+    },
+  });
+
+  // Now token namespace is available
+  await tokenExtendedSDK.token.utxos.list({ partyId: myParty });
+
+  // Can extend further with more namespaces
+  const fullyExtendedSDK = await tokenExtendedSDK.extend({
+    amulet: {
+      validatorUrl: localNetStaticConfig.LOCALNET_APP_VALIDATOR_URL,
+      scanApiUrl: localNetStaticConfig.LOCALNET_SCAN_API_URL,
+      auth: global.TOKEN_PROVIDER_CONFIG_DEFAULT,
+      registryUrl: localNetStaticConfig.LOCALNET_REGISTRY_API_URL,
+    },
+  });
+
+  // Now both token and amulet are available
+  await fullyExtendedSDK.token.utxos.list({ partyId: myParty });
+  await fullyExtendedSDK.amulet.traffic.status();
+}
+```
+
+Provider initialization: Provider는 최종적으로 Ledger(JSON LAPI)와 interaction하는 abstraction이며 dApp consumer, direct ledger user 또는 Wallet Connect 같은 alternative transport channel에 맞게 구현할 수 있습니다.
+
+```javascript
+// Notice that `auth` and `ledgerClientUrl` are no longer needed
+// when supplying sdk with custom provider
+const sdk = await SDK.create(config, provider);
+```
+
+## Namespace changes
+
+Business context에 따라 service layer를 적절히 분리하기 위해 controller를 제거하고 namespace로 교체했습니다. SDK를 initialize하면 users, keys, ledger 및 party namespace에 접근할 수 있습니다. Amulet, token, asset 및 events namespace는 `.extend()` method를 통해 별도 config로 initialize할 수 있습니다.
+
+## Find your migration path
+
+Migration할 작업과 일치하는 페이지로 이동하세요.
+
+<CardGroup cols={2}>
+  <Card
+    title="Allocate or list parties"
+    icon="users"
+    href="/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/party"
+  >
+    Internal/External Party, offline signing 및 `setPartyId` 교체
+  </Card>
+  <Card
+    title="Transfers, holdings, UTXOs, allocations"
+    icon="arrow-right-arrow-left"
+    href="/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/token"
+  >
+    `tokenStandard` transfer, holding, UTXO 및 allocation API 교체
+  </Card>
+  <Card
+    title="Users and rights"
+    icon="user-gear"
+    href="/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/user"
+  >
+    별도 admin/user ledger controller 없이 user 생성 및 right 부여
+  </Card>
+  <Card
+    title="Canton Coin, traffic, preapprovals, tap"
+    icon="coins"
+    href="/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/amulet"
+  >
+    Amulet 전용 traffic, preapproval, featured-app 및 tap flow migration
+  </Card>
+  <Card
+    title="Prepare, sign, execute, ACS, DARs"
+    icon="file-signature"
+    href="/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/ledger"
+  >
+    `prepareSignExecuteAndWaitFor`를 prepare/sign/execute chain으로 교체
+  </Card>
+  <Card
+    title="Discover assets and instruments"
+    icon="magnifying-glass"
+    href="/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/asset"
+  >
+    Dedicated asset namespace를 통해 instrument list 및 search
+  </Card>
+  <Card
+    title="Keys and events"
+    icon="key"
+    href="/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration#keys-and-events"
+  >
+    Key generation 및 ledger update/completion subscription
+  </Card>
+  <Card
+    title="Full method cheat sheet"
+    icon="table"
+    href="/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/migration-cheat-sheet"
+  >
+    검색 가능한 v0 controller → v1 namespace method mapping table
+  </Card>
+</CardGroup>
+
+## Removed functionality
+
+다음 method가 제거됐습니다.
+
+`sdk.connect()`은 SDK 생성 시 연결되므로 더 이상 필요하지 않습니다. `sdk.connectAdmin()`도 필요하지 않으며 admin operation은 ledger namespace에서 제공되고 right는 token에서 추출합니다. `sdk.connectTopology()`도 더 이상 필요하지 않습니다. gRPC endpoint가 제거되고 Ledger API endpoint로 교체됐습니다. `sdk.setPartyId()` 대신 각 operation에 `partyId`를 명시적으로 전달합니다.
+
+<div className="before-after">
+
+```javascript
+sdk.setPartyId(myPartyId);
+const holdingTransactionsmyPartyId =
+  await sdk.tokenStandard?.listHoldingTransactions();
+sdk.setPartyId(myPartyId2);
+const holdingTransactionsmyPartyId2 =
+  await sdk.tokenStandard?.listHoldingTransactions();
+```
+
+---
+
+```javascript
+const holdingTransactionsmyPartyId = await token.holdings(myPartyId);
+const holdingTransactionsmyPartyId2 = await token.holdings(myPartyId2);
+```
+
+</div>
+
+v0의 controller와 SDK는 stateful이었습니다. v1에서는 각 function에 Party information을 명시적으로 전달해야 합니다. 이를 통해 여러 Party로 action할 수 있고 concurrent use에서 thread safety를 확보합니다.
+
+## Keys and events
+
+**keys** namespace는 basic SDK에서 항상 사용할 수 있습니다. Standalone key-pair helper 대신 사용하세요.
+
+| v0                | v1                    |
+| ----------------- | --------------------- |
+| `createKeyPair()` | `sdk.keys.generate()` |
+
+**events** namespace는 `userLedger`의 ledger update 및 completion subscription을 대체합니다. `amulet`, `token`, `asset`과 마찬가지로 creation 시점 또는 `.extend()`를 통해 configure하는 extended namespace입니다.
+
+| v0                                      | v1                       |
+| --------------------------------------- | ------------------------ |
+| `sdk.userLedger.subscribeToUpdates`     | `sdk.events.updates`     |
+| `sdk.userLedger.subscribeToCompletions` | `sdk.events.completions` |
+
+모든 namespace의 전체 method map은 [migration cheat sheet](/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/migration-cheat-sheet)를 참조하세요.
+
+## See also
+
+- [Configuration](/sdks-tools/sdks/wallet-sdk/using-the-sdk/configuration)
+- [User management](/sdks-tools/sdks/wallet-sdk/using-the-sdk/user-management)
+- [Preparing and signing a transaction](/sdks-tools/sdks/wallet-sdk/guides/preparing-and-signing-a-transaction)
+- [Creating an external party](/sdks-tools/sdks/wallet-sdk/guides/creating-an-external-party)

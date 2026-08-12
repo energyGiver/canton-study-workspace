@@ -1,0 +1,67 @@
+---
+title: "Migration cheat sheet"
+description: "Wallet SDK v0에서 v1 method로 빠르게 변환하는 mapping reference"
+source_id: "SRC-710CD9DC56"
+source_path: "sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/migration-cheat-sheet"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "a2e318a436465b4e0b7452f1d340bb760e57b58f01191b41cb4eb205ae490775"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/migration-cheat-sheet.md)을 함께 확인하세요.
+</Warning>
+
+이 table에서 v0 controller method에 대응하는 v1 method를 찾을 수 있습니다. Context와 변경 전/후 예제는 [migration overview](/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration) 및 각 namespace 페이지를 참조하세요.
+
+## Migration reference table
+
+| v0 controller + method                                               | v1 namespace + method                                                                           |
+|----------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+| `createKeyPair()`                                                    | `sdk.keys.generate()`                                                                           |
+| `sdk.userLedger.signAndAllocateExternalParty(privateKey, partyHint)` | `sdk.party.external.create(publicKey, {partyHint}).sign(privateKey).execute()`                  |
+| `sdk.userLedger.listWallets()`                                       | `sdk.party.list()`                                                                              |
+| `sdk.userLedger.prepareSignExecuteAndWaitFor`                        | `sdk.ledger.prepare({partyId, commands, disclosedContracts}).sign(privateKey).execute(partyId)` |
+| `sdk.userLedger.activeContracts`                                     | `sdk.ledger.acs.read`                                                                           |
+| `sdk.adminLedger.uploadDar`                                          | `sdk.ledger.dar.upload`                                                                         |
+| `sdk.userLedger.isPackageUploaded`                                   | `sdk.ledger.dar.check`                                                                          |
+| `sdk.adminLedger.createUser`                                         | `sdk.user.create`                                                                               |
+| `sdk.userLedger.grantRights`                                         | `sdk.user.rights.grant`                                                                         |
+| `sdk.tokenStandard.createTransfer`                                   | `sdk.token.transfer.create`                                                                     |
+| `sdk.tokenStandard.exerciseTransferInstructionChoice`                | `sdk.token.transfer.accept` / `sdk.token.transfer.reject` / `sdk.token.transfer.withdraw`       |
+| `sdk.tokenStandard.fetchPendingTransferInstructionView`              | `sdk.token.transfer.pending`                                                                    |
+| `sdk.tokenStandard.listHoldingTransactions({partyId})`               | `sdk.token.holdings`                                                                            |
+| `sdk.tokenStandard.listHoldingUtxos()`                               | `sdk.token.utxos.list({partyId})`                                                               |
+| `sdk.tokenStandard.mergeHoldingUtxos`                                | `sdk.token.utxos.merge`                                                                         |
+| `sdk.tokenStandard.fetchPendingAllocationRequestView`                | `sdk.token.allocation.pending(partyId, ALLOCATION_REQUEST_INTERFACE_ID)`                        |
+| `sdk.tokenStandard.fetchPendingAllocationInstructionView`            | `sdk.token.allocation.pending(partyId, ALLOCATION_INSTRUCTION_INTERFACE_ID)`                    |
+| `sdk.tokenStandard.fetchPendingAllocationView`                       | `sdk.token.allocation.pending(partyId)`                                                         |
+| `sdk.tokenStandard.getAllocationExecuteTransferChoiceContext(cId)`   | `sdk.token.allocation.context.execute`                                                          |
+| `sdk.tokenStandard.getAllocationWithdrawChoiceContext(cId)`          | `sdk.token.allocation.context.withdraw`                                                         |
+| `sdk.tokenStandard.getAllocationCancelChoiceContext(cId)`            | `sdk.token.allocation.context.cancel`                                                           |
+| `sdk.tokenStandard.getMemberTrafficStatus`                           | `sdk.amulet.traffic.status`                                                                     |
+| `sdk.tokenStandard.buyMemberTraffic`                                 | `sdk.amulet.traffic.buy`                                                                        |
+| `sdk.userLedger.createTransferPreapprovalCommand`                    | `sdk.amulet.preapproval.command.create`                                                         |
+| `sdk.tokenStandard.getTransferPreApprovalByParty`                    | `sdk.amulet.preapproval.fetchStatus`                                                            |
+| `sdk.tokenStandard.createRenewTransferPreapproval`                   | `sdk.amulet.preapproval.renew`                                                                  |
+| `sdk.tokenStandard.createCancelTransferPreapproval`                  | `sdk.amulet.preapproval.command.cancel`                                                         |
+| `sdk.tokenStandard.createTap`                                        | `sdk.amulet.tap`                                                                                |
+| `sdk.tokenStandard.lookupFeaturedApps`                               | `sdk.amulet.featuredApp.rights`                                                                 |
+| `sdk.tokenStandard.selfGrantFeatureAppRights`                        | `sdk.amulet.featuredApp.grant`                                                                  |
+| `sdk.tokenStandard.getInstrumentById`                                | `sdk.asset.find`                                                                                |
+| `sdk.tokenStandard.listInstruments`                                  | `sdk.asset.list`                                                                                |
+| `sdk.userLedger.subscribeToUpdates`                                  | `sdk.events.updates`                                                                            |
+| `sdk.userLedger.subscribeToCompletions`                              | `sdk.events.completions`                                                                        |
+
+
+## Related pages
+
+- [v0 to v1 migration overview](/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration)
+- [Party namespace](/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/party)
+- [Token namespace](/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/token)
+- [User namespace](/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/user)
+- [Amulet namespace](/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/amulet)
+- [Ledger namespace](/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/ledger)
+- [Asset namespace](/sdks-tools/sdks/wallet-sdk/using-the-sdk/v0-to-v1-migration/asset)

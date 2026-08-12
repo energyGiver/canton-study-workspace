@@ -1,0 +1,64 @@
+---
+title: "Registering Plugins"
+description: "Plugin system을 사용해 custom method로 Wallet SDK 확장"
+source_id: "SRC-5F6D63B1A1"
+source_path: "sdks-tools/sdks/wallet-sdk/using-the-sdk/registering-plugins"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "f601a85a5ed35a04fc10231fe0e3bafb322adf4b82a17a60f99b12af74e36b17"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/wallet-sdk/using-the-sdk/registering-plugins.md)을 함께 확인하세요.
+</Warning>
+
+Wallet SDK는 plugin system을 통해 기능 확장을 지원합니다. Plugin을 사용하면 SDK context 및 logger 접근을 유지하면서 SDK instance에 custom method와 기능을 추가할 수 있습니다.
+
+### Creating and Registering a Plugin
+
+Plugin을 만들려면 `SDKPlugin` class를 extend하고 custom 기능을 구현합니다. Plugin은 원하는 property name을 key로, plugin constructor를 value로 갖는 record를 받는 `registerPlugins` method로 register합니다.
+
+``` typescript
+import { SDK, SDKContext, SDKPlugin } from '@canton-network/wallet-sdk'
+
+export default async function () {
+    const sdk = (
+        await SDK.create({
+            auth: {
+                method: 'self_signed',
+                issuer: 'unsafe-auth',
+                credentials: {
+                    clientId: 'ledger-api-user',
+                    clientSecret: 'unsafe',
+                    audience: 'https://canton.network.global',
+                    scope: '',
+                },
+            },
+            ledgerClientUrl: 'http://localhost:2975',
+        })
+    ).registerPlugins({
+        myPlugin: class extends SDKPlugin {
+            // wallet-sdk plugin should always accept SDKContext
+            constructor(protected readonly ctx: SDKContext) {
+                super('myPlugin', ctx)
+            }
+
+            myMethod() {
+                // do some logic
+                return
+            }
+        },
+    })
+
+    sdk.myPlugin.myMethod()
+}
+```
+
+### Key Points
+
+- **Plugin Constructor**: Plugin class는 constructor parameter로 `SDKContext`를 받고 plugin name과 함께 `super()` call에 전달해야 합니다.
+- **Type Safety**: `registerPlugins` method는 full type safety를 제공해 registered plugin에 적절한 autocompletion 및 type checking으로 접근하게 합니다.
+- **SDK Context 접근**: Plugin은 `ctx` property를 통해 SDK context, logger 및 기타 internal utility에 접근합니다.
+- **Multiple Plugins**: 여러 plugin을 하나의 object에 담아 `registerPlugins`에 전달해 한 번에 register할 수 있습니다.

@@ -1,0 +1,119 @@
+---
+title: "Splice Architecture"
+description: "Daml Package 구조, decentralized validation/automation, CC/CNS의 DSO Party 요구 사항입니다."
+source_id: "SRC-F6C094AE09"
+source_path: "sdks-tools/api-reference/splice-architecture"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "d0f22a161dcc75523b99498d8962861512af3d2d6ac5d1c6f21ca1221dea6b06"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/api-reference/splice-architecture.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/background/architecture.rst" hash="6eba999e" */}
+
+<div className="todo">
+
+Architecture documentation을 추가할 예정입니다. Scan Bulk API documentation의 architecture에서 시작할 수 있습니다.
+
+</div>
+
+## Daml code architecture
+
+### Package 구조
+
+Canton Coin, CC, Canton Name Service, CNS, Global Synchronizer governance를 구현하는 Daml code는 7개 Package로 구성됩니다.
+
+- `splice-util`: 다른 Package 전반에서 사용하는 utility function 구현
+- `splice-amulet`: CC 구현
+- `splice-amulet-name-service`: CNS 구현
+- `splice-dso-governance`: Global Synchronizer governance 및 decentralized CC/CNS automation 구현
+- `splice-validator-lifecycle`: SV Node가 Validator를 onboard하는 데 필요한 workflow 구현
+- `splice-wallet-payments`: CC 전용 payment workflow 구현
+- `splice-wallet`: CC peer-to-peer transfer와 traffic top-up/sweeping/batched transfer 실행 automation을 Validator Operator에 delegate하는 Splice Wallet 전용 workflow 구현
+
+각 Daml documentation은 [app_dev_daml_api](/sdks-tools/api-reference/splice-daml-apis) section에 있습니다.
+
+<Note>
+`splice-wallet-payments`는 CC 결제 workflow와 CC subscription workflow를 모두 구현합니다. 후자는 deprecated되었지만 CNS entry 결제에 여전히 사용됩니다. 전자는 가까운 시일 안에 [CN Token Standard](https://lists.sync.global/g/cip-discuss/message/5)의 asset-generic DvP workflow로 대체될 예정입니다. 마찬가지로 `splice-wallet`의 CC 전용 peer-to-peer transfer workflow도 CN Token Standard의 peer-to-peer transfer로 대체될 예정입니다.
+
+CN Token Standard workflow로 교체하면 다음 이점이 있습니다.
+
+- CC뿐 아니라 모든 Asset에 동작합니다.
+- CN Token Standard의 Daml Interface를 통해 `splice` Daml Package upgrade를 훨씬 쉽게 consume할 수 있습니다.
+- Splice Wallet뿐 아니라 서로 다른 Wallet 구현 사이에서 workflow가 동작합니다.
+</Note>
+
+<div className="todo">
+
+\- TODO(#552): Token Standard 변경에 맞춰 위와 아래 text를 update합니다.
+
+</div>
+
+### Decentralized Transaction Validation 및 Automation
+
+CC, CNS, Global Synchronizer governance는 `f = numSvNodes - t`, confirmation threshold `t = ceiling (numSvNodes * 2.0 / 3.0)`에서 최대 `f`개의 faulty 또는 dishonest SV Node를 견디도록 decentralized 방식으로 구현됩니다.
+
+구현은 다음 핵심 기법으로 Byzantine Fault Tolerance를 달성합니다.
+
+- **DSO Party**: Confirmation threshold가 `t`이고 모든 SV Node가 host하는 DSO Party라는 decentralized Daml Party를 설정합니다.
+- **On-ledger confirmation**: DSO Party 이름으로 off-ledger input이 있는 Choice를 exercise하려면 `t`개 SV Node의 명시적 on-ledger confirmation을 요구합니다.
+- **Decentralized automation**: 모든 SV Node가 DSO Party가 실행해야 하는 Choice의 exercise를 시도하는 automation code를 실행합니다. Off-ledger input이 필요 없으면 Choice를 직접 실행하고, 필요하면 대응 confirmation을 생성해 간접 실행합니다. Automation은 적시에 Choice를 exercise해 target time과 actual time의 skew가 평균적으로 제한되게 합니다.
+- **Median 기반 voting**: 각 SV Operator가 원하는 값을 on-ledger에 publish하고 DSO Party가 그 median을 사용해 conversion rate 같은 configuration parameter에 합의합니다.
+
+Dishonest SV Node가 `f`개 이하라고 가정하는 CC/CNS user는 다음을 보장받을 수 있습니다.
+
+- **Valid transaction**: DSO Party confirmation이 필요한 모든 transaction은 [valid](/overview/reference/ledger-model-detailed#valid-ledgers)합니다.
+- **Timely automation**: DSO Party가 해야 하는 action이 적시에 수행됩니다.
+- **예측 가능한 fee 및 configuration 값**: Fee와 configuration 값은 자신의 최선의 이익에 따라 행동한다고 가정할 수 있는 SV Operator 약 2/3의 *aggregate preference*를 나타내므로 합리적으로 예측할 수 있습니다.
+
+Valid transaction 보장은 decentralized automation/governance 구현 문제와 CC/CNS tokenomics/business logic 구현 문제를 분리하는 데 사용되므로 CC/CNS user에게 특히 중요합니다.
+
+`splice-dso-governance`와 `splice-validator-lifecycle` 이외의 모든 code는 DSO Party가 CC/CNS application의 정직한 provider로 동작한다고 가정합니다. 그 의미는 아래 section에서 정의합니다.
+
+Decentralized Party를 사용해 decentralization concern을 분리하면 code가 크게 단순해지고 다음 Package dependency graph와 같이 code를 분리할 수 있습니다.
+
+<img src="/images/splice/daml-package-dependencies.png" className="align-center" alt="Daml package dependency graph" />
+
+### CC의 DSO Party 요구 사항
+
+CC의 DSO Party에 대한 high-level 요구 사항은 유통 중인 전체 CC 수량, 즉 해당 DSO Party의 모든 Active `Amulet` Contract 집합이 [Canton Coin whitepaper](https://www.digitalasset.com/hubfs/Canton%20Network%20Files/Documents%20(whitepapers%2C%20etc...)/Canton%20Coin_%20A%20Canton-Network-native%20payment%20application.pdf)의 tokenomics를 따르도록 보장하는 것입니다.
+
+이 요구 사항은 DSO Party action에 대한 다음 가정 아래 `splice-amulet` Package의 Daml code로 충족됩니다. Source code와 함께 읽는 것을 권장합니다.
+
+1. `AmuletRules` 및 `ExternalPartyAmuletRules` Contract가 정확히 하나씩 존재합니다.
+2. Network bootstrapping 중 `AmuletRules_Bootstrap_Rounds` Choice를 정확히 한 번 call하고 `isDevNet`을 `false`로 설정합니다.
+3. 다음 Choice를 지정 제약 조건으로 exercise할 때 `t`개 SV Node의 on-ledger confirmation을 사용합니다.
+   - `AmuletRules_MiningRound_StartIssuing`은 해당 round 관련 모든 activity record total을 포함한 `OpenMiningRoundSummary`로 call합니다.
+   - `AmuletRules_AddFutureAmuletConfigSchedule`, `AmuletRules_RemoveFutureAmuletConfigSchedule`, `AmuletRules_UpdateFutureAmuletConfigSchedule`은 최소 `t`개 SV Operator가 accept한 vote 결과로만 call합니다.
+   - `ValidatorLicense_Withdraw`는 최소 `t`개 SV Operator가 accept한 vote 결과로만 call합니다.
+4. `AmuletRules_Mint` Choice는 `splice-amulet` Package 밖에서 절대 call하지 않습니다.
+5. DSO Party에 부여되고 가정 3/4에 언급되지 않은 `splice-amulet`의 모든 Choice는 가능한 한 빨리, argument에 추가 제약 없이 exercise합니다. 단 다음은 예외입니다.
+   - `AmuletRules_AdvanceOpenMiningRounds`는 SV Node가 설정한 dollar-to-CC conversion rate vote의 median을 `amuletPrice` parameter로 설정해 call합니다.
+6. `splice-amulet`에 정의된 Choice *밖에서* DSO Party가 실행하는 `splice-amulet` Template의 `create` 및 `archive` command는 다음뿐입니다.
+   - `AmuletRules` create/archive는 `AmuletRules` Contract의 `configSchedule` field를 직접 update할 때만 사용합니다. Schedule 변경은 최소 `t`개 SV Node가 accept해야 합니다.
+   - `FeaturedAppRight` create/archive는 특정 App Provider Party를 feature/unfeature하는 데 사용합니다. 해당 action은 최소 `t`개 SV Node의 vote를 받아야 합니다.
+   - `SvRewardCoupon` create는 `opensAt` time이 지난 Active `OpenMiningRound` Contract가 있는 round number에만 사용합니다.
+   - `ValidatorLicense` create는 `validator` Party마다 최대 한 번 call합니다.
+   - `TransferCommandCounter` create는 `sender` Party의 `TransferCommandCounter` Contract를 lazy 방식으로 생성하기 위해 Party마다 최대 한 번 call합니다.
+
+이 가정은 `splice-dso-governance` code와 SV Node가 실행하는 automation code로 충족됩니다.
+
+### CNS의 Party 요구 사항
+
+CNS의 예상 동작에 대한 high-level 요구 사항을 정의하는 whitepaper가 없어 여기서 다음과 같이 정의합니다.
+
+1. Entry name은 unique합니다.
+2. Entry는 expire되기 전에 archive되지 않습니다.
+3. Entry Owner는 expire되기 전에 언제든 renew할 수 있습니다.
+4. 누구나 아직 allocate되지 않은 name의 entry를 구매할 수 있습니다.
+5. Expire된 entry는 archive됩니다.
+
+`splice-amulet-name-service`와 `slice-dso-governance` 사이 implementation 분리는 위 CC에서 설명한 pattern을 따릅니다. 자세한 내용은 두 Package의 Daml code를 참조하세요.
+
+
+{/* COPIED_END */}

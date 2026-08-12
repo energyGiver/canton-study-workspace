@@ -1,0 +1,142 @@
+---
+title: "Support Channel"
+description: "Canton Network 개발 및 운영 관련 지원을 받는 방법"
+source_id: "SRC-77362BD755"
+source_path: "shared/support-channels"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "63767ea7f59654a7f12e42859bd8a2e6a6a053018a31fddc9985b8aac170ea0d"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/shared/support-channels.md)을 함께 확인하세요.
+</Warning>
+
+Canton Network와의 관계와 필요한 지원 유형에 따라 여러 support channel을 사용할 수 있습니다.
+
+## Community Support
+
+누구나 무료로 이용할 수 있는 community 중심의 support channel입니다.
+
+### Slack
+
+실시간 논의를 위한 주요 community channel입니다.
+
+| Channel | 용도 |
+|---------|---------|
+| **#gsf-global-synchronizer-appdev** | Application 개발 질문 |
+| **#validator-operations** | Validator 운영 논의 |
+| **#validator-operations-onboarding** | 신규 Validator onboarding |
+
+{/* TODO: Add Slack link once available */}
+
+### Forum
+
+더 긴 technical discussion과 검색 가능한 knowledge base에 적합합니다.
+
+**URL:** [forum.canton.network](https://forum.canton.network/)
+
+**적합한 용도:**
+- 상세한 답변이 필요한 technical question
+- 검색 가능한 형태로 남겨야 하는 논의
+- 비슷한 질문이 있는 다른 사용자에게 도움이 될 수 있는 topic
+
+### GitHub
+
+Bug report, feature request 및 source code issue에 사용합니다.
+
+| Repository | 용도 |
+|------------|---------|
+| [canton-network/splice](https://github.com/canton-network/splice) | Splice application |
+| [digital-asset/cn-quickstart](https://github.com/digital-asset/cn-quickstart) | QuickStart issue |
+| [digital-asset/daml](https://github.com/digital-asset/daml) | Daml language |
+
+## Support 요청에 포함할 내용
+
+효과적인 지원을 받으려면 다음 정보를 포함하세요.
+
+### 개발 문제
+
+- Daml/Canton version
+- Code snippet 또는 최소 재현 예제
+- Error message와 전체 stack trace
+- 기대한 결과와 실제로 발생한 결과
+
+### 운영 문제
+
+| 정보 | 필요한 이유 |
+|-------------|------------|
+| **Validator ID** | Node 식별 |
+| **Network** | DevNet/TestNet/MainNet 확인 |
+| **Splice version** | Compatibility 판단 |
+| **Infrastructure** | Docker/K8s 및 cloud provider 확인 |
+| **Logs** | 관련 error log 확인 |
+| **Timeline** | 문제 시작 시점 확인 |
+
+### Template
+
+```
+Environment:
+- Network: [DevNet/TestNet/MainNet]
+- Splice Version: [e.g., 0.5.4]
+- Canton Version: [e.g., 3.4.x]
+- Deployment: [Docker Compose/Kubernetes]
+- Cloud Provider: [AWS/GCP/Azure/On-prem]
+
+Issue:
+[Clear description of the problem]
+
+Expected Behavior:
+[What should happen]
+
+Actual Behavior:
+[What actually happens]
+
+Steps to Reproduce:
+1. ...
+2. ...
+
+Relevant Logs:
+[Sanitized logs - remove secrets/keys]
+
+Additional Context:
+[Any other relevant information]
+```
+
+<Warning>
+Log를 공유하기 전에 항상 private key, JWT, password 및 기타 sensitive information을 제거하세요.
+</Warning>
+
+## Self-Service Resource
+
+지원팀에 문의하기 전에 다음 resource를 확인하세요.
+
+| Resource | 내용 |
+|----------|---------|
+| [FAQ](/appdev/faq) | 자주 묻는 질문 |
+| [Troubleshooting](/appdev/troubleshooting) | Error 해결 방법 |
+| [Release Notes](/release-notes) | Version 변경 사항 |
+| [Documentation](/) | 전체 documentation |
+
+## Mailing List
+
+공지와 update를 구독할 수 있습니다.
+
+**URL:** [lists.sync.global](https://lists.sync.global)
+
+| List | 내용 |
+|------|---------|
+| **Announcements** | Network 공지 및 upgrade |
+| **Improvements** | Feature update와 변경 사항 |
+| **Tokenomics** | Economic parameter update |
+
+## Office Hour
+
+Community는 다음 주제로 정기 office hour를 운영합니다.
+- 신규 developer onboarding
+- Technical deep dive
+- Q&A session
+
+일정은 [canton.network](https://canton.network)에서 확인하세요.

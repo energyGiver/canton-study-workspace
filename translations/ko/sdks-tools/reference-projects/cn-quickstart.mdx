@@ -1,0 +1,123 @@
+---
+title: "cn-quickstart"
+description: "Daml Contract, Java Backend, React Frontend, LocalNet을 포함한 Canton Network full-stack reference application입니다."
+source_id: "SRC-C4603FFACB"
+source_path: "sdks-tools/reference-projects/cn-quickstart"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "704d965278bf904b218cfb2489ada58e28df023a3c57c236cb05018da0763f67"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/reference-projects/cn-quickstart.md)을 함께 확인하세요.
+</Warning>
+
+import DamlDocsSdksToolsReferenceProjectsCnQuickstartL12 from "/snippets/daml-docs/sdks-tools_reference-projects_cn-quickstart_L12.mdx";
+import DamlDocsSdksToolsReferenceProjectsCnQuickstartL69 from "/snippets/daml-docs/sdks-tools_reference-projects_cn-quickstart_L69.mdx";
+import DamlDocsSdksToolsReferenceProjectsCnQuickstartL85 from "/snippets/daml-docs/sdks-tools_reference-projects_cn-quickstart_L85.mdx";
+
+
+[cn-quickstart](https://github.com/digital-asset/cn-quickstart) repository는 Canton Network application의 build/test/run 방법을 보여주는 완전한 example application입니다. Daml Smart Contract, Java Backend, React Frontend, local 개발용 LocalNet environment를 포함합니다.
+
+## Repository 개요
+
+Repository를 clone합니다.
+
+<DamlDocsSdksToolsReferenceProjectsCnQuickstartL12 />
+
+Repository는 재현 가능한 개발 dependency를 위해 Nix와 Direnv를 사용합니다. Nix를 사용하지 않으려면 `quickstart/` directory에서 직접 작업하고 JDK, Node.js, dpm dependency를 수동 관리합니다.
+
+## Project 구조
+
+```
+cn-quickstart/
+  .envrc                    # Nix/Direnv activation
+  nix/                      # Nix development dependencies
+  quickstart/
+    Makefile                # Build and run commands
+    compose.yaml            # Docker Compose configuration
+    .env                    # Environment variables
+    daml/                   # Daml smart contracts
+      Licensing/
+        AppInstall.daml     # User onboarding workflow
+        License.daml        # License management
+        Util.daml           # Helper functions
+      dars/                 # Splice DAR dependencies
+    backend/                # Java Spring Boot backend
+      src/main/java/...
+        ledger/             # Ledger API client
+        repository/         # PQS queries
+        pqs/                # SQL generation
+        service/            # REST endpoints
+        security/           # OAuth2 auth
+    frontend/               # React TypeScript frontend
+      src/
+        components/         # UI components
+        api/                # Generated API client
+    common/
+      openapi.yaml          # Shared API definition
+    docker/                 # Docker image definitions
+      modules/
+        localnet/           # LocalNet configuration
+    config/                 # Service configuration files
+```
+
+## Reference application
+
+cn-quickstart는 네 Party가 참여하는 software license workflow를 구현합니다.
+
+- **App Provider** -- License 생성 및 판매
+- **App User** -- License 구매 및 보유
+- **Super Validator, SV** -- Payment infrastructure 운영
+- **DSO Party** -- Canton Coin의 Decentralized Synchronizer Operator
+
+Provider와 User는 각자의 Validator에서 실행됩니다. License 구매에는 Splice Wallet system이 처리하는 Canton Coin payment가 사용됩니다.
+
+## Application 실행
+
+<DamlDocsSdksToolsReferenceProjectsCnQuickstartL69 />
+
+실행 후 browser에서 Frontend에 access할 수 있습니다. 단계별 guide는 [QuickStart walkthrough](/appdev/quickstart/running-the-demo)를 참조하세요.
+
+## Example 확장
+
+### 자체 Template 추가
+
+`daml/` directory에 새 `.daml` file을 생성합니다. Template을 작성한 뒤 다음을 수행합니다.
+
+<DamlDocsSdksToolsReferenceProjectsCnQuickstartL85 />
+
+Build system이 update된 DAR file에서 Java binding을 다시 생성하므로 Backend가 새 Template을 즉시 참조할 수 있습니다.
+
+### Backend 수정
+
+Backend는 표준 Spring Boot layout을 따릅니다. 새 endpoint는 다음 순서로 추가합니다.
+
+1. `common/openapi.yaml`에 endpoint를 정의합니다.
+2. `backend/src/main/java/.../service/`에 service 구현을 추가합니다.
+3. Contract data를 read해야 한다면 `repository/`에 PQS query를 추가합니다.
+4. Transaction을 submit해야 한다면 `ledger/`에 Ledger API command를 추가합니다.
+5. `make build-backend`로 rebuild합니다.
+
+### Custom Frontend
+
+React Frontend는 Backend REST API를 consume합니다. 수정 절차는 다음과 같습니다.
+
+1. `frontend/src/components/`의 component를 update하거나 추가합니다.
+2. `openapi.yaml`을 변경했다면 API client를 다시 생성합니다.
+3. `make build-frontend`로 rebuild합니다.
+
+Frontend는 Ledger API와 직접 상호 작용하지 않으며 모든 Ledger access가 Backend를 거칩니다.
+
+### Architecture 전환
+
+cn-quickstart는 Backend가 모든 Ledger access를 처리하는 fully mediated architecture를 사용합니다. `dpm codegen-js`로 생성한 TypeScript binding을 사용해 Frontend가 Ledger API에 command를 직접 submit하는 CQRS pattern으로 전환할 수 있습니다. 두 접근 방식의 비교는 [SDKs and APIs](/appdev/modules/m4-sdks-apis)를 참조하세요.
+
+## 관련 페이지
+
+- [QuickStart walkthrough](/appdev/quickstart/running-the-demo) -- Demo 실행 단계별 guide
+- [Project structure](/appdev/quickstart/project-structure) -- 모든 directory와 file의 상세 구조
+- [LocalNet](/sdks-tools/development-tools/localnet) -- Local 개발용 Docker Compose environment
+- [Backend development](/appdev/modules/m4-backend-dev) -- cn-quickstart Backend pattern

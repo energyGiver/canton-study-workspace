@@ -1,0 +1,285 @@
+---
+title: "JavaScript Codegen"
+description: "Daml Interface와 Template에서 JavaScript/TypeScript binding을 생성합니다."
+source_id: "SRC-76A279307A"
+source_path: "sdks-tools/language-bindings/javascript"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "ecc130f0816f1ac26cc8d12c03df90f6fcd4cf907eb8bd1d9573d861376e1abc"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/language-bindings/javascript.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/component-howtos/application-development/daml-codegen-javascript.rst" hash="64480016" */}
+
+# JavaScript용 Daml Codegen
+
+JavaScript용 Daml Codegen인 `dpm codegen-js`를 사용해 Daml Archive `.dar` file에 정의된 모든 Daml data type을 나타내는 JavaScript/TypeScript code를 생성합니다.
+
+Generated code는 JSON Ledger API를 사용할 때 type 구성과 JSON 처리를 단순화합니다.
+
+Generated code로 JSON Ledger API와 상호작용하는 방법은 Canton/JSON Ledger API 시작하기를 참조하세요. Codegen setup과 실행 방법은 아래 section을 참조하세요.
+
+## Install
+
+DPM을 설치하면 JavaScript용 Daml Codegen이 설치됩니다.
+
+## Configure
+
+Daml Codegen을 설정하려면 다음 두 방법 중 하나를 선택합니다.
+
+- **Command line configuration**: 모든 설정을 command line에서 직접 지정합니다.
+- **Project file configuration**: 모든 설정을 `daml.yaml` file에 정의합니다.
+
+### Command line configuration
+
+JavaScript용 Daml Codegen의 모든 command line option을 확인하려면 terminal에서 `dpm codegen-js --help`를 실행합니다.
+
+``` none
+DAR-FILES                DAR files to generate TypeScript bindings for
+-o DIR                   Output directory for the generated packages
+-s SCOPE                 The NPM scope name for the generated packages;
+                         defaults to daml.js
+-h,--help                Show this help text
+```
+
+### Project file configuration
+
+위 설정을 Daml project file `daml.yaml`의 `codegen` element에 지정합니다.
+
+다음은 example입니다.
+
+    sdk-version: 3.4.9
+    name: quickstart
+    source: daml
+    init-script: Main:initialize
+    parties:
+      - Alice
+      - Bob
+      - USD_Bank
+      - EUR_Bank
+    version: 0.0.1
+    exposed-modules:
+      - Main
+    dependencies:
+      - daml-prim
+      - daml-stdlib
+    codegen:
+      js:
+        output-directory: ui/daml.js
+        npm-scope: daml.js
+
+## Operate
+
+Project file configuration으로 Daml Codegen을 실행합니다.
+
+    $ dpm codegen-js
+
+또는 command line configuration으로 실행합니다.
+
+    $ dpm codegen-js ./.daml/dist/quickstart-0.0.1.dar -o ui/daml.js -s daml.js
+
+## Reference
+
+### Generated JavaScript/TypeScript code
+
+#### Daml primitive에서 TypeScript로 변환
+
+Daml built-in type은 다음과 같은 TypeScript equivalent type으로 변환됩니다. Primitive Daml type의 TypeScript equivalent는 `@daml/types`에서 제공합니다.
+
+**Interfaces**:
+
+- `interface Template<T extends object, K = unknown, I extends string = string>`
+- `interface Choice<T extends object, C, R, K = unknown>`
+
+**Types**:
+
+| Daml           | TypeScript       | TypeScript definition                                     |
+|----------------|------------------|-----------------------------------------------------------|
+| `()`           | `Unit`           | `{}`                                                      |
+| `Bool`         | `Bool`           | `boolean`                                                 |
+| `Int`          | `Int`            | `string`                                                  |
+| `Decimal`      | `Decimal`        | `string`                                                  |
+| `Numeric ν`    | `Numeric`        | `string`                                                  |
+| `Text`         | `Text`           | `string`                                                  |
+| `Time`         | `Time`           | `string`                                                  |
+| `Party`        | `Party`          | `string`                                                  |
+| `[τ]`          | `List<τ>`        | `τ[]`                                                     |
+| `Date`         | `Date`           | `string`                                                  |
+| `ContractId τ` | `ContractId<τ>`  | `string`                                                  |
+| `Optional τ`   | `Optional<τ>`    | `null \| (null extends τ ? [] \| [Exclude<τ, null>] : τ)` |
+| `TextMap τ`    | `TextMap<τ>`     | `{ [key: string]: τ }`                                    |
+| `(τ₁, τ₂)`     | `Tuple₂<τ₁, τ₂>` | `{_1: τ₁; _2: τ₂}`                                        |
+
+<Note>
+**TypeScript** column의 type은 `@daml/types`에 정의됩니다.
+</Note>
+
+<Note>
+*n ≥ 3*인 *n*-tuple의 representation은 table 마지막 줄의 pair case와 유사합니다.
+</Note>
+
+<Note>
+TypeScript type `Time`, `Decimal`, `Numeric`, `Int`는 모두 `string` alias입니다. JSON Ledger API serialization에서 precision loss를 방지하기 위한 선택입니다.
+</Note>
+
+<Note>
+위 table의 `Optional<τ>` TypeScript definition은 복잡해 보일 수 있습니다. Nested optional value와 top-level optional value의 encoding 차이를 반영합니다. 예를 들어 `Optional<Text>`에는 `null`과 `"foo"`가 가능하지만 `Optional<Optional<Text>>`에는 `[]`와 `["foo"]`가 가능합니다. `null`도 가능하지만 `[null]`은 불가능합니다.
+</Note>
+
+#### Generated TypeScript mapping
+
+Daml User-defined data type에서 TypeScript로의 mapping은 example로 설명하는 것이 가장 명확합니다.
+
+##### Record, product type
+
+Daml에서 Person을 다음처럼 modeling할 수 있습니다.
+
+```haskell
+data Person =
+  Person with
+    name: Text
+    party: Party
+    age: Int
+```
+
+위 definition에서 생성되는 TypeScript code는 다음과 같습니다.
+
+``` typescript
+type Person = {
+  name: string;
+  party: damlTypes.Party;
+  age: damlTypes.Int;
+}
+```
+
+##### Variant, sum type
+
+다음은 additive expression language를 위한 Daml type입니다.
+
+```haskell
+data Expr a =
+    Lit a
+  | Var Text
+  | Add (Expr a, Expr a)
+```
+
+TypeScript에서는 discriminated union으로 표현됩니다.
+
+``` typescript
+type Expr<a> =
+  |  { tag: 'Lit'; value: a }
+  |  { tag: 'Var'; value: string }
+  |  { tag: 'Add'; value: Tuple2<Expr<a>, Expr<a>> }
+```
+
+##### Product의 sum
+
+앞 section의 `Expr a` type을 다음처럼 약간 수정합니다.
+
+```haskell
+data Expr a =
+    Lit a
+  | Var Text
+  | Add {lhs: Expr a, rhs: Expr a}
+```
+
+이전 definition과 달리 `Add` case는 이제 `lhs`와 `rhs` field를 가진 Record입니다. TypeScript에서는 다음처럼 표현됩니다.
+
+``` typescript
+type Expr<a> =
+  |  { tag: 'Lit'; value: a }
+  |  { tag: 'Var'; value: string }
+  |  { tag: 'Add'; value: Expr.Add<a> }
+
+namespace Expr {
+  type Add<a> = {
+    lhs: Expr<a>;
+    rhs: Expr<a>;
+  }
+}
+```
+
+`Add` case definition으로 Record type definition `Expr.Add`가 생성된 점에 유의하세요.
+
+##### Enums
+
+다음과 같은 Daml Enum이 있을 때,
+
+```haskell
+data Color = Red | Blue | Yellow
+```
+
+Generated TypeScript는 type declaration과 연결된 companion object definition으로 구성됩니다.
+
+``` typescript
+type Color = 'Red' | 'Blue' | 'Yellow'
+
+const Color:
+  damlTypes.Serializable<Color> & {
+  }
+& { readonly keys: Color[] } & { readonly [e in Color]: e };
+```
+
+##### Template과 Choice
+
+다음은 기본적인 'IOU' Contract의 Daml Template입니다.
+
+```haskell
+template Iou
+  with
+    issuer: Party
+    owner: Party
+    currency: Text
+    amount: Decimal
+  where
+    signatory issuer
+    choice Transfer: ContractId Iou
+      with
+        newOwner: Party
+      controller owner
+      do
+        create this with owner = newOwner
+```
+
+`dpm codegen-js` command는 Template 자체와 Template에 정의된 각 Choice의 type을 생성합니다.
+
+``` typescript
+type Transfer = {
+  newOwner: damlTypes.Party;
+}
+
+type Iou = {
+  issuer: damlTypes.Party;
+  owner: damlTypes.Party;
+  currency: string;
+  amount: damlTypes.Numeric;
+}
+```
+
+각 Template에서 Interface와 companion object가 생성됩니다. 다음은 `Iou` Template에서 생성되는 구조의 schematic입니다[^1],[^2].
+
+``` typescript
+interface IouInterface {
+  Archive: damlTypes.Choice<Iou, DA.Internal.Template.Archive, {}, undefined> & damlTypes.ChoiceFrom<damlTypes.Template<Iou, undefined>>;
+  Transfer: damlTypes.Choice<Iou, Transfer, damlTypes.ContractId<Iou>, undefined> & damlTypes.ChoiceFrom<damlTypes.Template<Iou, undefined>>;
+}
+
+const Iou:
+  damlTypes.Template<Iou, undefined, '<template_id>'> &
+  damlTypes.ToInterface<Iou, never> &
+  IouInterface;
+```
+
+Generated code로 JSON Ledger API와 상호작용하는 방법은 JavaScript에서 Contract와 transaction 사용하기를 참조하세요.
+
+[^1]: `undefined` type parameter는 `Iou`에 Contract Key가 없음을 나타냅니다.
+
+[^2]: `never` type parameter는 `Iou`가 어떤 Interface도 직접 구현하지 않음을 나타냅니다.
+
+
+{/* COPIED_END */}

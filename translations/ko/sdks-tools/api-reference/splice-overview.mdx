@@ -1,0 +1,60 @@
+---
+title: "Splice APIs Overview"
+description: "Canton Network의 Splice Node가 노출하는 REST 및 gRPC API 개요입니다."
+source_id: "SRC-7E854DDC16"
+source_path: "sdks-tools/api-reference/splice-overview"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "44a0d6a7fca2dd451d32e974457e5d99782e3037e661710d8ce8a89c1396e051"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/api-reference/splice-overview.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/app_dev/overview/index.rst" hash="241c45b9" */}
+
+Canton Network를 처음 개발한다면 [새 Canton Network developer를 위한 TL;DR](/appdev/get-started/choose-your-path)을 확인하세요.
+
+## Canton Network Application
+
+[Canton Network application](/appdev/get-started/choose-your-path)은 여러 조직 또는 business entity에 걸친 business process를 운영하는 데 사용됩니다. 다음 documentation으로 Canton Network application을 개발하고 Canton Network의 featured app으로 등록합니다.
+
+- `app_tokenomics`에서 Canton Network tokenomics summary를 검토합니다.
+- [/appdev/get-started/choose-your-path](/appdev/get-started/choose-your-path)의 tutorial/how-to/explanation/reference documentation으로 Canton Network application 개발 방법을 학습합니다.
+- 현재 featured app을 확인합니다: [https://sync.global/featured-apps/](https://sync.global/featured-apps/)
+- App featured 등록을 요청합니다: [https://sync.global/featured-app-request/](https://sync.global/featured-app-request/)
+  - 이 request는 [Tokenomics mailing list](https://lists.sync.global/g/tokenomics/topics)에 publish됩니다. 다른 app의 개발 사례를 확인할 수 있습니다.
+- [operations@sync.global](mailto:operations@sync.global)에 Slack 조직 추가를 요청하고 [\#gsf-global-synchronizer-appdev](https://app.slack.com/client/T03T53E10/C08FQRCRFUN) Slack channel의 app 개발 논의에 참여합니다.
+
+## RPC API 개요
+
+Canton Network application을 개발할 때 일반적으로 Global Synchronizer와 Validator Node가 제공하는 HTTP 또는 gRPC API 일부를 integrate합니다. 다음 안내에서 사용할 API와 사용법을 확인하세요.
+
+- `app_dev_ledger_api`로 Validator Node가 host하는 Party가 보는 Ledger view에 access하고 transaction을 submit합니다.
+- [app_dev_scan_api](/sdks-tools/api-reference/splice-scan-api)로 모든 SV Node가 보는 Ledger 및 infrastructure view에 access합니다. 이 view는 DSO Party에 보이는 것으로 Validator Node가 host하는 Party의 private data는 포함하지 않습니다. Validator Node의 Party data에는 `app_dev_ledger_api`를 사용합니다.
+- [app_dev_validator_api](/sdks-tools/api-reference/splice-validator-api)로 Validator Node의 Canton Participant Node와 함께 실행되는 Splice Validator App의 high-level 기능에 access합니다.
+
+어떤 component가 어떤 API를 제공하고 서로 어떻게 연결되는지는 다음 diagram을 참조하세요.
+
+<img src="/images/splice/app-connectivity-diagram.png" width="800" alt="App Network Diagram" />
+
+## Splice Daml API 개요
+
+Splice는 on-ledger state와 workflow를 Daml로 구현한 여러 decentralized application을 제공합니다. Daml code에 정의한 [Interface](/appdev/reference/daml-language-reference#reference-interfaces)는 안정적인 public API이므로 이를 대상으로 개발해야 합니다. 이 public API는 [Canton Network Token Standard](/sdks-tools/api-reference/splice-daml-apis) 같은 interoperability standard에 사용됩니다. Daml API로 application Daml code와 dependency Daml code 사이 coupling을 최소화하세요. 예를 들어 Splice 구현의 `Interface`는 application과 구현을 느슨하게 결합해 Splice upgrade가 application Daml code의 동반 upgrade를 강제하지 않게 합니다.
+
+Splice에 정의된 Daml API와 목적은 [app_dev_daml_api](/sdks-tools/api-reference/splice-daml-apis)를 참조하세요.
+
+## Splice Daml model 개요
+
+Daml model의 [Template](/appdev/reference/daml-language-reference#reference-templates)과 [Choice](/appdev/reference/daml-language-reference#choices)는 internal implementation detail로 봅니다. 예를 들어 Canton Network Token Standard는 Canton Coin을 포함한 Token을 다루는 public API입니다. Canton Network Token Standard 구현은 backwards compatibility를 제공하는 AmuletRules_Transfer Choice 위에서 동작합니다. 이 implementation detail을 살펴보면 많은 것을 배울 수 있으므로 학습할 가치가 있습니다.
+
+Daml model state 및 workflow와 상호 작용하는 방법은 다음 resource에서 학습합니다.
+
+- Daml code read/write: [/appdev/get-started/choose-your-path](/appdev/get-started/choose-your-path)
+- Splice Daml Package와 data model/workflow: [app_dev_daml_models](/sdks-tools/api-reference/splice-daml-models)
+
+
+{/* COPIED_END */}

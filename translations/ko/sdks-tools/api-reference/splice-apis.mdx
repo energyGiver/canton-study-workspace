@@ -1,0 +1,68 @@
+---
+title: "Splice APIs"
+description: "Canton Network Node에서 실행되는 Scan, Validator, SV, Daml API reference입니다."
+source_id: "SRC-1AEE7A710F"
+source_path: "sdks-tools/api-reference/splice-apis"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "50fc9daf10f99aa92b208f1b35a26601a62ca467cadbb70793cb2bdff86e3fdb"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/api-reference/splice-apis.md)을 함께 확인하세요.
+</Warning>
+
+Splice Node는 [Ledger API](/sdks-tools/api-reference/ledger-api) 및 [Admin API](/sdks-tools/api-reference/admin-api)와 별개의 REST API를 노출합니다. Canton 위에서 실행되는 Splice application layer가 이 API를 제공하며 network state query, Wallet 관리, Validator 운영, Super Validator, SV로서 network governance 같은 Canton Network 전용 기능에 access할 수 있습니다.
+
+## 하위 페이지
+
+- [Splice APIs Overview](/sdks-tools/api-reference/splice-overview) — 진입점과 API 간 관계
+- [Splice HTTP APIs](/sdks-tools/api-reference/splice-http-apis) — HTTP/REST API 개요
+- [Splice Daml APIs](/sdks-tools/api-reference/splice-daml-apis) — Splice DAR가 노출하는 Daml Choice 기반 API
+- [Splice Daml Models](/sdks-tools/api-reference/splice-daml-models) — Splice와 함께 제공되는 Daml model Package
+
+### Scan API, read-only/public
+
+- [Scan APIs](/sdks-tools/api-reference/splice-scan-api) — 소개 및 Scan endpoint surface
+- [Scan Aggregates API](/sdks-tools/api-reference/splice-scan-aggregates-api)
+- [Scan Bulk Data API](/sdks-tools/api-reference/splice-scan-bulk-data-api)
+- [Scan Canton Coin Reference Data API](/sdks-tools/api-reference/splice-scan-cc-reference-data-api)
+- [Scan API for Current State of CC and Synchronizer Traffic](/sdks-tools/api-reference/splice-scan-current-state-api)
+- [Scan Global Synchronizer Connectivity API](/sdks-tools/api-reference/splice-scan-gs-connectivity-api)
+- [Scan Global Synchronizer Operations API](/sdks-tools/api-reference/splice-scan-gs-operations-api)
+- [Scan Open API Reference](/sdks-tools/api-reference/splice-scan-openapi)
+
+### Validator-side API
+
+- [Validator APIs](/sdks-tools/api-reference/splice-validator-api) — Wallet, user management, external signing, Validator administration
+
+## Authentication
+
+Public Scan API를 제외한 모든 Splice API는 [OAuth2 Bearer token](https://datatracker.ietf.org/doc/html/rfc6750#section-2.1)으로 전달하는 JWT token이 필요합니다.
+
+```
+Authorization: Bearer <your-token>
+```
+
+Scan API는 public access가 가능하며 authentication이 필요하지 않습니다.
+
+## OpenAPI specification
+
+전체 OpenAPI specification은 [Splice repository](https://github.com/canton-network/splice)에 publish됩니다.
+
+- [scan.yaml](https://github.com/canton-network/splice/blob/main/apps/scan/src/main/openapi/scan.yaml) — Scan API
+- [wallet-external.yaml](https://github.com/canton-network/splice/blob/main/apps/wallet/src/main/openapi/wallet-external.yaml) — Wallet API (external)
+- [ans-external.yaml](https://github.com/canton-network/splice/blob/main/apps/validator/src/main/openapi/ans-external.yaml) — ANS API (external)
+- [validator-internal.yaml](https://github.com/canton-network/splice/blob/main/apps/validator/src/main/openapi/validator-internal.yaml) — Validator API (internal)
+- [sv-internal.yaml](https://github.com/canton-network/splice/blob/main/apps/sv/src/main/openapi/sv-internal.yaml) — SV API (internal)
+- [scan-proxy.yaml](https://github.com/canton-network/splice/blob/main/apps/validator/src/main/openapi/scan-proxy.yaml) — Scan Proxy API
+
+`*-external` file의 endpoint에는 backwards compatibility 보장이 적용됩니다. `*-internal` file의 endpoint는 별도 고지 없이 release 사이에 변경될 수 있습니다.
+
+## 관련 페이지
+
+- [Ledger API](/sdks-tools/api-reference/ledger-api) — Command submit 및 transaction stream read용 gRPC API
+- [Admin API](/sdks-tools/api-reference/admin-api) — Canton Node administration
+- [JSON API](/sdks-tools/api-reference/json-api) — Ledger API용 HTTP/REST wrapper

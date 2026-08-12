@@ -1,0 +1,79 @@
+---
+title: Ledger API
+description: "Participant가 command submit, transaction read, Party management용으로 노출하는 Canton Ledger API의 gRPC 및 JSON interface 개요입니다."
+source_id: "SRC-3FD348F973"
+source_path: "sdks-tools/api-reference/ledger-api"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "8d649a5a7fba7053d179a29c5af8d2a6c676afa3fa5a9808e4a06b1bc1dc36ae"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/api-reference/ledger-api.md)을 함께 확인하세요.
+</Warning>
+
+**Ledger API**는 Canton Participant Node의 기본 programmatic interface입니다. Application은 이를 사용해 Contract 생성과 Choice 실행 command를 submit하고 transaction stream을 read하며 Party와 Package를 관리합니다.
+
+Ledger API는 같은 기반 service를 감싸는 gRPC와 HTTP 기반 JSON 두 protocol binding으로 노출됩니다. Stack에 맞는 binding을 선택합니다.
+
+## 빠른 참조
+
+| 속성 | gRPC | JSON |
+|----------|------|------|
+| Protocol | HTTP/2 + Protocol Buffers | HTTP/1.1 + JSON over REST |
+| Default port | 5001 | 7575 |
+| API version | v2, Canton 3.x | v2, Canton 3.x |
+| Authentication | OIDC를 통한 JWT, RS256 | OIDC를 통한 JWT, RS256 |
+| 적합한 용도 | Java, Scala, high-throughput Backend | TypeScript, browser client, scripting |
+
+## gRPC Ledger API
+
+다음이 필요하면 gRPC를 사용합니다.
+
+- Streaming service인 `UpdateService`, `CommandCompletionService`, `StateService`의 전체 surface
+- Java, Scala 또는 다른 gRPC 지원 language용 `protoc` 기반 type-safe code generation
+- 고빈도 command submit 및 event subscription을 위한 가장 낮은 latency
+
+Proto definition, request/response schema, Package history를 포함한 service별 전체 reference는 API Reference dropdown의 **[gRPC Ledger API Reference](/api-reference)**를 참조하세요.
+
+Proto definition은 [Canton repository](https://github.com/digital-asset/canton/tree/main/community/ledger-api-proto/src/main/protobuf/com/daml/ledger/api/v2)에 있습니다.
+
+## JSON Ledger API
+
+다음이 필요하면 JSON을 사용합니다.
+
+- gRPC client 없이 browser 또는 Node.js application에서 HTTP/REST access
+- Ad-hoc tooling 및 scripting에 편리한 request/response 형식
+- WebSocket 기반 streaming, JSON API가 gRPC streaming service에 해당하는 기능을 노출
+
+모든 endpoint의 OpenAPI reference는 API Reference dropdown의 **[JSON Ledger API Reference](/api-reference)**를 참조하세요. Streaming endpoint의 AsyncAPI reference도 같은 dropdown에 있습니다.
+
+Authentication, Party allocation, Contract 생성, query를 다루는 JSON API end-to-end walkthrough는 [Module 4, Canton and the JSON Ledger API](/appdev/modules/m4-json-api-tutorial)에 있습니다.
+
+## 핵심 service
+
+두 binding에서 같은 logical service surface를 사용할 수 있습니다.
+
+- **CommandService** — Command를 submit하고 completion을 기다리는 synchronous service
+- **CommandSubmissionService** + **CommandCompletionService** — Command를 asynchronous하게 submit하고 completion event를 consume
+- **UpdateService** — Transaction 및 reassignment 같은 Ledger update stream
+- **StateService** — Active Contract Set, ACS query
+- **InteractiveSubmissionService** — External signing용 transaction 준비
+- **PartyManagementService** — Party allocate 및 list, 3.x에서는 Admin API 아래에 있고 Ledger API에 노출되지 않음
+- **PackageService** — DAR Package upload 및 query
+
+## Code generation
+
+Code generation tool은 API가 아니라 language binding에 있습니다.
+
+- **Java codegen** — [Java Codegen](/sdks-tools/language-bindings/java) 참조
+- **JavaScript / TypeScript codegen** — [JavaScript Codegen](/sdks-tools/language-bindings/javascript) 참조
+- **Java client library**, gRPC binding의 high-level wrapper — [Java LAPI Bindings](/sdks-tools/language-bindings/java-client-libraries) 참조
+
+## 관련 페이지
+
+- [API Reference](/api-reference) — gRPC Ledger API, JSON Ledger API, AsyncAPI, Protobuf history, Splice API를 포함한 모든 generated API documentation의 central hub
+- [Admin API](/sdks-tools/api-reference/admin-api) — Ledger API와 별개인 Node administration
+- [Splice APIs](/sdks-tools/api-reference/splice-apis) — Scan, Validator, SV application용 REST API

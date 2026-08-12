@@ -1,0 +1,659 @@
+---
+title: "Java Codegen"
+description: "Canton backend 개발을 위해 Daml Contract에서 type-safe Java class를 생성하고 사용합니다."
+source_id: "SRC-259FEE7263"
+source_path: "sdks-tools/language-bindings/java"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "787169e8787d2e095bd11bfd294aa8ed64dde11c58183abebcc9b8e56fab7e01"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/language-bindings/java.md)을 함께 확인하세요.
+</Warning>
+
+import DamlSdksToolsLanguageBindingsJavaL22 from "/snippets/daml-docs/sdks-tools_language-bindings_java_L22.mdx";
+import DamlSdksToolsCliToolsDpmL76 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L76.mdx";
+import DamlSdksToolsLanguageBindingsJavaL247 from "/snippets/daml-docs/sdks-tools_language-bindings_java_L247.mdx";
+import DamlSdksToolsLanguageBindingsJavaL300 from "/snippets/daml-docs/sdks-tools_language-bindings_java_L300.mdx";
+import DamlSdksToolsLanguageBindingsJavaL394 from "/snippets/daml-docs/sdks-tools_language-bindings_java_L394.mdx";
+import DamlSdksToolsLanguageBindingsJavaL475 from "/snippets/daml-docs/sdks-tools_language-bindings_java_L475.mdx";
+import DamlSdksToolsLanguageBindingsJavaL508 from "/snippets/daml-docs/sdks-tools_language-bindings_java_L508.mdx";
+import DamlSdksToolsLanguageBindingsJavaL617 from "/snippets/daml-docs/sdks-tools_language-bindings_java_L617.mdx";
+
+
+
+Java binding은 compile된 Daml Package에서 type-safe class를 생성합니다. 이 class를 사용하면 gRPC message나 JSON payload를 직접 구성하지 않고 Java에서 Contract 생성, Choice exercise, Ledger event 처리를 수행할 수 있습니다.
+
+## Code Generation
+
+Compile된 DAR file에서 Java binding을 생성합니다.
+
+<DamlSdksToolsCliToolsDpmL76 />
+
+Daml Module별로 구성된 Java source file이 생성됩니다. 각 Daml Template은 Java class가 되고 각 Choice는 typed field를 가진 nested class가 됩니다.
+
+## Generated Class 구조
+
+Daml Template이 다음과 같다면,
+
+<DamlSdksToolsLanguageBindingsJavaL22 />
+
+Code generator는 다음을 생성합니다.
+
+- **`License` class** -- `provider`, `user`, `description`, `expiresAt` field를 가진 Template payload를 나타냅니다.
+- **`License.ContractId` class** -- `License` instance의 typed Contract identifier입니다.
+- **`License.Renew` class** -- `newExpiry` field를 가진 `Renew` Choice argument를 나타냅니다.
+- **Serialization method** -- Java object와 Ledger API value representation 사이를 변환하는 `toValue()`와 `fromValue()`입니다.
+
+## gRPC Client setup
+
+Generated class는 gRPC Ledger API client와 함께 동작합니다. Validator에 다음처럼 연결합니다.
+
+```java
+ManagedChannel channel = ManagedChannelBuilder
+    .forAddress("localhost", 2901)
+    .usePlaintext()  // Use TLS in production
+    .build();
+
+CommandServiceGrpc.CommandServiceFutureStub commandService =
+    CommandServiceGrpc.newFutureStub(channel);
+```
+
+### Command 제출
+
+Generated class로 Contract를 생성합니다.
+
+```java
+License license = new License(
+    providerParty,
+    userParty,
+    "Premium License",
+    Instant.parse("2025-12-31T00:00:00Z")
+);
+
+// Submit as a create command via the Ledger API
+```
+
+Choice를 exercise합니다.
+
+```java
+License.Renew renewArg = new License.Renew(
+    Instant.parse("2026-12-31T00:00:00Z")
+);
+
+// Submit as an exercise command with the contract ID and choice argument
+```
+
+### Event 처리
+
+Ledger API stream에서 transaction event를 읽을 때 `fromValue()`로 Contract payload를 deserialize합니다.
+
+```java
+CreatedEvent event = ...;
+License license = License.fromValue(event.getArguments());
+```
+
+## Maven/Gradle dependency
+
+Generated code를 build에 추가합니다. [cn-quickstart](https://github.com/digital-asset/cn-quickstart) project에서는 Gradle이 build process의 일부로 code generation과 compilation을 처리합니다.
+
+Gradle project에는 generated source directory를 추가합니다.
+
+```kotlin
+sourceSets {
+    main {
+        java {
+            srcDir("generated-java")
+        }
+    }
+}
+```
+
+Maven에서는 `pom.xml`에 generated directory를 source folder로 추가합니다.
+
+```xml
+<build>
+  <plugins>
+    <plugin>
+      <groupId>org.codehaus.mojo</groupId>
+      <artifactId>build-helper-maven-plugin</artifactId>
+      <executions>
+        <execution>
+          <id>add-source</id>
+          <phase>generate-sources</phase>
+          <goals><goal>add-source</goal></goals>
+          <configuration>
+            <sources>
+              <source>generated-java</source>
+            </sources>
+          </configuration>
+        </execution>
+      </executions>
+    </plugin>
+  </plugins>
+</build>
+```
+
+Daml Java binding library도 dependency로 필요합니다. 현재 Maven coordinate와 version은 [Daml SDK GitHub release](https://github.com/digital-asset/daml/releases)를 참조하세요.
+
+## Reference 문서
+
+Daml Java binding library의 전체 Javadoc은 각 [Daml SDK release](https://github.com/digital-asset/daml/releases)와 함께 publish됩니다. Generated class는 해당 문서의 같은 pattern을 따릅니다.
+
+## 관련 페이지
+
+- [dpm codegen-java reference](/sdks-tools/cli-tools/dpm) -- Command option과 flag입니다.
+- [TypeScript binding](/reference/typescript) -- TypeScript/JavaScript용 대안 binding입니다.
+- [Backend 개발](/appdev/modules/m4-backend-dev) -- Java로 Canton backend를 구축하는 pattern입니다.
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/component-howtos/application-development/daml-codegen-java.rst" hash="bbdcc685" */}
+
+# Java용 Daml Codegen
+
+Java용 Daml Codegen인 `dpm codegen-java`를 사용해 Daml Archive `.dar` file에 정의된 모든 Daml data type을 나타내는 Java class를 생성합니다. 이 class는 `com.daml.ledger.api.v2.CreateCommand`와 `com.daml.ledger.api.v2.ExerciseCommand`처럼 gRPC Ledger API용 Java gRPC binding이 요구하는 type 구성을 단순화합니다. 또한 JSON decoding utility를 제공해 JSON Ledger API 사용 시 JSON 처리를 쉽게 합니다.
+
+Generated class 사용 방법은 Java에서 Contract와 transaction을 다루는 방법을 참조하세요. Codegen setup과 실행 방법은 아래 section을 참조하세요.
+
+## Install
+
+DPM을 설치하면 Java용 Daml Codegen이 설치됩니다.
+
+## Configure
+
+Daml Codegen을 설정하려면 다음 두 방법 중 하나를 선택합니다.
+
+- **Command line configuration**: 모든 설정을 command line에서 직접 지정합니다.
+- **Project file configuration**: 모든 설정을 `daml.yaml` file에 정의합니다.
+
+### Command line configuration
+
+Java용 Daml Codegen의 모든 command line option을 보려면 terminal에서 `dpm codegen-java --help`를 실행합니다.
+
+``` none
+<DAR-file[=package-prefix]>...
+                         DAR file to use as input of the codegen with an optional, but recommend, package prefix for the generated sources.
+-o, --output-directory <value>
+                         Output directory for the generated sources
+-d, --decoderClass <value>
+                         Fully Qualified Class Name of the optional Decoder utility
+-V, --verbosity <value>  Verbosity between 0 (only show errors) and 4 (show all messages) -- defaults to 0
+-r, --root <value>       Regular expression for fully-qualified names of templates to generate -- defaults to .*
+--help                   This help text
+```
+
+### Project file configuration
+
+위 설정을 Daml project file `daml.yaml`의 `codegen` element에 지정합니다.
+
+다음은 example입니다.
+
+    sdk-version: 3.4.9
+    name: quickstart
+    source: daml
+    init-script: Main:initialize
+    parties:
+      - Alice
+      - Bob
+      - USD_Bank
+      - EUR_Bank
+    version: 0.0.1
+    exposed-modules:
+      - Main
+    dependencies:
+      - daml-prim
+      - daml-stdlib
+    codegen:
+      java:
+        package-prefix: com.daml.quickstart.iou
+        output-directory: java-codegen/src/main/java
+        verbosity: 2
+
+## Operate
+
+Project file configuration으로 Daml Codegen을 실행합니다.
+
+    $ dpm codegen-java
+
+또는 command line configuration으로 실행합니다.
+
+    $ dpm codegen-java ./.daml/dist/quickstart-0.0.1.dar=com.daml.quickstart.iou --output-directory=java-codegen/src/main/java --verbosity=2
+
+## Reference
+
+### Generated Java code
+
+#### Daml primitive에서 Java type으로 변환
+
+Daml built-in type은 다음 Java equivalent type으로 변환됩니다.
+
+| Daml type      | Java type                                                                                                                                          | Java Bindings Value type                                                                       |
+|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|
+| `Int`          | `java.lang.Long`                                                                                                                                   | [Int64](/reference/java/com-daml-ledger-javaapi-data/int64)               |
+| `Numeric`      | `java.math.BigDecimal`                                                                                                                             | [Numeric](/reference/java/com-daml-ledger-javaapi-data/numeric)           |
+| `Text`         | `java.lang.String`                                                                                                                                 | [Text](/reference/java/com-daml-ledger-javaapi-data/text)                 |
+| `Bool`         | `java.util.Boolean`                                                                                                                                | [Bool](/reference/java/com-daml-ledger-javaapi-data/bool)                 |
+| `Party`        | `java.lang.String`                                                                                                                                 | [Party](/reference/java/com-daml-ledger-javaapi-data/party)               |
+| `Date`         | `java.time.LocalDate`                                                                                                                              | [Date](/reference/java/com-daml-ledger-javaapi-data/date)                 |
+| `Time`         | `java.time.Instant`                                                                                                                                | [Timestamp](/reference/java/com-daml-ledger-javaapi-data/timestamp)       |
+| `List` or `[]` | `java.util.List`                                                                                                                                   | [DamlList](/reference/java/com-daml-ledger-javaapi-data/damllist)         |
+| `TextMap`      | `String` key만 사용할 수 있는 `java.util.Map`입니다.                                                                                               | [DamlTextMap](/reference/java/com-daml-ledger-javaapi-data/damltextmap)   |
+| `Optional`     | `java.util.Optional`                                                                                                                               | [DamlOptional](/reference/java/com-daml-ledger-javaapi-data/damloptional) |
+| `()` (Unit)    | Java에는 Daml Unit type `()`에 직접 대응하는 type이 없어 generated code가 Java Binding value type을 사용합니다.                                    | [Unit](/reference/java/com-daml-ledger-javaapi-data/unit)                                      |
+| `ContractId`   | `ContractId X` type field는 해당 Template `X`의 generated `ContractId` class를 참조합니다.                                                         | [ContractId](/reference/java/com-daml-ledger-javaapi-data/contractid)     |
+
+#### Escaping rule
+
+Java keyword와의 충돌을 피하기 위해 Daml Codegen은 다음 Daml identifier에 escaping rule을 적용합니다.
+
+- 이미 mapping된 built-in type을 제외한 type name
+- Constructor name
+- Type parameter
+- Module name
+- Field name
+
+이 identifier가 [Java reserved keyword](https://docs.oracle.com/javase/specs/jls/se12/html/jls-3.html#jls-3.9)와 일치하면 Daml Codegen은 name 뒤에 dollar sign `$`를 붙입니다. 예를 들어 `import` field는 Java에서 `import$` field로 생성됩니다.
+
+#### Generated class
+
+Daml의 모든 User-defined data type인 Template, Record, Variant는 이 section의 설명처럼 하나 이상의 Java class로 표현됩니다.
+
+Generated class의 Java Package는 Daml Module name을 lowercase로 변환한 값입니다.
+
+<DamlSdksToolsLanguageBindingsJavaL247 />
+
+`Person` type의 class를 정의하는 Java file이 생성됩니다.
+
+```java
+package com.acme.producttypes;
+
+public class Person extends DamlRecord<Person> {
+  public final Name name;
+  public final BigDecimal age;
+
+  public static Person fromValue(Value value$) { /* ... */ }
+
+  public Person(Name name, BigDecimal age) { /* ... */ }
+  public DamlRecord toValue() { /* ... */ }
+}
+```
+
+`Name` type의 class를 정의하는 Java file이 생성됩니다.
+
+```java
+package com.acme.producttypes;
+
+public class Name extends DamlRecord<Name> {
+  public final String firstName;
+  public final String lastName;
+
+  public static Person fromValue(Value value$) { /* ... */ }
+
+  public Name(String firstName, String lastName) { /* ... */ }
+  public DamlRecord toValue() { /* ... */ }
+}
+```
+
+##### Template
+
+Daml Codegen은 Daml Template에 대해 다음 class를 생성합니다.
+
+> **TemplateName**
+> Contract data 또는 Template field를 나타냅니다.
+>
+> **TemplateName.ContractId**
+> 해당 Template의 Contract ID가 다른 Template이나 Record에서 사용될 때 사용됩니다. 예를 들면 `data Foo = Foo (ContractId Bar)`입니다. 이 class는 Java Binding으로 Ledger에 보낼 수 있는 각 Choice의 `ExerciseCommand`를 생성하는 method도 제공합니다.
+>
+> **TemplateName.Contract**
+> Ledger의 실제 Contract를 나타냅니다. `TemplateName.ContractId` type의 Contract ID field와 `TemplateName` type의 Template data field를 포함합니다. Static method `TemplateName.Contract.fromCreatedEvent`를 사용해 [CreatedEvent](/reference/java/com-daml-ledger-javaapi-data/createdevent)를 `TemplateName.Contract` instance로 deserialize할 수 있습니다.
+>
+<DamlSdksToolsLanguageBindingsJavaL300 />
+
+구체적으로 codegen은 Java class 여섯 개와 Interface 하나를 정의하는 file을 생성합니다.
+
+1.  `Bar`
+2.  `Bar.ContractId`
+3.  `Bar.Contract`
+4.  `Bar.CreateAnd`
+5.  `Bar.JsonDecoder$`
+6.  `Bar.Exercises`
+
+```java
+package com.acme.templates;
+
+public final class Bar extends Template {
+  public static final Identifier TEMPLATE_ID = new Identifier("#some-package-name", "Templates", "Bar");
+  public static final Identifier TEMPLATE_ID_WITH_PACKAGE_ID = new Identifier("some-package-id", "Templates", "Bar");
+  public static final String PACKAGE_ID = "some-package-id";
+  public static final String PACKAGE_NAME = "some-package-name";
+  public static final PackageVersion PACKAGE_VERSION = new PackageVersion(new int[] {0, 0, 1});
+
+  public static final Choice<Bar, Archive, Unit> CHOICE_Archive =
+    Choice.create(/* ... */);
+
+  public static final Choice<Bar, Bar_SomeChoice, Boolean> CHOICE_Bar_SomeChoice =
+    Choice.create(/* ... */);
+
+  public static final ContractCompanion.WithoutKey<Contract, ContractId, Bar> COMPANION =
+    new ContractCompanion.WithoutKey<>(new ContractTypeCompanion.Package(Bar.PACKAGE_ID, Bar.PACKAGE_NAME, Bar.PACKAGE_VERSION),
+      "com.acme.templates.Bar", TEMPLATE_ID, ContractId::new,
+      v -> Bar.templateValueDecoder().decode(v), Bar::fromJson, Contract::new,
+      List.of(CHOICE_Archive, CHOICE_Bar_SomeChoice));
+
+  public final String owner;
+  public final String name;
+
+  public CreateAnd createAnd() { /* ... */ }
+
+  public static class ContractId extends com.daml.ledger.javaapi.data.codegen.ContractId<Bar>
+      implements Exercises<ExerciseCommand> {
+    // inherited:
+    public final String contractId;
+  }
+
+  public interface Exercises<Cmd> extends com.daml.ledger.javaapi.data.codegen.Exercises<Cmd> {
+    default Cmd exerciseArchive(Unit arg) { /* ... */ }
+
+    default Cmd exerciseBar_SomeChoice(Bar_SomeChoice arg) { /* ... */ }
+
+    default Cmd exerciseBar_SomeChoice(String aName) { /* ... */ }
+  }
+
+  public static class Contract extends com.daml.ledger.javaapi.data.codegen.Contract<ContractId, Bar> {
+    // inherited:
+    public final ContractId id;
+    public final Bar data;
+
+    public static Contract fromCreatedEvent(CreatedEvent event) { /* ... */ }
+  }
+
+  public static final class CreateAnd
+      extends com.daml.ledger.javaapi.data.codegen.CreateAnd
+      implements Exercises<CreateAndExerciseCommand> { /* ... */ }
+
+  public static class JsonDecoder$ { /* ... */ }
+}
+```
+
+##### Variant, sum type
+
+Variant 또는 sum type은 여러 Constructor를 가지며 각 Constructor가 다른 type의 value를 wrapping하는 type입니다. Generated code는 Variant type 자체의 abstract class와 각 Constructor의 subclass로 구성됩니다. Variant Constructor class는 Record class와 유사합니다.
+
+<DamlSdksToolsLanguageBindingsJavaL394 />
+
+이 Variant에서 생성되는 Java code는 다음과 같습니다.
+
+```java
+package com.acme.variants;
+
+public class BookAttribute extends Variant<BookAttribute> {
+  public static BookAttribute fromValue(Value value) { /* ... */ }
+
+  public static BookAttribute fromValue(Value value) { /* ... */ }
+  public abstract Variant toValue();
+}
+```
+
+```java
+package com.acme.variants.bookattribute;
+
+public class Pages extends BookAttribute {
+  public final Long longValue;
+
+  public static Pages fromValue(Value value) { /* ... */ }
+
+  public Pages(Long longValue) { /* ... */ }
+  public Variant toValue() { /* ... */ }
+}
+```
+
+```java
+package com.acme.variants.bookattribute;
+
+public class Authors extends BookAttribute {
+  public final List<String> listValue;
+
+  public static Authors fromValue(Value value) { /* ... */ }
+
+  public Author(List<String> listValue) { /* ... */ }
+  public Variant toValue() { /* ... */ }
+
+}
+```
+
+```java
+package com.acme.variants.bookattribute;
+
+public class Title extends BookAttribute {
+  public final String stringValue;
+
+  public static Title fromValue(Value value) { /* ... */ }
+
+  public Title(String stringValue) { /* ... */ }
+  public Variant toValue() { /* ... */ }
+}
+```
+
+```java
+package com.acme.variants.bookattribute;
+
+public class Published extends BookAttribute {
+  public final Long year;
+  public final String publisher;
+
+  public static Published fromValue(Value value) { /* ... */ }
+
+  public Published(Long year, String publisher) { /* ... */ }
+  public Variant toValue() { /* ... */ }
+}
+```
+
+##### Enum
+
+Enum type은 여러 Constructor를 가지지만 argument나 type parameter는 없는 단순화된 sum type입니다. Generated code는 constant가 Enum type Constructor에 mapping되는 표준 Java Enum입니다.
+
+<DamlSdksToolsLanguageBindingsJavaL475 />
+
+이 Variant에서 생성되는 Java code는 다음과 같습니다.
+
+```java
+package com.acme.enum;
+
+public enum Color implements DamlEnum<Color> {
+  RED,
+  GREEN,
+  BLUE;
+
+  /* ... */
+  public static final Color fromValue(Value value$) { /* ... */ }
+  public final DamlEnum toValue() { /* ... */ }
+}
+```
+
+##### Parameterized type
+
+<Note>
+이 section은 완전성을 위해 포함됩니다. `fromValue`와 `toValue` method는 일반적으로 unbound type parameter가 없는 Template에서 제공됩니다.
+</Note>
+
+Daml Codegen은 Daml parameterized type을 표현하기 위해 Java Generic type을 사용합니다.
+
+다음 Daml fragment는 책의 특성을 modeling하는 `BookAttribute` type에서 사용하는 parameterized type `Attribute`를 정의합니다.
+
+<DamlSdksToolsLanguageBindingsJavaL508 />
+
+Daml Codegen은 `Attribute a` data type의 Generic class를 가진 Java file을 생성합니다.
+
+```java
+package com.acme.parameterizedtypes;
+
+public class Attribute<a> {
+  public final a value;
+
+  public Attribute(a value) { /* ... */  }
+
+  public DamlRecord toValue(Function<a, Value> toValuea) { /* ... */ }
+
+  public static <a> Attribute<a> fromValue(Value value$, Function<Value, a> fromValuea) { /* ... */ }
+}
+```
+
+###### Generated type value를 Java Binding Value로 변환
+
+Generic type Attribute instance를 Java Binding [Value](/reference/java/com-daml-ledger-javaapi-data/value)로 변환하려면 `toValue` method를 호출합니다. `a` type field를 해당 Java Binding [Value](/reference/java/com-daml-ledger-javaapi-data/value)로 변환하는 function을 `toValuea` argument로 전달합니다. Parameter name은 `toValue`와 type parameter name을 결합하며 이 경우 `a`를 붙인 `toValuea`입니다.
+
+아래 Java fragment는 *method reference* `Int64::new`를 사용해 `java.lang.Long` value를 가진 Attribute를 Java Binding representation으로 변환합니다.
+
+```java
+Attribute<Long> pagesAttribute = new Attributes<>(42L);
+
+Value serializedPages = pagesAttribute.toValue(Int64::new);
+```
+
+Java Binding [Value](/reference/java/com-daml-ledger-javaapi-data/value) type의 overview는 Daml to Java Type Mapping을 참조하세요.
+
+<Note>
+Daml type이 둘 이상의 type parameter를 가진 Record 또는 Variant라면 각 type parameter의 conversion function을 `toValue` method에 전달해야 합니다.
+</Note>
+
+###### Java Binding Value에서 generated type value 생성
+
+`toValue` method와 마찬가지로 generated type value를 생성하려면 `fromValue` method를 호출하고 Java Binding [Value](/reference/java/com-daml-ledger-javaapi-data/value) type에서 예상 Java type으로 변환하는 function을 전달합니다.
+
+```java
+Attribute<Long> pagesAttribute = Attribute.<Long>fromValue(serializedPages,
+    f -> f.asInt64().getOrElseThrow(() -> throw new IllegalArgumentException("Expected Int field").getValue());
+```
+
+Java Binding type을 해당 Java type으로 변환하는 method는 Java Binding [Value](/reference/java/com-daml-ledger-javaapi-data/value) class를 참조하세요.
+
+###### 노출되지 않은 parameterized type
+
+Parameterized type이 위 `BookAttributes`처럼 *actual* type이 지정된 type에 포함되어 있다면 enclosing type의 conversion method가 필요한 conversion function parameter를 자동으로 제공합니다.
+
+###### Optional value 변환
+
+Java `Optional` 변환에는 두 step이 필요합니다. `DamlOptional::of` function에 전달하기 전에 내부 value를 변환하도록 `Optional`을 mapping해야 합니다.
+
+```java
+Attribute<Optional<Long>> idAttribute = new Attribute<List<Long>>(Optional.of(42));
+
+val serializedId = DamlOptional.of(idAttribute.map(Int64::new));
+```
+
+[DamlOptional](/reference/java/com-daml-ledger-javaapi-data/damloptional)을 Java `Optional`로 다시 변환하려면 container method `toOptional`을 사용해야 합니다. 이 method는 container에 포함될 수 있는 value를 다시 변환하는 function을 받습니다.
+
+```java
+Attribute<Optional<Long>> idAttribute2 =
+  serializedId.toOptional(v -> v.asInt64().orElseThrow(() -> new IllegalArgumentException("Expected Int64 element")));
+```
+
+###### Collection value 변환
+
+[DamlCollectors](/reference/java/com-daml-ledger-javaapi-data/damlcollectors)는 `List`와 `Map` 같은 Java collection container를 한 번에 DamlValue로 변환하는 Collector를 제공합니다. 이 Collector의 builder에는 container element를 변환하는 function이 필요합니다.
+
+```java
+Attribute<List<String>> authorsAttribute =
+    new Attribute<List<String>>(Arrays.asList("Homer", "Ovid", "Vergil"));
+
+Value serializedAuthors =
+    authorsAttribute.toValue(f -> f.stream().collect(DamlCollector.toList(Text::new));
+```
+
+Daml container를 Java container로 다시 변환하려면 container method `toList` 또는 `toMap`을 사용해야 합니다. 이 method는 container entry를 다시 변환하는 function을 받습니다.
+
+```java
+Attribute<List<String>> authorsAttribute2 =
+    Attribute.<List<String>>fromValue(
+        serializedAuthors,
+        f0 -> f0.asList().orElseThrow(() -> new IllegalArgumentException("Expected DamlList field"))
+             .toList(
+                 f1 -> f1.asText().orElseThrow(() -> new IllegalArgumentException("Expected Text element"))
+                      .getValue()
+             )
+    );
+```
+
+##### Daml Interface
+
+다음 Daml definition에서,
+
+<DamlSdksToolsLanguageBindingsJavaL617 />
+
+Interface definition의 generated file은 아래와 같습니다. Interface는 항상 Contract ID를 통해서만 다룰 수 있으므로 사실상 inner type ContractId만 포함하는 class입니다.
+
+```java
+package interfaces
+
+/* imports */
+
+public final class TIf {
+  public static final Identifier TEMPLATE_ID = new Identifier("94fb4fa48cef1ec7d474ff3d6883a00b2f337666c302ec5e2b87e986da5c27a3", "Interfaces", "TIf");
+
+  public static final Choice<TIf, Transfer, ContractId> CHOICE_Transfer =
+    Choice.create(/* ... */);
+
+  public static final Choice<TIf, Archive, Unit> CHOICE_Archive =
+    Choice.create(/* ... */);
+
+  public static final INTERFACE INTERFACE = new INTERFACE();
+
+  public static final class ContractId extends com.daml.ledger.javaapi.data.codegen.ContractId<TIf>
+      implements Exercises<ExerciseCommand> {
+    public ContractId(String contractId) { /* ... */ }
+  }
+
+  public interface Exercises<Cmd> extends com.daml.ledger.javaapi.data.codegen.Exercises<Cmd> {
+    default Cmd exerciseUseless(Useless arg) { /* ... */ }
+
+    default Cmd exerciseHam(Ham arg) { /* ... */ }
+  }
+
+  public static final class CreateAnd
+      extends com.daml.ledger.javaapi.data.codegen.CreateAnd.ToInterface
+      implements Exercises<CreateAndExerciseCommand> { /* ... */ }
+
+  public static final class ByKey
+      extends com.daml.ledger.javaapi.data.codegen.ByKey.ToInterface
+      implements Exercises<ExerciseByKeyCommand> { /* ... */ }
+
+  public static final class INTERFACE extends InterfaceCompanion<TIf> { /* ... */}
+}
+```
+
+Template이 Interface를 구현하면 code generation이 조금 달라집니다. Template ContractId를 Interface ContractId로 변환할 수 있도록 `toInterface` conversion method가 추가 생성됩니다. 반대 방향의 unchecked conversion을 위한 `unsafeFromInterface`도 생성됩니다.
+
+```java
+package interfaces
+
+/* ... */
+
+public final class Child extends Template {
+
+  /* ... */
+
+  public static final class ContractId extends com.daml.ledger.javaapi.data.codegen.ContractId<Child>
+      implements Exercises<ExerciseCommand> {
+
+    /* ... */
+
+    public TIf.ContractId toInterface(TIf.INTERFACE interfaceCompanion) { /* ... */ }
+
+    public static ContractId unsafeFromInterface(TIf.ContractId interfaceContractId) { /* ... */ }
+
+  }
+
+  public interface Exercises<Cmd> extends com.daml.ledger.javaapi.data.codegen.Exercises<Cmd> {
+    default Cmd exerciseBar(Bar arg) { /* ... */ }
+
+    default Cmd exerciseBar() { /* ... */ }
+  }
+
+  /* ... */
+
+}
+```
+
+{/* COPIED_END */}

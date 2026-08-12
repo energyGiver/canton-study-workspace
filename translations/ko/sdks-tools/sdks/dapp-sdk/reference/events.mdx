@@ -1,0 +1,51 @@
+---
+title: "Event"
+description: "dApp SDK가 emit하는 connection, Account, transaction event입니다."
+source_id: "SRC-AAF2B8CCFD"
+source_path: "sdks-tools/sdks/dapp-sdk/reference/events"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "aa6d46e96b8c28cc890fbe640da591cc5b604f81ab400105b26ed5a87c2868fc"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/dapp-sdk/reference/events.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="splice-wallet-kernel:docs/dapp-sdk/reference/events.md@0431c87e" */}
+
+dApp SDK는 UI가 Wallet state와 동기화되도록 event를 emit합니다. `on*` function으로 subscribe하고 대응하는 `off*` function으로 unsubscribe합니다. 사용 example은 [Event 처리](/sdks-tools/sdks/dapp-sdk/guides/handle-events)를 참조하세요.
+
+## `onStatusChanged(handler)` / `offStatusChanged(handler)`
+
+Connection status 또는 session state가 변경될 때 발생합니다.
+
+| Payload field            | Type      | Description                            |
+| ------------------------ | --------- | -------------------------------------- |
+| `connection.isConnected` | `boolean` | 현재 session의 active 여부입니다. |
+
+## `onAccountsChanged(handler)` / `offAccountsChanged(handler)`
+
+Account가 추가/제거되거나 Primary Account가 변경될 때 발생합니다.
+
+| Payload    | Type        | Description                 |
+| ---------- | ----------- | --------------------------- |
+| `accounts` | `Account[]` | 현재 Party 집합입니다. |
+
+## `onTxChanged(handler)` / `offTxChanged(handler)`
+
+`prepareExecute`로 제출한 transaction이 lifecycle을 거칠 때 발생합니다.
+
+| Payload field      | Type                                              | Description                                 |
+| ------------------ | ------------------------------------------------- | ------------------------------------------- |
+| `status`           | `'pending' \| 'signed' \| 'executed' \| 'failed'` | 현재 transaction state입니다.               |
+| `payload.updateId` | `string`                                          | `executed` 시 존재하는 Ledger update ID입니다. |
+
+## 관련 문서
+
+- [Event 처리](/sdks-tools/sdks/dapp-sdk/guides/handle-events) — Event subscribe와 cleanup example입니다.
+- [SDK Method](/sdks-tools/sdks/dapp-sdk/reference/sdk-methods) — Event를 trigger하는 function입니다.
+
+{/* COPIED_END */}

@@ -1,0 +1,35 @@
+---
+title: "WalletConnect"
+description: "WalletConnect를 통해 Mobile/Cross-device Wallet을 Canton dApp에 연결합니다."
+source_id: "SRC-16D3E9B9B5"
+source_path: "sdks-tools/sdks/dapp-sdk/wallet-providers/walletconnect"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "5318076ba38a2142ea1708246f9992283b97ae9cf009bb43e5477c575b826008"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/dapp-sdk/wallet-providers/walletconnect.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="splice-wallet-kernel:docs/dapp-sdk/wallet-providers/walletconnect.md@0431c87e" */}
+
+WalletConnect는 Mobile/Cross-device Wallet을 dApp에 연결합니다. Wallet은 WalletConnect Wallet SDK를 통해 Canton support를 추가하고 dApp은 `WalletConnectAdapter`를 등록해 WalletConnect를 활성화합니다. 자세한 내용은 [Wallet discovery](/sdks-tools/sdks/dapp-sdk/guides/wallet-discovery)를 참조하세요.
+
+## Wallet에 Canton support 추가
+
+Canton Network support를 추가하려면 공식 WalletConnect 문서인 [WalletConnect: Canton chain support](https://docs.walletconnect.network/wallet-sdk/chain-support/canton)를 따르세요.
+
+다른 integration path와 마찬가지로 Wallet은 runtime에 CIP-103을 준수해야 합니다.
+
+## Production 고려사항
+
+- Relay unavailable 상태와 session expiry를 안정적으로 처리합니다.
+
+## 다음 단계
+
+- [CIP-103 Specification](https://github.com/canton-foundation/cips/blob/main/cip-0103/cip-0103.md) — Namespace 기반의 필수 method와 event입니다.
+
+{/* COPIED_END */}

@@ -1,0 +1,929 @@
+---
+title: "dpm, Daml Package Manager"
+description: "Canton 개발의 주요 CLI tool인 dpm의 command reference와 configuration입니다."
+source_id: "SRC-1C6ABD250E"
+source_path: "sdks-tools/cli-tools/dpm"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "b2f75bdafb9ad34324785b03eb2c8403598981a0f3ecb66e2d594732303d5ed9"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/cli-tools/dpm.md)을 함께 확인하세요.
+</Warning>
+
+import DamlDocsSdksToolsCliToolsDpmL14 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L14.mdx";
+import DamlDocsSdksToolsCliToolsDpmL24 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L24.mdx";
+import DamlDocsSdksToolsCliToolsDpmL30 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L30.mdx";
+import DamlDocsSdksToolsCliToolsDpmL44 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L44.mdx";
+import DamlDocsSdksToolsCliToolsDpmL50 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L50.mdx";
+import DamlDocsSdksToolsCliToolsDpmL56 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L56.mdx";
+import DamlDocsSdksToolsCliToolsDpmL62 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L62.mdx";
+import DamlDocsSdksToolsCliToolsDpmL70 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L70.mdx";
+import DamlDocsSdksToolsCliToolsDpmL76 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L76.mdx";
+import DamlDocsSdksToolsCliToolsDpmL84 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L84.mdx";
+import DamlDocsSdksToolsCliToolsDpmL90 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L90.mdx";
+import DamlDocsSdksToolsCliToolsDpmL98 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L98.mdx";
+import DamlDocsSdksToolsCliToolsDpmL111 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L111.mdx";
+import DamlDocsSdksToolsCliToolsDpmL135 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L135.mdx";
+import DamlDocsSdksToolsCliToolsDpmL152 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L152.mdx";
+
+`dpm`은 Canton 개발용 command-line interface입니다. SDK 설치, project scaffolding, compilation, testing, code generation, local 개발 환경을 관리합니다. 대부분의 Canton 개발 workflow는 `dpm` command로 시작합니다.
+
+## Prerequisite
+
+DPM은 Windows, macOS, Linux에서 실행됩니다. 전체 기능을 사용하려면 다음 항목을 설치해야 합니다.
+
+1) [VS Code](https://code.visualstudio.com/download)
+2) JDK 17 이상을 설치하고 `JAVA_HOME`에 포함합니다. JDK가 없다면 OpenJDK 또는 [Eclipse Adoptium](https://adoptium.net/)을 사용할 수 있습니다.
+3) Apple Silicon Mac에서 x86 binary를 실행하려면 Rosetta 2가 필요할 수 있습니다. Terminal에서 다음 command를 실행합니다.
+
+```shell
+softwareupdate --install-rosetta
+```
+
+## Installation
+
+`dpm` 설치는 일반적으로 binary 하나를 download해 `PATH`에 추가하는 과정입니다.
+
+{/* COPIED_START source="dpm:docs-internal/src/install-sdk.rst" hash="d1fc5b02" */}
+
+Edition/platform과 관계없이 `dpm` 설치 시 `DPM_HOME` environment variable로 SDK와 향후 update가 설치될 위치를 변경할 수 있습니다. Default는 다음과 같습니다.
+
+- Mac/Linux: `${HOME}/.dpm/`
+- Windows: `%APPDATA%/.dpm/`
+
+그 다음 `${HOME}/.dpm/bin`을 `PATH`에 추가합니다.
+
+```shell
+export PATH="${HOME}/.dpm/bin:${PATH}"
+```
+
+Custom install location을 사용했다면 다음과 같이 설정합니다.
+
+```shell
+export PATH="${DPM_HOME}/bin:${PATH}"
+```
+
+{/* COPIED_END */}
+
+Latest version 설치 방법은 다음과 같습니다.
+
+### Mac/Linux 설치
+
+```shell
+curl https://get.digitalasset.com/install/install.sh | sh
+```
+
+### Windows 설치
+
+[Windows installer](https://get.digitalasset.com/install/latest-windows.html)를 download해 실행합니다. DPM SDK가 설치되고 PATH variable이 설정됩니다.
+
+### 수동 설치
+
+수동 설치를 선호하면 [수동 설치 안내](#manual-installation-instructions)를 참조하세요.
+
+### SDK 없이 dpm 설치
+
+{/* COPIED_START source="dpm:docs-internal/src/getting-started.rst" hash="18775123" */}
+
+SDK가 bundled되지 않은 bare `dpm` binary는 두 방법으로 가져올 수 있습니다.
+
+[Release page](https://github.com/digital-asset/dpm/releases)에서 download합니다.
+
+또는 `oras` 같은 tool을 사용해 public OCI repository에서 직접 pull합니다.
+
+```shell
+## use the oras CLI to pull the correct platform image:
+oras pull --platform darwin/arm64 europe-docker.pkg.dev/da-images/public/components/dpm:latest
+
+## make the binary executable:
+chmod +x dpm
+```
+
+{/* COPIED_END */}
+
+위 example은 macOS Apple Silicon image를 pull합니다. Machine에 맞게 `--platform` value를 `linux/amd64`, `linux/arm64`, `darwin/amd64`, `darwin/arm64`, `windows/amd64` 중 하나로 바꾸세요.
+
+Bare binary를 준비한 후 [Project Management](#project-management)의 설명처럼 `dpm install`을 실행할 수 있습니다. Argument가 없으면 `dpm install package` alias로 현재 project dependency를 설치합니다. Version argument를 주는 `dpm install <version>`은 해당 SDK version을 설치합니다. Bare binary에는 SDK가 bundled되지 않으므로 registry를 수동으로 설정해야 합니다. [Registry 및 Edition](#registry-and-edition)을 참조하세요.
+
+{/* COPIED_START source="dpm:docs-internal/src/install-sdk.rst" hash="d1fc5b02" */}
+
+### SDK upgrade
+
+다음 command로 SDK latest version으로 upgrade할 수 있습니다.
+
+```shell
+dpm install latest
+```
+
+현재 설치된 edition과 같은 latest SDK를 설치합니다. 최초 SDK 설치 시 credential이 이미 설정되므로 다시 제공할 필요가 없습니다.
+
+특정 SDK version도 같은 방식으로 설치할 수 있습니다.
+
+```shell
+dpm install <version>
+```
+
+Daml project 외부에서는 설치된 latest version이 active SDK입니다.
+
+{/* COPIED_END */}
+
+### 설치 검증
+
+설치 후 다음 command로 검증합니다.
+
+<DamlDocsSdksToolsCliToolsDpmL14 />
+
+## Configuration file
+
+### daml.yaml
+
+모든 Daml project의 root에는 `daml.yaml` file이 있습니다. Project에 없다면 다음 command로 생성합니다.
+
+```shell
+dpm init
+```
+
+Project metadata, source directory, dependency를 지정합니다. `dpm init`은 default value로 file을 생성합니다.
+
+<DamlDocsSdksToolsCliToolsDpmL111 />
+
+주요 field는 다음과 같습니다.
+
+- `name` -- Output DAR filename에 사용하는 Package name입니다. `dpm init` default는 현재 directory name으로 resolve되는 `.`입니다.
+- `source` -- 일반적으로 `daml`인 Daml source file directory입니다.
+- `version` -- Package version이며 `dpm init` default는 `0.0.1`입니다.
+- `dependencies` -- Daml library dependency list입니다. `dpm init`은 `daml-prim`, `daml-stdlib`, `daml-script`를 포함합니다.
+- `sdk-version` -- 사용할 Daml SDK version입니다. `dpm install`이 이 version을 download합니다. `dpm init`은 설정하지 않으며 없으면 `dpm`은 globally selected active SDK version인 `dpm version --active`를 사용합니다. Global active version과 관계없이 project version을 고정하려면 이 field를 추가합니다.
+- `build-options` -- Target LF version 같은 Compiler flag입니다. `dpm init`은 설정하지 않으므로 필요하면 수동으로 추가합니다.
+
+### multi-package.yaml
+
+Daml Package가 여러 개인 project에서는 root의 `multi-package.yaml`에 모든 sub-package를 나열합니다.
+
+<DamlDocsSdksToolsCliToolsDpmL135 />
+
+Root에서 `dpm build --all`을 실행하면 나열된 모든 Package를 dependency 순서로 build합니다.
+
+### dpm-config.yaml
+
+`dpm-config.yaml`은 SDK install path와 registry setting 같은 global `dpm` configuration을 저장합니다. 일반적으로 `~/.dpm`인 `${DPM_HOME}`의 `${DPM_HOME}/dpm-config.yaml`에 저장됩니다. 선택 사항이며 수동 편집은 거의 필요하지 않습니다.
+
+{/* COPIED_START source="dpm:docs-internal/src/configuration.rst" hash="346dd1d3" */}
+
+`dpm`은 config file과 environment variable로 동시에 설정할 수 있습니다. Environment variable은 `dpm-config.yaml`의 대응 field보다 우선하므로 configured value를 override할 수 있습니다.
+
+{/* COPIED_END */}
+
+일반적인 용도는 다음과 같습니다.
+
+- **Registry URL** — SDK component의 default OCI registry를 override합니다.
+- **Authentication** — Registry credential을 지정합니다.
+- **Insecure registry** — Registry의 HTTP connection을 허용합니다.
+
+{/* COPIED_START source="dpm:docs-internal/src/configuration.rst" hash="346dd1d3" */}
+
+### Registry 및 Edition
+
+여러 built-in command를 위해 `dpm`은 현재 사용할 OCI registry를 알아야 합니다. `dpm`을 SDK의 일부로 설치했다면 일반적으로 `~/.dpm`인 `${DPM_HOME}`의 `${DPM_HOME}/dpm-config.yaml`에 registry가 자동 설정됩니다.
+
+OCI repository에서 직접 가져온 bare binary를 사용하면 이 configuration이 없을 수 있습니다. `${DPM_HOME}/dpm-config.yaml`에서 수동으로 설정할 수 있습니다.
+
+```yaml
+registry: europe-docker.pkg.dev/da-images/public # or your desired OCI registry
+```
+
+또는 `DPM_REGISTRY` environment variable을 사용합니다.
+
+### Authentication
+
+OCI registry pull/push authentication은 `~/.docker/config.json`과 유사한 file을 기반으로 하지만 system에 Docker를 설치할 필요는 없습니다.
+
+`dpm`은 default로 Docker auth를 사용합니다. Docker에서 OCI registry인 Google Artifact Registry authentication을 설정하면 `dpm`이 이를 사용합니다.
+
+```shell
+gcloud auth login
+```
+
+```shell
+gcloud auth configure-docker europe-docker.pkg.dev
+```
+
+{/* COPIED_END */}
+
+### Variable interpolation
+
+`daml.yaml`과 `dpm-config.yaml`은 모두 variable interpolation을 지원합니다. Registry URL이나 credential path 같은 hardcoded value를 피하고 environment variable 또는 다른 dynamic value를 참조할 수 있습니다.
+
+## Command reference
+
+### Project management
+
+**`dpm init`** -- 현재 directory에서 새 Daml project를 initialize합니다. `daml.yaml` configuration file과 기본 project structure를 생성합니다.
+
+`dpm install`로 SDK version을 수동 관리할 수 있습니다. `daml.yaml`에 지정된 SDK version을 설치하려면 다음을 실행합니다.
+
+```shell
+dpm install
+```
+
+예를 들어 `3.5.2` 같은 특정 SDK version을 설치하려면 다음을 실행합니다.
+
+```shell
+dpm install 3.5.2
+```
+
+Active SDK version을 확인합니다.
+
+```shell
+dpm version --active
+```
+
+```shell
+3.5.2
+```
+
+`*`로 표시된 현재 active version을 포함해 설치된 SDK version을 나열합니다.
+
+```shell
+dpm version
+```
+
+```shell
+  3.5.1
+* 3.5.2
+```
+
+설치된 version과 함께 설치 가능한 모든 SDK version을 나열합니다.
+
+```shell
+dpm version --all
+```
+
+Machine-readable format으로 list를 가져옵니다.
+
+```shell
+dpm version --all -o json
+```
+
+```json
+ [
+    {
+        "version": "3.4.11",
+        "installed": true,
+        "remote": true
+    },
+    {
+        "version": "3.5.1-rc3",
+        "remote": true
+    },
+    {
+        "version": "3.5.1-rc5",
+        "remote": true
+    },
+    {
+        "version": "3.5.1",
+        "installed": true,
+        "remote": true,
+        "active": true
+    },
+    {
+        "version": "3.5.2",
+        "remote": true
+    }
+]
+```
+
+<DamlDocsSdksToolsCliToolsDpmL24 />
+
+**`dpm new`** -- Template에서 새 project를 생성합니다. Template은 수정 가능한 동작 example을 제공합니다.
+
+<DamlDocsSdksToolsCliToolsDpmL30 />
+
+### Build 및 test
+
+**`dpm build`** -- Daml source file을 DAR, 즉 Daml Archive file로 compile합니다. Output은 `.daml/dist/`에 생성됩니다.
+
+<DamlDocsSdksToolsCliToolsDpmL44 />
+
+Multi-package project에서는 모든 sub-package를 build합니다.
+
+<DamlDocsSdksToolsCliToolsDpmL50 />
+
+**`dpm test`** -- 현재 Package의 모든 Daml Script test를 실행합니다. Pass/fail status와 coverage report가 포함된 summary를 생성합니다.
+
+<DamlDocsSdksToolsCliToolsDpmL56 />
+
+**`dpm install`** -- `daml.yaml`에 지정된 Daml SDK version을 download/install합니다.
+
+<DamlDocsSdksToolsCliToolsDpmL62 />
+
+### Code generation
+
+**`dpm codegen-js`** -- Compile된 DAR file에서 TypeScript/JavaScript binding을 생성합니다.
+
+<DamlDocsSdksToolsCliToolsDpmL70 />
+
+**`dpm codegen-java`** -- Compile된 DAR file에서 Java binding을 생성합니다.
+
+<DamlDocsSdksToolsCliToolsDpmL76 />
+
+### 개발 환경
+
+**`dpm sandbox`** -- Local Canton Sandbox Node를 시작합니다. Test용 in-memory Ledger를 가진 single-Participant Canton instance를 실행합니다.
+
+<DamlDocsSdksToolsCliToolsDpmL84 />
+
+**`dpm studio`** -- 현재 project용 Daml Studio, 즉 VS Code extension을 엽니다. Daml extension이 활성화된 VS Code를 실행합니다.
+
+<DamlDocsSdksToolsCliToolsDpmL90 />
+
+### 탐색
+
+모든 command에 `--help`를 사용해 option을 확인할 수 있습니다.
+
+<DamlDocsSdksToolsCliToolsDpmL98 />
+
+## `dpm` command 요약
+
+- `dpm build`:                    Daml Package 또는 project build
+
+  Project config file `daml.yaml`에 따라 Daml project를 build합니다. [Configuration file](#configuration-files)을 참조하세요.
+
+  특히 `daml.yaml`의 `sdk-version` field에 지정된 DPM SDK로 dependency를 resolve하고 Daml project를 compile합니다.
+
+  `daml.yaml`과 `.daml` source file이 있으면 `dpm build` command가 이 Package의 DAR를 생성합니다. Package definition과 DAR build 방법은 [Daml Archive build](/appdev/reference/daml-language-reference#building-daml-archives)를 참조하세요.
+
+- `dpm test`:                     모든 test declaration을 실행해 현재 Daml project 또는 지정 file을 test합니다.
+
+  Package에 정의된 모든 Daml Script를 실행합니다.
+
+  Daml Script는 `daml-script` Package의 `Script ()` type top-level value입니다. 이 Package는 빠른 iterative testing을 위해 Canton Ledger Client를 모방하며 [Daml Studio](/sdks-tools/development-tools/daml-studio)에서 직접 지원됩니다. Command는 multi-Participant setup의 복잡성 없이 Canton Ledger 핵심 기능을 구현한 reference Ledger인 IDE Ledger를 대상으로 script를 실행합니다.
+
+  Ledger API 직접 사용 또는 Daml Codegen을 통한 integration testing 전에 Ledger model의 기본을 검증하는 데 가장 유용합니다. `dpm test`는 사용한 Template/Choice의 code coverage 정보도 제공합니다.
+
+- `dpm clean`:                    Daml Package 또는 project 정리
+
+  DAR를 포함해 Daml build 중 Package에 생성된 모든 Daml artifact file을 제거합니다.
+
+| Command | Description |
+| --- | --- |
+| `dpm add` | Project에 Component/DAR 추가 |
+| `dpm add component` | Project에 Component 추가 |
+| `dpm add dar` | Project의 DAR 추가/update |
+| `dpm component init` | 현재 directory에서 Component initialize |
+| `dpm component run` | Remote Component pull/run |
+| `dpm update` | Project dependency update |
+| `dpm codegen-java` | Daml-to-Java Compiler |
+| `dpm codegen-js` | Daml-to-JavaScript Compiler |
+| `dpm canton-console` | Canton Console client |
+| `dpm daml-shell` | PQS용 Daml Shell client |
+| `dpm damlc` | Daml programming language Compiler/IDE backend |
+| `dpm docs` | Daml Package documentation comment에서 문서 생성 |
+| `dpm init` | 현재 directory에 `daml.yaml` project configuration file initialize |
+| `dpm install` | Project dependency 또는 특정 DPM SDK version 설치 |
+| `dpm install package` | 현재 project가 사용하는 SDK/Component/DAR 설치 |
+| `dpm uninstall` | DPM SDK version 제거 |
+| `dpm version` | 설치된 SDK version 표시 |
+| `dpm inspect-dar` | DAR Archive 검사 |
+| `dpm new` | 새 Daml Package 생성 |
+| `dpm publish` | Artifact publish command |
+| `dpm publish component` | Component를 OCI registry에 publish |
+| `dpm publish dar` | DAR를 OCI registry에 publish |
+| `dpm pqs` | Participant Query Store |
+| `dpm sandbox` | 단일 process에서 전체 Canton installation 실행 |
+| `dpm script` | Daml Script binary |
+| `dpm studio` | Daml Studio 실행 |
+| `dpm tags` | Artifact의 published tag 조회 |
+| `dpm upgrade-check` | Package version 간 upgrade validity 검사 |
+| `dpm validate-dar` | DAR Archive validate |
+
+참고: `dpm install <version>`으로 특정 SDK version을 설치한 후 새 version을 사용하도록 [project config file](#project-management)을 update하세요.
+
+## Components
+
+{/* COPIED_START source="dpm:docs-internal/src/components/components.rst" hash="a65f125e" */}
+
+Component는 주로 *launcher*인 `dpm`이 wrapping하는 artifact입니다. `sandbox`와 `scribe`가 example입니다. Component는 `dpm`이 expose할 command와 이를 구현하는 binary를 정의합니다.
+
+Component는 다음을 포함하는 directory입니다.
+
+- Root의 `component.yaml` file입니다. Component command를 import하고 `exec`하는 방법을 `dpm`에 알립니다.
+- `component.yaml`에 정의한 command를 구현하는 binary 또는 JAR입니다.
+- Component operation에 필요하면 `lib` directory 같은 추가 file/directory를 선택적으로 포함합니다. Component publish 시 `dpm`이 artifact에 포함합니다. [OCI Repository에 Component publish](#publishing-components-to-an-oci-repository)를 참조하세요.
+
+Component의 command는 native binary 및 JAR로 구현할 수 있습니다. 다음 sample `component.yaml`은 같은 native binary가 구현하는 `foo`와 `bar` command를 정의합니다.
+
+```yaml
+spec:
+  commands:
+    - path: ./foo-binary
+      name: foo
+      aliases: ["f"]
+      desc: a command for foo'ing!
+    - path: ./foo-binary
+      name: bar
+      aliases: ["b"]
+      desc: a command for bar'ing!
+      exec-args: ["--should-bar-instead-of-foo"]
+```
+
+`dpm --help`를 실행하면 help message에 다음 내용이 표시됩니다.
+
+```shell
+Usage:
+  dpm [command]
+...
+...
+Dpm-SDK Commands
+  foo    a command for foo'ing!
+  bar    a command for bar'ing!
+...
+```
+
+`bar` command의 `exec-args`는 command를 구현하는 binary 실행 시 추가 argument를 전달하도록 `dpm`에 지시합니다. 따라서 `./foo-binary --should-bar-instead-of-foo`로 실행됩니다.
+
+### 다른 Component dependency
+
+다른 Component에 대한 Component dependency를 선택적으로 선언할 수 있습니다.
+
+```yaml
+# component.yaml
+
+dependency-paths:
+  foo: CUSTOM_FOO_PATH
+spec:
+  commands:
+    ...
+```
+
+이 example에서 Component는 `dpm` 실행 시 `foo` Component가 있기를 기대합니다. `dpm`은 filesystem의 `foo` path를 가리키는 `CUSTOM_FOO_PATH` environment variable을 이 Component 환경에 inject합니다.
+
+Dependency Component는 설치된 SDK의 일부이거나 `daml.yaml` 또는 `multi-package.yaml`에 선언되어야 합니다.
+
+### component.yaml schema
+
+[JSON schema](https://raw.githubusercontent.com/digital-asset/dpm/refs/heads/main/schema/component.v1.schema.json)를 참조하세요.
+
+{/* COPIED_END */}
+
+## Component 사용
+
+### Component initialize
+
+{/* COPIED_START source="dpm:docs-internal/src/cli/dpm_component_init.rst" hash="b574cce5" */}
+
+`dpm component init`으로 현재 directory에 새 Component를 scaffold합니다.
+
+```shell
+dpm component init
+```
+
+현재 directory에 starter `component.yaml`과 `daml.yaml`을 생성합니다. 기존 `component.yaml`과 `daml.yaml`을 overwrite하려면 `--force`를 전달합니다.
+
+```shell
+dpm component init --force
+```
+
+{/* COPIED_END */}
+
+### Remote Component 실행
+
+{/* COPIED_START source="dpm:docs-internal/src/cli/dpm_component_run.rst" hash="7af80ff0" */}
+
+Component가 publish되면 `dpm component run`으로 pull하고 test-run할 수 있습니다.
+
+```shell
+dpm component run <component name> <component version> [command] [args]
+```
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="dpm:docs-internal/src/faq.rst" hash="4696f289" */}
+
+Pull할 registry는 `DPM_REGISTRY` environment variable 또는 `${DPM_HOME}/dpm-config.yaml`로 설정된 값입니다. Publish된 Component를 빠르게 sanity check할 때 유용합니다.
+
+```shell
+export DPM_REGISTRY=europe-docker.pkg.dev/da-images/public
+dpm component run canton-open-source 3.3.0-snapshot.20250429.15795.0.v6b2dcccb
+```
+
+`dpm`은 Component를 `~/.dpm/cache/components/`로 pull한 후 지정한 Component command를 실행합니다.
+
+{/* COPIED_END */}
+
+### Project에 Component/DAR 추가
+
+{/* COPIED_START source="dpm:docs-internal/src/cli/dpm_add_component.rst" hash="3b6ee0ff" */}
+
+`dpm add component`로 publish된 Component를 project에 추가합니다.
+
+```shell
+dpm add component <oci-uri>
+```
+
+| Option | Description |
+| --- | --- |
+| `--insecure` | OCI registry에 HTTPS 대신 HTTP를 사용합니다. |
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="dpm:docs-internal/src/cli/dpm_add_dar.rst" hash="9c6c12b4" */}
+
+`dpm add dar`로 project의 DAR를 추가/update합니다. DAR가 dependency인지 data-dependency인지 지정해야 합니다.
+
+```shell
+dpm add dar <oci-uri> <--dependencies | --data-dependencies>
+```
+
+| Option | Description |
+| --- | --- |
+| `--dependencies` | DAR를 `dependencies` field에 추가합니다. |
+| `--data-dependencies` | DAR를 `data-dependencies` field에 추가합니다. |
+| `--insecure` | OCI registry에 HTTPS 대신 HTTP를 사용합니다. |
+
+{/* COPIED_END */}
+
+## Publishing
+
+### OCI Repository에 Component publish
+
+<Note>
+이 기능은 DPM 1.0.14 이상 또는 SDK 3.5 이상에 bundled된 DPM에서 사용할 수 있습니다.
+</Note>
+
+{/* COPIED_START source="dpm:docs-internal/src/components/publishing-components.rst" hash="5c3c35f8" */}
+
+`dpm`은 [Component](#components) packaging/publishing 전체를 처리합니다. Component는 OCI registry에 [OCI](https://opencontainers.org/) artifact로 publish됩니다.
+
+Component developer는 `dpm publish component` command로 Component를 publish할 수 있습니다. Publishing은 platform-aware하며 `-p`/`--platform`으로 target platform을 지정해야 합니다.
+
+```shell
+--platform darwin/arm64=<path to prepared directory containing the component for this platform>
+```
+
+여러 `--platform` flag를 제공하면 한 command로 여러 platform에 publish할 수 있습니다. JAR Component에는 `--platform generic=<path to dir>`를 사용할 수 있습니다.
+
+다음은 platform당 하나의 directory로 구성한 sample Component `foo`입니다.
+
+```text
+./
+  darwin-arm64/
+        component.yaml
+        foo              # darwin/arm64 binary
+        foo2             # another binary
+        lib/...          # directory
+        somefile.txt
+  linux-amd64/
+        component.yaml
+        foo
+        lib/...
+```
+
+`component.yaml` file은 필수이며 각 platform directory root에 있어야 합니다.
+
+다음과 같이 publish합니다.
+
+```shell
+dpm publish component \
+  oci://<full destination URI>:<version> \
+  --platform darwin/arm64=./darwin-arm64 \
+  --platform linux/amd64=./linux-amd64 \
+  --extra-tags latest    # also push a 'latest' tag for this version of the component
+```
+
+일부 validation을 실행한 후 두 platform에 대응하는 [OCI image](https://specs.opencontainers.org/image-spec/manifest/#image-manifest) 두 개, [OCI index](https://specs.opencontainers.org/image-spec/image-index/?v=v1.0.1), `latest` tag를 publish합니다.
+
+특정 platform의 published artifact에는 지정 directory의 모든 file/subdirectory, 예를 들면 `lib`가 포함됩니다. 사전에 bundle하거나 zip으로 만들 필요 없이 raw directory를 제공하면 됩니다. Component pull 시 `dpm`은 publish 시점과 정확히 같은 상태로 artifact를 복원합니다.
+
+이제 `dpm`으로 Component를 import, 즉 pull하고 실행할 수 있습니다. Pull 방법은 [Remote Component 실행](#running-a-remote-component)을 참조하세요.
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="dpm:docs-internal/src/cli/dpm_publish_component.rst" hash="cdc719f9" */}
+
+#### Options
+
+| Option | Description |
+| --- | --- |
+| `-p, --platform` | **필수.** `<os>/<arch>=<path-to-component>` 또는 `generic=<path-to-component>`이며 여러 번 지정할 수 있습니다. |
+| `-t, --extra-tags` | Semver 외의 추가 tag를 publish합니다. |
+| `-a, --annotations` | Published OCI artifact에 포함할 key/value annotation이며 여러 번 지정할 수 있습니다. |
+| `-g, --include-git-info` | Published manifest의 annotation에 Git 정보를 포함합니다. |
+| `--auth` | OCI registry authentication용 Docker `config.json`과 유사한 config file path입니다. Default는 Docker `config.json`입니다. |
+| `-d, --dry-run` | Registry에 실제 push하지 않습니다. |
+| `--insecure` | OCI registry에 HTTPS 대신 HTTP를 사용합니다. |
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="dpm:docs-internal/src/components/publishing-components.rst" hash="5c3c35f8" */}
+
+Build artifact publish 시 전체 image에 annotation을 적용할 수도 있습니다. `-a`/`--annotations` flag에 key/value pair를 여러 번 사용해 published image에 annotation을 추가합니다. Build artifact의 branch나 관련 commit SHA 같은 metadata를 첨부할 때 유용합니다.
+
+{/* COPIED_END */}
+
+### OCI Repository에 DAR publish
+
+<Note>
+이 기능은 DPM 1.0.20 이상 또는 SDK 3.5.2 이상에 bundled된 DPM에서 사용할 수 있습니다.
+</Note>
+
+Component와 마찬가지로 distribution을 위해 DAR를 OCI repository에 publish할 수 있습니다.
+
+```shell
+dpm publish dar oci://example.com/my/dars/foo:1.0.0 \
+    -f ./foo.dar \
+    --extra-tags devnet    # optional
+```
+
+이제 `dpm tags`로 published version을 확인할 수 있습니다. 아래 [OCI repository의 tag/version 조회](#listing-available-tags-and-versions-in-an-oci-repository)를 참조하세요.
+
+Project에 `oci://` DAR를 설치하는 방법은 [Remote DAR](/appdev/modules/m5-environment-configuration#remote-dars) 문서를 참조하세요.
+
+{/* COPIED_START source="dpm:docs-internal/src/cli/dpm_publish_dar.rst" hash="83823bec" */}
+
+#### Options
+
+| Option | Description |
+| --- | --- |
+| `-f, --dar` | **필수.** Publish할 DAR file path이며 여러 번 지정할 수 있습니다. |
+| `-l, --license` | LICENSE file path입니다. DAR publish에는 license file이 필요합니다. |
+| `--exclude-license` | **Non-production 용도 전용.** DAR publish의 license file 요구사항을 비활성화합니다. |
+| `-t, --extra-tags` | Semver 외의 추가 tag를 publish합니다. |
+| `-a, --annotations` | Published OCI artifact에 포함할 key/value annotation이며 여러 번 지정할 수 있습니다. |
+| `-g, --include-git-info` | Published manifest annotation에 Git 정보를 포함합니다. |
+| `--auth` | OCI registry authentication용 Docker `config.json`과 유사한 config file path입니다. Default는 Docker `config.json`입니다. |
+| `-d, --dry-run` | Registry에 실제 push하지 않습니다. |
+| `--insecure` | OCI registry에 HTTPS 대신 HTTP를 사용합니다. |
+
+{/* COPIED_END */}
+
+### OCI repository의 tag/version 조회
+
+`dpm tags` command로 *특정* Component 또는 DAR의 published version/tag를 볼 수 있습니다.
+
+```shell
+dpm tags oci://example.com/my/dars/my-package
+1.0.0
+1.2.3
+latest
+```
+
+{/* COPIED_START source="dpm:docs-internal/src/cli/dpm_tags.rst" hash="b6da0a8c" */}
+
+| Option | Description |
+| --- | --- |
+| `--registry-auth` | OCI registry authentication용 Docker `config.json`과 유사한 config file path입니다. Default는 Docker `config.json`입니다. |
+
+{/* COPIED_END */}
+
+## 일반적인 Workflow
+
+`dpm`을 사용하는 일반적인 개발 cycle은 다음과 같습니다.
+
+<DamlDocsSdksToolsCliToolsDpmL152 />
+
+## `daml` Assistant에서 `dpm`으로 migration
+
+이 section은 기존 Daml Assistant로 구축한 project의 step-by-step guide를 제공합니다.
+
+## Migration step
+
+1. **DPM 설치**
+
+   위 [설치 안내](#installation)를 따릅니다.
+
+2. **DPM이 PATH에 있는지 검증**
+
+```shell
+dpm version
+```
+
+3. **PATH에서** `~/.daml/bin` **제거**
+
+   `~/.bashrc`, `~/.zshrc`, `~/.profile` 같은 shell configuration file에서 `~/.daml/bin`을 `PATH`에 추가하는 line을 제거합니다.
+
+4. **Daml Assistant 제거**
+
+```shell
+rm -rf ~/.daml
+```
+
+5. **필요하면 project configuration 생성**
+
+   Project에 `daml.yaml` file이 없다면 생성합니다.
+
+```shell
+dpm init
+```
+
+6. **`daml` command를 `dpm`으로 교체**
+
+   대부분의 command가 직접 mapping됩니다. 아래 [Command migration table](/sdks-tools/cli-tools/dpm#command-migration-table)을 참조하세요.
+
+   `daml` command 여섯 개는 제거되고 Declarative API, Canton Console, JSON API, gRPC API call로 대체되었습니다. 자세한 내용은 [제거된 command 대체 방법](/sdks-tools/cli-tools/dpm#removed-command-replacements)을 참조하세요.
+
+7. **Project configuration 검토**
+
+   `daml.yaml`이 DPM과 compatible한지 검토합니다. Parent directory의 stale `daml.yaml` file을 audit하고 orphan/invalid file을 삭제합니다.
+
+8. **Global configuration 검토**, 선택 사항
+
+   Registry, authentication, 기타 global setting을 customize해야 한다면 `${DPM_HOME}/dpm-config.yaml`을 검토하거나 생성합니다.
+
+9. **Variable interpolation 설정**, 선택 사항
+
+   Configuration file에서 [variable interpolation](/sdks-tools/cli-tools/dpm#variable-interpolation)을 사용해 hardcoded value를 피합니다.
+
+10. **CI/CD pipeline update**, 해당하는 경우
+
+    `daml` command를 참조하는 CI/CD pipeline script가 대응하는 `dpm` command를 사용하도록 update합니다.
+
+## Command migration table
+
+| daml command | dpm command | 목적 |
+| --- | --- | --- |
+| daml new | dpm new | 새 Daml project 생성 |
+| daml build | dpm build | Daml project compile |
+| daml test | dpm test | Daml project test 실행 |
+| daml install | dpm install | Daml SDK Component 설치 |
+| daml codegen java | dpm codegen-java | Java code generation |
+| daml codegen js | dpm codegen-js | TypeScript code generation |
+| daml damlc | dpm damlc | Daml Compiler 호출 |
+| daml studio | dpm studio | Visual Studio에서 project 열기 |
+| daml sandbox | dpm sandbox | Daml Sandbox 실행 |
+| `daml ledger allocate-parties` | Declarative API 또는 JSON/gRPC API 사용 | Ledger에 Party allocate |
+| `daml ledger list-parties` | JSON/gRPC API | Ledger Party 조회 |
+| `daml ledger upload-dar` | Declarative API 또는 JSON/gRPC API 사용 | Ledger에 DAR upload/vet |
+| `daml ledger fetch-dar` | gRPC API | Ledger에서 DAR 가져오기 |
+| `daml packages` | JSON/gRPC API | Daml project packaging |
+| `daml start` | `dpm sandbox` + `dpm build`, upload/allocation에는 Declarative API 또는 JSON/gRPC 사용 | Local Daml Ledger 시작 |
+
+## 제거된 command 대체 방법
+
+다음 `daml` command에는 직접 대응하는 `dpm` command가 없습니다. Declarative API, Canton Console, JSON API, gRPC API를 사용하세요.
+
+### `daml ledger allocate-parties`
+
+| Method | Details |
+| --- | --- |
+| Declarative API | `canton.parameters.enable-alpha-state-via-config = yes` with `canton.participants.sandbox.alpha-dynamic { parties = [{ party = "Alice", synchronizers = ["mysync"] }, { party = "Bob" }] }` |
+| Canton Console | `ledger_api.parties.allocate(...)` |
+| JSON API | `POST /v2/parties/` |
+| gRPC | `PartyManagementService.AllocateParty` |
+
+### `daml ledger list-parties`
+
+| Method | Details |
+| --- | --- |
+| Canton Console | `ledger_api.parties.list()` |
+| JSON API | `GET /v2/parties` or `GET /v2/parties/{party}` |
+| gRPC | `PartyManagementService.ListKnownParties` |
+
+### `daml ledger upload-dar`
+
+| Method | Details |
+| --- | --- |
+| Declarative API | `canton.parameters.enable-alpha-state-via-config = yes` with `canton.participants.sandbox.alpha-dynamic.dars = [{ location = "./my-asset.dar" }, { location = "https://path.to/repo/token.dar", request-headers = { AuthenticationToken : "mytoken" } }]` |
+| Canton Console | `ledger_api.packages.upload_dar(...)` |
+| JSON API | `POST /v2/dars/` |
+| gRPC | `PackageManagementService.UploadDarFile` |
+
+### `daml ledger fetch-dar`
+
+| Method | Details |
+| --- | --- |
+| JSON API | `GET /v2/packages/{package-id}` |
+| gRPC | `PackageService.GetPackage` |
+
+### `daml packages`
+
+| Method | Details |
+| --- | --- |
+| Canton Console | `ledger_api.packages.list()` |
+| JSON API | `GET /v2/packages` or `GET /v2/packages/{package-id}/status` |
+| gRPC | `PackageService.ListPackages` |
+
+### `daml start`
+
+`dpm sandbox`와 `dpm build` 조합으로 대체합니다. 필요에 따라 DAR upload/Party allocation에 Declarative API 또는 JSON/gRPC API를 사용합니다.
+
+Local Canton installation 실행 방법은 `dpm sandbox`를 참조하세요.
+
+## 관련 페이지
+
+- [Daml SDK](/sdks-tools/sdks/daml-sdk) -- SDK 구성과 version 동작 방식입니다.
+- [Sandbox](/sdks-tools/development-tools/sandbox) -- `dpm sandbox`로 시작하는 local testing 환경입니다.
+- [Daml Studio](/sdks-tools/development-tools/daml-studio) -- `dpm studio`로 실행하는 VS Code extension입니다.
+- [Daml Script](/sdks-tools/cli-tools/daml-script) -- `dpm test`로 test를 작성/실행합니다.
+
+{/* COPIED_START source="docs-website:docs/replicated/dpm/3.5/manual-install.rst" hash="ed6c5b3c" */}
+
+# 수동 설치 안내
+
+## Mac/Linux 설치
+
+Linux/macOS에서 shell script를 사용할 수 없거나 원하지 않는다면 terminal에서 다음 command를 실행해 DPM을 수동 설치할 수 있습니다.
+
+다음 URL에서 latest stable release version을 가져옵니다.
+
+```bash
+VERSION="$(curl -sS "https://get.digitalasset.com/install/latest")"
+```
+
+이 값을 사용해 전체 installation tarball을 가져와 아래 안내처럼 extract/install합니다.
+
+```bash
+#! /usr/bin/env bash
+set -xeuo pipefail
+
+# get latest version number
+VERSION="$(curl -sS "https://get.digitalasset.com/install/latest")"
+
+# set your architecture to either amd64 | arm64
+ARCH="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
+
+# set your OS to either darwin or linux
+OS="$(uname | tr '[:upper:]' '[:lower:]')"
+
+# pull down appropriate tarball for your OS and architecture
+readonly TARBALL="dpm-${VERSION}-${OS}-${ARCH}.tar.gz"
+
+# determine location of tarball to download
+TARBALL_URL="https://get.digitalasset.com/install/dpm-sdk/${TARBALL}"
+
+# make tmpdir
+TMPDIR="$(mktemp -d)"
+
+# download tarball
+curl -SLf "${TARBALL_URL}" --output "${TMPDIR}/${TARBALL}" --progress-bar "$@"
+
+# create directory to extract into
+extracted="${TMPDIR}/extracted"
+mkdir -p "${extracted}"
+
+# untar to extracted directory
+tar xzf "${TMPDIR}/${TARBALL}" -C "${extracted}" --strip-components 1
+
+# bootstrap dpm
+"${extracted}/bin/dpm" bootstrap "${extracted}"
+
+# verify dpm version runs and does not return an error
+if ! "${extracted}/bin/dpm" version; then
+  echo "dpm version failed" >&2
+  exit 1
+fi
+
+# cleanup tmpdir
+rm -rf "${TMPDIR}"
+```
+
+## Windows 설치
+
+[Windows DPM SDK Archive (.zip)](https://get.digitalasset.com/install/latest-windows-archive.html)를 download/unpack한 후 다음을 실행합니다.
+
+``` powershell
+# Extract the downloaded zip ($ZIP_PATH) to temp directory ($EXTRACTED)
+# Avoid using the system's temp directory as the user may not have rights to it
+New-Item -ItemType Directory -Path $EXTRACTED | Out-Null
+Expand-Archive -Path $ZIP_PATH -DestinationPath $EXTRACTED
+
+# Optionally, override the TMP and DPM_HOME environment variable to point to directories other than the default,
+# as the user might not have rights to the default directories.
+# (You might also want to persist these variables as DPM uses them on every invocation)
+$env:TMP = "<user-owned temporary directory>"
+$env:DPM_HOME = "<user-owned directory>"
+
+& "$EXTRACTED\windows-amd64\bin\dpm.exe" bootstrap $EXTRACTED\windows-amd64
+```
+
+## Unstable version 수동 설치
+
+실험용 preview/unstable version도 제공되지만 위의 stable version 사용을 항상 권장합니다.
+
+## Unstable Mac/Linux
+
+Unstable version을 설치하려면 `dpm-manual-installation-mac-linux` 안내를 따르되 VERSION과 TARBALL_URL 차이에 유의하세요.
+
+다음 URL에서 latest unstable release version을 가져옵니다.
+
+```bash
+VERSION="$(curl -sS "https://get.digitalasset.com/unstable/install/latest")"
+```
+
+다음 URL에서 unstable tarball을 가져옵니다.
+
+```bash
+# determine location of tarball to download
+TARBALL_URL="https://get.digitalasset.com/unstable/install/dpm-sdk/${TARBALL}"
+```
+
+## Unstable Windows
+
+Latest [Windows unstable DPM SDK Archive (.zip)](https://get.digitalasset.com/unstable/install/latest-windows-archive.html)를 download/unpack한 후 `dpm-manual-installation-windows` 안내를 따릅니다.
+
+
+{/* COPIED_END */}

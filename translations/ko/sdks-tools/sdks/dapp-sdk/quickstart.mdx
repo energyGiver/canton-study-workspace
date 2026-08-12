@@ -1,0 +1,116 @@
+---
+title: "Quickstart"
+description: "dApp SDK를 설치하고 몇 분 안에 동작하는 Wallet connection을 구축합니다."
+source_id: "SRC-3B90919336"
+source_path: "sdks-tools/sdks/dapp-sdk/quickstart"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "7bc758450ae4bf8209f952de254831a9cfcbbf916a7d99bc6c6cdb05c9149853"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/dapp-sdk/quickstart.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="splice-wallet-kernel:docs/dapp-sdk/quickstart.md@0431c87e" */}
+
+가장 짧게 동작하는 integration입니다. SDK를 설치하고 initialize한 뒤 User가 Wallet을 연결하게 하고 Party를 읽어 transaction을 제출합니다. High-level SDK만 사용하며 dApp 구축에 Provider API는 필요하지 않습니다.
+
+<Steps>
+<Step title="SDK 설치">
+<Tabs>
+  <Tab title="npm">
+  ```shell
+  npm install @canton-network/dapp-sdk
+  ```
+  </Tab>
+  <Tab title="yarn">
+  ```shell
+  yarn add @canton-network/dapp-sdk
+  ```
+  </Tab>
+  <Tab title="pnpm">
+  ```shell
+  pnpm add @canton-network/dapp-sdk
+  ```
+  </Tab>
+</Tabs>
+</Step>
+
+<Step title="App load 시 initialize">
+Application lifecycle 초기에 `init()`을 한 번 호출합니다. Default Wallet Adapter를 등록하고 Wallet picker를 열지 않은 채 이전 session을 조용히 복원합니다.
+
+```typescript
+import * as sdk from '@canton-network/dapp-sdk'
+
+await sdk.init()
+```
+</Step>
+
+<Step title="Wallet 연결">
+"Connect wallet" button 같은 User action에 대한 응답으로 `connect()`를 호출합니다. Wallet picker가 열리고 authentication flow가 실행됩니다.
+
+```typescript
+async function onConnectClick() {
+    const result = await sdk.connect()
+    console.log('Connected:', result.isConnected)
+}
+```
+</Step>
+
+<Step title="연결된 Party 읽기">
+연결 후 User가 Primary로 지정한 Account를 읽습니다.
+
+```typescript
+const account = await sdk.getPrimaryAccount()
+console.log('Primary party:', account.partyId)
+```
+</Step>
+
+<Step title="Transaction 제출">
+`prepareExecute()`로 Daml command를 제출합니다. SDK가 transaction을 prepare하고 User에게 Wallet에서 approve/sign하도록 요청한 뒤 Ledger에 제출합니다.
+
+```typescript
+const account = await sdk.getPrimaryAccount()
+
+await sdk.prepareExecute({
+    commands: [
+        {
+            CreateCommand: {
+                templateId: '#AdminWorkflows:Canton.Internal.Ping:Ping',
+                createArguments: {
+                    id: `ping-${Date.now()}`,
+                    initiator: account.partyId,
+                    responder: account.partyId,
+                },
+            },
+        },
+    ],
+})
+```
+
+<Note>
+이 example은 built-in `Ping` Template을 사용해 round-trip이 동작하는지 확인합니다. 실제 dApp에서는 자체 Daml Package의 command를 제출하세요. 자세한 내용은 [Party 및 transaction](/sdks-tools/sdks/dapp-sdk/guides/parties-and-transactions)을 참조하세요.
+</Note>
+</Step>
+
+<Step title="Disconnect 처리">
+User가 session을 종료할 수 있게 합니다.
+
+```typescript
+async function onDisconnectClick() {
+    await sdk.disconnect()
+}
+```
+</Step>
+</Steps>
+
+## 다음 단계
+
+- [Connection 및 session](/sdks-tools/sdks/dapp-sdk/guides/connect-and-sessions) — 연결, session 복원, status 확인, disconnect를 다룹니다.
+- [Party 및 transaction](/sdks-tools/sdks/dapp-sdk/guides/parties-and-transactions) — Party 사용, message 서명, transaction 실행, Ledger query를 다룹니다.
+- [Wallet Discovery](/sdks-tools/sdks/dapp-sdk/guides/wallet-discovery) — Wallet picker를 customize하고 WalletConnect 또는 custom Remote Wallet을 추가합니다.
+
+{/* COPIED_END */}

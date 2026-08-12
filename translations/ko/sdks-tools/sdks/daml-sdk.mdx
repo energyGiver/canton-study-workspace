@@ -1,0 +1,104 @@
+---
+title: "Daml SDK"
+description: "Canton smart contract 및 application 개발을 위한 Daml SDK 설치와 사용"
+source_id: "SRC-0D4F0B594B"
+source_path: "sdks-tools/sdks/daml-sdk"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "c7d9cf8a27d21bcb585a0bebd522abe6c16e2e9db6badc1ee9ba918d177e4e3d"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/daml-sdk.md)을 함께 확인하세요.
+</Warning>
+
+import DamlSdksToolsSdksDamlSdkL72 from "/snippets/daml-docs/sdks-tools_sdks_daml-sdk_L72.mdx";
+import DamlSdksToolsCliToolsDpmL62 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L62.mdx";
+import DamlSdksToolsCliToolsDpmL14 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L14.mdx";
+import DamlSdksToolsCliToolsDpmL111 from "/snippets/daml-docs/sdks-tools_cli-tools_dpm_L111.mdx";
+
+
+Daml SDK는 Canton 기반 개발의 core development kit입니다. Daml compiler, Daml Script runner, Canton Sandbox 및 support tool을 `dpm`으로 manage하는 하나의 installable package로 제공합니다.
+
+## What's Included
+
+Daml SDK는 다음 component를 제공합니다.
+
+- **Daml compiler**: Daml source file을 Validator에 deploy할 수 있는 DAR(Daml Archive) package로 compile합니다.
+- **Daml Script runner**: Daml로 작성한 test script와 ledger initialization script를 실행합니다.
+- **Canton Sandbox**: Local development 및 integration test를 위한 single-participant Canton Node입니다.
+- **Canton runtime**: Sandbox와 production deployment가 사용하는 Canton Participant runtime입니다.
+- **Code generator**: Compile된 DAR file에서 type-safe TypeScript 및 Java binding을 생성합니다.
+- **Project template**: `dpm new`로 새 project를 scaffold합니다.
+
+## Installation
+
+`dpm`을 통해 Daml SDK를 install합니다.
+
+<DamlSdksToolsCliToolsDpmL62 />
+
+Project의 `daml.yaml` file에 지정된 SDK version을 download하고 install합니다. Version이 지정되지 않으면 `dpm`이 호환되는 최신 release를 install합니다.
+
+Install된 SDK version을 확인하는 방법은 다음과 같습니다.
+
+<DamlSdksToolsCliToolsDpmL14 />
+
+### Prerequisites
+
+- **Java 17 이상**: Daml compiler와 Canton runtime에는 JDK가 필요합니다.
+- **Node.js 18 이상**: TypeScript code generation과 frontend tooling에 필요합니다.
+- **dpm**: Setup instruction은 [dpm installation](/sdks-tools/cli-tools/dpm)을 참조하세요.
+
+## Key Commands
+
+SDK를 install한 뒤 `dpm`을 통해 사용합니다.
+
+```bash
+# Create a new project from a template
+dpm new my-project --template daml-intro-contracts
+
+# Compile Daml source code
+dpm build
+
+# Run Daml Script tests
+dpm test
+
+# Start a local sandbox
+dpm sandbox
+
+# Generate TypeScript bindings
+dpm codegen-js .daml/dist/my-project.dar -o generated-ts
+
+# Generate Java bindings
+dpm codegen-java .daml/dist/my-project.dar -o generated-java
+
+# Open Daml Studio in VS Code
+dpm studio
+```
+
+## Daml Language
+
+Daml은 strong type system, built-in authorization model 및 privacy control을 갖춘 functional smart contract language입니다. Contract는 field, signatory, observer 및 choice가 있는 template로 정의합니다.
+
+<DamlSdksToolsSdksDamlSdkL72 />
+
+Daml language 전체 introduction은 [Module 3: Daml Smart Contracts](/appdev/modules/m3-dev-environment)를 참조하세요.
+
+## Version Compatibility
+
+각 Daml SDK release는 특정 Canton protocol version과 짝을 이룹니다. DAR file은 target network에서 실행하는 Canton version과 compatible한 SDK version으로 compile해야 합니다.
+
+Project의 `daml.yaml` file은 SDK version을 pin합니다.
+
+<DamlSdksToolsCliToolsDpmL111 />
+
+DevNet, TestNet 또는 MainNet에 deploy할 때 SDK version이 network가 지원하는 protocol version과 일치하는지 확인하세요. Network operator는 지원하는 SDK version을 documentation에 publish합니다.
+
+## Further Reading
+
+- [dpm command reference](/sdks-tools/cli-tools/dpm): 전체 `dpm` command와 option
+- [Daml Studio](/sdks-tools/development-tools/daml-studio): Daml 개발용 VS Code extension
+- [Sandbox](/sdks-tools/development-tools/sandbox): Local single-node test environment
+- [Choose your path](/appdev/get-started/choose-your-path): Development workflow 선택

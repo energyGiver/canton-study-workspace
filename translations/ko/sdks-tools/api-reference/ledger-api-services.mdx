@@ -1,0 +1,275 @@
+---
+title: "gRPC Ledger API Services"
+description: "Command submit/completion/update/state 및 supporting administrative service를 포함한 gRPC Ledger API service별 설명입니다."
+source_id: "SRC-A9C531FFB0"
+source_path: "sdks-tools/api-reference/ledger-api-services"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "2b3dfa32583e52ddf0d3eb095bf9e69c017b060631e2e76120f6b0c38bccbe2a"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/api-reference/ledger-api-services.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/explanations/ledger-api-services.rst" hash="3d9b9067" */}
+
+Ledger API는 service 집합으로 구성됩니다. 이 page는 API access 방식과 관계없이 각 service를 자세히 설명합니다.
+
+각 service의 low-level detail은 *API protobuf documentation*을 참조하세요.
+
+## Overview
+
+API는 별도의 두 data stream으로 구성됩니다.
+
+- Application이 transaction을 submit하고 state를 변경할 수 있게 Ledger로 보내는 **command** stream
+- Ledger에서 발생한 모든 state 변경을 나타내는 Ledger로부터의 **update** 및 대응 **event** stream
+
+Command는 application이 Ledger state를 변경하는 유일한 방법이고, event는 그 변경을 read하는 유일한 mechanism입니다.
+
+이 architecture 결정과 구현에서 application에 가장 중요한 결과는 Ledger API가 asynchronous하다는 점입니다. 의미는 다음과 같습니다.
+
+- Command 결과는 submit 후 일정 시간이 지나야 알 수 있습니다.
+- Application은 성공 및 error command completion을 command submit과 별도로 처리해야 합니다.
+- Ledger state 변경은 원인이 된 command submit과 asynchronous하게 수신한 event로 표시됩니다.
+
+이 문제를 처리해야 한다는 점이 application architecture를 결정하는 핵심 요소입니다. 성공적인 application 설계에는 API 특성의 결과를 이해하는 것이 중요합니다.
+
+정확하고 성능이 좋으며 유지보수 가능한 application 개발을 위한 자세한 설명은 *application architecture guide*를 참조하세요.
+
+## Services
+
+gRPC Ledger API는 다음 service를 노출합니다.
+
+- Ledger에 command submit
+  - *Command Submission Service*로 Contract를 생성하거나 Choice를 exercise하는 command를 Ledger에 submit합니다.
+  - *Command Completion Service*로 submit한 command status를 추적합니다.
+  - *Command Service*는 command submit과 completion을 결합한 편의 service입니다.
+  - *Interactive Submission Service*로 외부에서 sign한 transaction을 준비하고 submit합니다.
+- Ledger read
+  - *Update Service*로 commit된 transaction과 그 결과 event, 즉 Choice exercise 및 Contract create/archive를 stream하고 transaction을 조회합니다.
+  - *State Service*로 현재 Active Contract를 사용해 application을 빠르게 bootstrap합니다. 현재 state를 얻기 위해 Ledger 처음부터 처리할 필요가 없습니다.
+  - *Event Query Service*로 Contract event의 Party 전용 view를 얻습니다.
+- Utility service
+  - *Party Management Service*로 Daml Ledger의 Party를 allocate하고 정보를 찾습니다.
+  - *User Management Service*로 user와 right를 관리합니다.
+  - *Identity Provider Config Service*로 Participant Node용 token을 issue하도록 설정된 외부 IDP system을 정의하고 관리합니다.
+  - *Package Management Service*로 Daml Ledger에 Package를 upload합니다.
+  - *Package Service*로 Ledger에 deploy한 Daml Package를 query합니다.
+  - *Version Service*로 Ledger API version 정보를 조회합니다.
+  - *Pruning Service*로 지정 offset 이전 또는 해당 offset의 archived Contract와 transaction을 prune합니다.
+- Test 전용 service, production Ledger에서는 사용하지 않음
+  - *Time Service*로 Ledger가 인식하는 time을 얻습니다.
+
+### 용어
+
+- Ledger는 `update` 목록입니다.
+- `update`는 Daml `transaction`, `reassignment` 또는 Participant의 Party permission 변경 같은 `topology transaction`일 수 있습니다.
+- `transaction`은 `event`라고도 하는 `action` tree이며 `create`, `exercise`, `archive` type입니다. Update Service는 전체 tree 또는 flatten된 list를 반환할 수 있습니다.
+- `submission`은 제안된 transaction이며 해당 transaction의 top-level `action`에 대응하는 `command` list로 구성됩니다.
+- `completion`은 `submission`의 성공 또는 실패를 나타냅니다.
+
+## Ledger에 command submit
+### Command Submission Service
+
+**Command Submission Service**로 Ledger에 command를 submit합니다. Command는 새 Contract를 생성하거나 기존 Contract의 Choice를 exercise합니다.
+
+Command Submission Service call은 Ledger server가 command를 parse하고 accept 또는 reject하는 즉시 반환됩니다. 이는 command가 실행되었다는 뜻이 아니라 server가 command format을 허용할 수 있다고 판단했거나 syntax/content를 이유로 reject했다는 의미입니다.
+
+Command 실행의 on-ledger effect는 아래 *Update Service*로 보고됩니다. Command completion status는 *Command Completion Service*로 보고됩니다. Application은 completion을 수신해 command submit과 연계하고 error 및 실패한 command를 처리해야 합니다. 다른 방법으로 Command Submission/Completion Service를 감싸는 *Command Service*를 사용할 수 있습니다.
+
+#### Change ID
+의도한 각 Ledger 변경은 다음 세 component로 구성된 **Change ID**로 식별합니다.
+
+- Submit하는 Party, 즉 *act_as*
+- *User ID*
+- *Command ID*
+
+#### Application-specific IDs
+
+Completion event에 포함되는 다음 application 전용 ID를 command에 설정할 수 있습니다.
+
+- *Submission ID*: Submit한 application에만 반환되며 특정 submission과 completion을 연계할 수 있습니다.
+- *Command ID*: Submit한 application에만 반환되며 command와 completion을 연계할 수 있습니다.
+- *Workflow ID*: 결과 transaction의 일부로 이를 수신하는 모든 application에 반환됩니다. 여러 transaction으로 구성된 Party 간 workflow 추적에 사용할 수 있습니다.
+
+전체 detail은 `the proto documentation for the service <com.daml.ledger.api.v2.CommandSubmissionService>`를 참조하세요.
+
+#### Command Deduplication
+Command Submission Service는 *Change ID*를 기준으로 submit된 command를 deduplicate합니다.
+
+- Application은 command별 deduplication period를 제공할 수 있습니다. 설정하지 않으면 default maximum deduplication duration을 사용합니다.
+- Ledger API server가 deduplication period 안에 같은 *Change ID*를 가진 다른 command를 알고 있으면 duplicate submission으로 봅니다.
+- Original submission이 reject되거나, 즉 command가 실패해 transaction이 reject되거나 original command completion 후 실제 deduplication period가 끝날 때까지 command resubmission은 reject됩니다. 둘 중 먼저 발생한 시점까지입니다.
+- 모든 command를 같은 Participant Node에 submit한 경우에만 command deduplication 동작이 *보장*됩니다.
+
+Command deduplication 사용법은 *Command Deduplication Guide*를 참조하세요.
+
+#### Explicit Contract Disclosure
+Canton 2.7부터 Ledger API client는 Explicit Contract Disclosure를 사용해 third party에서 받은 disclosed Contract를 attach한 command를 submit할 수 있습니다. 자세한 내용은 *Explicit Contract Disclosure*를 참조하세요.
+
+### Command Completion Service
+
+**Command Completion Service**로 submit한 command의 completion status를 확인합니다.
+
+Completion에는 완료된 command의 *Command ID*와 completion status가 있습니다. Status는 실패 또는 성공을 나타내며 application은 이를 사용해 in-flight command 정보를 update하고 application 전용 error recovery를 구현해야 합니다.
+
+전체 detail은 `the proto documentation for the service <com.daml.ledger.api.v2.CommandCompletionService>`를 참조하세요.
+
+### Command Service
+
+Command를 submit하고 실행될 때까지 기다리려면 **Command Service**를 사용합니다. Command Submission Service와 비슷하지만 completion도 수신하며 submit한 command의 완료 여부를 알 때까지 기다립니다. Command 실행의 completion status를 반환합니다.
+
+Ledger 변경을 위한 command submit에는 Command Service 또는 Command Submission Service를 사용할 수 있습니다. Command Service는 command submit과 completion 사이의 기본 coordination을 처리하고 submission과 completion을 연계하며 성공/실패 status를 반환하므로 단순한 application에 유용합니다. 단순한 application을 완전한 stateless 방식으로 만들고 command submit 추적 필요를 줄입니다.
+
+전체 detail은 `the proto documentation for the service <com.daml.ledger.api.v2.CommandService>`를 참조하세요.
+
+### Interactive Submission Service
+
+**Interactive Submission Service**로 자체 Signing Key로 sign한 Daml transaction을 준비하고 submit합니다.
+
+이 service는 command submission의 interactive 구성을 허용합니다. Prepare 및 execute endpoint를 통한 2단계 command submit은 다음과 같습니다.
+
+- 제공한 command list에서 transaction 준비
+- 제안된 transaction inspect 후 자체 Key로 sign
+- Prepared transaction submit
+
+자세한 내용은 `the API reference documentation <com.daml.ledger.api.v2.interactive.InteractiveSubmissionService>`를 참조하세요.
+
+## Ledger에서 read
+### Update Service
+
+**Update Service**로 update stream을 통해 보고되는 Ledger state 변경을 listen합니다.
+
+Update에는 transaction, reassignment, topology transaction이 포함될 수 있습니다. Transaction에는 해당 transaction에 effect를 준 모든 Contract create/exercise/archive event가 포함될 수 있습니다.
+
+Transaction에는 server가 할당한 *Update ID*, *Workflow ID*, *Command ID*, transaction의 event가 있습니다.
+
+Update Service를 subscribe해 Ledger의 임의 지점부터 event를 read합니다. 이 지점은 *offset*으로 지정합니다. Application을 시작 또는 restart할 때, 그리고 *State Service*와 함께 동작할 때 중요합니다.
+
+전체 detail은 `the proto documentation for the service <com.daml.ledger.api.v2.UpdateService>`를 참조하세요.
+
+#### Transaction 및 transaction tree
+
+`UpdateService`는 여러 subscription을 제공합니다. 가장 흔히 사용하는 것은 `TRANSACTION_SHAPE_ACS_DELTA`를 전달하도록 설정한 `GetUpdates`입니다. Contract create/archive에 따른 Active Contract Set 변경 stream을 반환합니다. Party 집합에 보이는 전체 transaction이 필요하면 대신 `TRANSACTION_SHAPE_LEDGER_EFFECTS`를 사용합니다. Descendant 정보가 있는 event list로 표현한 transaction tree를 반환합니다.
+
+#### Event format
+
+`UpdateService`는 `GetUpdates` call로 Template 및 Interface별 filtering을 적용한 transaction subscription을 제공합니다. `GetUpdatesRequest.update_format.include_transactions`에 embedded된 `event format <com.daml.ledger.api.v2.EventFormat>`은 다음을 허용합니다.
+
+- Party별 filtering
+- Party 및 Template ID별 filtering
+- Party 및 Interface ID별 filtering
+- Interface view 노출
+- Command submit의 disclosed Contract에 사용할 created event blob 노출
+
+자세한 내용은 *Ledger API reference*를 참조하세요.
+
+#### Verbosity
+
+Service는 기본적으로 non-verbose mode로 동작해 다음 identifier 일부를 생략합니다.
+
+- Record ID
+- Record field label
+- Variant ID
+
+`event format <com.daml.ledger.api.v2.EventFormat>` message의 `verbose` field를 `true`로 설정하면 transaction 관련 request에 이를 포함할 수 있습니다.
+
+### State Service
+
+**State Service**로 request 시점에 Ledger에서 active한 모든 Contract의 Party 전용 view를 얻습니다.
+
+State Service는 보고되는 state를 재현하는 created event stream을 반환합니다. State는 항상 특정 offset 기준으로 요청합니다. 이 offset으로 `update` stream을 subscribe하면 State Service를 다시 query하지 않고 Active Contract Set의 consistent view를 유지할 수 있습니다.
+
+Application이 initial state를 알려진 Ledger view와 synchronize해야 하는 application 시작 시 가장 중요합니다. 이 service가 없으면 Ledger 시작부터 Update Stream을 read해야 하며 큰 Ledger에서는 비용이 지나치게 클 수 있습니다.
+
+전체 detail은 `the proto documentation for the service <com.daml.ledger.api.v2.StateService>`를 참조하세요.
+
+`verbosity`와 `event-format`은 Update Service와 같은 방식으로 정의합니다.
+
+### Offset
+Update/State Service가 노출하는 method는 offset을 사용합니다.
+
+Offset은 Participant Node가 관찰한 update stream의 특정 지점을 나타냅니다. Offset은 original Participant Node context에서만 의미가 있습니다. 서로 다른 Participant Node는 Synchronizer를 통해 synchronize된 같은 변경에 서로 다른 offset을 연결합니다. 반대로 같은 literal Participant offset이 서로 다른 Participant Node에서 다른 변경을 가리킬 수 있습니다.
+
+Offset은 Virtual Shared Ledger에서 발생한 변경의 unique index이기도 합니다. Offset 순서는 Update Service subscribe 시 보이는 update 순서에 반영됩니다. 특정 Synchronizer 안에서는 이 ordering이 완전히 causal합니다. 같은 Synchronizer가 synchronize한 두 update 중 offset이 큰 update가 작은 update보다 나중에 발생했습니다. 서로 다른 Synchronizer가 synchronize한 update에는 성립하지 않습니다. 따라서 offset 순서는 Virtual Shared Ledger의 변경 순서와 다를 수 있습니다.
+
+### Event Query Service
+
+**Event Query Service**로 Contract event의 Party 전용 view를 얻습니다.
+
+gRPC API는 query 가능한 state를 유지하는 off-ledger component에 Ledger stream을 제공합니다. 이 service를 사용하면 Participant Query Store 같은 off-ledger component 없이 단순한 event query를 수행할 수 있습니다.
+
+Event Query Service로 Contract ID와 관련된 create/retrieve/archive event를 다룰 수 있습니다. API는 요청 Party 중 최소 하나가 Contract Stakeholder인 event만 반환합니다. Contract가 아직 active하면 `archive_event`가 설정되지 않습니다.
+
+Request 조건과 일치하는 event가 없거나 요청한 event가 요청 Party에게 보이지 않으면 빈 구조를 반환합니다. Consumed Contract 관련 event는 pruning될 때까지 반환됩니다.
+
+전체 detail은 `the proto documentation for the service <com.daml.ledger.api.v2.EventQueryService>`를 참조하세요.
+
+## Utility service
+### Party Management Service
+**Party Management Service**로 Ledger에 Party를 allocate하고 Participant local Party property를 update하며 allocate된 Party 정보를 조회합니다.
+
+Party는 *Daml Privacy Model*과 *Authorization rule*에 따라 on-ledger access control을 관리합니다. Application과 Operator는 business 요구 사항에 따라 Party를 allocate하고 사용해 on-ledger access control을 관리해야 합니다.
+
+자세한 내용은 `the API reference documentation <com.daml.ledger.api.v2.admin.PartyManagementService>`를 참조하세요.
+
+### User Management Service
+
+**User Management Service**로 Participant Node의 user 집합과 해당 Node Ledger API service에 대한 *Access Right*를 관리하고 조직의 IAM, Identity and Access Management framework integration point로 사용합니다.
+
+Party는 단일 right 집합을 가진 한 개인을 나타내며 Participant Node 전반에서 universal하지만 user는 특정 Participant Node local입니다. 각 user는 일반적으로 Primary Party와 연결되며 다른 Party로 act/read할 right를 받습니다. 모든 Participant Node는 User ID에서 해당 user가 act/read할 수 있는 Party로의 자체 mapping을 유지합니다. User ID는 Ledger client가 특정 Party로 read/act할 authorization을 허용하는 JWT token의 subject로 참조됩니다. User Management system은 user가 act/read할 수 있는 Party 수를 제한하지 않습니다.
+
+Participant Node user와 Daml Party의 관계는 classical database에 비유하면 이해하기 쉽습니다. Participant Node user는 database user, Daml Party는 database role과 비슷합니다. User에게 부여한 right는 user에게 할당한 database role과 비슷합니다.
+
+User와 right의 list/create/update/delete 방법은 `the API reference documentation <com.daml.ledger.api.v2.admin.UserManagementService>`을 참조하세요. User별 최대 right 수 같은 User Management Service limit은 `UserManagementFeature descriptor <com.daml.ledger.api.v2.UserManagementFeature>`를 참조하세요. Feature descriptor는 *Version Service*로 조회할 수 있습니다.
+
+Ledger API request authorization 방식과 User Management로 application right를 동적으로 변경하는 방법은 `Authorization documentation <authorization>`을 참조하세요.
+
+### Identity Provider Config Service
+
+**Identity Provider Config Service**로 Participant Node용 token을 issue하도록 설정한 외부 IDP system parameter를 정의하고 관리합니다.
+
+**Identity Provider Config Service**를 통해 Participant Node Administrator가 runtime에 추가 Identity Provider를 설정하고 관리할 수 있습니다. Deployment 시점에 알 수 없었던 Identity Provider의 access token도 사용할 수 있습니다. Identity Provider를 설정하면 독립적인 IDP Administrator가 자체 Party 및 user 집합을 관리할 수 있습니다.
+
+이 Party와 user에는 일치하는 `identity_provider_id`가 정의되며 다른 Identity Provider의 Administrator는 access할 수 없습니다. 해당 JWT token을 적절한 Identity Provider가 issue한 경우에만 user가 authenticate됩니다. `identity_provider_id`가 없는 user와 Party는 Participant Node deployment 시 statically 설정한 default Identity Provider를 사용하는 것으로 봅니다.
+
+전체 detail은 `the proto documentation for the service <com.daml.ledger.api.v2.admin.IdentityProviderConfigService>`를 참조하세요.
+
+### Package Management Service
+
+**Package Management Service**로 Participant Node가 지원하는 Daml-LF Package를 query하고 `.dar` file을 upload/validate합니다.
+
+### Package Service
+
+**Package Service**로 Ledger에서 사용할 수 있는 Daml Package 정보를 얻습니다.
+
+Event data를 더 유용하게 해석하기 위한 type 및 metadata 정보를 얻는 데 유용합니다.
+
+전체 detail은 `the proto documentation for the service <com.daml.ledger.api.v2.PackageService>`를 참조하세요.
+
+### Version Service
+
+**Version Service**로 Ledger API version과 Ledger server가 지원하는 optional feature 정보를 조회합니다.
+
+전체 detail은 `the proto documentation for the service <com.daml.ledger.api.v2.VersionService>`를 참조하세요.
+
+### Pruning Service
+
+**Pruning Service**로 지정 offset 이전 또는 해당 offset의 archived Contract 및 transaction을 prune합니다.
+
+전체 detail은 `the proto documentation for the service <com.daml.ledger.api.v2.admin.ParticipantPruningService>`를 참조하세요.
+
+## Test service
+**Test에만 사용하며 production Ledger에서는 사용하지 않습니다.**
+
+### Time Service
+
+**Time Service**로 Ledger time을 get/set합니다. 이 service는 test에서만 의미가 있는 static time mode로 Canton을 설정한 경우에만 사용할 수 있습니다.
+
+전체 detail은 `the proto documentation for the service <com.daml.ledger.api.v2.testing.TimeService>`를 참조하세요.
+
+
+{/* COPIED_END */}

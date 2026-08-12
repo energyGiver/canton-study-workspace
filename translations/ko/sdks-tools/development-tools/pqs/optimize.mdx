@@ -1,0 +1,755 @@
+---
+title: "PQS 최적화"
+description: "JSONB payload query를 포함한 PQS query 성능을 조정합니다."
+source_id: "SRC-BB4AD6EFA6"
+source_path: "sdks-tools/development-tools/pqs/optimize"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "edd657143e8e6e4b82a826848af1542af86e1d36564924ecbaac38d2af9cd836"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/development-tools/pqs/optimize.md)을 함께 확인하세요.
+</Warning>
+
+## Query 최적화
+
+{/* COPIED_START source="docs-website:docs/replicated/pqs/3.4/component-howtos/pqs/optimize/index.rst" hash="8f5951c7" */}
+
+예상 workload에 맞게 적절한 resource capacity planning을 수행해야 합니다.
+
+## Host infrastructure
+
+다음은 모든 production workload를 실행하는 host operating system의 최소 요구 사항이며, 특정 workload에 필요한 적절한 resource를 결정하는 출발점으로 봐야 합니다.
+
+PQS host:
+
+- Memory: 4 GB
+- CPU: 4 cores
+
+PostgreSQL:
+
+- Memory: 8 GB
+- CPU: 8 cores
+
+### 의도적인 PostgreSQL tuning의 중요성
+
+Traffic 형태와 사용 pattern 등을 모르면 client의 요구 사항을 예측하기 어렵습니다.
+
+Active ACS가 큰 read scenario에서 PQS data를 많이 사용한다면 PostgreSQL의 cache capability를 극대화하도록 사용 가능한 RAM을 늘리는 것이 좋습니다.
+
+CPU core 수는 최대 connection 수와 밀접하게 연관됩니다. Query 실행의 parallelism이 커지면 더 많은 동시 connection과 CPU가 필요합니다.
+
+OLAP형 query, 즉 많은 aggregation과 큰 result set을 사용하는 여러 join 같은 **reporting-style** query를 실행하면 일반적인 OLTP형 workload에서는 불필요한 추가 resource가 필요할 수 있습니다. 실제로는 오래 실행되는 query가 동시에 있을 때 process scheduling을 피하도록 CPU 수를 최대 connection 수에 맞춰야 한다는 의미입니다.
+
+PostgreSQL Docker image는 기본적으로 현대의 일반적인 scenario에는 부적절한 Raspberry Pi의 HDD 사용을 가정하는 등 tuning되지 않은 설정으로 제공됩니다. 실행 hardware에 맞춰 PostgreSQL을 적극적으로 tuning해야 합니다.
+
+출발점으로 online calculator[^1]를 사용해 hardware parameter와 PostgreSQL startup setting을 연계하세요.
+
+Docker container environment에서는 다음과 같이 configuration parameter를 startup argument로 전달합니다.
+
+```yaml
+services:
+  postgres:
+    command:
+      - postgres
+      - -c
+      - max_connections=100
+      - -c
+      - shared_buffers=1GB
+      - -c
+      - effective_cache_size=3GB # and so on
+```
+
+AWS Aurora에는 provision된 기반 cloud resource를 고려한 합리적인 default가 미리 설정되어 있지만[^2], 아래 query나 Aurora management UI로 비정상적인 override가 없는지 확인합니다.
+
+```sql
+select name, setting, source from pg_settings;
+```
+
+### PQS를 AWS Aurora와 함께 실행할 수 있는가
+
+PQS와 Aurora 모두 default setting을 사용한다면 AWS Aurora Serverful을 datastore로 사용하는 PQS가 production environment에서 예상 parameter 범위 안에서 동작한다는 것이 입증되었습니다.
+
+AWS Aurora Serverless는 아직 test되지 않았습니다.
+
+## Java Virtual Machine configuration
+
+PQS가 효율적으로 실행될 충분한 resource를 확보하려면 적절한 JVM configuration이 중요합니다. 실제 deployment에서는 최소한 다음을 고려해야 합니다.
+
+``` text
+-XX:+AlwaysPreTouch
+-XX:-UseAdaptiveSizePolicy
+
+## containers:
+-XX:InitialRAMPercentage=75.0
+-XX:MaxRAMPercentage=75.0
+
+## host/vm:
+-Xms4g
+-Xmx4g
+```
+
+Resource가 제한된 scenario에서는 out-of-memory error가 발생할 수 있습니다. 이를 진단하려면 다음 JVM parameter를 추가해 분석용 heap dump를 수집해야 합니다.
+
+``` text
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:HeapDumpPath=/path/to/heap.dump
+```
+
+## PostgreSQL configuration
+
+예상 workload 처리와 관련된 다음 PostgreSQL configuration item을 최소한 고려해야 합니다. `postgresql.conf`[^3]를 참조하세요.
+
+- `autovacuum_*`[^4]
+- `maintenance_work_mem`[^5]
+- `checkpoint_*`[^6]
+- `*_wal_size`[^7]
+- `bgwriter_*`[^8]
+
+높은 성능이 필요하면 Database Administrator가 목표 workload와 infrastructure에 맞춰 PostgreSQL을 tuning하고 simulated workload에서 system을 실행하면서 configuration을 반복 조정해야 합니다.
+
+## Host environment
+
+Daml Package를 임시 cache하기 위해 PQS에는 local cache directory에 대한 write access가 필요합니다. `--source-ledger-cachedir`로 설정하며 default는 `/tmp/scribe`입니다. Cache 크기는 Ledger에서 관찰할 수 있는 모든 Daml Package 크기에 비례합니다. 단일 실행 이후 유지할 필요가 없는 ephemeral cache입니다. 전체 성능에 중요하지 않으므로 container environment에서는 disk 기반 mount를 설정해야 합니다.
+
+## Processing pipeline configuration
+
+진단을 위해 더 상세한 logging이 필요하면 `--logger-level` parameter를 `DEBUG` 또는 `TRACE`로 조정할 수 있습니다. 다만 log output이 매우 많아지고 성능에 악영향을 줄 수 있습니다. 따라서 Netty처럼 특히 많은 log를 출력하는 component는 `INFO` level로 낮추는 것이 좋습니다. `pqs-logging`을 참조하세요.
+
+Ledger API queue 길이 설정은 memory 사용량과 성능의 trade-off입니다. Default는 128이며 추가 memory를 사용하는 대신 더 안정적인 성능을 위해 늘릴 수 있습니다. Buffer는 buffer 크기의 rolling window에 있는 transaction 크기와 같은 양의 memory를 사용합니다.
+
+``` text
+--source-ledger-buffersize 1024
+```
+
+예상 workload에 따라 PQS가 사용하는 JDBC connection 수, default 16을 늘려야 할 수 있습니다. 다음과 같이 제어합니다.
+
+``` text
+--target-postgres-maxconnections 64
+```
+
+PostgreSQL의 `max_connections`[^9] parameter는 database의 모든 client가 요청하는 connection 총수 이상으로 설정해야 합니다.
+
+## Query 분석
+
+이 section은 PostgreSQL capability를 최대한 활용하기 위한 PQS database 최적화를 간략히 설명합니다. 범위가 넓고 참고할 resource가 많으므로 자세한 내용은 PostgreSQL documentation을 참조하세요.
+
+PQS는 Ledger data 저장에 JSONB column을 광범위하게 사용합니다. Query를 최적화하려면 JSONB를 잘 알아야 합니다.
+
+Query 수행 방식을 설명받으려면 query text 앞에 `explain analyze`를 붙입니다. Query가 예상한 index를 사용해 의도대로 실행되는지 확인하는 데 도움이 됩니다.
+
+```sql
+explain analyze
+select * from active('MyModule:MyTemplate');
+```
+
+Query planner output 해석 방법은 article series[^10]를 참조하고 visualization에는 online tool[^11]을 사용하세요.
+
+## Indexing
+
+Index는 JSONB content query 성능을 높이는 중요한 tool입니다. 추가 read 효율이 불가피한 write amplification을 정당화한다면 user가 model 전용 query 최적화를 위해 JSONB 기반 index를 생성해야 합니다. 다음 helper function으로 간단한 index를 생성할 수 있습니다.
+
+```sql
+call create_index_for_contract('token_wallet_holder_idx',
+                               'register:DA.Register:Token',
+                               '(payload->''wallet''->>''holder'')',
+                               'hash');
+```
+
+이 예시에서 index는 Wallet Holder 비교를 허용합니다. JSON inspection 결과가 cache/materialize되어 access할 때마다 다시 계산할 필요가 없다는 추가 장점도 있습니다.
+
+PostgreSQL은 여러 index type을 제공합니다. 각 type은 서로 다른 query 유형에 적합한 algorithm을 사용합니다. 다음 표는 사용 위치를 기본적으로 설명합니다. 자세한 내용은 PostgreSQL manual의 index chapter[^12]를 참조하세요.
+
+| Index Type | 설명                                                                                                                                                                                                                                                                                                                              |
+|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Hash       | Compact합니다. `=`를 사용하는 filter에만 유용합니다.                                                                                                                                                                                                                                                                              |
+| B-tree     | `<`, `<=`, `=`, `>=`, `>`를 사용하는 filter와 `like 'foo%'` 같은 prefix string 비교에 사용할 수 있습니다. `order by` clause의 속도를 높이고, 예를 들어 `select` clause에서 subexpression을 평가하는 대신 index에서 그 값을 가져오는 데도 사용할 수 있습니다.                                                               |
+| GIN        | Subset operator에 유용합니다.                                                                                                                                                                                                                                                                                                     |
+| BRIN       | 특정 column 기준으로 row가 이미 물리적으로 정렬된 table에 효율적입니다.                                                                                                                                                                                                                                                           |
+
+표준 PostgreSQL syntax로 더 정교한 index를 생성할 수 있습니다.
+
+## Test
+
+변경한 모든 setting은 독립적으로 평가하고 tuning해야 합니다. 주어진 workload에서 PQS 성능을 검증하도록 performance test 및 benchmarking environment를 구축해야 합니다. 다음 variable은 전체 PQS 성능 특성과 매우 밀접합니다.
+
+- Network latency
+- Ledger transaction throughput
+- Ledger transaction 크기
+- Contract data 크기
+
+이 variable을 변경하면 system 성능에 미치는 영향을 이해하고 허용 범위 안인지 확인하도록 다시 test해야 합니다.
+
+PQS에는 모든 경우에 맞는 단일 setting이 없습니다. Workload를 이해하고 configuration을 실증적으로 test해 특정 use case의 성능 요구 사항을 충족하는지 확인해야 합니다.
+
+[^1]: [https://pgtune.leopard.in.ua/?dbVersion=15&osType=linux&dbType=oltp&cpuNum=8&totalMemory=64&totalMemoryUnit=GB&connectionNum=100&hdType=ssd](https://pgtune.leopard.in.ua/?dbVersion=15&osType=linux&dbType=oltp&cpuNum=8&totalMemory=64&totalMemoryUnit=GB&connectionNum=100&hdType=ssd)
+
+[^2]: [https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/AuroraPostgreSQL.Reference.ParameterGroups.html#AuroraPostgreSQL.Reference.Parameters.Instance](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/AuroraPostgreSQL.Reference.ParameterGroups.html#AuroraPostgreSQL.Reference.Parameters.Instance)
+
+[^3]: [https://postgresqlco.nf/](https://postgresqlco.nf/)
+
+[^4]: [https://www.postgresql.org/docs/current/runtime-config-autovacuum.html#RUNTIME-CONFIG-AUTOVACUUM](https://www.postgresql.org/docs/current/runtime-config-autovacuum.html#RUNTIME-CONFIG-AUTOVACUUM)
+
+[^5]: [https://www.postgresql.org/docs/current/runtime-config-resource.html#GUC-MAINTENANCE-WORK-MEM](https://www.postgresql.org/docs/current/runtime-config-resource.html#GUC-MAINTENANCE-WORK-MEM)
+
+[^6]: [https://www.postgresql.org/docs/current/runtime-config-wal.html#RUNTIME-CONFIG-WAL-CHECKPOINTS](https://www.postgresql.org/docs/current/runtime-config-wal.html#RUNTIME-CONFIG-WAL-CHECKPOINTS)
+
+[^7]: [https://www.postgresql.org/docs/current/runtime-config-wal.html#GUC-MAX-WAL-SIZE](https://www.postgresql.org/docs/current/runtime-config-wal.html#GUC-MAX-WAL-SIZE)
+
+[^8]: [https://www.postgresql.org/docs/current/runtime-config-resource.html#RUNTIME-CONFIG-RESOURCE-BACKGROUND-WRITER](https://www.postgresql.org/docs/current/runtime-config-resource.html#RUNTIME-CONFIG-RESOURCE-BACKGROUND-WRITER)
+
+[^9]: [https://postgresqlco.nf/doc/en/param/max_connections/](https://postgresqlco.nf/doc/en/param/max_connections/)
+
+[^10]: [https://www.depesz.com/tag/unexplainable/](https://www.depesz.com/tag/unexplainable/)
+
+[^11]: [https://explain.depesz.com/](https://explain.depesz.com/)
+
+[^12]: [https://www.postgresql.org/docs/current/indexes.html](https://www.postgresql.org/docs/current/indexes.html)
+
+{/* COPIED_END */}
+
+## Payload query
+
+{/* COPIED_START source="docs-website:docs/replicated/pqs/3.4/component-howtos/pqs/optimize/payload-queries.rst" hash="52704395" */}
+
+이 page는 Participant Query Store, PQS에서 payload content를 다루는 query를 최적화할 때의 기법과 고려 사항을 설명합니다.
+
+다음 page를 사전 지식으로 이미 이해했다고 가정합니다.
+
+- `pqs-how-to-query-contracts-and-transactions-using-sql`
+- `pqs-references-sql-api`
+
+### Metadata index
+
+PQS data retrieval function에는 특정 Ledger offset에서 생성된 Contract query나 Contract ID로 Contract 찾기 같은 metadata level query에 효율적으로 access하기 위한 index가 이미 있습니다. 하지만 대부분의 business workflow level query는 실제 Contract payload content를 기준으로 data를 선택해야 합니다. 효율적인 query는 Daml model 세부 구조를 알아야 하므로 PQS default index는 여기에 도움이 되지 않습니다. 즉 각 application team이 data access pattern에 맞는 최적의 성능을 확보하도록 적절한 index를 생성하고 유지할 책임이 있습니다.
+
+### 필요한 tool
+
+PostgreSQL의 `psql`[^1] application과 `EXPLAIN`[^2] SQL command로 query plan을 분석하고 잠재적 성능 bottleneck을 바로잡습니다. 이 tool에 대한 자세한 내용은 page 끝의 reference를 참조하세요.
+
+### Daml model
+
+이 page에서는 Issuer가 생성하고 Holder가 보유한 Token register를 나타내는 단순한 Daml model을 사용합니다. 실제 workflow는 논의와 관련이 없어 전체를 제공하지 않지만, `Token` model이 대응하는 `JSONB` payload 표현으로 변환되는 방식을 보는 것이 유용합니다.
+
+```daml
+module DA.Register where
+
+-- basic types
+type Quantity = Decimal
+
+data Issue = Issue
+  with
+    issuer: Party
+    label: Text
+  deriving (Ord, Eq, Show)
+
+data Wallet = Wallet
+  with
+    holder: Party
+    label: Text
+    locks: Set Lock
+  deriving (Ord, Eq, Show)
+
+walletSigs w = S.fromList $ w.holder :: map (.notary) (S.toList w.locks)
+
+data Lock = Lock
+  with
+    notary: Party
+    label: Text
+  deriving (Ord, Eq, Show)
+
+-- token representing a number of units issued and held in a wallet
+template Token
+  with
+    issue: Issue          -- what
+    wallet: Wallet        -- where
+    quantity: Quantity    -- how many
+    observers: Set Party
+  where
+    signatory issue.issuer, walletSigs wallet
+    ensure quantity /= 0.0
+    observer observers
+```
+
+PQS가 ingest한 대표적인 Contract는 다음과 같습니다.
+
+```json
+{
+    "issue": {
+        "label": "security:by-issuer-6::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d",
+        "issuer": "issuer-6::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d"
+    },
+    "wallet": {
+        "label": "treasury for security:by-holder-82::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d",
+        "locks": {
+            "map": [
+            ]
+        },
+        "holder": "holder-82::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d"
+    },
+    "quantity": "64.0000000000",
+    "observers": {
+        "map": [
+        ]
+    }
+}
+```
+
+### Test data 설정
+
+개념 설명을 위해 다양한 data distribution 특성을 가진 다음 storage footprint가 만들어지도록 Daml Ledger에서 PQS instance로 data를 ingest했습니다.
+
+```sql
+select count(*) from transactions;
+```
+
+``` text
+count
+--------
+845640
+(1 row)
+```
+
+```sql
+select count(*) from creates('Token');
+```
+
+``` text
+count
+--------
+195155
+(1 row)
+```
+
+```sql
+select count(*) from active('Token');
+```
+
+``` text
+count
+-------
+65063
+(1 row)
+```
+
+### Payload index
+
+### 현재 상태, custom index 없음
+
+Custom index를 생성하지 않아도 payload content를 기준으로 Contract를 query할 수 있지만 성능이 최적이 아닐 수 있습니다. 몇 가지 예시를 살펴봅니다.
+
+```sql
+explain analyse
+select contract_id, payload
+from creates('Token')
+where (payload->>'quantity')::decimal between 999999669 and 999999700;
+```
+
+``` text
+QUERY PLAN
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Gather  (cost=1001.42..31964.94 rows=976 width=694) (actual time=0.802..87.392 rows=9 loops=1)
+Workers Planned: 2
+Workers Launched: 2
+->  Parallel Index Scan using __contracts_14_created_at_ix_tpe_pk_idx on __contracts_14 c  (cost=1.42..30865.31 rows=407 width=694) (actual time=36.462..61.853 rows=3 loops=3)
+Index Cond: ((created_at_ix >= __nearest_ix(oldest_offset())) AND (created_at_ix <= __nearest_ix(latest_offset())))
+Filter: ((tpe_pk = '14'::bigint) AND (((payload ->> 'quantity'::text))::numeric >= '999999669'::numeric) AND (((payload ->> 'quantity'::text))::numeric <= '999999700'::numeric))
+Rows Removed by Filter: 65049
+Planning Time: 1.672 ms
+Execution Time: 87.417 ms
+(9 rows)
+```
+
+```sql
+explain analyse
+select contract_id, payload
+from creates('Token')
+where (payload->>'quantity')::decimal between 15 and 17;
+```
+
+``` text
+QUERY PLAN
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Gather  (cost=1001.42..31964.94 rows=976 width=694) (actual time=0.857..94.508 rows=3972 loops=1)
+Workers Planned: 2
+Workers Launched: 2
+->  Parallel Index Scan using __contracts_14_created_at_ix_tpe_pk_idx on __contracts_14 c  (cost=1.42..30865.31 rows=407 width=694) (actual time=1.508..66.046 rows=1324 loops=3)
+Index Cond: ((created_at_ix >= __nearest_ix(oldest_offset())) AND (created_at_ix <= __nearest_ix(latest_offset())))
+Filter: ((tpe_pk = '14'::bigint) AND (((payload ->> 'quantity'::text))::numeric >= '15'::numeric) AND (((payload ->> 'quantity'::text))::numeric <= '17'::numeric))
+Rows Removed by Filter: 63728
+Planning Time: 4.062 ms
+Execution Time: 94.669 ms
+(9 rows)
+```
+
+이 plan에서 다음 정보를 파악할 수 있습니다.
+
+- `Index Scan`을 사용하지만 default metadata level index 같은 범용 index입니다.
+- PostgreSQL이 실행을 parallelize할 수 있었습니다. `Workers Launched: 2`
+- Query selectivity는 `rows=9`와 `rows=3972`로 다르지만 PostgreSQL이 estimate를 `rows=976`으로 크게 잘못 예측했으므로 최적 실행에 도움이 되지 않았습니다.
+- PostgreSQL이 상당한 작업을 수행한 뒤 버립니다. `Rows Removed by Filter:`
+
+이 문제가 생기는 이유는 developer가 개입하지 않으면 PostgreSQL에 `payload` column이 black box이기 때문입니다. 복잡한 non-scalar 구조인 content에 어떤 가정도 할 수 없어 합리적인 결정에 도움이 되는 의미 있는 statistics를 유지할 수 없습니다. 그 결과 같은 output을 만들기 위해 필요 이상으로 CPU, memory, I/O resource를 사용합니다.
+
+### Targeted index로 성능 개선
+
+Data access pattern을 알면 PostgreSQL이 query plan을 최적화하도록 custom index를 생성할 수 있습니다. 위 query는 `quantity` field를 indexing하면 도움이 됩니다. PostgreSQL은 `JSONB` column에서 `JSONB` document의 특정 field를 참조하는 expression[^3]에 index를 생성할 수 있습니다.
+
+```sql
+call create_index_for_contract('token_quantity', 'Token', '((payload->>''quantity'')::decimal)', 'btree');
+```
+
+``` text
+CALL
+```
+
+```sql
+select __contract_tpe4name('Token');
+```
+
+``` text
+__contract_tpe4name
+---------------------
+                 14
+(1 row)
+```
+
+```sql
+vacuum analyze __contracts_14;
+```
+
+``` text
+VACUUM
+```
+
+```sql
+explain analyse
+select contract_id, payload
+from creates('Token')
+where (payload->>'quantity')::decimal between 999999669 and 999999700;
+```
+
+``` text
+QUERY PLAN
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+Index Scan using __contracts_14_token_quantity_idx on __contracts_14 c  (cost=0.42..31.20 rows=14 width=694) (actual time=0.256..1.012 rows=9 loops=1)
+Index Cond: ((((payload ->> 'quantity'::text))::numeric >= '999999669'::numeric) AND (((payload ->> 'quantity'::text))::numeric <= '999999700'::numeric))
+Filter: ((tpe_pk = '14'::bigint) AND (created_at_ix >= __nearest_ix(oldest_offset())) AND (created_at_ix <= __nearest_ix(latest_offset())))
+Planning Time: 1.718 ms
+Execution Time: 1.027 ms
+(5 rows)
+```
+
+이 plan에서 다음 개선 사항을 파악할 수 있습니다.
+
+- 올바른 custom index를 사용합니다. `Index Scan using __contracts_14_token_quantity_idx`
+- PostgreSQL이 row 수를 훨씬 정확히 추정합니다. `rows=14`와 `rows=9`
+- `Rows Removed by Filter`가 사라져 낭비한 작업이 없습니다.
+- `Workers Launched`가 사라져 parallelize할 필요가 없으므로 다른 workload 처리를 위해 resource를 절약할 수 있습니다.
+
+PostgreSQL query planner는 cost 기반 optimizer입니다. 관련 statistics에 access하면 더 나은 결정을 내리고, 그렇지 않으면 지나치게 넓은 추정에 의존해야 합니다.
+
+### 여러 index의 상호 작용 이해
+
+#### 독립적인 조건
+
+특정 Holder가 보유하고 quantity가 일정 범위에 있는 Token을 query한다고 가정합니다. 조건이 독립적이면 PostgreSQL은 bitmap operation으로 여러 index를 결합해 query plan을 더 최적화할 수 있습니다. 실제 동작을 살펴봅니다.
+
+```sql
+explain analyse
+select contract_id, payload
+from creates('Token')
+where (payload->>'quantity')::numeric between 15 and 35
+  and payload->'wallet'->>'holder' = 'holder-87::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d';
+```
+
+``` text
+QUERY PLAN
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Gather  (cost=1380.02..32048.93 rows=141 width=694) (actual time=13.906..56.625 rows=200 loops=1)
+Workers Planned: 2
+Workers Launched: 2
+->  Parallel Bitmap Heap Scan on __contracts_14 c  (cost=380.02..31034.54 rows=59 width=694) (actual time=6.336..30.269 rows=67 loops=3)
+Recheck Cond: ((((payload ->> 'quantity'::text))::numeric >= '15'::numeric) AND (((payload ->> 'quantity'::text))::numeric <= '35'::numeric))
+Filter: ((tpe_pk = '14'::bigint) AND (((payload -> 'wallet'::text) ->> 'holder'::text) = 'holder-87::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d'::text) AND (created_at_ix >= __nearest_ix(oldest_offset())) AND (created_at_ix <= __nearest_ix(latest_offset())))
+Rows Removed by Filter: 9132
+Heap Blocks: exact=10483
+->  Bitmap Index Scan on __contracts_14_token_quantity_idx  (cost=0.00..379.98 rows=28166 width=0) (actual time=8.580..8.580 rows=27597 loops=1)
+Index Cond: ((((payload ->> 'quantity'::text))::numeric >= '15'::numeric) AND (((payload ->> 'quantity'::text))::numeric <= '35'::numeric))
+Planning Time: 1.892 ms
+Execution Time: 56.665 ms
+(12 rows)
+```
+
+```sql
+call create_index_for_contract('token_wallet_holder', 'Token', '(payload->''wallet''->>''holder'')', 'hash');
+```
+
+``` text
+CALL
+```
+
+```sql
+vacuum analyze __contracts_14;
+```
+
+``` text
+VACUUM
+```
+
+```sql
+explain analyse
+select contract_id, payload
+from creates('Token')
+where (payload->>'quantity')::numeric between 15 and 35
+  and payload->'wallet'->>'holder' = 'holder-87::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d';
+```
+
+``` text
+QUERY PLAN
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Bitmap Heap Scan on __contracts_14 c  (cost=384.66..632.69 rows=116 width=694) (actual time=2.718..11.710 rows=200 loops=1)
+Recheck Cond: ((((payload -> 'wallet'::text) ->> 'holder'::text) = 'holder-87::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d'::text) AND (((payload ->> 'quantity'::text))::numeric >= '15'::numeric) AND (((payload ->> 'quantity'::text))::numeric <= '35'::numeric))
+Filter: ((tpe_pk = '14'::bigint) AND (created_at_ix >= __nearest_ix(oldest_offset())) AND (created_at_ix <= __nearest_ix(latest_offset())))
+Heap Blocks: exact=200
+->  BitmapAnd  (cost=384.66..384.66 rows=116 width=0) (actual time=2.394..2.394 rows=0 loops=1)
+->  Bitmap Index Scan on __contracts_14_token_wallet_holder_idx  (cost=0.00..11.65 rows=820 width=0) (actual time=0.118..0.118 rows=974 loops=1)
+Index Cond: (((payload -> 'wallet'::text) ->> 'holder'::text) = 'holder-87::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d'::text)
+->  Bitmap Index Scan on __contracts_14_token_quantity_idx  (cost=0.00..372.70 rows=27658 width=0) (actual time=2.239..2.239 rows=27597 loops=1)
+Index Cond: ((((payload ->> 'quantity'::text))::numeric >= '15'::numeric) AND (((payload ->> 'quantity'::text))::numeric <= '35'::numeric))
+Planning Time: 1.549 ms
+Execution Time: 11.766 ms
+(11 rows)
+```
+
+PostgreSQL이 두 index를 결합해 살펴볼 data 양을 `Heap Blocks: exact=10483` 및 `Rows Removed by Filter: 9132`에서 `Heap Blocks: exact=200`으로 더 줄이고, query 처리를 parallelize하지 않고도 같은 output을 더 빠르고 저렴하게 생성함을 알 수 있습니다.
+
+#### 종속적인 조건
+
+하지만 조건이 종속적이면 PostgreSQL이 반환될 row 수를 크게 과소평가해 최적이 아닌 query plan을 선택할 수 있습니다. Attribute 사이에 본질적인 관계가 있어도 서로 다른 code path에서 각 field를 개별 query하도록 두 attribute를 따로 indexing할 때 흔히 발생합니다. 이 경우 index 정의만으로는 절반만 해결한 것입니다. 나머지는 PostgreSQL이 합리적인 결정을 내릴 관련 statistics에 access하도록 하는 것입니다. 이런 상황에서 PostgreSQL을 올바르게 동작하게 만드는 방법을 살펴봅니다.
+
+```sql
+call create_index_for_contract('token_wallet_label', 'Token', '(payload->''wallet''->>''label'')', 'hash');
+```
+
+``` text
+CALL
+```
+
+```sql
+vacuum analyze __contracts_14;
+```
+
+``` text
+VACUUM
+```
+
+`wallet.label`이 `wallet.holder`에서 파생되는 방식으로 두 field가 연관되어 있다고 가정합니다. 위 `JSONB` payload 예시를 참조하세요.
+
+```sql
+explain analyse
+select contract_id, payload
+from creates('Token')
+where payload->'wallet'->>'holder' = 'holder-87::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d'
+  and payload->'wallet'->>'label' = 'treasury for security:by-holder-87::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d';
+```
+
+``` text
+QUERY PLAN
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Bitmap Heap Scan on __contracts_14 c  (cost=25.82..34.35 rows=4 width=694) (actual time=0.828..58.666 rows=974 loops=1)
+Recheck Cond: ((((payload -> 'wallet'::text) ->> 'holder'::text) = 'holder-87::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d'::text) AND (((payload -> 'wallet'::text) ->> 'label'::text) = 'treasury for security:by-holder-87::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d'::text))
+Filter: ((tpe_pk = '14'::bigint) AND (created_at_ix >= __nearest_ix(oldest_offset())) AND (created_at_ix <= __nearest_ix(latest_offset())))
+Heap Blocks: exact=964
+->  BitmapAnd  (cost=25.82..25.82 rows=4 width=0) (actual time=0.347..0.348 rows=0 loops=1)
+->  Bitmap Index Scan on __contracts_14_token_wallet_holder_idx  (cost=0.00..11.65 rows=820 width=0) (actual time=0.171..0.171 rows=974 loops=1)
+Index Cond: (((payload -> 'wallet'::text) ->> 'holder'::text) = 'holder-87::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d'::text)
+->  Bitmap Index Scan on __contracts_14_token_wallet_label_idx  (cost=0.00..13.92 rows=976 width=0) (actual time=0.133..0.133 rows=974 loops=1)
+Index Cond: (((payload -> 'wallet'::text) ->> 'label'::text) = 'treasury for security:by-holder-87::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d'::text)
+Planning Time: 2.031 ms
+Execution Time: 58.728 ms
+(11 rows)
+```
+
+PostgreSQL이 각 index dataset의 반환 값을 `rows=820` 및 `rows=976`으로 추정하면서 두 값을 결합하면 실제 `rows=974`와 큰 차이가 나는 `rows=4`로 추정하는 것은 의외일 수 있습니다.
+
+이 사실을 인식하고 PostgreSQL이 관련 statistics[^4][^5]를 수집하게 하면 query execution plan이 최적화됩니다.
+
+```sql
+create statistics stts_token_wallet (dependencies) on (payload->'wallet'->>'holder'), (payload->'wallet'->>'label') from __contracts_14;
+```
+
+``` text
+CREATE STATISTICS
+```
+
+```sql
+vacuum analyze __contracts_14;
+```
+
+``` text
+VACUUM
+```
+
+```sql
+explain analyse
+select contract_id, payload
+from creates('Token')
+where payload->'wallet'->>'holder' = 'holder-87::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d'
+  and payload->'wallet'->>'label' = 'treasury for security:by-holder-87::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d';
+```
+
+``` text
+QUERY PLAN
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Index Scan using __contracts_14_token_wallet_holder_idx on __contracts_14 c  (cost=0.00..2176.81 rows=1028 width=694) (actual time=0.139..43.500 rows=974 loops=1)
+Index Cond: (((payload -> 'wallet'::text) ->> 'holder'::text) = 'holder-87::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d'::text)
+Filter: ((tpe_pk = '14'::bigint) AND (((payload -> 'wallet'::text) ->> 'label'::text) = 'treasury for security:by-holder-87::1220417ac1a340579278093905c1bdcac152f04d50dbd899ca6ac24740f37a9c534d'::text) AND (created_at_ix >= __nearest_ix(oldest_offset())) AND (created_at_ix <= __nearest_ix(latest_offset())))
+Planning Time: 0.741 ms
+Execution Time: 43.545 ms
+(5 rows)
+```
+
+새 plan의 핵심은 estimate가 `rows=1028`과 `rows=974`로 더 정확하고 예측 가능해져 PostgreSQL이 두 번째 index 처리에 computation을 낭비하지 않기로 선택했다는 점입니다. Query 속도가 극적으로 빨라지지는 않더라도 PostgreSQL이 잘못 예측해 최적이 아닌 execution plan을 선택할 가능성을 크게 줄입니다.
+
+PostgreSQL이 사용할 수 있는 다른 multivariate statistics type도 있습니다. 특정 data와 query에 도움이 되는지는 documentation[^6]을 참조하세요.
+
+### Statistics precision
+
+Default statistics target인 `100`으로는 특정 사례의 data distribution 특성, 예를 들어 특정 숫자 범위에 data가 크게 치우친 경우를 포착하기에 부족할 때가 많습니다. 이때 특정 expression[^7]의 statistics target을 늘려 data 특성을 포착하면 매우 효율적일 수 있습니다. 실제 상위 10개 Token quantity 값과 PostgreSQL이 수집한 statistics를 비교해 precision 증가의 이점을 확인할 수 있습니다.
+
+```sql
+select count(*) as total, (payload->>'quantity')::decimal as token_value
+from creates('Token')
+group by token_value
+order by 1 desc
+limit 10;
+```
+
+``` text
+total |  token_value
+-------+---------------
+ 1438 |  6.0000000000
+ 1434 | 62.0000000000
+ 1386 | 29.0000000000
+ 1382 | 91.0000000000
+ 1382 | 33.0000000000
+ 1378 | 65.0000000000
+ 1370 | 25.0000000000
+ 1368 | 39.0000000000
+ 1362 | 24.0000000000
+ 1358 | 49.0000000000
+(10 rows)
+```
+
+``` text
+scribe=# \x
+Expanded display is on.
+
+scribe=# \d+ __contracts_14_token_quantity_idx
+                       Index "public.__contracts_14_token_quantity_idx"
+ Column  |  Type   | Key? |                Definition                 | Storage | Stats target
+---------+---------+------+-------------------------------------------+---------+--------------
+ numeric | numeric | yes  | ((payload ->> 'quantity'::text)::numeric) | main    | 100
+btree, for table "public.__contracts_14"
+```
+
+```sql
+select * from pg_stats where tablename = '__contracts_14_token_quantity_idx';
+```
+
+``` text
+-[ RECORD 1 ]----------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+schemaname             | public
+tablename              | __contracts_14_token_quantity_idx
+attname                | numeric
+inherited              | f
+null_frac              | 0
+avg_width              | 9
+n_distinct             | 13618
+most_common_vals       | {15.0000000000,93.0000000000,79.0000000000,33.0000000000,6.0000000000,50.0000000000,34.0000000000,8.0000000000,65.0000000000,95.0000000000,... +90 more values ...}
+most_common_freqs      | {0.007866667,0.0078,0.0076,0.0075666667,0.0075333333,0.0075333333,0.0075,0.007466667,0.007466667,0.0074333334,... +90 more values ...}
+histogram_bounds       | {999617389.0000000000,999635683.0000000000,999655006.0000000000,999674673.0000000000,999688114.0000000000,999694993.0000000000,999703943.0000000000,999709636.0000000000,999715766.0000000000,999722125.0000000000,... +90 more values ...}
+correlation            | -0.09331506
+most_common_elems      |
+most_common_elem_freqs |
+elem_count_histogram   |
+range_length_histogram |
+range_empty_frac       |
+range_bounds_histogram |
+```
+
+```sql
+alter index __contracts_14_token_quantity_idx alter column 1 set statistics 1000;
+```
+
+``` text
+ALTER INDEX
+```
+
+```sql
+vacuum analyze __contracts_14;
+```
+
+``` text
+VACUUM
+```
+
+간결성을 위해 전체 statistics output은 표시하지 않습니다. 대신 precision 향상에 따른 값의 변화를 확인하세요.
+
+``` text
+scribe=# \d+ __contracts_14_token_quantity_idx
+                       Index "public.__contracts_14_token_quantity_idx"
+ Column  |  Type   | Key? |                Definition                 | Storage | Stats target
+---------+---------+------+-------------------------------------------+---------+--------------
+ numeric | numeric | yes  | ((payload ->> 'quantity'::text)::numeric) | main    | 1000
+btree, for table "public.__contracts_14"
+```
+
+```sql
+select * from pg_stats where tablename = '__contracts_14_token_quantity_idx';
+```
+
+``` text
+...
+most_common_vals       | {6.0000000000,62.0000000000,29.0000000000,33.0000000000,91.0000000000,65.0000000000,25.0000000000,39.0000000000,24.0000000000,49.0000000000,... +990 more values ...}
+most_common_freqs      | {0.0073685017,0.0073480057,0.007102047,0.0070815505,0.0070815505,0.007061054,0.007020061,0.0070098126,0.006979068,0.0069585713,... +990 more values ...}
+histogram_bounds       | {999617296.0000000000,999620769.0000000000,999622774.0000000000,999624331.0000000000,999625923.0000000000,999627601.0000000000,999629188.0000000000,999631030.0000000000,999632534.0000000000,999634188.0000000000,... +990 more values ...}
+...
+```
+
+변경 후 PostgreSQL은 data distribution 특성을 더 정확히 포착할 충분한 bucket을 가지며, 예를 들어 most common value가 실제 값과 정확히 일치합니다.
+
+### 결론
+
+PostgreSQL에는 `JSONB` column에 저장된 payload content를 다루는 query를 최적화할 모든 tool이 있습니다. 하지만 최적의 query 성능을 보장하도록 적절한 index와 statistics를 생성, 유지, monitor하는 것은 application developer의 책임입니다. 방법은 다음과 같습니다.
+
+- Data access pattern을 반영하는 expression에 custom index 생성
+- PostgreSQL이 합리적인 결정을 내릴 관련 statistics에 access하도록 보장
+- 필요한 경우 종속 조건을 위한 multivariate statistics 생성
+- Data distribution의 세부 차이를 포착하는 데 높은 precision이 필요한 expression의 statistics target 증가
+
+추가 index, 주로 write path와 정기 `VACUUM ANALYZE` 실행 중 statistics를 유지하는 데 비용이 든다는 점도 고려해야 합니다. Query 성능과 유지보수 overhead 사이의 균형이 필요합니다.
+
+Index 추가가 모든 성능 문제의 만능 해결책은 아닙니다. 빠른 query의 핵심은 selectivity 제어입니다. Predicate가 table의 20% 이상과 일치하는 query는 sequential scan이 index scan보다 빠를 가능성이 큽니다. `EXPLAIN` command 사용법을 익혀 성능 bottleneck을 식별하고 제거하세요.
+
+Daml model을 단순하고 flat하게 유지하는 실용적 가치를 간과하지 마세요. 깊이 nested된 구조는 효율적인 indexing과 query가 어렵습니다. Downstream application의 query 성능을 높이는 데 도움이 된다면 Daml model denormalization을 고려하세요.
+
+[^1]: [https://www.postgresql.org/docs/current/app-psql.html](https://www.postgresql.org/docs/current/app-psql.html)
+
+[^2]: [https://www.postgresql.org/docs/current/using-explain.html](https://www.postgresql.org/docs/current/using-explain.html)
+
+[^3]: [https://www.postgresql.org/docs/current/indexes-expressional.html](https://www.postgresql.org/docs/current/indexes-expressional.html)
+
+[^4]: [https://www.postgresql.org/docs/current/planner-stats.html#PLANNER-STATS-EXTENDED](https://www.postgresql.org/docs/current/planner-stats.html#PLANNER-STATS-EXTENDED)
+
+[^5]: [https://www.postgresql.org/docs/current/sql-createstatistics.html](https://www.postgresql.org/docs/current/sql-createstatistics.html)
+
+[^6]: [https://www.postgresql.org/docs/current/planner-stats-details.html](https://www.postgresql.org/docs/current/planner-stats-details.html)
+
+[^7]: [https://www.postgresql.org/docs/current/sql-alterindex.html](https://www.postgresql.org/docs/current/sql-alterindex.html)
+
+{/* COPIED_END */}

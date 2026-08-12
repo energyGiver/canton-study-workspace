@@ -1,0 +1,134 @@
+---
+title: "PQS 설정"
+description: "PQS data source, Contract/Party filter, JSON encoding을 설정합니다."
+source_id: "SRC-848D223A4E"
+source_path: "sdks-tools/development-tools/pqs/configure"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "a2096a5864afab69388b5e814a211f79b509440701b1d29dcfc1d25bbd9dda17"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/development-tools/pqs/configure.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/pqs/3.4/component-howtos/pqs/configure.rst" hash="d1cc365e" */}
+
+PQS는 다음 source에서 우선순위 순으로 configuration을 확인합니다.
+
+- HOCON configuration file, `--config` argument
+- Command-line argument
+- Java system property, `java` command의 `-D` argument
+- Environment variable
+
+<Note>
+개별 configuration item과 위 형식에서 이를 지정하는 convention은 `./scribe.jar pipeline --help-verbose` command를 참조하세요.
+</Note>
+
+PQS는 시작할 때 configuration을 설정하며 동적으로 update하지 않습니다. 따라서 filter에 새 Party, Template 또는 Interface를 추가하는 등의 configuration 변경에는 restart가 필요합니다. Participant Node에 새 Daml Package, 즉 DAR를 deploy할 때는 PQS를 restart할 필요가 **없습니다**. PQS가 event 처리 중 알 수 없는 Package를 만나면 Participant Node에서 누락된 Package를 자동으로 가져옵니다. 이 과정에서 ingestion이 수십 초까지 일시 중지될 수 있습니다.
+
+<div id="pqs-configure-warning">
+
+<Warning>
+PQS는 과거로 돌아가 history를 복구하지 않고 이전에 보지 못한 새 transaction만 consume하며 진행합니다. PQS가 중지된 시점에 이전 history가 없다고 확신할 수 있는 영역으로만 scope를 확장해야 합니다. 그렇지 않으면 빈 datastore에서 다시 초기화하는 re-seed operation이 필요합니다.
+</Warning>
+
+</div>
+
+다음 command는 authentication이 없는 Ledger에 연결하고, 지정한 Daml Party의 관점에서 과거 history를 제외한 Ledger 최신 state를 복제합니다. 지정한 Ledger source와 database를 사용합니다.
+
+``` text
+$ ./scribe.jar pipeline ledger postgres-document \
+     --pipeline-filter-parties "Alice::* | Bob::*" \
+     --pipeline-ledger-start Latest \
+     --source-ledger-host canton-host \
+     --source-ledger-port 6865 \
+     --target-postgres-host postgres-host \
+     --target-postgres-port 5432 \
+     --target-postgres-database postgres
+```
+
+각 command의 설정 방법은 `pqs-references-configuration-options`를 참조하세요.
+
+## Transaction data source
+
+PQS가 data를 저장하는 방식을 이해하려면 `da-ledgers`를 이해해야 합니다. 간단히 말해 Daml Ledger는 event를 포함한 일련의 transaction으로 구성됩니다. Event 유형은 다음과 같습니다.
+
+- Create: Contract, Interface view, divulgence 생성
+- Exercise: Contract 또는 Interface view의 Choice 실행
+- Archive: Contract 또는 Interface view의 lifecycle 종료
+
+<div id="pqs-references-configuration-options-transactions-data-source-warning">
+
+<Warning>
+저장할 Ledger data scope를 정의할 때는 data source와 적용한 filter의 영향을 이해해야 합니다. Data source와 filter는 SQL function에서 사용할 수 있는 data를 결정하며, 자세한 내용은 `pqs-references-sql-api`를 참조하세요. 이 설정은 **변경할 수 없습니다**. Scope 변경은 저장되는 data 범위를 바꾸므로 scope를 넓히거나 좁히려면 re-seed가 필요합니다. 유일한 예외는 새 Template이나 새 Party처럼 historical data가 없다고 확신하는 영역으로 scope를 넓히는 경우이며, 이때는 re-seed가 필요하지 않습니다. Operator가 reset function으로 datastore를 이 조건이 성립했던 이전 state로 rollback할 수도 있습니다.
+</Warning>
+
+</div>
+
+PQS는 `--pipeline-datasource` configuration으로 지정하는 두 mode로 실행할 수 있습니다. 다음 표는 각 SQL function에서 사용할 수 있는 data를 기준으로 두 mode의 차이를 보여줍니다.
+
+| Data / Mode                                 | TransactionStream | TransactionTreeStream |
+|---------------------------------------------|-------------------|-----------------------|
+| `creates()` of contracts                    | ✓                 | ✓                     |
+| `exercises()` on contracts                  | ✗                 | ✓                     |
+| `archives()` of contracts                   | ✓                 | ✓                     |
+| `creates()` of interfaces                   | ✓                 | ✓                     |
+| `exercises()` on interfaces                 | ✗                 | ✓                     |
+| `archives()` of interfaces                  | ✓                 | ✓                     |
+| `creates()` of divulgences                  | ✗                 | ✓                     |
+| Transient (create-archive in a transaction) | ✗                 | ✓                     |
+| Stakeholders & witnesses                    | ✓                 | ✓                     |
+| Choice controllers                          | ✗                 | ✓                     |
+| **참고**                                    |                   |                       |
+| Default                                     | ✓                 | ✗                     |
+| Data 크기                                   | 작음              | 큼                    |
+
+## Contract filtering
+
+`--pipeline-filter-contracts`는 포함할 Daml Template, Interface view, Choice를 결정하는 filter expression을 지정합니다. Filter expression은 단순한 wildcard inclusion인 `*`와 기본 boolean logic인 `&`, `!`, `|`, `(`, `)`를 사용하며 공백은 무시합니다. 예시는 다음과 같습니다.
+
+- `*`: 전체, default
+- `pkg:*`: 이 Package의 전체
+- `pkg@=1`: 이 Package에서 major version이 `1.x.x`인 전체
+- `pkg@>=1.2.3`: 이 Package에서 version `1.2.3` 이상인 전체
+- `foo@1.2.3|bar@3.2.1`: version `1.2.3`의 Package `foo`와 version `3.2.1`의 Package `bar`에 있는 전체
+- `pkg:a.b.c.Bar`: Template `Bar`의 이 fully qualified name만
+- `a.b.c.*`: `a.b.c` namespace의 모든 member
+- `* & !pkg:a.b.c.Bar`: 이 fully qualified name을 제외한 전체
+- `(a.b.c.Foo | a.b.c.Bar)`: 두 fully qualified name
+- `(a.b.c.* & !(a.b.c.Foo | a.b.c.Bar) | g.e.f.Baz)`: `Foo`와 `Bar`를 제외한 `a.b.c`의 전체와 `g.e.f.Baz`
+- `a.b.c.Foo & a.b.c.Bar`: error, identifier가 동시에 둘일 수 없음
+
+<Note>
+Template과 Interface filtering에는 잠재적 ambiguity를 방지하기 위한 추가 조건이 있습니다. 다음 대상의 filter를 포함해야 합니다.
+
+- 포함된 Template의 모든 Interface view
+- 포함된 Interface view의 모든 Template
+</Note>
+
+## Party filtering
+
+마찬가지로 `--pipeline-filter-parties` option은 data를 제공할 Party를 결정하는 filter expression을 지정합니다. 예시는 다음과 같습니다.
+
+- `*`: 전체, default
+- `Alice::* | Bob::*`: `Alice` 또는 `Bob` hint가 있는 모든 Party
+- `Alice::122055fc4b190e3ff438587b699495a4b6388e911e2305f7e013af160f49a76080ab`: 이 Party 하나만
+- `* & !Alice::*`: `Alice` hint가 있는 Party를 제외한 전체
+- `Alice* | Bob* | (Charlie* & !(Charlie3::*))`: `Alice`, `Bob` Party와 `Charlie3`를 제외한 `Charlie` Party
+
+Ledger에 authentication이 필요하면 이 filter는 PQS의 Ledger API user가 access할 수 있는 Party scope 안에서 적용됩니다. 당연히 `--pipeline-filter-parties`로 user가 authorization을 받지 않은 Party data에 access할 수는 없습니다.
+
+## Explicit Contract Disclosure
+
+`--pipeline-filter-metadata`는 metadata를 capture할 Daml Template과 Interface view를 결정하는 inclusion filter expression을 지정합니다. 위 section과 같은 syntax를 사용합니다. Capture한 data는 query function output의 `metadata` column, 즉 PostgreSQL `bytea` type에서 사용할 수 있습니다. 이 column은 각 event의 `created_event_blob` 내용을 저장하며 `stakeholder-contract-share`를 참조하세요.
+
+## JSON encoding configuration
+
+PQS는 기본적으로 numeric type에 string을 사용하는 JSON format으로 payload를 저장합니다. JSON number는 double-precision floating point number를 기반으로 하므로 큰 integer에서 precision loss가 생길 수 있기 때문입니다. Number를 integer로 저장하고 precision loss를 허용할 수 있다면 `--target-encoding-numericasstring` 및 `--target-encoding-int64asstring` option으로 default 동작을 변경할 수 있습니다.
+
+또 다른 option은 record에서 nullable field를 생략하는 대신 JSON null로 저장하게 합니다. PQS는 기본적으로 nullable field를 JSON null로 저장하지만 `--target-encoding-excludenulls` option으로 이 동작을 변경할 수 있습니다.
+
+{/* COPIED_END */}

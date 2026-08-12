@@ -1,0 +1,134 @@
+---
+title: "Canton Console"
+description: "Canton Node/Topology 관리와 운영 문제 debugging을 위한 Scala REPL입니다."
+source_id: "SRC-EBFBE2569C"
+source_path: "sdks-tools/cli-tools/canton-console"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "71b2631106fb0c1b8218c1373e9025ce9e6fcf73fa584546280d89ad5e55add0"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/cli-tools/canton-console.md)을 함께 확인하세요.
+</Warning>
+
+import CANTON_DOCS_CN_SDK_TOOLS_CLI_CANTON_CONSOLE_0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/sdks-tools-cli-tools-canton-console-0.mdx";
+import CANTON_DOCS_CN_SDK_TOOLS_CLI_CANTON_CONSOLE_1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/sdks-tools-cli-tools-canton-console-1.mdx";
+import CANTON_DOCS_CN_SDK_TOOLS_CLI_CANTON_CONSOLE_2 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/sdks-tools-cli-tools-canton-console-2.mdx";
+import CANTON_DOCS_CN_SDK_TOOLS_CLI_CANTON_CONSOLE_3 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/sdks-tools-cli-tools-canton-console-3.mdx";
+import CANTON_DOCS_CN_SDK_TOOLS_CLI_CANTON_CONSOLE_4 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/sdks-tools-cli-tools-canton-console-4.mdx";
+
+
+Canton Console은 administration, debugging, automation을 위해 Canton Node에 연결하는 interactive Scala REPL입니다. Typed API를 통해 Participant, Sequencer, Mediator operation에 직접 접근합니다.
+
+전체 운영 문서는 Node setup과 management를 자세히 다루는 [Global Synchronizer section](/global-synchronizer/understand/introduction)을 참조하세요. 이 페이지는 개발/운영 tool로서 Console을 간단히 소개합니다.
+
+## Overview
+
+Console은 Canton distribution에 포함됩니다. Canton process를 시작하면 interactive shell로 Console을 사용할 수 있습니다. 실행 중인 Node에 Remote Console을 연결할 수도 있습니다.
+
+<Note>
+Node setup, Party management, Topology administration, debugging workflow 같은 운영 guide는 [Global Synchronizer의 Canton Console group](/global-synchronizer/canton-console/essential-commands)을 참조하세요. 이 페이지는 CLI 개발 tool로서 Console에 초점을 둡니다.
+</Note>
+
+Console에서는 다음 작업을 수행할 수 있습니다.
+
+- **Party management** -- Party 생성, hosted Party 조회, Party-to-Participant mapping 관리
+- **Package management** -- DAR file upload, deployed Package 검사, Package dependency 확인
+- **Synchronizer connection** -- Participant를 Synchronizer에 연결, connection 조회, reconnection 관리
+- **Topology management** -- Key rotation, Namespace Delegation, Party allocation 같은 Topology state 조회/변경
+- **Health monitoring** -- Node status, active connection, processing queue 검사
+- **Debugging** -- Transaction tree, conflict state, command processing trace 검사
+
+## 빠른 Example
+
+
+
+
+<CANTON_DOCS_CN_SDK_TOOLS_CLI_CANTON_CONSOLE_0 />
+
+
+## Node Reference
+
+Console은 operation을 Node type별로 구성하며 각 Node type은 서로 다른 command 집합을 제공합니다.
+
+**Validator, Participant** -- 가장 자주 사용하는 reference입니다. Console object name은 `participant`이며 Party management, Package upload, Ledger operation, Synchronizer connection을 처리합니다.
+
+
+
+
+<CANTON_DOCS_CN_SDK_TOOLS_CLI_CANTON_CONSOLE_1 />
+
+
+**Sequencer Node** -- Synchronizer의 message ordering을 관리합니다.
+
+
+
+
+<CANTON_DOCS_CN_SDK_TOOLS_CLI_CANTON_CONSOLE_2 />
+
+
+**Mediator Node** -- Synchronizer의 transaction confirmation을 처리합니다.
+
+
+
+
+<CANTON_DOCS_CN_SDK_TOOLS_CLI_CANTON_CONSOLE_3 />
+
+
+## Console 실행
+
+### Embedded Console
+
+Configuration file로 Canton을 시작하면 Console이 자동으로 시작됩니다.
+
+```bash
+canton --config my-config.conf
+```
+
+Node initialize가 끝나면 Console prompt가 나타납니다. Node reference인 `participant`, `sequencer`, `mediator`는 configuration에 따라 미리 bind됩니다.
+
+### Remote Console
+
+다른 위치에서 실행 중인 Node에 Console을 연결할 수 있습니다.
+
+```bash
+canton remote-console --host localhost --port 2902
+```
+
+Node machine에 SSH로 접근하지 않고 staging/production 환경의 Node를 관리할 때 유용합니다.
+
+## Scripting
+
+Console은 반복 가능한 operation을 위한 Scala script load를 지원합니다.
+
+
+
+
+<CANTON_DOCS_CN_SDK_TOOLS_CLI_CANTON_CONSOLE_4 />
+
+
+Script는 interactive Console과 같은 Node reference/API에 접근합니다. 일반적인 용도는 다음과 같습니다.
+
+- Test 환경용 자동 Party setup
+- Multi-node deployment용 Topology configuration
+- 주기적으로 실행되는 health check routine
+- Audit용 data export script
+
+## Tab completion
+
+Console은 사용 가능한 command discovery를 위한 tab completion을 제공합니다. Node reference와 period를 입력한 후 Tab을 누릅니다.
+
+```
+participant.<TAB>
+  dars    synchronizers    health    id    keys    parties    topology    ...
+```
+
+문서를 참조하지 않고 API를 탐색하는 가장 빠른 방법입니다.
+
+## 관련 페이지
+
+- [Global Synchronizer introduction](/global-synchronizer/understand/introduction) -- Console 사용을 위한 운영 context입니다.
+- [Validator role](/global-synchronizer/understand/validator-roles) -- Console로 관리하는 Node를 설명합니다.

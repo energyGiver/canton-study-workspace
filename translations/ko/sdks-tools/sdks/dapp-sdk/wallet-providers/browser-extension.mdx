@@ -1,0 +1,63 @@
+---
+title: "Browser Extension"
+description: "Browser Extension Wallet을 dApp에 announce해 discovery할 수 있게 합니다."
+source_id: "SRC-EE378438B5"
+source_path: "sdks-tools/sdks/dapp-sdk/wallet-providers/browser-extension"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "0747e32eb00728bfa8810444f2ad579b200ee44180a3e816701947e6c69e4aed"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/dapp-sdk/wallet-providers/browser-extension.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="splice-wallet-kernel:docs/dapp-sdk/wallet-providers/browser-extension.md@0431c87e" */}
+
+Browser Extension Wallet은 event로 자신을 announce하거나 host dApp에 명시적으로 등록되어 discovery할 수 있게 됩니다. Extension은 target이 지정된 `postMessage`로 dApp과 통신하고 synchronous [dApp API](/sdks-tools/sdks/dapp-sdk/reference/provider-api#sync-and-async-apis)를 구현합니다.
+
+<Note>
+SDK는 `window.canton`이나 `window.canton.<brand>` 같은 injected Provider를 찾기 위해 `window`를 scan하지 않습니다. Browser Wallet은 자신을 announce하거나 `additionalAdapters`로 등록되어야 picker에 표시됩니다.
+</Note>
+
+## Provider announce
+
+SDK는 Canton 전용 event name을 사용하는 [EIP-6963](https://eips.ethereum.org/EIPS/eip-6963) style request/announce pair를 사용합니다.
+
+| Direction      | Event                     | Payload (`detail`)                                                     |
+| -------------- | ------------------------- | ---------------------------------------------------------------------- |
+| dApp → wallets | `canton:requestProvider`  | Optional, may be `{}`                                                  |
+| Wallet → dApp  | `canton:announceProvider` | `id` (required), `name` (required), optional `icon`, optional `target` |
+
+자신을 announce해 request에 응답합니다.
+
+```javascript
+window.addEventListener('canton:requestProvider', () => {
+    window.dispatchEvent(
+        new CustomEvent('canton:announceProvider', {
+            detail: {
+                id: 'com.example.mywallet',
+                name: 'My Wallet',
+                icon: 'data:image/svg+xml;base64,...',
+                target: 'com.example.mywallet',
+            },
+        })
+    )
+})
+```
+
+SDK는 약 300ms 동안 announcement를 수집한 후 각 `id`마다 `providerId`가 `browser:ext:<id>`인 `ExtensionAdapter` 하나를 등록합니다. Extension은 여전히 `detect()`를 통과해야 합니다. 즉 visible하고 handshake를 완료해야 합니다. `target`을 설정했다면 content script는 `target`이 일치하는 `SPLICE_WALLET_*`/RPC traffic만 처리해야 합니다.
+
+Wallet은 직접 integration하는 dApp을 위해 `window.canton`에 Provider를 제공할 수 있지만 SDK는 이 global을 scan해 Wallet을 discovery하지 않습니다. 다만 `ExtensionAdapter.detect()`는 announce된 Extension의 존재를 확인할 때 `window.canton`을 positive signal로 취급합니다.
+
+## dApp Wallet list에 등록
+
+Wallet이 자동 discovery되지 않으면 dApp이 `ExtensionAdapter`로 명시적으로 등록할 수 있습니다. Integration하는 dApp에 안정적이고 고유한 `providerId`와 Extension이 filtering하는 `target`을 제공하세요. dApp 측 등록 step은 [Wallet discovery](/sdks-tools/sdks/dapp-sdk/guides/wallet-discovery)를 참조하세요.
+
+## 다음 단계
+
+- [CIP-103 Specification](https://github.com/canton-foundation/cips/blob/main/cip-0103/cip-0103.md) — Provider가 필수 method와 event를 구현하는지 확인합니다.
+
+{/* COPIED_END */}

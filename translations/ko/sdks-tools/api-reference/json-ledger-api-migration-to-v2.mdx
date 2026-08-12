@@ -1,0 +1,209 @@
+---
+title: "JSON Ledger API V2 migration guide"
+description: "기존 JSON Ledger API V1 application을 V2 endpoint와 request model로 migration합니다."
+source_id: "SRC-0D5D4DD1ED"
+source_path: "sdks-tools/api-reference/json-ledger-api-migration-to-v2"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "1f2c91fdde9776b4c86d5dbea08e501761890915c1a6c1ef30674b2876bc75d6"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/api-reference/json-ledger-api-migration-to-v2.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.6/sdk/explanations/json-api/migration_v2.rst" hash="93cd999d" */}
+
+{/* Copyright (c) 2026 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved. — SPDX-License-Identifier: Apache-2.0 */}
+
+기존 JSON Ledger API V1 user를 위한 migration guide입니다.
+
+JSON Ledger API V2는 gRPC Ledger API를 mirror하므로 일부 측면에서 V1 API와 크게 다릅니다.
+
+일부 V1 endpoint에는 단순히 대응하는 V2 endpoint가 있지만, 일부는 V1 동작을 재현하기 위해 더 많은 call이나 추가 처리가 필요합니다.
+
+아래 chapter는 `v2`에서 사용할 endpoint만 안내합니다.
+
+정확한 세부 사항과 사용법은 [JSON Ledger API reference](/reference/json-api-reference/details)를 참조하세요.
+
+## 새 Contract 생성
+
+- v1 endpoint: `POST` `/v1/create`
+- v2 equivalent: `POST` `/v2/commands/submit-and-wait`
+
+`JsCommands` request body의 `commands` array element로 V1 create payload를 감싼 `CreateCommand` object를 추가합니다.
+
+처리한 transaction의 더 많은 data를 얻으려면 `/v2/commands/submit-and-wait` 대신 `/v2/commands/submit-and-wait-for-transaction` endpoint를 사용할 수 있습니다. Tree에 해당하는 data를 받으려면 request의 `transactionFormat.transactionShape`를 `TRANSACTION_SHAPE_LEDGER_EFFECTS`로 설정합니다. `/v2/commands/submit-and-wait-for-transaction-tree`는 deprecated되어 제거될 예정이므로 migration 대상에 포함하지 마세요.
+
+## Command ID와 함께 Contract 생성
+
+- v1 endpoint: `POST` `/v1/create`
+  ```json
+  {
+    "templateId": "...",
+    "payload": { ... },
+    "meta": { "commandId": "my-unique-id" }
+  }
+  ```
+- v2 equivalent: `POST` `/v2/commands/submit-and-wait`
+  ```json
+  {
+    "commandId": "my-unique-id",
+    "actAs": ["..."],
+    "commands": [
+        { "CreateCommand": { "templateId": "...", "createArguments": { ... } } }
+    ]
+  }
+  ```
+
+새 Contract 생성과 같지만 Command ID 위치가 다릅니다. V1에서는 선택 사항인 `meta.commandId` field였지만 V2에서는 `JsCommands` object의 필수 top-level `commandId` field입니다.
+
+## Contract ID로 Exercise
+
+- v1 endpoint: `POST` `/v1/exercise`
+- v2 equivalent: `POST` `/v2/commands/submit-and-wait`
+
+`JsCommands` request body의 `commands` array element로 `ExerciseCommand` object를 추가합니다.
+
+## Contract Key로 Exercise
+
+- v1 endpoint: `POST` `/v1/exercise` (with a `key` in place of a `contractId`)
+- v2 equivalent: `POST` `/v2/commands/submit-and-wait`
+
+`JsCommands` request body의 `commands` array element로 `ExerciseByKeyCommand` object를 추가합니다. Canton 3.x의 Contract Key에는 Daml-LF 2.3 이상으로 compile한 Template과 protocol version 3.5 이상을 실행하는 Synchronizer가 필요합니다. Default target인 2.2에는 Contract Key가 없습니다. V1과 달리 Contract Key는 unique하지 않으며 uniqueness를 강제하지 않습니다.
+
+## 같은 transaction에서 Create 및 Exercise
+
+- v1 endpoint: `POST` `/v1/create-and-exercise`
+- v2 equivalent: `POST` `/v2/commands/submit-and-wait`
+
+`JsCommands` request body의 `commands` array element로 `CreateAndExerciseCommand` object를 추가합니다.
+
+## Contract ID로 Contract fetch
+
+- v1 endpoint: `POST` `/v1/fetch`
+- v2 equivalent: `POST` `/v2/events/events-by-contract-id`
+
+## Key로 Contract fetch
+
+- v1 endpoint: `POST` `/v1/fetch`
+- v2 equivalent: no direct replacement
+
+## 모든 Active Contract 조회
+
+- v1 endpoint: `GET` `/v1/query`
+- v2 equivalent: `/v2/state/active-contracts`
+
+원하는 Ledger offset인 `activeAtOffset`이 없다면 `/v2/state/ledger-end` call로 얻습니다.
+
+V2에는 WebSocket을 사용하는 이 endpoint의 streaming version도 있으며 큰 result에서 scalability가 더 좋습니다. 다른 방법으로 `POST /v2/state/active-contracts-page`가 plain HTTP에서 Active Contract Set을 page 단위로 반환합니다.
+
+## 지정 query와 일치하는 모든 Active Contract 조회
+
+- v1 endpoint: `GET` `/v1/query`
+- v2 equivalent: no direct replacement
+
+    - Option 1: `/v2/state/active-contracts`를 사용하고 client code에서 result query
+
+    - Option 2: 더 복잡한 use case에는 PQS 사용
+
+## Identifier로 Party fetch
+
+- v1 endpoint: `POST` `/v1/parties`
+- v2 equivalent: `GET` `/v2/parties/<party-id>`
+
+## 알려진 모든 Party fetch
+
+- v1 endpoint: `GET` `/v1/parties`
+- v2 equivalent: `GET` `/v2/parties`
+
+## 새 Party allocate
+
+- v1 endpoint: `POST` `/v1/parties/allocate`
+- v2 equivalent: `POST` `/v2/parties`
+
+## 새 user 생성
+
+- v1 endpoint: `POST` `/v1/user/create`
+- v2 equivalent: `POST` `/v2/users`
+
+## 인증된 user 정보 조회
+
+- v1 endpoint: `GET` `/v1/user`
+- v2 equivalent: `GET` `/v2/authenticated-user`
+
+## 특정 user 정보 조회
+
+- v1 endpoint: `POST` `/v1/user`
+- v2 equivalent: `GET` `/v2/users/<user-id>`
+
+## 특정 user 삭제
+
+- v1 endpoint: `POST` `/v1/user/delete`
+- v2 equivalent: `DELETE` `/v2/users/<user-id>`
+
+## User 목록
+
+- v1 endpoint: `GET` `/v1/users`
+- v2 equivalent: `GET` `/v2/users`
+
+## User Right 부여
+
+- v1 endpoint: `POST` `/v1/user/rights/grant`
+- v2 equivalent: `POST` `/v2/users/<user-id>/rights`
+
+## User Right 회수
+
+- v1 endpoint: `POST` `/v1/user/rights/revoke`
+- v2 equivalent: `PATCH` `/v2/users/<user-id>/rights`
+
+## 인증된 User Right 목록
+
+- v1 endpoint: `GET` `/v1/user/rights`
+- v2 equivalent: `GET` `/v2/users/<user-id>/rights`
+
+## 특정 User Right 목록
+
+- v1 endpoint: `POST` `/v1/user/rights`
+- v2 equivalent: `GET` `/v2/users/<user-id>/rights`
+
+## 모든 DALF Package 목록
+
+- v1 endpoint: `GET` `/v1/packages`
+- v2 equivalent: `GET` `/v2/packages`
+
+## DALF Package download
+
+- v1 endpoint: `GET` `/v1/packages/<package-id>`
+- v2 equivalent: `GET` `/v2/packages/<package-id>`
+
+## DAR file upload
+
+- v1 endpoint: `POST` `/v1/packages`
+- v2 equivalent: `POST` `/v2/dars`
+
+`POST /v2/packages`도 동일하게 동작하지만 `/v2/dars`를 우선 사용합니다.
+
+## Metering report
+
+- v1 endpoint: `/v1/metering-report`
+- v2: no direct replacement, metering has been removed
+
+## Streaming API
+
+### Contract query stream
+
+- v1 endpoint: `websocket` `/v1/stream/query`
+- v2 equivalent: `websocket` `/v2/state/active-contracts`
+
+### Key 기반 Contract fetch stream
+
+- v1 endpoint: `websocket` `/v1/stream/fetch`
+- v2: no direct replacement
+
+    - Option 1: PQS 사용
+    - Option 2: 자주 사용하지 않는 query는 client-side filtering과 `/v2/state/active-contracts` 사용
+
+{/* COPIED_END */}

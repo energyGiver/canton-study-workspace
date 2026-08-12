@@ -703,7 +703,7 @@ Create node의 required authorizer는 contract signatory이고 Exercise/Fetch no
 [Bob이 propose-accept workflow를 생략하는 예제](#skip-the-propose-accept-workflow)에서 다음 table은 각 party가 required authorizer인 node를 나열합니다.
 예를 들어 Alice와 Bob은 contract #3의 signatory이므로 node ③의 required authorizer입니다.
 
-**Required authorizers in the [example where Bob tries to skip the propose-accept workflow](#skip-the-propose-accept-workflow)**
+**[Bob이 propose-accept workflow를 생략하려는 예제](#skip-the-propose-accept-workflow)의 required authorizers**
 
 | Node | Bank1 | Bank2 | Alice | Bob |
 | --- | --- | --- | --- | --- |
@@ -734,7 +734,7 @@ Node ⑥의 authorization context에는 두 party가 있습니다.
 
 마찬가지로 node ⑤와 ⑦의 authorization context에는 Alice와 Bob이 모두 포함됩니다. Alice는 parent node ④의 input contract #3 signatory이고, Bob은 #3의 signatory인 동시에 ④의 actor입니다.
 
-**Authorization contexts in the [example where Bob tries to skip the propose-accept workflow](#skip-the-propose-accept-workflow)**
+**[Bob이 propose-accept workflow를 생략하려는 예제](#skip-the-propose-accept-workflow)의 authorization contexts**
 
 | Node | Bank1 | Bank2 | Alice | Bob |
 | --- | --- | --- | --- | --- |
@@ -1281,7 +1281,7 @@ Split paint counteroffer workflow의 multi-ledger causality graph는 multi-ledge
 Definition »Minimal multi-ledger-consistent causality graph«
 `G`의 strict subgraph, 즉 같은 vertex와 더 적은 edge를 가진 graph 중 `X`-multi-ledger consistent causality graph가 없으면 `X`-multi-ledger consistent causality graph `G`는 `X`-**minimal**입니다. `X`가 `G`의 모든 action 집합이면 `X`를 생략합니다.
 
-Definition »Reduction of a multi-ledger consistent causality graph«
+정의 »Multi-ledger consistent causality graph의 reduction«
 `X`-multi-ledger consistent causality graph `G`에는 같은 vertex를 가지며 edge가 `G`의 subset인 고유한 minimal `X`-multi-ledger consistent causality graph `reduce``X``(G)`가 존재합니다. `reduce``X``(G)`를 `G`의 `X`-**reduction**이라고 합니다. 앞과 같이 `X`가 `G`의 모든 action을 포함하면 생략합니다.
 
 Multi-ledger causality graph는 acyclic하므로 vertex를 topological sort할 수 있으며 결과 list도 모든 vertex가 이후 모든 vertex로 outgoing edge를 가지는 causality graph입니다. Topological sorting은 edge만 추가하므로 원래 causality graph가 `X`-consistent하면 topological sort 결과도 그렇습니다.
@@ -1323,7 +1323,7 @@ Multi-ledger causality graph `G`가 `G`의 `Y`-labelled action 중 `P`가 stakeh
 
 `X`-minimality와 `X`-reduction 개념도 ledger 집합 `Y`의 party `P`에 대해 같은 방식으로 확장됩니다.
 
-Definition »Ledger-aware projection for multi-ledger causality graphs«
+정의 »Multi-ledger causality graph의 ledger-aware projection«
 `G`가 multi-ledger consistent causality graph이고 `Y`가 Daml ledger 집합이라고 합니다. `Y`에서 party `P`에 대한 `G`의 **projection**, 즉 `P`-**projection** on `Y`는 다음 causality graph `G'`의 `Y`에 대한 `P`-reduction이며 `G'`는 `Y`에서 `P`-consistent합니다.
 
 - `G'`의 vertex는 `G`의 vertex를 `Y`에서 `P`에 projection한 결과이며 빈 projection은 제외합니다.

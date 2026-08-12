@@ -1,0 +1,100 @@
+---
+title: "SDK Method"
+description: "High-level dApp SDK method reference입니다."
+source_id: "SRC-9547CF3F10"
+source_path: "sdks-tools/sdks/dapp-sdk/reference/sdk-methods"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "5f05cc0da1a88b74f10d2adb586019191c57b30714069ae988b05017933d8fb4"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/dapp-sdk/reference/sdk-methods.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="splice-wallet-kernel:docs/dapp-sdk/reference/sdk-methods.md@0431c87e" */}
+
+## Lifecycle
+
+### `init(options?)`
+
+Wallet Adapter를 등록하고 Wallet picker를 열지 않은 채 이전 session을 조용히 복원합니다. Application lifecycle 초기에 한 번 호출합니다.
+
+| Parameter                    | Type        | Description                                                              |
+| ---------------------------- | ----------- | ------------------------------------------------------------------------ |
+| `options.additionalAdapters` | `Adapter[]` | Default와 함께 등록할 추가 Adapter입니다.                                |
+| `options.defaultAdapters`    | `Adapter[]` | Default Remote Wallet list를 교체합니다. 등록하지 않으려면 `[]`를 전달합니다. |
+
+### `connect()`
+
+Wallet picker를 열고 connection을 생성하며 필요하면 authentication flow를 실행합니다. Connection 성공 여부를 나타내는 result를 반환합니다.
+
+### `disconnect()`
+
+dApp과 Wallet 사이의 session을 종료합니다.
+
+## Status
+
+### `status()`
+
+현재 connection의 Network 및 session 관련 정보를 반환합니다.
+
+### `isConnected()`
+
+Login flow를 trigger하지 않고 User 연결 여부를 반환합니다. Page load 시 안전하게 호출할 수 있습니다.
+
+### `getActiveNetwork()`
+
+Wallet이 연결된 Network의 상세 정보를 반환합니다.
+
+## Accounts
+
+### `listAccounts()`
+
+User가 접근할 수 있는 모든 Party를 반환합니다.
+
+### `getPrimaryAccount()`
+
+User가 Primary로 지정한 Account를 반환합니다.
+
+## Signing 및 transaction
+
+### `signMessage(message)`
+
+Primary Account로 임의 string에 서명합니다.
+
+| Parameter | Type     | Description          |
+| --------- | -------- | -------------------- |
+| `message` | `string` | 서명할 message입니다. |
+
+### `prepareExecute(commands)`
+
+Daml transaction을 prepare하고 signature를 요청한 뒤 실행합니다.
+
+| Parameter  | Type                      | Description                   |
+| ---------- | ------------------------- | ----------------------------- |
+| `commands` | `{ commands: Command[] }` | 실행할 Daml command입니다. |
+
+### `ledgerApi(request)`
+
+Canton JSON Ledger API로 인증된 request를 proxy합니다.
+
+| Parameter               | Type     | Description                            |
+| ----------------------- | -------- | -------------------------------------- |
+| `request.requestMethod` | `string` | `'GET'` 같은 HTTP method입니다.        |
+| `request.resource`      | `string` | `'/v2/version'` 같은 Ledger API path입니다. |
+
+## Provider 접근
+
+### `getConnectedProvider()`
+
+Active discovery session의 raw CIP-103 Provider를 반환하고 연결되지 않았다면 `null`을 반환합니다. `provider.request(...)` 직접 call이나 Provider-level event에 사용합니다.
+
+## 관련 문서
+
+- [Event](/sdks-tools/sdks/dapp-sdk/reference/events) — Status, Account, transaction change를 subscribe합니다.
+- [Provider API](/sdks-tools/sdks/dapp-sdk/reference/provider-api) — Low-level CIP-103 interface입니다.
+
+{/* COPIED_END */}

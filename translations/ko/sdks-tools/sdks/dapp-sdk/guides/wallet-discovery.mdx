@@ -1,0 +1,187 @@
+---
+title: "Wallet Discovery"
+description: "Wallet picker customize, WalletConnect 추가, custom Remote Wallet 등록 방법을 설명합니다."
+source_id: "SRC-DE5810C83B"
+source_path: "sdks-tools/sdks/dapp-sdk/guides/wallet-discovery"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "f44c9519f72675951b16b3197c2de29fb0791f64688d4482bf10eff4f79e3e27"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/dapp-sdk/guides/wallet-discovery.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="splice-wallet-kernel:docs/dapp-sdk/guides/wallet-discovery.md@0431c87e" */}
+
+Default로 `sdk.init()`은 SDK가 discovery할 수 있는 모든 CIP-103 Wallet을 Wallet picker에 나열합니다. 자신을 announce한 Browser Wallet과 SDK built-in Remote Wallet list가 포함됩니다. Adapter를 등록하면 WalletConnect나 custom Remote Wallet을 추가하거나 list를 제한할 수 있습니다.
+
+`init()`에 등록한 Adapter는 SDK가 discovery할 수 있는 Wallet과 `connect()`가 여는 **Wallet picker**에서 User가 볼 항목을 결정합니다.
+
+- Adapter가 등록되어 `detect()`를 통과하면 picker의 항목으로 표시될 수 있습니다.
+- Session 복원은 등록된 Adapter에서만 동작합니다.
+
+## Built-in Remote Wallet 사용
+
+Option 없이 등록하면 SDK의 default Remote Wallet list인 `gateways.json`과 `canton:announceProvider`를 통해 announce한 모든 Wallet을 사용합니다.
+
+```typescript
+await sdk.init()
+```
+
+Default로 `init()`은 `wallets.json`의 SDK bundled **verified Wallet** list도 load합니다. [Verified Wallet](#verified-wallets)을 참조하세요.
+
+## Verified Wallet
+
+SDK에는 picker용으로 선별된 Wallet list가 포함됩니다. 서로 다른 Wallet type과 role을 담당하는 두 bundled file이 있습니다.
+
+| File                                                                                                 | 일반적인 `type` 값                       | Role                                                                                                                    |
+| ---------------------------------------------------------------------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| [`gateways.json`](https://github.com/canton-network/wallet/blob/main/sdk/dapp-sdk/src/gateways.json) | `remote`                                 | 사전 등록된 **Remote Wallet**, 즉 `RemoteAdapter` default이며 main picker의 연결 가능 항목입니다.                         |
+| [`wallets.json`](https://github.com/canton-network/wallet/blob/main/sdk/dapp-sdk/src/wallets.json)   | `browser`, `desktop`, `mobile`, `remote` | User에게 아직 제공되지 않은 **Verified Wallet**이며 일치하는 Wallet이 없을 때 설치/setup prompt를 표시합니다.             |
+
+### Verified Wallet list (`wallets.json`)
+
+이 list의 Wallet이 `providerId` 기준으로 아직 detect되지 않았다면 picker의 **Suggested Wallets**에 설치/setup link와 함께 표시됩니다. Verified entry는 Adapter로 등록되지 않습니다.
+
+`init()`에서 `enableSuggestedWallets`가 default인 `true`이면 bundled `wallets.json`이 picker UI에 전달됩니다.
+
+**Browser extension entry example:**
+
+```json
+{
+    "name": "Example Wallet",
+    "type": "browser",
+    "providerId": "browser:ext:uniqueextensionid",
+    "description": "Connect via a browser extension wallet",
+    "icon": "https://example.com/favicon.svg",
+    "installUrls": [
+        {
+            "platform": "chrome",
+            "url": "https://chromewebstore.google.com/detail/..."
+        }
+    ]
+}
+```
+
+| Field         | 설명                                                                                                                                                        |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | Picker에 표시할 이름입니다.                                                                                                                                 |
+| `type`        | `browser`, `desktop`, `mobile`, `remote` 중 Provider type입니다.                                                                                            |
+| `providerId`  | 설치 후 Wallet의 discovery ID와 일치해야 합니다. Extension은 `browser:ext:<id>`, Remote Wallet은 `remote:<rpcUrl>` 형식입니다.                              |
+| `description` | 선택 가능한 짧은 설명입니다.                                                                                                                               |
+| `icon`        | 선택 가능한 icon URL입니다.                                                                                                                                 |
+| `installUrls` | Setup/설치 link입니다. `browser` Wallet은 `chrome`/`firefox` store URL을 사용하고, 다른 type은 download page, app store, onboarding docs로 연결합니다.       |
+
+**Wallet 추가:** Wallet author는 `wallets.json` entry를 추가하는 PR을 열 수 있습니다. `providerId`는 Wallet이 제공될 때 표시되는 값과 일치해야 합니다. Extension의 경우 일반적으로 `canton:announceProvider`로 announce하는 `browser:ext:<id>` 값입니다.
+
+**Verified list 비활성화:** Bundled list를 원하지 않는 dApp은 다음처럼 opt out할 수 있습니다.
+
+```typescript
+await sdk.init({ enableSuggestedWallets: false })
+```
+
+### Default Remote Wallet (`gateways.json`)
+
+`gateways.json`의 Remote Wallet은 `RemoteAdapter` instance로 자동 등록됩니다. 설치/setup prompt가 아니라 즉시 연결 가능한 picker 항목으로 표시할 verified Remote Wallet에 이 file을 사용합니다.
+
+## Adapter 추가
+
+Default Remote Wallet을 유지하면서 Wallet을 추가하려면 `additionalAdapters`를 사용합니다.
+
+### WalletConnect 추가
+
+```typescript
+import * as sdk from '@canton-network/dapp-sdk'
+import { WalletConnectAdapter } from '@canton-network/dapp-sdk'
+
+const wc = WalletConnectAdapter.create({
+    projectId: import.meta.env.VITE_WC_PROJECT_ID,
+})
+
+await sdk.init({ additionalAdapters: [wc] })
+```
+
+<Warning>
+WalletConnect `projectId`는 hardcode할 secret이 아니라 configuration으로 취급하세요. 위와 같이 environment variable로 주입합니다.
+</Warning>
+
+### Custom Remote Wallet 추가
+
+```typescript
+import { RemoteAdapter } from '@canton-network/dapp-sdk'
+
+await sdk.init({
+    additionalAdapters: [
+        new RemoteAdapter({
+            name: 'My Remote Wallet',
+            rpcUrl: 'https://my-wallet.example/api/v0/dapp',
+        }),
+    ],
+})
+```
+
+### Custom Extension Adapter 추가
+
+```typescript
+import { ExtensionAdapter } from '@canton-network/dapp-sdk'
+
+await sdk.init({
+    additionalAdapters: [
+        new ExtensionAdapter({
+            providerId: 'browser:ext:com.example.mywallet' as never,
+            name: 'My Wallet',
+            target: 'com.example.mywallet',
+        }),
+    ],
+})
+```
+
+## Default Remote Wallet 교체
+
+SDK default 대신 특정 Remote Wallet만 제공하려면 `defaultAdapters`를 전달합니다.
+
+```typescript
+import { RemoteAdapter } from '@canton-network/dapp-sdk'
+
+await sdk.init({
+    defaultAdapters: [
+        new RemoteAdapter({
+            name: 'Production Wallet',
+            rpcUrl: 'https://wallet.example/api/v0/dapp',
+        }),
+    ],
+})
+```
+
+## Remote Wallet을 등록하지 않기
+
+빈 list를 전달해 명시적으로 "none"을 선택합니다. dApp이 announce된 Extension Wallet이나 직접 추가한 Adapter만 지원할 때 유용합니다.
+
+```typescript
+await sdk.init({ defaultAdapters: [] })
+```
+
+## 승인된 Wallet으로 제한
+
+`defaultAdapters`와 고정 list를 조합하면 picker를 검토 완료한 Remote Wallet 집합으로 제한할 수 있습니다. Production 환경에서 흔한 요구사항입니다.
+
+```typescript
+await sdk.init({
+    defaultAdapters: [
+        new RemoteAdapter({
+            name: 'Approved Wallet',
+            rpcUrl: 'https://approved.example/api/v0/dapp',
+        }),
+    ],
+})
+```
+
+## 다음 단계
+
+- [Wallet Provider](/sdks-tools/sdks/dapp-sdk/wallet-providers/integration-overview) — Wallet이 자신을 discovery 가능하게 만드는 방법입니다.
+- [Adapter Reference](/sdks-tools/sdks/dapp-sdk/reference/sdk-methods) — Adapter constructor와 option입니다.
+
+{/* COPIED_END */}

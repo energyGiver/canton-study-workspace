@@ -1,0 +1,56 @@
+---
+title: "Integration Overview"
+description: "Wallet Provider가 Canton dApp에서 자신을 discovery할 수 있게 만드는 방법입니다."
+source_id: "SRC-3A2868993F"
+source_path: "sdks-tools/sdks/dapp-sdk/wallet-providers/integration-overview"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "39cbf8311478cd7e6eb75a38ab9d3a94c1ac465fccaa1c203c5dc6ac016a88c2"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/dapp-sdk/wallet-providers/integration-overview.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="splice-wallet-kernel:docs/dapp-sdk/wallet-providers/integration-overview.md@0431c87e" */}
+
+이 section은 Wallet을 [CIP-103](https://github.com/canton-foundation/cips/blob/main/cip-0103/cip-0103.md) compatible하게 만들어 Canton dApp과 상호 운용하고 dApp SDK가 `connect()` 시 여는 Wallet picker에 표시하려는 **Wallet author**를 위한 것입니다. 아래 integration path 중 하나 이상을 선택하세요.
+
+## Integration 선택
+
+| Wallet 연결 방식            | 접근법                                                                                                                         |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Browser extension           | [Browser extension](/sdks-tools/sdks/dapp-sdk/wallet-providers/browser-extension): `canton:announceProvider`와 선택 가능한 `postMessage`용 `target`으로 announce합니다. |
+| Remote, server-side Wallet  | [Remote Wallet](/sdks-tools/sdks/dapp-sdk/wallet-providers/remote-wallet): Public CIP-103 RPC URL을 제공합니다.                                                         |
+| Mobile/QR Wallet            | `additionalAdapters`를 통한 [WalletConnect](/sdks-tools/sdks/dapp-sdk/wallet-providers/walletconnect)입니다.                                                            |
+
+## 모든 Wallet의 필수 제공 항목
+
+Path와 관계없이 conforming Wallet은 다음 조건을 충족해야 합니다.
+
+- CIP-103 request method인 `connect`, `status`, `listAccounts`, `getPrimaryAccount`, `signMessage`, `prepareExecute`, `ledgerApi` 등을 구현합니다.
+- CIP-103 event인 `statusChanged`, `accountsChanged`, `txChanged`를 emit합니다.
+- Authorization과 signing을 전적으로 책임집니다.
+- Signing 또는 execution 전에 명료한 approval UI를 표시합니다.
+
+전체 Protocol은 [CIP-103 specification](https://github.com/canton-foundation/cips/blob/main/cip-0103/cip-0103.md)을 참조하세요.
+
+## SDK list에 등록
+
+Wallet이 CIP-103 compliant하면 적절한 bundled list에 Pull Request를 제출합니다.
+
+| 목표                                                                            | File                                                                                                 |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 아직 detect되지 않았을 때 install/setup prompt를 보이는 **Suggested Wallet**로 표시 | [`wallets.json`](https://github.com/canton-network/wallet/blob/main/sdk/dapp-sdk/src/wallets.json)   |
+| Default로 연결 가능한 **Remote Wallet**로 표시                                  | [`gateways.json`](https://github.com/canton-network/wallet/blob/main/sdk/dapp-sdk/src/gateways.json) |
+
+`providerId`는 Wallet이 제공될 때 표시되는 값과 일치해야 합니다. dApp 측 option은 [Wallet discovery](/sdks-tools/sdks/dapp-sdk/guides/wallet-discovery#verified-wallets)를 참조하세요.
+
+## 다음 단계
+
+- [Browser Extension](/sdks-tools/sdks/dapp-sdk/wallet-providers/browser-extension) — Extension에서 Provider를 announce합니다.
+- [CIP-103 Specification](https://github.com/canton-foundation/cips/blob/main/cip-0103/cip-0103.md) — Wallet이 구현해야 할 전체 Protocol입니다.
+
+{/* COPIED_END */}

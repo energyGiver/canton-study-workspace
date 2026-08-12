@@ -1,0 +1,40 @@
+---
+title: "Remote Wallet"
+description: "CIP-103 RPC endpoint를 통해 Remote, server-side Wallet을 Canton dApp에 제공합니다."
+source_id: "SRC-6AAA238A35"
+source_path: "sdks-tools/sdks/dapp-sdk/wallet-providers/remote-wallet"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "5e21669b2bcd7d49495c6194249629eaab00e948dca8d6c123316008d93eefaa"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/dapp-sdk/wallet-providers/remote-wallet.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="splice-wallet-kernel:docs/dapp-sdk/wallet-providers/remote-wallet.md@0431c87e" */}
+
+Remote Wallet은 server-side Wallet입니다. Page에 inject되지 않고 HTTP/SSE를 통해 CIP-103 RPC endpoint를 제공하며 dApp은 이 endpoint를 `RemoteAdapter`로 등록합니다. Remote Wallet은 asynchronous [dApp API](/sdks-tools/sdks/dapp-sdk/reference/provider-api#sync-and-async-apis)를 구현하며 User interaction이 필요한 action은 `userUrl` redirect를 통해 완료됩니다.
+
+## CIP-103 endpoint 제공
+
+Service는 CIP-103 request method와 event stream을 구현하는 public RPC URL을 제공해야 합니다. SDK에는 default Remote Wallet list가 포함되며 추가 Wallet은 runtime에 dApp이 등록합니다.
+
+## dApp Wallet list에 등록
+
+dApp은 public RPC URL을 가리키는 `RemoteAdapter`로 endpoint를 Wallet picker에 추가합니다. Integration하는 dApp에 해당 URL과 display name을 제공하세요. dApp 측 등록 step은 [Wallet discovery](/sdks-tools/sdks/dapp-sdk/guides/wallet-discovery)를 참조하세요.
+
+## 요구사항
+
+- 안정적인 public URL에서 CIP-103 RPC method와 event stream을 제공합니다.
+- 연결할 dApp origin을 허용하도록 CORS를 설정합니다.
+- User session을 관리하고 endpoint가 요구하는 session token, 즉 JWT를 발급합니다.
+- Authorization과 signing을 Wallet 측에서 처리하고 key를 dApp에 노출하지 않습니다.
+
+## 다음 단계
+
+- [CIP-103 Specification](https://github.com/canton-foundation/cips/blob/main/cip-0103/cip-0103.md) — Endpoint가 구현해야 할 method와 event입니다.
+
+{/* COPIED_END */}

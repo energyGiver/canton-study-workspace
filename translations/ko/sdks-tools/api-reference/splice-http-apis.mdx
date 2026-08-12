@@ -1,0 +1,127 @@
+---
+title: "Splice HTTP APIs"
+description: "Scan, Validator, SV application이 노출하는 HTTP REST API입니다."
+source_id: "SRC-F801ED11FA"
+source_path: "sdks-tools/api-reference/splice-http-apis"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "5666c8064ec7da0097a69aa02b7fc3e10367f02de7bd5e375a9044b6967a5167"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/api-reference/splice-http-apis.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/app_dev/overview/splice_app_apis.rst" hash="10312958" */}
+
+<div id="app_dev_http_apis">
+
+다음 diagram과 같이 Splice application은 두 종류의 HTTP API를 노출합니다.
+
+</div>
+
+<img src="/images/splice/app-connectivity-diagram.png" width="800" alt="App Network Diagram" />
+
+- [app_dev_scan_api](/sdks-tools/api-reference/splice-scan-api)는 SV Node의 Scan App이 노출하며 모든 SV Node가 보는 Ledger 및 infrastructure view에 access합니다. DevNet/TestNet/MainNet의 Scan API URL은 [https://sync.global/sv-network/](https://sync.global/sv-network/)에서 확인합니다.
+- [app_dev_validator_api](/sdks-tools/api-reference/splice-validator-api)는 Validator Node의 Validator App이 노출하며 Validator Node와 해당 Node가 local에서 host하는 Party의 Splice Wallet을 관리합니다.
+
+Ledger API는 Splice의 일부가 아니므로 여기서 설명하지 않습니다. Ledger API 사용법은 `app_dev_ledger_api`를 참조하세요.
+
+일부 Splice App은 internal로 간주되어 별도 고지 없이 변경될 수 있는 추가 HTTP API도 정의합니다. App에서 필요하다면 [https://github.com/canton-network/splice](https://github.com/canton-network/splice)에 issue를 생성해 API, 요구 사항, 필요한 stability guarantee를 Splice team과 조율하세요.
+
+## OpenAPI convention
+
+{/* NETWORKVARS_START source="/snippets/networkvars/sdks-tools/api-reference/splice-http-apis-1.mdx" */}
+<Tabs>
+
+<Tab title="DevNet (0.7.1)">
+
+Splice App HTTP API는 [OpenAPI specification](https://www.openapis.org/)으로 문서화됩니다. Splice application OpenAPI specification은 여기서 download합니다: <a href="https://github.com/digital-asset/decentralized-canton-sync/releases/download/v0.7.1/0.7.1_openapi.tar.gz">OpenAPI specification download, DevNet 0.7.1</a>.
+
+</Tab>
+
+<Tab title="TestNet (0.7.0)">
+
+Splice App HTTP API는 [OpenAPI specification](https://www.openapis.org/)으로 문서화됩니다. Splice application OpenAPI specification은 여기서 download합니다: <a href="https://github.com/digital-asset/decentralized-canton-sync/releases/download/v0.7.0/0.7.0_openapi.tar.gz">OpenAPI specification download, TestNet 0.7.0</a>.
+
+</Tab>
+
+<Tab title="MainNet (0.6.14)">
+
+Splice App HTTP API는 [OpenAPI specification](https://www.openapis.org/)으로 문서화됩니다. Splice application OpenAPI specification은 여기서 download합니다: <a href="https://github.com/digital-asset/decentralized-canton-sync/releases/download/v0.6.14/0.6.14_openapi.tar.gz">OpenAPI specification download, MainNet 0.6.14</a>.
+
+</Tab>
+
+</Tabs>
+{/* NETWORKVARS_END */}
+
+### API stability
+
+`APP-external` file의 endpoint는 외부 사용을 위한 것이며 release 간 backwards compatibility를 유지하는 것이 목표입니다. 아직 개발 초기 단계이므로 일부 경우에는 compatibility가 깨질 수 있습니다. `external` API의 breaking change는 release note에 기록됩니다.
+
+`APP-internal` file의 endpoint에는 backwards compatibility 보장이 없습니다.
+
+### Contract Payload Encoding
+
+`common.yaml`에 정의된 `Contract` schema는 해당 Contract의 `payload`를 포함합니다. 이 payload는 [HTTP JSON API가 사용하는 schema](/appdev/modules/m4-sdks-apis#json-api)와 같은 방식으로 encode됩니다.
+
+## Authentication
+
+Splice App API access에는 다음 형식의 JWT가 필요합니다.
+
+```json
+{
+  "sub": "ledgerApiUserId",
+  "aud": "audience-of-app"
+}
+```
+
+Subject는 request를 submit할 Ledger API User여야 합니다. 예를 들어 Validator Operator로 operate하려면 Validator config에 설정한 `ledger-api-user`입니다.
+
+Audience는 App의 `auth` section에 지정한 audience여야 합니다. Token은 지정된 algorithm과 configuration으로 sign되어야 합니다.
+
+예를 들어 다음 config에서 audience는 `https://example.com`이어야 하며 지정한 [JWKS URL](https://datatracker.ietf.org/doc/html/rfc7517)의 RS256 Key로 sign해야 합니다.
+
+``` 
+canton {
+  validator-apps {
+    validator {
+      auth {
+        audience = "https://example.com"
+        algorithm = "rs-256"
+        jwks-url = "https://example.com/.well-known/jwks.json"
+      }
+      ...
+    }
+  }
+}
+```
+
+Token은 다음 형식의 Authorization header에서 [OAuth2 Bearer token](https://datatracker.ietf.org/doc/html/rfc6750#section-2.1)으로 전달해야 합니다.
+
+``` 
+Authorization: Bearer yourtoken
+```
+
+Request는 항상 token subject로 지정한 User의 Primary Party로 operate합니다.
+
+## Port configuration
+
+모든 Splice App은 일반적으로 well-known URL의 reverse proxy가 제공하는 HTTP API를 노출합니다.
+
+직접 access해야 한다면 `admin-api.port`에 port를 설정합니다. 예를 들어 다음 config는 port 5003에서 Validator API를 노출합니다.
+
+``` 
+canton {
+  validator-apps {
+    validator {
+      admin-api.port = 5003
+      ...
+    }
+  }
+}
+```
+
+{/* COPIED_END */}

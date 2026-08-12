@@ -1,0 +1,83 @@
+---
+title: "Quickstart"
+description: "Wallet SDK install, configuration, key pair/Party 생성 및 transfer submit"
+source_id: "SRC-99D8970174"
+source_path: "sdks-tools/sdks/wallet-sdk/quickstart"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "a2044382388c4e0f55e08e0be1a7371424b2d6232903f8d28fcca3cb1b9d0854"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/wallet-sdk/quickstart.md)을 함께 확인하세요.
+</Warning>
+
+import DamlDocsSdksToolsSdksWalletSdkL69 from "/snippets/daml-docs/sdks-tools_sdks_wallet-sdk_L69.mdx";
+import DamlDocsSdksToolsSdksWalletSdkL93 from "/snippets/daml-docs/sdks-tools_sdks_wallet-sdk_L93.mdx";
+import DamlDocsSdksToolsSdksWalletSdkL129 from "/snippets/daml-docs/sdks-tools_sdks_wallet-sdk_L129.mdx";
+import DamlDocsSdksToolsSdksWalletSdkL144 from "/snippets/daml-docs/sdks-tools_sdks_wallet-sdk_L144.mdx";
+import DamlDocsSdksToolsSdksWalletSdkL161 from "/snippets/daml-docs/sdks-tools_sdks_wallet-sdk_L161.mdx";
+import DamlDocsSdksToolsSdksWalletSdkL205 from "/snippets/daml-docs/sdks-tools_sdks_wallet-sdk_L205.mdx";
+import DamlDocsSdksToolsSdksWalletSdkL214 from "/snippets/daml-docs/sdks-tools_sdks_wallet-sdk_L214.mdx";
+import CantonIntegrationsWalletSdkDownloadL14 from "/snippets/canton-docs/integrations_wallet_sdk-download_L14.mdx";
+import CantonIntegrationsWalletSdkDownloadL20 from "/snippets/canton-docs/integrations_wallet_sdk-download_L20.mdx";
+
+## Prerequisites
+
+- Node.js v18 이상
+- 실행 중인 Canton Validator Node. Self-hosted 또는 Node-as-a-Service provider를 사용할 수 있습니다. 어떤 network의 Validator도 사용할 수 있습니다. [Splice LocalNet](/sdks-tools/development-tools/localnet)은 development와 test에 편리하며 DevNet, TestNet 또는 MainNet Validator도 사용할 수 있습니다.
+
+## Installation
+
+Wallet SDK는 NPM registry package로 제공되며 선호하는 package manager로 install할 수 있습니다.
+
+<Tabs>
+  <Tab title="npm">
+  <CantonIntegrationsWalletSdkDownloadL14 />
+  </Tab>
+  <Tab title="yarn">
+  <CantonIntegrationsWalletSdkDownloadL20 />
+  </Tab>
+  <Tab title="pnpm">
+  ```shell
+  pnpm add @canton-network/wallet-sdk
+  ```
+  </Tab>
+</Tabs>
+
+dApp만 개발한다면 bundle size가 더 작고 browser 사용에 optimized된 dApp SDK를 사용할 수 있습니다. dApp SDK install 방법은 다음과 같습니다.
+
+    <Tabs>
+    <Tab title="npm">
+        ```shell
+        npm install @canton-network/dapp-sdk
+        ```
+    </Tab>
+    <Tab title="yarn">
+        ```shell
+        yarn add @canton-network/dapp-sdk
+        ```
+    </Tab>
+    <Tab title="pnpm">
+        ```shell
+        pnpm add @canton-network/dapp-sdk
+        ```
+    </Tab>
+</Tabs>
+
+두 SDK는 같은 underlying core package를 사용합니다. Transaction visualization 또는 hash verification처럼 code 일부만 필요하면 해당 package를 독립적으로 사용할 수 있습니다.
+
+## Configuration
+
+SDK에는 authentication, ledger access 및 Token Standard connectivity configuration이 필요합니다. Splice LocalNet을 사용하는 local development에서는 built-in default를 사용할 수 있습니다.
+
+<DamlDocsSdksToolsSdksWalletSdkL69 />
+
+Production 또는 LocalNet이 아닌 environment로 이동할 때는 해당 endpoint를 가리키는 custom factory function이 필요합니다. 자세한 내용은 [Configuration](/sdks-tools/sdks/wallet-sdk/using-the-sdk/configuration)을 참조하세요.
+
+## Next steps
+
+- [Guides](/sdks-tools/sdks/wallet-sdk/guides/creating-an-external-party): External Party 생성, data read, transaction signing 등을 확인합니다.
+- [Using the SDK: Configuration](/sdks-tools/sdks/wallet-sdk/using-the-sdk/configuration): 다른 environment에 맞게 SDK를 configure합니다.

@@ -1,0 +1,107 @@
+---
+title: "Splice Reference Apps"
+description: "Canton Network infrastructure와 application 개발을 위한 Splice repository의 reference application입니다."
+source_id: "SRC-C088886B68"
+source_path: "sdks-tools/reference-projects/splice-reference-apps"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "ce422d699244c836634bb5071096a8c8bffcd00d3789012814612296a147fb7b"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/reference-projects/splice-reference-apps.md)을 함께 확인하세요.
+</Warning>
+
+[Splice repository](https://github.com/canton-network/splice)에는 Global Synchronizer infrastructure를 구동하는 reference application이 있습니다. 이 application은 Validator operation, network scanning, Wallet management, Super Validator coordination을 처리합니다. Canton Network 개발자를 위한 production infrastructure이자 reference 구현입니다.
+
+## Repository 개요
+
+Splice는 Hyperledger Labs에서 host합니다.
+
+```
+https://github.com/canton-network/splice
+```
+
+Repository에는 Canton Network infrastructure layer를 구성하는 core application이 있습니다. Canton에서 application을 개발하기 위해 Splice를 수정할 필요는 없지만 component를 이해하면 application이 상호 작용하는 API와 service를 다루는 데 도움이 됩니다.
+
+## 포함된 application
+
+### SV App (Super Validator App)
+
+SV App은 Super Validator Node에서 실행되며 Decentralized Synchronizer operation을 관리합니다. 다음을 처리합니다.
+
+- Governance voting 및 proposal management
+- Synchronizer parameter update
+- Canton Coin issuance 및 reward distribution
+- Network-wide configuration
+
+Application developer는 Global Synchronizer를 통해 SV App과 간접적으로 상호 작용하고 Super Validator Operator는 App을 직접 사용합니다.
+
+### Scan App
+
+Scan App은 Canton Network public state의 read-only view를 제공합니다. 다음 API를 노출합니다.
+
+- Network Topology 및 Validator 정보
+- Canton Coin supply 및 distribution data
+- Governance proposal status
+- Synchronizer health metric
+
+Application은 Scan API를 query해 network 정보를 표시하거나 network-wide operation state를 검증할 수 있습니다.
+
+### Validator App
+
+Validator App은 Canton Network에서 Validator를 실행하는 operational 측면을 관리합니다. 범위는 다음과 같습니다.
+
+- Validator onboarding 및 registration
+- Traffic management 및 Canton Coin purchase
+- Synchronizer connection management
+- Operational health monitoring
+
+Validator Operator는 Node 관리에 이 App을 사용합니다. Validator도 운영하는 Application developer는 Node administration에 이를 사용합니다.
+
+### Wallet
+
+Splice Wallet은 다음 Canton Coin, CC operation을 처리합니다.
+
+- CC balance management
+- Transfer initiation 및 acceptance
+- Payment request processing
+- Traffic purchase workflow
+
+Payment를 처리하는 application은 API를 통해 Wallet과 integrate합니다. [cn-quickstart](https://github.com/digital-asset/cn-quickstart) licensing example은 이 integration을 보여줍니다. `LicenseRenewalRequest` Template이 Splice `AllocationRequest` Interface를 구현하고 Wallet이 이를 감지해 payment로 처리합니다.
+
+## Splice를 reference로 사용
+
+### API 이해
+
+Splice App은 application에서 call할 수 있는 REST API를 노출합니다. Documentation 관점에서 다음 interface를 이해합니다.
+
+- Scan API query의 request/response format
+- Validator API call의 authentication pattern
+- Payment workflow용 Wallet API endpoint
+
+### Architecture pattern
+
+Splice는 모든 Canton application에 적용할 수 있는 다음 pattern을 보여줍니다.
+
+- Ledger transaction stream subscribe 및 처리
+- Validator 간 multi-party workflow 관리
+- Application logic에서 Canton Coin payment 처리
+- PQS에서 read하고 Ledger API를 통해 write하는 service 구조
+
+### LocalNet integration
+
+cn-quickstart로 LocalNet을 실행하면 Splice infrastructure의 local instance가 실행됩니다. SV App, Scan App, Validator App, Wallet이 모두 Docker container로 실행됩니다. 이 service와 application의 상호 작용을 test하는 실제적인 environment를 제공합니다.
+
+## Wallet SDK
+
+별도 [wallet-gateway](https://github.com/canton-network/wallet-gateway) repository는 Splice Wallet이 사용하는 core Wallet logic을 제공하는 **Wallet SDK**를 host합니다. Custom Wallet integration을 개발한다면 Wallet SDK가 CC operation의 lower-level access를 제공합니다.
+
+## 관련 페이지
+
+- [cn-quickstart](/sdks-tools/reference-projects/cn-quickstart) -- Splice infrastructure에서 실행되는 full-stack example application
+- [Canton Coin](/overview/understand/canton-coin) -- Canton Coin 및 network role 개요
+- [Global Synchronizer](/overview/understand/global-synchronizer) -- Synchronizer infrastructure 동작 방식
+- [Integrations](/integrations/overview) -- Wallet 및 Exchange integration pattern

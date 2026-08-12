@@ -1,0 +1,53 @@
+---
+title: "Third-party dApp Transaction 서명"
+description: "Third-party dApp이 제출한 transaction을 수신, 확인, 시각화하고 서명합니다."
+source_id: "SRC-03C22B1B02"
+source_path: "sdks-tools/sdks/wallet-sdk/guides/signing-transactions-from-third-party-dapps"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "d3a3fa715635334e1f29f19769ee909b6cae0cf77282322f304e55ffe617f795"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/wallet-sdk/guides/signing-transactions-from-third-party-dapps.md)을 함께 확인하세요.
+</Warning>
+
+
+
+일반적인 blockchain application에서는 dApp이 client를 대신해 blockchain과 상호작용합니다. 이 flow에서는 대개 dApp이 준비한 transaction에 사용자가 서명한 후 제출해야 합니다. Canton에서 이를 지원하려면 prepared transaction을 Wallet로 보내 서명해야 합니다. 간단한 지원 방법은 dApp API를 제공하는 것입니다. OpenRPC specification은 [openrpc-dapp-api.json](https://github.com/canton-network/wallet/blob/main/api-specs/openrpc-dapp-api.json)에서 확인할 수 있습니다.
+
+*Specification은 Ethereum 같은 기존 표준에 맞추기 위해 OpenRPC로 작성되어 있습니다.*
+
+Client는 Wallet Provider를 dApp에 embed하거나 browser extension 등의 수단으로 external Wallet Provider에 연결해 Wallet Provider의 dApp API에 접근할 수 있습니다. 그러면 dApp은 transaction을 Wallet Provider로 전달해 서명을 받을 수 있습니다.
+
+## Transaction 수신
+
+dApp은 일반적으로 `prepareExecute` endpoint 또는 `prepareExecuteAndWait` endpoint를 호출합니다. 두 경우 모두 Wallet Provider가 transaction을 prepare하고 서명한 뒤 Ledger에 제출합니다.
+
+Wallet SDK를 사용해 incoming transaction을 prepare할 수 있습니다.
+
+``` typescript
+import { SDK, localNetStaticConfig } from '@canton-network/wallet-sdk'
+
+export default async function () {
+    // it is important to configure the SDK correctly else you might run into connectivity or authentication issues
+    const sdk = await SDK.create({
+        auth: global.TOKEN_PROVIDER_CONFIG_DEFAULT,
+        ledgerClientUrl: localNetStaticConfig.LOCALNET_APP_USER_LEDGER_URL,
+    })
+    const preparedCommand = global.PREPARED_COMMAND
+
+    const myParty = global.EXISTING_PARTY_2
+
+    sdk.ledger.prepare({
+        partyId: myParty,
+        commands: preparedCommand,
+    })
+}
+```
+
+## Transaction 확인 및 시각화
+
+Third-party dApp을 integration할 때는 사용자가 정확히 무엇에 서명하는지 보여주는 것이 중요합니다. Signature가 적용되면 transaction은 valid한 것으로 간주되어 실행될 수 있습니다. 가장 간단한 방법은 transaction의 JSON representation을 받는 visualizer를 만드는 것입니다. 서명 전 prepared transaction의 JSON은 Wallet SDK로 가져올 수 있습니다.

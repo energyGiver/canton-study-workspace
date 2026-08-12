@@ -1,0 +1,170 @@
+---
+title: "Provider API"
+description: "dApp SDK 기반의 low-level CIP-103 Provider interface입니다."
+source_id: "SRC-5226040A45"
+source_path: "sdks-tools/sdks/dapp-sdk/reference/provider-api"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "f9cd9a2ccd9e622eca4f9ba847b27716aae34da19d0138bd3390d039db47949a"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/dapp-sdk/reference/provider-api.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="splice-wallet-kernel:docs/dapp-sdk/reference/provider-api.md@0431c87e" */}
+
+**Provider API**는 dApp SDK가 기반으로 삼는 low-level interface입니다. [EIP-1193](https://eips.ethereum.org/EIPS/eip-1193) request/event pattern을 따르고 [CIP-103](https://github.com/canton-foundation/cips/blob/main/cip-0103/cip-0103.md)을 구현합니다.
+
+<Note>
+대부분의 dApp은 [high-level SDK](/sdks-tools/sdks/dapp-sdk/reference/sdk-methods)를 사용해야 합니다. Low-level infrastructure를 구축하거나 기존 Provider 기반 integration을 적용할 때만 Provider API를 직접 사용하세요.
+</Note>
+
+## OpenRPC specification
+
+dApp API는 machine-readable OpenRPC document로 정의됩니다.
+
+- **Sync API**: [openrpc-dapp-api.json](https://github.com/canton-network/wallet/blob/main/api-specs/openrpc-dapp-api.json)
+- **Async API**: [openrpc-dapp-remote-api.json](https://github.com/canton-network/wallet/blob/main/api-specs/openrpc-dapp-remote-api.json)
+
+## Provider 가져오기
+
+연결 후 SDK에서 active CIP-103 Provider를 가져옵니다.
+
+```typescript
+await sdk.init()
+await sdk.connect()
+const provider = sdk.getConnectedProvider()
+if (!provider) throw new Error('Not connected')
+```
+
+## Methods
+
+모든 operation은 `request({ method, params })` call입니다. Method는 SDK function과 일대일로 대응합니다.
+
+| Method              | Output              | Description                                             |
+| ------------------- | ------------------- | ------------------------------------------------------- |
+| `connect`           | `ConnectResult`     | Wallet connection을 생성합니다.                         |
+| `disconnect`        | `void`              | Client와 Provider 사이의 session을 종료합니다.          |
+| `isConnected`       | `ConnectResult`     | Login을 trigger하지 않고 연결 상태를 보고합니다.        |
+| `status`            | `StatusEvent`       | 연결된 Wallet과 Network 정보입니다.                     |
+| `getActiveNetwork`  | `Network`           | 연결된 Network 상세 정보입니다.                         |
+| `listAccounts`      | `Account[]`         | User가 접근할 수 있는 모든 Account를 나열합니다.        |
+| `getPrimaryAccount` | `Account`           | Primary로 설정된 Account를 반환합니다.                  |
+| `signMessage`       | `SignMessageResult` | 임의 string message에 서명합니다.                       |
+| `prepareExecute`    | `void`              | Daml command를 prepare/sign/execute합니다.               |
+| `ledgerApi`         | `string`            | JSON Ledger API request를 proxy합니다.                   |
+
+```typescript
+// Connect
+const result = await provider.request<ConnectResult>({ method: 'connect' })
+
+// Disconnect
+await provider.request({ method: 'disconnect' })
+
+// Status
+const status = await provider.request<StatusEvent>({ method: 'status' })
+
+// Is connected (no login)
+const { isConnected } = await provider.request<ConnectResult>({
+    method: 'isConnected',
+})
+
+// Active network
+const network = await provider.request<Network>({ method: 'getActiveNetwork' })
+
+// List accounts
+const accounts = await provider.request<Account[]>({ method: 'listAccounts' })
+
+// Primary account
+const account = await provider.request<Account>({ method: 'getPrimaryAccount' })
+
+// Sign a message
+const signature = await provider.request<string>({
+    method: 'signMessage',
+    params: { message: 'Hello, Canton!' },
+})
+
+// Execute a transaction
+await provider.request({
+    method: 'prepareExecute',
+    params: { commands: [/* ... */] },
+})
+
+// Call the Ledger API
+const response = await provider.request<LedgerApiResponse>({
+    method: 'ledgerApi',
+    params: { requestMethod: 'GET', resource: '/v2/version' },
+})
+```
+
+## Events
+
+`on`으로 subscribe하고 `removeListener`로 정리합니다.
+
+```typescript
+const handler = (status: StatusEvent) =>
+    console.log(status.connection.isConnected)
+
+provider.on('statusChanged', handler)
+provider.removeListener('statusChanged', handler)
+```
+
+Provider는 `statusChanged`, `accountsChanged`, `txChanged`를 emit합니다. Async API는 `connected`와 `messageSignature`도 emit합니다. Payload shape은 [Event](/sdks-tools/sdks/dapp-sdk/reference/events)를 참조하세요.
+
+## Sync/Async API
+
+dApp API에는 Wallet deployment에 따라 두 variant가 있습니다.
+
+- **Sync API**는 Browser extension이나 Desktop App처럼 직접 접근하는 Wallet을 대상으로 하며 method가 표준 request-response 방식으로 실행됩니다.
+- **Async API**는 User interaction이 필요한 operation을 block할 수 없는 server-side/Remote Wallet을 대상으로 합니다. 이 method는 login이나 transaction approval을 완료할 `userUrl`을 반환하고 result는 이후 event로 도착합니다.
+
+| Consideration    | Sync API                                 | Async API                   |
+| ---------------- | ---------------------------------------- | --------------------------- |
+| Deployment       | Client-side, Browser extension/Desktop   | Server-side, Remote Custody |
+| User interaction | 직접, real-time                          | `userUrl` redirect 경유     |
+| Blocking call    | 지원                                     | 미지원                      |
+| Transport        | `postMessage`, in-app bridge             | HTTPS, SSE                  |
+
+Async API의 주요 차이는 다음과 같습니다.
+
+- Session이 없으면 `connect`는 `{ ...ConnectResult, userUrl }`을 반환하고 login 후 `connected` event가 emit됩니다.
+- `prepareExecute`는 `{ userUrl }`을 반환하고 prepare phase 후 `txChanged` event가 emit됩니다.
+
+<Note>
+dApp SDK는 Sync API interface를 구현하고 내부적으로 Async API server에 relay하므로 SDK를 대상으로 작성한 dApp code는 변경 없이 두 Wallet type에서 모두 동작합니다.
+</Note>
+
+## Provider interface
+
+두 variant 모두 [EIP-1193](https://eips.ethereum.org/EIPS/eip-1193)을 따르는 `Provider` interface로 접근합니다.
+
+```typescript
+interface Provider {
+    request<T>(args: {
+        method: string
+        params?: unknown[] | Record<string, unknown>
+    }): Promise<T>
+    on<T>(event: string, listener: (...args: T[]) => void): Provider
+    emit<T>(event: string, ...args: T[]): boolean
+    removeListener<T>(event: string, listener: (...args: T[]) => void): Provider
+}
+```
+
+## SDK와 Provider API 비교
+
+|          | dApp SDK                          | Provider API                                               |
+| -------- | --------------------------------- | ---------------------------------------------------------- |
+| Level    | 편리한 high-level                 | EIP-1193 style low-level                                   |
+| Call     | Named function (`sdk.connect()`)  | `provider.request({ method })`                             |
+| Event    | `on*`/`off*` helper               | `on`/`removeListener`                                      |
+| 사용 시점 | dApp 구축                         | Infrastructure 구축 또는 기존 Provider code 적용          |
+
+## 관련 문서
+
+- [SDK Method](/sdks-tools/sdks/dapp-sdk/reference/sdk-methods) — 이 request method에 대응하는 high-level 기능입니다.
+- [Error](/sdks-tools/sdks/dapp-sdk/reference/errors) — API가 반환하는 표준 error code입니다.
+
+{/* COPIED_END */}

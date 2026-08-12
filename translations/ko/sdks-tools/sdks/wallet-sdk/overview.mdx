@@ -1,0 +1,29 @@
+---
+title: "Overview"
+description: "Canton Network와 interaction하기 위한 TypeScript library"
+source_id: "SRC-AD97520747"
+source_path: "sdks-tools/sdks/wallet-sdk/overview"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "cf783e007dc19a3ed392ef83502d803726452f5b75bd67fb2e0c5c2b9e5fc7c5"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/wallet-sdk/overview.md)을 함께 확인하세요.
+</Warning>
+
+[Wallet SDK](https://github.com/canton-network/wallet-gateway/tree/main/sdk/wallet-sdk)는 Ledger API를 통해 Canton Network와 interaction하는 TypeScript library를 제공합니다. Wallet과 exchange에서 자주 사용하는 Party 생성, Token Standard transfer 및 data read 같은 pattern을 더 쉽게 구현하도록 돕습니다. SDK는 Canton Network token과 interaction하고 External Party Wallet을 manage해야 하는 Wallet Provider, exchange 및 application developer를 위해 설계됐습니다.
+
+## What the SDK provides
+
+- **Transaction preparation**: Token Standard를 사용해 Canton Network transaction을 build하고 sign합니다.
+- **Token Standard client**: Canton Network Token Standard API와 interaction합니다.
+- **Transaction history parsing**: Ledger update를 구조화된 deposit/withdrawal record로 parse합니다.
+- **Configuration management**: LocalNet, DevNet, TestNet 및 MainNet 등 여러 environment에 연결합니다.
+- **External signing support**: External Party signing workflow를 위한 transaction을 prepare합니다.
+
+## Quickstart
+
+바로 개발하려면 [Quickstart](/sdks-tools/sdks/wallet-sdk/quickstart)에서 SDK install 및 configuration 과정을 확인하세요.

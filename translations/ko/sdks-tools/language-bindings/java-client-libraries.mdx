@@ -1,0 +1,46 @@
+---
+title: "Java LAPI Binding"
+description: "Canton Java client library인 bindings-java의 overview, 설치, reference입니다."
+source_id: "SRC-8907DD30B4"
+source_path: "sdks-tools/language-bindings/java-client-libraries"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "efa8558d2c3ae3474b7e5bdcd358ebfa3b1c5269972f4f8ba192241d46d81f1a"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/language-bindings/java-client-libraries.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/component-howtos/application-development/client-libraries/java-client-libraries.rst" hash="6ccddace" */}
+
+# Java client library
+
+Java client library는 gRPC Ledger API 사용을 단순화합니다. 사용 방법은 Java에서 Contract와 transaction을 다루는 방법을 참조하세요. 아래에서는 code architecture, 설치, reference material을 설명합니다.
+
+## Overview
+
+<div id="component-howtos-application-development-java-client-libraries-bindings-java">
+
+Java client library인 `bindings-java`는 Ledger API generated class를 기반으로 한 Java idiomatic layer입니다. Ledger API 작업에 필요한 code를 단순화하며 gRPC Ledger API generated class와 상호작용하는 `toProto`와 `fromProto` method를 포함합니다.
+
+</div>
+
+또한 기본 Daml data type을 Java로 나타내는 class 집합을 제공합니다. Daml Codegen for Java는 이를 사용해 User-defined Daml code에 대응하는 Java code를 생성합니다.
+
+이 library는 Java Package `com.daml.ledger.javaapi.data`에 구현됩니다.
+
+## Install
+
+Java client library의 사용 가능한 version은 Maven Central Repository에서 확인합니다.
+
+bindings-java
+
+## Reference
+
+JavaDoc reference 문서를 참조하세요.
+
+
+{/* COPIED_END */}

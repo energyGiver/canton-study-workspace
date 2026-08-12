@@ -1,0 +1,160 @@
+---
+title: "Ledger에서 데이터 찾기 및 읽기"
+description: "Party, ledger end, active contract를 읽고 transaction history를 stream/monitor하며 updateId로 transaction을 조회합니다."
+source_id: "SRC-E570A944CA"
+source_path: "sdks-tools/sdks/wallet-sdk/guides/finding-and-reading-data"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "a7680c5a482478aa0fdbff35c89c27e3a56d3212db5f6b03afe2d8d587f1f55a"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/wallet-sdk/guides/finding-and-reading-data.md)을 함께 확인하세요.
+</Warning>
+
+Wallet SDK는 주로 Party 단위 interaction에 초점을 두므로 거의 모든 command에서 사용할 Party를 지정해야 합니다.
+
+## 사용 가능한 Party 읽기
+
+아래 example처럼 Wallet SDK를 사용하면 이용 가능한 모든 Party를 쉽게 읽을 수 있으며, result는 pagination됩니다. 모든 Party를 읽는 call은 Party와 Synchronizer field를 사용하지 않으므로 이 field를 변경해도 result에 영향을 주지 않습니다.
+
+``` typescript
+import { SDK, localNetStaticConfig } from '@canton-network/wallet-sdk'
+
+export default async function () {
+    // it is important to configure the SDK correctly else you might run into connectivity or authentication issues
+    const sdk = await SDK.create({
+        auth: global.TOKEN_PROVIDER_CONFIG_DEFAULT,
+        ledgerClientUrl: localNetStaticConfig.LOCALNET_APP_USER_LEDGER_URL,
+    })
+
+    await sdk.party.list()
+}
+```
+
+## Ledger End 읽기
+
+여러 request는 요청 시점이 ledger time과 일치하도록 ledger offset을 받습니다. Validator에는 total state replication이 없으므로 block height가 없습니다. 대신 다음 두 값이 이에 대응합니다.
+
+- ledger time: commit 전에 transaction을 계산할 때 ledger가 선택하는 시간입니다.
+- record time: confirmation request를 등록할 때 Sequencer가 부여하는 시간입니다.
+
+로컬 환경에서 partner에게 영향을 주지 않는 모든 operation에는 ledger time을 사용해야 합니다. Partner나 같은 Synchronizer의 다른 member와 transaction을 reconcile할 때는 record time을 사용하는 편이 좋습니다.
+
+Ledger end는 Wallet SDK operation의 default로 사용됩니다.
+
+## Active Contract 읽기
+
+위의 ledger time을 사용하면 모든 active contract의 현재 state를 파악할 수 있습니다. Contract는 active와 archived 두 state 중 하나이며, 이는 UTXO model의 unspent와 spent에 대응합니다. Active contract는 아직 소비되지 않은 contract이므로 새 transaction에 사용하거나 choice를 exercise할 수 있습니다.
+
+``` typescript
+import { SDK, localNetStaticConfig } from '@canton-network/wallet-sdk'
+
+export default async function () {
+    const sdk = await SDK.create({
+        auth: global.TOKEN_PROVIDER_CONFIG_DEFAULT,
+        ledgerClientUrl: localNetStaticConfig.LOCALNET_APP_USER_LEDGER_URL,
+    })
+    const myParty = global.EXISTING_PARTY_1
+    //we use holdings as an example here
+    const myTemplateId = '#splice-amulet:Splice.Amulet:Amulet'
+
+    await sdk.ledger.acsReader.read({
+        parties: [myParty],
+        templateIds: [myTemplateId], //this is optional for if you want to filter by template id
+        filterByParty: true,
+    })
+}
+```
+
+## Transaction History Streaming 및 Monitoring
+
+Ledger에서 발생하는 transaction event를 stream하려면 `listHoldingTransactions` endpoint를 사용할 수 있습니다. 이 endpoint는 두 ledger offset을 받아 그 사이에 발생한 모든 Token Standard transaction의 overview를 제공합니다. 또한 다음 call에서 사용할 수 있는 `nextOffset`을 반환합니다. 이를 사용하면 같은 transaction을 두 번 받지 않고 이후에 발생한 transaction만 query할 수 있습니다.
+
+``` typescript
+import { SDK, localNetStaticConfig } from '@canton-network/wallet-sdk'
+
+export default async function () {
+    const sdk = await SDK.create({
+        auth: global.TOKEN_PROVIDER_CONFIG_DEFAULT,
+        ledgerClientUrl: localNetStaticConfig.LOCALNET_APP_USER_LEDGER_URL,
+        token: global.TOKEN_NAMESPACE_CONFIG,
+    })
+    const myParty = global.EXISTING_PARTY_1
+
+    await sdk.token.holdings({ partyId: myParty })
+}
+```
+
+Stream을 deposit과 withdrawal로 빠르게 변환하려면 다음 function을 사용할 수 있습니다.
+
+``` javascript
+function convertToTransaction(pt: Transaction, associatedParty: string): object[] {
+    return pt.events.flatMap((event) => {
+        if (event.label.type === 'TransferIn') {
+            return [{
+                updateId: pt.updateId,
+                recordTime: pt.recordTime,
+                from: event.label.sender,
+                to: associatedParty,
+                amount: Number(event.unlockedHoldingsChangeSummary.amountChange),
+                instrumentId: 'Amulet', //hardcoded instrumentId from local net
+                fee: Number(event.label.burnAmount),
+                memo: event.label.reason,
+            }];
+        } else if (event.label.type === 'TransferOut') {
+            const label = event.label
+            return event.label.receiverAmounts.map((receiverAmount: any) => ({
+                updateId: pt.updateId,
+                recordTime: pt.recordTime,
+                from: associatedParty,
+                to: receiverAmount.receiver,
+                amount: Number(receiverAmount.amount),
+                instrumentId: 'Amulet', //hardcoded instrumentId from local net
+                fee: Number(label.burnAmount),
+                memo: label.meta.reason,
+            }));
+        } else {
+            return [];
+        }
+    });
+}
+```
+
+## updateId로 transaction을 가져오는 방법
+
+Token namespace에는 update ID를 바탕으로 transaction을 가져오는 method가 있습니다. 출력 format은 `sdk.token.holdings`와 같습니다.
+
+``` typescript
+import { SDK, localNetStaticConfig } from '@canton-network/wallet-sdk'
+
+export default async function () {
+    const sdk = await SDK.create({
+        auth: global.TOKEN_PROVIDER_CONFIG_DEFAULT,
+        ledgerClientUrl: localNetStaticConfig.LOCALNET_APP_USER_LEDGER_URL,
+        amulet: global.AMULET_NAMESPACE_CONFIG,
+        token: global.TOKEN_NAMESPACE_CONFIG,
+    })
+
+    const myParty = global.EXISTING_PARTY_1
+
+    const [amuletTapCommand, amuletTapDisclosedContracts] =
+        await sdk.amulet.tap(myParty, '2000')
+
+    const result = await sdk.ledger
+        .prepare({
+            partyId: myParty,
+            commands: amuletTapCommand,
+            disclosedContracts: amuletTapDisclosedContracts,
+        })
+        .sign(global.EXISTING_PARTY_1_KEYS.privateKey)
+        .execute({ partyId: myParty })
+
+    await sdk.token.transactionsById({
+        updateId: result.updateId,
+        partyId: myParty,
+    })
+}
+```

@@ -8,26 +8,28 @@ Korean navigation exposes only complete pages that pass source traceability, str
 
 Snapshot date: 2026-08-12
 
-| Documentation area | Translated | Canonical pages | Coverage |
-|---|---:|---:|---:|
-| Root API Reference | 1 | 1 | 100.0% |
-| Overview | 47 | 47 | 100.0% |
-| App Development | 142 | 145 | 97.9% |
-| Global Synchronizer | 101 | 106 | 95.3% |
-| Integrations | 140 | 140 | 100.0% |
-| Reference corpus | 365 | 365 | 100.0% |
-| **Total** | **796** | **804** | **99.0%** |
+| Documentation area | Translated | Local exclusion | Official pages | Backlog |
+|---|---:|---:|---:|---:|
+| Root API Reference | 1 | 0 | 1 | 0 |
+| Overview | 47 | 0 | 47 | 0 |
+| App Development | 143 | 2 | 145 | 0 |
+| Global Synchronizer | 100 | 5 | 105 | 0 |
+| Integrations | 140 | 2 | 142 | 0 |
+| SDKs and Tools | 62 | 99 | 161 | 0 |
+| Reference corpus | 365 | 190 | 555 | 0 |
+| Release Notes | 1 | 0 | 1 | 0 |
+| Shared | 3 | 0 | 3 | 0 |
+| **Total** | **862** | **298** | **1,160** | **0** |
 
-Run `python3 -m portal validate` to obtain the live totals. Update this checkpoint in the same commit as each translation batch.
+Run `python3 -m portal translations` for the live inventory and todo list, and run `python3 -m portal validate` for source/MDX integrity. Update this checkpoint in the same commit as each translation batch.
 
 ## Remaining todo
 
-- App Development: 3 pages
-- Global Synchronizer: 5 pages
-- Overview: 0 pages
-- Total: 8 pages
+There is no current translation backlog. All 1,160 official file-backed navigation pages are either complete Korean translations or exact-path local exclusions.
 
-Five pages were deliberately withdrawn on 2026-08-12: one page created through an external translation API and four pages derived from a locally installed translation model. All five have since been translated directly with Codex and restored.
+The 298 exclusions are stored in the Git-ignored `data/local/translation-exclusions.json`, including a reason and category. They remain available in English, are disclosed by `python3 -m portal translations`, and are ignored during upstream translation checks only while their exact official paths remain listed. New upstream paths always enter the review backlog.
+
+Five pages were deliberately withdrawn on 2026-08-12 because one had used an external translation API and four had used a locally installed translation model. All five were subsequently translated directly with Codex and restored.
 
 ## Required conditions
 

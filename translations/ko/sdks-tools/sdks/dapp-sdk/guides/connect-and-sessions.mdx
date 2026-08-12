@@ -1,0 +1,127 @@
+---
+title: "Connection 및 Session"
+description: "SDK initialize, Wallet 연결, session 복원, disconnect 방법을 설명합니다."
+source_id: "SRC-4C991018E5"
+source_path: "sdks-tools/sdks/dapp-sdk/guides/connect-and-sessions"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "919bd9753d11011340893c5cfde4d0782654981dc8bede756ddc0787c765dc6f"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/dapp-sdk/guides/connect-and-sessions.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="splice-wallet-kernel:docs/dapp-sdk/guides/connect-and-sessions.md@0431c87e" */}
+
+이 guide는 SDK initialize, Wallet 연결, connection status 검사, 재방문 User의 session 복원, disconnect로 이어지는 connection lifecycle을 다룹니다.
+
+모든 example은 high-level SDK를 사용합니다. 같은 기능의 low-level call은 [Provider API](/sdks-tools/sdks/dapp-sdk/reference/provider-api)를 참조하세요.
+
+## Connection flow
+
+dApp은 다음 네 단계로 Wallet에 연결됩니다.
+
+1. **Discover** SDK가 사용 가능한 Wallet을 찾아 Wallet picker에 나열합니다.
+2. **Connect** User가 Wallet을 선택하고 인증합니다.
+3. **Session** Wallet이 인증된 session을 만들고 SDK가 이후 call에서 재사용합니다.
+4. **Transact** dApp이 Party를 읽고 message에 서명하며 transaction을 제출하고, User가 Wallet에서 승인합니다.
+
+## SDK initialize
+
+Application lifecycle 초기, 예를 들면 mount 시점에 `init()`을 한 번 호출합니다. Default Wallet Adapter를 등록하고 Wallet picker를 열지 않은 채 이전 session 복원을 시도합니다.
+
+```typescript
+import * as sdk from '@canton-network/dapp-sdk'
+
+await sdk.init()
+```
+
+<Note>
+`init()`은 정확히 한 번 호출하세요. WalletConnect나 custom Remote Wallet을 추가하거나 교체하려면 `init()`에 option을 전달합니다. [Wallet discovery](/sdks-tools/sdks/dapp-sdk/guides/wallet-discovery)를 참조하세요.
+</Note>
+
+## Wallet 연결
+
+User action에 대한 응답으로 `connect()`를 호출합니다. Wallet picker가 열리고 User가 아직 인증되지 않았다면 authentication flow가 실행됩니다.
+
+```typescript
+async function onConnectClick() {
+    const result = await sdk.connect()
+    if (result.isConnected) {
+        // Show the connected UI
+    }
+}
+```
+
+`connect()`는 button click 같은 User gesture에서 항상 trigger해야 합니다. Page load 시 자동 호출하면 Wallet picker가 예상치 못하게 열립니다. 조용한 session 복원에는 `init()`을 사용하세요.
+
+User가 아직 인증되지 않았다면 Wallet은 connection 완료 전에 login을 요청합니다. Remote Wallet은 User가 열 `userUrl`을 반환하는 방식으로 처리합니다. [Sync/Async API](/sdks-tools/sdks/dapp-sdk/reference/provider-api#sync-and-async-apis)를 참조하세요.
+
+## Session
+
+User가 연결하면 Wallet이 인증된 **session**을 생성합니다. SDK는 session을 저장하고 Account 조회나 transaction 실행 같은 이후 call에서 재사용하므로 User가 매번 다시 인증할 필요가 없습니다. `init()`은 기존 session을 조용히 복원하고 `disconnect()`는 이를 종료합니다.
+
+## Page load 시 session 복원
+
+`init()`은 기존 session을 조용히 복원합니다. 완료된 후 "Connect" button을 표시하기 전에 User가 이미 연결되었는지 확인합니다.
+
+```typescript
+await sdk.init()
+
+const { isConnected } = await sdk.isConnected()
+if (isConnected) {
+    // Returning user: render the connected UI
+} else {
+    // Show the "Connect wallet" button
+}
+```
+
+`isConnected()`는 login flow를 trigger하지 않으므로 load 시 안전하게 호출할 수 있습니다.
+
+## Connection status 확인
+
+`status()`는 현재 connection의 Network 및 session 관련 상세 정보를 반환합니다.
+
+```typescript
+const result = await sdk.status()
+const label = result.connection.isConnected ? 'connected' : 'disconnected'
+```
+
+`isConnected()`의 boolean보다 자세한 정보가 필요할 때 `status()`를 사용합니다.
+
+## Status change 처리
+
+Session이 변경될 때 UI를 동기화하려면 `onStatusChanged`를 subscribe합니다. Wallet disconnect나 session expiry가 그 예입니다. Component가 unmount될 때 listener를 제거하세요.
+
+```typescript
+function subscribe() {
+    const handler = (status) => {
+        setConnected(status.connection.isConnected)
+    }
+
+    sdk.onStatusChanged(handler)
+
+    // Call on unmount to avoid leaks:
+    return () => sdk.offStatusChanged(handler)
+}
+```
+
+## Disconnect
+
+Application과 Wallet 사이의 session을 종료합니다.
+
+```typescript
+async function onDisconnectClick() {
+    await sdk.disconnect()
+}
+```
+
+## 다음 단계
+
+- [Party 및 transaction](/sdks-tools/sdks/dapp-sdk/guides/parties-and-transactions) — Party 조회, message 서명, transaction 실행, Ledger query를 다룹니다.
+- [Wallet Discovery](/sdks-tools/sdks/dapp-sdk/guides/wallet-discovery) — Wallet picker를 customize하고 WalletConnect 또는 custom Remote Wallet을 추가합니다.
+
+{/* COPIED_END */}

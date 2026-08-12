@@ -1,0 +1,77 @@
+---
+title: "Event 처리"
+description: "Connection, Account, transaction event를 subscribe하고 listener를 정리합니다."
+source_id: "SRC-F03B91A2C8"
+source_path: "sdks-tools/sdks/dapp-sdk/guides/handle-events"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "a37f34ac4fb4f6057441c1de257264180b06d676bc1fea48a2b8e480e0d8edb3"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/dapp-sdk/guides/handle-events.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="splice-wallet-kernel:docs/dapp-sdk/guides/handle-events.md@0431c87e" */}
+
+dApp SDK는 UI가 Wallet state와 동기화될 수 있도록 event를 emit합니다. `on*` function으로 subscribe하고 component가 unmount될 때 항상 대응하는 `off*` function으로 unsubscribe하세요.
+
+전체 event list와 payload는 [Event reference](/sdks-tools/sdks/dapp-sdk/reference/events)를 참조하세요.
+
+## Connection status change 처리
+
+Connection status 또는 session state가 변경되면 `onStatusChanged`가 발생합니다.
+
+```typescript
+const handler = (status) => {
+    console.log('Connected:', status.connection.isConnected)
+}
+
+sdk.onStatusChanged(handler)
+// Later:
+sdk.offStatusChanged(handler)
+```
+
+## Account change 처리
+
+Account가 추가/제거되거나 Primary Account가 변경되면 `onAccountsChanged`가 발생합니다. Primary Party를 cache하지 말고 다시 읽으세요.
+
+```typescript
+sdk.onAccountsChanged((accounts) => {
+    const primary = accounts.find((a) => a.primary)
+})
+```
+
+## Transaction tracking
+
+`prepareExecute`로 제출한 transaction이 `pending`, `signed`, `executed`, `failed` lifecycle을 거칠 때 `onTxChanged`가 발생합니다.
+
+```typescript
+sdk.onTxChanged((tx) => {
+    if (tx.status === 'executed') {
+        console.log('Update ID:', tx.payload.updateId)
+    }
+})
+```
+
+## Listener 정리
+
+Component가 unmount될 때 모든 listener를 제거하세요. 제거하지 않은 listener는 memory leak과 오래된 UI update를 유발합니다.
+
+```typescript
+const handler = (status) => setConnected(status.connection.isConnected)
+
+sdk.onStatusChanged(handler)
+
+// On unmount:
+sdk.offStatusChanged(handler)
+```
+
+## 다음 단계
+
+- [Event](/sdks-tools/sdks/dapp-sdk/reference/events) — 전체 event list와 payload shape을 확인합니다.
+- [Party 및 transaction](/sdks-tools/sdks/dapp-sdk/guides/parties-and-transactions) — Party를 읽고 transaction을 제출합니다.
+
+{/* COPIED_END */}

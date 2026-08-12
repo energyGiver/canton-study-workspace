@@ -1,0 +1,239 @@
+---
+title: "Daml Compiler"
+description: "Daml Compiler flag와 invocation option입니다."
+source_id: "SRC-C933FB4547"
+source_path: "sdks-tools/development-tools/daml-compiler"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "c3db51b9d045456f0b77c9e6a0b0624fabeec6bc097a578605e752f67d036cc2"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/development-tools/daml-compiler.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/component-howtos/smart-contracts/flags.rst" hash="24de3fac" */}
+
+# Daml Compiler
+
+Daml toolchain의 core에는 `damlc`라고도 하는 Daml Compiler가 있습니다. 주요 용도는 Smart Contract와 동작을 정의하는 Daml source code를 Canton Participant가 evaluate해 Smart Contract를 실행할 수 있는 low-level language인 Daml-LF로 compile하는 것입니다.
+
+Compiler는 DPM의 `dpm build`로 실행하는 것을 권장하며 `damlc`를 직접 호출할 수도 있습니다. Daml Compiler는 code compile 시 다음 stage를 거칩니다.
+
+1.  Input `.daml` file을 type-check해 well-formed인지 검증합니다.
+2.  Type-check된 `` `.daml `` code를 Daml-LF로 변환합니다.
+3.  생성된 Daml-LF를 dependency/metadata와 함께 `.dar` file로 packaging합니다. DAR는 본질적으로 metadata가 포함된 Daml-LF file Archive입니다.
+
+`dpm build`가 생성한 build file은 command를 실행한 project의 local `.daml` directory에 저장됩니다. `dpm clean`으로 정리할 수 있습니다.
+
+Daml Compiler는 testing 기능도 제공합니다. 먼저 `dpm build`로 `.dar`를 생성해 `daml-script`, 즉 `dpm script` call에 사용하거나 `glos-daml-test`, 즉 `dpm test`를 직접 호출할 수 있습니다.
+
+## Build/test flag<span id="daml-assistant-flags"></span>
+
+다음 flag는 `--build`와 `--test` 모두에서 사용할 수 있습니다.
+
+- `-h`, `--help`
+
+  Command line에서 호출하면 option 정보를 출력합니다.
+
+- `--package-root ARG`
+
+  DPM 전용 option입니다.
+
+  `daml.yaml`을 포함한 `glos-daml-package` root path입니다. Build/test할 Package를 설정합니다. 이 option보다 `DAML_PACKAGE` environment variable을 권장합니다. 자세한 내용은 `dpm-configuration`을 참조하세요.
+
+- `--project-root ARG`
+
+  DPM-specific option.
+
+  `project-root`는 **deprecated**되었습니다. `--package-root`를 사용하세요.
+
+  `daml.yaml`을 포함한 `glos-daml-package` root path입니다. 이 option보다 `DAML_PACKAGE` environment variable을 권장합니다. 자세한 내용은 `dpm-configuration`을 참조하세요.
+
+- `--include INCLUDE-PATH`
+
+  포함할 추가 source directory path입니다.
+
+- `--package-db LOC-OF-PACKAGE-DB`
+
+  지정 위치의 `glos-package-database`를 사용합니다.
+
+- `--access-token-file PATH`
+
+  **Deprecated command**입니다. DPM 전용 기능을 사용하세요.
+
+  Ledger authorization용 token file path입니다.
+
+- `--shake-profiling PROFILING-REPORT`
+
+  `glos-shake-profiling-reports` directory입니다.
+
+- `--jobs THREADS`
+
+  Parallel 실행 thread 수입니다. `-j`가 없으면 thread 하나를 사용하고 `-j`가 있으면 default가 processor 수입니다. `--jobs=N`으로 thread 수를 명시합니다. Job이 \> 1이면 output이 deterministic하지 않습니다.
+
+- `--debug`
+
+  Log level을 `DEBUG`로 설정합니다.
+
+- `--log-level ARG`
+
+  Log level을 설정합니다. `DEBUG`, `INFO`, `WARNING`, `ERROR`를 사용할 수 있습니다.
+
+- `--detail LEVEL`
+
+  Pretty-printed output detail level이며 default는 0입니다. Level이 높으면 `damlc inspect` 등의 정보와 source file location을 더 많이 출력합니다. `glos-damlc-detail-level`을 참조하세요.
+
+- `--ghc-option OPTION`
+
+  기반 GHC에 전달할 option입니다.
+
+- `-p,--test-pattern PATTERN`
+
+  Name에 지정 pattern이 포함된 script만 실행합니다.
+
+- `--typecheck-upgrades ARG`
+
+  Upgrade를 type-check합니다. `yes`, `no`, default True를 선택하는 `auto`를 사용할 수 있습니다.
+
+- `--upgrades UPGRADE_DAR`
+
+  Upgrade할 DAR를 설정합니다\>.
+
+- `-W ARG`
+
+  `-W<name>`, `-Wwarn=<name>`, `-Wno-error=<name>`으로 error를 warning으로 바꿉니다. `-Werror=<name>`으로 warning을 error로 바꾸고 `-Wno-<name>`으로 warning/error를 비활성화합니다. 사용 가능한 name은 다음과 같습니다.
+
+  > - `deprecated-exceptions`
+  > - `crypto-text-is-alpha`
+  > - `upgrade-interfaces`
+  > - `upgrade-exceptions`
+  > - `upgrade-dependency-metadata`
+  > - `upgraded-template-expression-changed`
+  > - `upgraded-choice-expression-changed`
+  > - `could-not-extract-upgraded-expression`
+  > - `unused-dependency`
+  > - `upgrades-own-dependency`
+  > - `template-interface-depends-on-daml-script`
+  > - `template-has-new-interface-instance`
+
+- `--ignore-data-deps-visibility ARG`
+
+  `glos-data-dependencies`의 explicit export를 무시하고 해당 `glos-daml-package`의 모든 definition import를 허용합니다. Daml 2.10 이전의 default 동작입니다. `yes`, `no`, default False를 선택하는 `auto`를 사용할 수 있습니다.
+
+## Build flag
+
+- 위에서 설명한 모든 build/test flag입니다.
+
+- `-o,--output FILE`
+
+  선택 가능한 output file이며 default는 `<PACKAGE-NAME>.dar`입니다.
+
+- `--incremental ARG`
+
+  `glos-incremental-builds`를 활성화합니다. `yes`, `no`, default False를 선택하는 `auto`를 사용할 수 있습니다.
+
+- `--init-package-db ARG`
+
+  `glos-package-database`를 initialize합니다. `yes`, `no`, default True를 선택하는 `auto`를 사용할 수 있습니다.
+
+- `--enable-multi-package ARG`
+
+  Default로 활성화된 multi-package.yaml support를 활성화/비활성화합니다. `yes`, `no`, default True를 선택하는 `auto`를 사용할 수 있습니다.
+
+- `--all`
+
+  multi-package.yaml의 모든 Package를 build합니다.
+
+- `--no-cache`
+
+  Cache check를 비활성화하고 모든 dependency를 rebuild합니다.
+
+- `--multi-package-path FILE`
+
+  multi-package.yaml file path입니다.
+
+## Test flag
+
+- 위에서 설명한 모든 build/test flag입니다.
+
+- `--files`
+
+  지정 file의 test declaration만 실행합니다.
+
+- `--all`
+
+  현재 `glos-daml-package`와 dependency의 test를 실행합니다.
+
+- `--load-coverage-only`
+
+  Test를 실행하지 않습니다. File에서 `glos-daml-test-coverage` result만 load하고 aggregate를 단일 file에 기록합니다.
+
+- `--show-coverage`
+
+  상세 test `glos-daml-test-coverage`를 표시합니다.
+
+- `--color`
+
+  Test result에 color를 적용합니다\>.
+
+- `--junit FILENAME`
+
+  JUnit output filename입니다. De-facto test output 표준인 JUnit XML file format의 test output을 포함합니다. [JUnit XML](https://github.com/testmoapp/junitxml)을 참조하세요.
+
+- `--package-name PACKAGE-NAME`
+
+  지정 Package name의 Package artifact를 생성합니다.
+
+- `--table-output ARG`
+
+  Table output filename입니다. Daml Studio table view rendering에 사용하며 CLI에서도 사용할 수 있습니다.
+
+- `--transactions-output ARG`
+
+  Transaction list output filename입니다. Daml Studio transaction view rendering에 사용하며 CLI에서도 사용할 수 있습니다.
+
+- `--load-coverage ARG`
+
+  이전 `glos-daml-test-coverage` result를 읽을 file이며 여러 번 지정할 수 있습니다.
+
+- `--save-coverage ARG`
+
+  Final aggregated `glos-daml-test-coverage` result를 기록할 file입니다.
+
+- `--coverage-ignore-choice ARG`
+
+  Regex와 일치하는 Choice를 `glos-daml-test-coverage` report에서 제거합니다. Local Choice full name은 `<module>:<template name>:<choice name>` 형식이며 nonlocal Package에서는 앞에 `<package id>:`가 붙습니다.
+
+## Clean flag
+
+- `-h`, `--help`
+
+  Command line에서 호출하면 option 정보를 출력합니다.
+
+- `--package-root ARG`
+
+  DPM 전용 option입니다.
+
+  `daml.yaml`을 포함한 `glos-daml-package` root path입니다. Clean할 Package를 설정합니다. 이 option보다 `DAML_PACKAGE` environment variable을 권장합니다. 자세한 내용은 `dpm-configuration`을 참조하세요.
+
+- `--project-root ARG`
+
+  DPM-specific option.
+
+  `project-root`는 **deprecated**되었습니다. `--package-root`를 사용하세요.
+
+  `daml.yaml`을 포함한 `glos-daml-package` root path입니다. 이 option보다 `DAML_PACKAGE` environment variable을 권장합니다. 자세한 내용은 `dpm-configuration`을 참조하세요.
+
+- `--multi-package-path FILE`
+
+  multi-package.yaml file path입니다.
+
+- `--all`
+
+  multi-package.yaml의 모든 Package를 clean합니다.
+
+
+{/* COPIED_END */}

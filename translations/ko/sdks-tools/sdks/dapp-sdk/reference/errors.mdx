@@ -1,0 +1,42 @@
+---
+title: "Error"
+description: "dApp API가 반환하는 표준 error code입니다."
+source_id: "SRC-1224170663"
+source_path: "sdks-tools/sdks/dapp-sdk/reference/errors"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "627e92ce4949148edbd462e0b34bd6089132a200db2667278dd0c5d4d1317e5c"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/sdks/dapp-sdk/reference/errors.md)을 함께 확인하세요.
+</Warning>
+
+{/* COPIED_START source="splice-wallet-kernel:docs/dapp-sdk/reference/errors.md@0431c87e" */}
+
+dApp API는 [EIP-1193](https://eips.ethereum.org/EIPS/eip-1193)과 [EIP-1474](https://eips.ethereum.org/EIPS/eip-1474)의 표준 error code를 채택합니다. Message string이 아니라 code를 기준으로 분기하세요.
+
+## Error code
+
+| Code     | Message               | Meaning                                                  |
+| -------- | --------------------- | -------------------------------------------------------- |
+| `4001`   | User Rejected Request | User가 request를 거부했습니다.                           |
+| `4100`   | Unauthorized          | 요청한 method 또는 Account가 authorize되지 않았습니다.  |
+| `4200`   | Unsupported Method    | Provider가 요청한 method를 지원하지 않습니다.           |
+| `4900`   | Disconnected          | Provider가 모든 chain에서 disconnect되었습니다.         |
+| `4901`   | Chain Disconnected    | Provider가 요청한 chain에 연결되지 않았습니다.          |
+| `-32700` | Parse error           | 유효하지 않은 JSON입니다.                                |
+| `-32600` | Invalid request       | JSON이 유효한 request object가 아닙니다.                 |
+| `-32601` | Method not found      | Method가 존재하지 않습니다.                              |
+| `-32602` | Invalid params        | 유효하지 않은 method parameter입니다.                    |
+| `-32603` | Internal error        | Internal JSON-RPC error입니다.                            |
+
+전체 specification은 [CIP-103](https://github.com/canton-foundation/cips/blob/main/cip-0103/cip-0103.md)을 참조하세요.
+
+## 관련 문서
+
+- [Provider API](/sdks-tools/sdks/dapp-sdk/reference/provider-api) — 이 error를 반환할 수 있는 method입니다.
+
+{/* COPIED_END */}

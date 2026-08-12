@@ -1,0 +1,84 @@
+---
+title: "Community Binding"
+description: "Canton용 Python, Rust, Go, C# 및 기타 Community-maintained language binding입니다."
+source_id: "SRC-50A75170D5"
+source_path: "sdks-tools/language-bindings/community"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "bf4b56081876ef2af00fc1731d90f181d024d364f66d9fe4894c2013ef15b1c9"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/language-bindings/community.md)을 함께 확인하세요.
+</Warning>
+
+공식 지원 Java/TypeScript binding 외에도 Community member가 다른 언어용 client library를 구축했습니다. 이 binding은 **Canton Network가 maintain하거나 support하지 않으며** 전체 Ledger API surface를 다루지 못하거나 모든 Canton release를 따라가지 못할 수 있습니다.
+
+## 사용 가능한 Community Binding
+
+### Python
+
+[Daml Python binding, dazl](https://github.com/digital-asset/dazl-client)은 Ledger API 기반 application용 Python client를 제공합니다. Python `grpcio` library로 gRPC Ledger API를 wrapping해 command 제출과 event streaming에 더 Python다운 interface를 제공합니다.
+
+Python은 Ledger data 접근이 필요한 data analysis workflow, scripting, machine learning pipeline integration에 적합할 수 있습니다.
+
+### Rust
+
+[Rust Daml binding](https://github.com/fujiapple852/rust-daml-bindings) project는 Ledger API gRPC 접근을 포함한 비공식 Daml용 Rust binding/tool을 제공합니다. Rust의 performance 특성은 high-throughput event 처리나 system-level software에 Canton 접근을 embed하는 데 적합합니다.
+
+### Go
+
+[go-daml project](https://github.com/noders-team/go-daml)는 Canton/Daml Ledger용 Community Go SDK를 제공합니다. Go는 backend microservice와 infrastructure tooling에서 흔히 선택됩니다.
+
+### C#
+
+Community C# ecosystem에는 Daml Template에 strongly typed access를 제공하는 [.NET용 Canton Ledger API client package](https://github.com/peacefulstudio/canton-ledger-api-csharp)와 [Daml C# code generation](https://github.com/peacefulstudio/daml-codegen-csharp)이 있습니다. C#은 command 제출, Ledger event subscribe, 기존 enterprise application과 Ledger state integration이 필요한 .NET service에 적합할 수 있습니다.
+
+## Community Binding 사용
+
+이 binding은 Java/TypeScript처럼 Daml model에서 code generation되지 않으므로 일반적으로 raw Ledger API type을 사용합니다. 예를 들면 Template ID는 string, Contract payload는 generic value tree로 다룹니다. Compile-time safety는 낮지만 유연성은 높습니다.
+
+gRPC를 지원하는 모든 언어의 일반적인 접근법은 다음과 같습니다.
+
+1. [Canton repository](https://github.com/DACH-NY/canton) 또는 [Daml repository](https://github.com/digital-asset/daml)에서 Ledger API `.proto` file을 가져옵니다.
+2. `protoc`으로 대상 언어의 gRPC stub을 생성합니다.
+3. 일반적으로 port `x901`인 Validator Ledger API endpoint에 연결합니다.
+4. Generated stub으로 command를 제출하고 transaction stream을 subscribe합니다.
+
+gRPC 지원이 제한적인 언어에서는 JSON API, 즉 HTTP도 선택할 수 있습니다. Ledger API JSON encoding과 일치하는 JSON payload를 보내는 HTTP client library로 상호작용합니다.
+
+## Compatibility 고려사항
+
+Community binding을 사용할 때 다음을 고려하세요.
+
+- **API versioning** -- Ledger API는 Canton release에 따라 진화합니다. Community binding이 latest version보다 늦을 수 있으므로 target Canton deployment와 binding version의 compatibility를 확인하세요.
+- **Feature coverage** -- 일부 binding은 command 제출과 기본 query만 다루고 Package Management, Party allocation, transaction tree subscribe 같은 기능을 생략할 수 있습니다.
+- **Testing** -- DevNet/TestNet에 사용하기 전에 local Sandbox인 `dpm sandbox`에서 Community binding을 검증하세요.
+
+## Binding 검색 및 기여
+
+[Daml Community Forum](https://forum.canton.network/)은 Community-maintained binding을 찾고 질문하며 자체 implementation을 공유하는 주요 공간입니다. 관심 언어를 검색하거나 새 binding project를 시작한다면 질문을 올리세요.
+
+Community member는 Forum에서 새 binding과 주요 update를 자주 공지합니다. 여기에 없는 언어용 binding을 만들었다면 다른 사람도 활용할 수 있도록 공유하는 것을 고려하세요.
+
+## Official/Community Binding 선택
+
+다음 경우 **Official binding**, 즉 `dpm codegen-java` 기반 Java와 `dpm codegen-js` 기반 TypeScript를 사용합니다.
+
+- Daml model을 반영한 type-safe generated class가 필요합니다.
+- Target Canton version과 보장된 compatibility가 필요합니다.
+- Project에 Canton Network production support가 필요합니다.
+
+다음 경우 **Community binding**을 사용합니다.
+
+- Team의 주 언어가 Java나 TypeScript가 아닙니다.
+- Raw API 접근으로 충분한 tooling, script, data pipeline을 구축합니다.
+- Prototype 단계에서 이미 익숙한 언어를 선호합니다.
+
+## 관련 페이지
+
+- [Java binding](/sdks-tools/language-bindings/java) -- Official code-generated Java binding입니다.
+- [TypeScript binding](/reference/typescript) -- Official code-generated TypeScript binding입니다.
+- [Ledger API reference](/sdks-tools/api-reference/ledger-api) -- 모든 binding이 연결하는 기반 API입니다.

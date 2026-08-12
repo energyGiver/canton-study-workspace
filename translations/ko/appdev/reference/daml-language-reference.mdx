@@ -1,0 +1,1752 @@
+---
+title: "Daml Language Reference"
+description: "Daml template, choice, data type, expression, package, interface 및 exception reference"
+source_id: "SRC-35748EEDBB"
+source_path: "appdev/reference/daml-language-reference"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "ccffae4bebe5ae3e0fcffdc92280fc7544b1a5b673e106c13b029dfd818da7cc"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/appdev/reference/daml-language-reference.md)을 함께 확인하세요.
+</Warning>
+
+import DamlStructureOfTemplateOutlineSnippet from '/snippets/daml-docs/daml_Structure_of_template_outline_snippet.mdx';
+import DamlStructureOfChoiceSnippet from '/snippets/daml-docs/daml_Structure_of_choice_snippet.mdx';
+import DamlReferenceTemplateIntroSnippet from '/snippets/daml-docs/daml_Reference_template_intro_snippet.mdx';
+import DamlReferenceTemplateParamsSnippet from '/snippets/daml-docs/daml_Reference_template_params_snippet.mdx';
+import DamlReferenceTemplateSigsSnippet from '/snippets/daml-docs/daml_Reference_template_sigs_snippet.mdx';
+import DamlReferenceTemplateObsSnippet from '/snippets/daml-docs/daml_Reference_template_obs_snippet.mdx';
+import DamlReferenceTemplateChoiceSnippet from '/snippets/daml-docs/daml_Reference_template_choice_snippet.mdx';
+import DamlReferenceTemplateEnsureSnippet from '/snippets/daml-docs/daml_Reference_template_ensure_snippet.mdx';
+import DamlReferenceContractKeySnippet from '/snippets/daml-docs/daml_Reference_contract_key_snippet.mdx';
+import DamlInterfacesINTERFACEINSTANCEINTEMPLATE from '/snippets/daml-docs/daml_Interfaces_INTERFACE_INSTANCE_IN_TEMPLATE.mdx';
+import DamlReferenceChoiceNameSnippet from '/snippets/daml-docs/daml_Reference_choice_name_snippet.mdx';
+import DamlReferenceControllerSnippet from '/snippets/daml-docs/daml_Reference_controller_snippet.mdx';
+import DamlStructureOfChoiceObserverSnippet from '/snippets/daml-docs/daml_Structure_of_choice_observer_snippet.mdx';
+import DamlReferencePreconsumingSnippet from '/snippets/daml-docs/daml_Reference_preconsuming_snippet.mdx';
+import DamlReferencePostconsumingSnippet from '/snippets/daml-docs/daml_Reference_postconsuming_snippet.mdx';
+import DamlReferenceNonconsumingSnippet from '/snippets/daml-docs/daml_Reference_nonconsuming_snippet.mdx';
+import DamlReferenceChoiceParamsSnippet from '/snippets/daml-docs/daml_Reference_choice_params_snippet.mdx';
+import DamlRestrictedPayoutCHOICEWITHASSERT from '/snippets/daml-docs/daml_RestrictedPayout_CHOICE_WITH_ASSERT.mdx';
+import DamlSnippetsCHOICEWITHTIMECHECK from '/snippets/daml-docs/daml_Snippets_CHOICE_WITH_TIME_CHECK.mdx';
+import DamlSnippetsLISTSEXAMPLE from '/snippets/daml-docs/daml_Snippets_LISTS_EXAMPLE.mdx';
+import DamlPatternMatchingL817 from '/snippets/daml-docs/daml_PatternMatching_L8-17.mdx';
+import DamlPatternMatchingL2126 from '/snippets/daml-docs/daml_PatternMatching_L21-26.mdx';
+import DamlTubeSurfaceAreaL9 from '/snippets/daml-docs/daml_TubeSurfaceArea_L9.mdx';
+import DamlTubeSurfaceArea2L11 from '/snippets/daml-docs/daml_TubeSurfaceArea2_L11.mdx';
+import DamlTubeSurfaceAreaL1416 from '/snippets/daml-docs/daml_TubeSurfaceArea_L14-16.mdx';
+import DamlSnippetsLETEXPRESSION from '/snippets/daml-docs/daml_Snippets_LET_EXPRESSION.mdx';
+import DamlSnippetsLETINDO from '/snippets/daml-docs/daml_Snippets_LET_IN_DO.mdx';
+import DamlTubeSurfaceArea2L1314 from '/snippets/daml-docs/daml_TubeSurfaceArea2_L13-14.mdx';
+import DamlFunctionsPARTIALAPPLICATION from '/snippets/daml-docs/daml_Functions_PARTIAL_APPLICATION.mdx';
+import DamlFunctionsPARTIALLAMBDA from '/snippets/daml-docs/daml_Functions_PARTIAL_LAMBDA.mdx';
+import DamlTubeSurfaceArea2L814 from '/snippets/daml-docs/daml_TubeSurfaceArea2_L8-14.mdx';
+import DamlFunctionsHIGHERORDER from '/snippets/daml-docs/daml_Functions_HIGHER_ORDER.mdx';
+import DamlFunctionsGENERICFUNCTION from '/snippets/daml-docs/daml_Functions_GENERIC_FUNCTION.mdx';
+import DamlInterfacesINTERFACENAME from '/snippets/daml-docs/daml_Interfaces_INTERFACE_NAME.mdx';
+import DamlInterfacesINTERFACEMETHODS from '/snippets/daml-docs/daml_Interfaces_INTERFACE_METHODS.mdx';
+import DamlInterfacesINTERFACEVIEWTYPEDATATYPE from '/snippets/daml-docs/daml_Interfaces_INTERFACE_VIEWTYPE_DATATYPE.mdx';
+import DamlInterfacesINTERFACEVIEWTYPE from '/snippets/daml-docs/daml_Interfaces_INTERFACE_VIEWTYPE.mdx';
+import DamlInterfacesINTERFACECHOICES from '/snippets/daml-docs/daml_Interfaces_INTERFACE_CHOICES.mdx';
+import DamlInterfacesEMPTYINTERFACE from '/snippets/daml-docs/daml_Interfaces_EMPTY_INTERFACE.mdx';
+import DamlInterfacesTEMPLATEHEADER from '/snippets/daml-docs/daml_Interfaces_TEMPLATE_HEADER.mdx';
+import DamlInterfacesEMPTYINTERFACEINSTANCE from '/snippets/daml-docs/daml_Interfaces_EMPTY_INTERFACE_INSTANCE.mdx';
+import DamlInterfacesINTERFACEREQUIRES from '/snippets/daml-docs/daml_Interfaces_INTERFACE_REQUIRES.mdx';
+import DamlInterfacesINTERFACETRANSITIVEREQUIRESGIVEN from '/snippets/daml-docs/daml_Interfaces_INTERFACE_TRANSITIVE_REQUIRES_GIVEN.mdx';
+import DamlInterfacesINTERFACETRANSITIVEREQUIRESINCORRECT from '/snippets/daml-docs/daml_Interfaces_INTERFACE_TRANSITIVE_REQUIRES_INCORRECT.mdx';
+import DamlInterfacesINTERFACETRANSITIVEREQUIRESCORRECT from '/snippets/daml-docs/daml_Interfaces_INTERFACE_TRANSITIVE_REQUIRES_CORRECT.mdx';
+import DamlExceptionsEXCEPTION from '/snippets/daml-docs/daml_Exceptions_EXCEPTION.mdx';
+import DamlExceptionsTRY from '/snippets/daml-docs/daml_Exceptions_TRY.mdx';
+import DamlSnippetsSUMLISTEXAMPLE from '/snippets/daml-docs/daml_Snippets_SUM_LIST_EXAMPLE.mdx';
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/reference/daml/structure.rst" hash="018c350f" */}
+
+## Overview: Template Structure
+이 페이지는 template을 구성하는 부분과 각 부분의 위치를 설명합니다.
+
+Template *외부*의 Daml file structure는 `file-structure`를 참조하세요.
+
+### Template Outline Structure
+Daml template의 structure는 다음과 같습니다.
+
+<DamlStructureOfTemplateOutlineSnippet />
+
+[template name](#template-name)
+`template` keyword입니다.
+
+[parameters](#template-parameters)
+`with` 뒤에 parameter name과 type이 옵니다.
+
+Template body
+`where` keyword입니다.
+
+다음 항목을 포함할 수 있습니다.
+
+[template-local definition, deprecated](#template-local-definitions-deprecated)
+`let` keyword입니다.
+
+Contract argument에 접근할 수 있고 template definition의 나머지 부분에서 사용할 수 있는 definition을 만듭니다.
+
+[signatory](#signatory-parties)
+`signatory` keyword입니다.
+
+필수 항목입니다. 이 contract 생성에 동의해야 하는 party입니다. [Party](#built-in-types) type을 참조하세요. 모든 party가 authorize하기 전에는 contract를 생성할 수 없습니다.
+
+[observer](#observers)
+`observer` keyword입니다.
+
+선택 항목입니다. Signatory는 아니지만 contract를 볼 수 있어야 하는 party를 지정합니다.
+
+[precondition](#preconditions)
+`ensure` keyword입니다.
+
+`ensure` 뒤의 condition이 true로 evaluate될 때만 contract를 생성합니다.
+
+[contract key](#contract-keys-and-maintainers)
+`key` keyword입니다.
+
+선택 항목입니다. 이 template의 contract를 고유하게 식별하는 party와 기타 data의 조합을 지정합니다. [Contract Keys and Maintainers](#contract-keys-and-maintainers)를 참조하세요.
+
+[maintainer](#contract-keys-and-maintainers)
+`maintainer` keyword입니다.
+
+`key`를 지정했다면 필수입니다. Key는 `maintainer`별로만 고유합니다. [Contract Keys and Maintainers](#contract-keys-and-maintainers)를 참조하세요.
+
+[choice](#choices)
+`choice NameOfChoice : ReturnType controller nameOfParty do`
+
+Exercise할 수 있는 choice를 정의합니다. Choice에 포함할 수 있는 항목은 [Choice structure](#choice-structure)를 참조하세요.
+
+### Choice Structure
+Template 내부 choice의 structure는 다음과 같습니다.
+
+<DamlStructureOfChoiceSnippet />
+
+[consumption annotation](#contract-consumption)
+선택적으로 `preconsuming`, `postconsuming`, `nonconsuming` 중 하나를 지정합니다. 이는 privacy 및 contract archive 여부와 시점에 관한 choice behavior를 변경합니다. 자세한 내용은 [choice의 contract consumption](#contract-consumption)을 참조하세요.
+
+[name](#choice-name)
+대문자로 시작하고 고유해야 합니다. 서로 다른 template의 choice도 같은 name을 사용할 수 없습니다.
+
+[return type](#return-type)
+`:` 뒤에 choice의 return type을 지정합니다.
+
+[choice argument](#choice-arguments)
+`with` keyword입니다.
+
+`Party`를 choice argument로 포함하면 해당 `Party`를 choice의 `controller`로 만들 수 있습니다. 그러면 contract 생성 시점이 아니라 choice exercise 시점에 controller를 지정할 수 있습니다. Exercise가 동작하려면 party가 contract를 볼 수 있어야 하므로 `observer` 또는 `signatory`여야 합니다.
+
+[controller](#controllers)
+`controller` keyword입니다.
+
+Choice를 exercise할 수 있는 주체를 지정합니다.
+
+[choice observer](#choice-observers)
+`observer` keyword입니다.
+
+선택 항목입니다. Choice exercise에 대한 통지를 보장받는 추가 party입니다.
+
+Choice observer를 지정하려면 choice를 `choice` keyword로 시작해야 합니다.
+
+선택적인 `observer` keyword는 필수 `controller` keyword보다 앞에 와야 합니다.
+
+[choice body](#choice-body)
+`do` keyword 뒤에 옵니다.
+
+누군가 choice를 exercise할 때 발생하는 동작을 정의합니다. Choice body에는 update statement가 포함될 수 있습니다. 아래 [Choice body structure](#choice-body-structure)를 참조하세요.
+
+### Choice Body Structure
+Choice body에는 [do](#do) block으로 감싼 `Update` expression이 포함됩니다.
+
+Update expression은 다음과 같습니다.
+
+[create](#create)
+이 template의 새 contract를 생성합니다.
+
+`create NameOfContract with contractArgument1 = value1; contractArgument2 = value2; ...`
+
+[exercise](#exercise)
+특정 contract에서 choice를 exercise합니다.
+
+`exercise idOfContract NameOfChoiceOnContract with choiceArgument1 = value1; choiceArgument2 = value 2; ...`
+
+[fetch](#fetch)
+ID를 사용해 contract를 fetch합니다. Contract content의 condition을 확인하기 위해 assert와 함께 사용하는 경우가 많습니다.
+
+`fetchedContract <- fetch IdOfContract`
+
+[fetchByKey](#fetchbykey)
+`fetch`와 유사하지만 ID 대신 [contract key](#contract-keys-and-maintainers)를 사용합니다.
+
+`fetchedContract <- fetchByKey @ContractType contractKey`
+
+[lookupByKey](#lookupbykey)
+주어진 [contract key](#contract-keys-and-maintainers)를 가진 contract가 존재하는지 확인합니다.
+
+`fetchedContractId <- lookupByKey @ContractType contractKey`
+
+[abort](#abort)
+Choice 실행을 중단하고 update를 fail 처리합니다.
+
+`if False then abort`
+
+[assert](#assert)
+Condition이 true가 아니면 update를 fail 처리합니다. 일반적으로 contract choice에 전달할 수 있는 argument를 제한하는 데 사용합니다.
+
+`assert (amount > 0)`
+
+[getTime](#gettime)
+Ledger time을 가져옵니다. 일반적으로 choice를 exercise할 수 있는 시점을 제한하는 데 사용합니다.
+
+`currentTime <- getTime`
+
+[return](#return)
+Value를 명시적으로 return합니다. 기본적으로 choice는 마지막 update expression의 result를 return하므로 다른 값을 return할 때만 `return`이 필요합니다.
+
+`return ContractID ExampleTemplate`
+
+Choice body에는 다음 항목도 포함될 수 있습니다.
+
+[let keyword](#let)
+Value 또는 function을 assign하는 데 사용합니다.
+
+Update statement의 result를 value에 assign합니다.
+예: `contractFetched <- fetch someContractId`
+
+
+{/* COPIED_END */}
+
+
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/reference/daml/templates.rst" hash="964a20f1" */}
+
+## Reference: Templates
+이 절에서는 template reference를 제공합니다.
+
+Template structure는 `structure`를 참조하세요.
+
+### Template Name
+<DamlReferenceTemplateIntroSnippet />
+
+- Template의 name입니다. `template` keyword 뒤에 오며 대문자로 시작해야 합니다.
+- 가장 높은 nesting level입니다.
+- 이 template의 contract를 생성할 때 name을 사용합니다. 일반적으로 choice 내부에서 사용합니다.
+
+### Template Parameters
+<DamlReferenceTemplateParamsSnippet />
+
+- `with` keyword입니다. Parameter는 record type 형태입니다.
+- 이 template에서 contract를 생성할 때 전달하며 이후 template body 내부 scope에 포함됩니다.
+- Template parameter는 template 내부 choice argument와 같은 name을 사용할 수 없습니다.
+- Contract에 관여하는 모든 party는 `signatory`, `observer`, `controller` 중 어떤 role이든 개별 값 또는 list(`[Party]`) 형태로 contract parameter에 전달해야 합니다.
+
+### Implicit Record
+Template을 정의하면 해당 template과 같은 name 및 field를 가진 record가 암묵적으로 정의됩니다. Daml code는 이 record structure로 해당 template 기반 contract의 data를 표현합니다.
+
+일반적으로 `T`가 template이자 record일 때 type `T`의 local binding `b`가 존재한다고 해서 ledger에 `b`와 같은 data를 가진 contract가 반드시 존재하는 것은 아닙니다. `b`가 같은 transaction 안에서 ledger로부터 fetch한 result인 경우에만 그러한 contract가 존재한다고 가정할 수 있습니다.
+
+Ledger와 interaction하지 않고도 type `T`의 새 record instance를 만들 수 있으며, 이것이 create command를 구성하는 방식입니다.
+
+### `this` and `self`
+Template body에서는 현재 contract의 data를 나타내는 local binding `this`가 암묵적으로 정의됩니다. Template `T`에서 이 binding의 type은 template이 암묵적으로 정의한 record인 `T`입니다.
+
+Choice 내부에서는 binding `self`를 추가로 사용해 choice가 실행 중인 현재 contract의 contract ID를 참조할 수 있습니다. Template `T`의 contract에서 `self` binding type은 `ContractId T`입니다.
+
+### Template-local Definitions (Deprecated)
+<div className="todo">
+
+이 literal include를 수정하거나 제거해야 합니다.
+
+</div>
+
+- `let` keyword입니다. 다른 `let` block과 마찬가지로 block을 시작하고 임의 개수의 definition이 뒤따릅니다.
+- Template parameter와 `this`는 scope에 포함되지만 `self`는 포함되지 않습니다.
+- `let` block의 definition은 template의 `where` block 어디에서나 사용할 수 있습니다.
+
+<Warning>
+Daml 2.8.0부터 template-local definition은 deprecated됐으며 사용하면 다음 warning이 발생합니다.
+
+``` text
+Template-local binding syntax ("template-let") is deprecated,
+it will be removed in a future version of Daml.
+Instead, use plain top level definitions, taking parameters
+for the contract fields or body ("this") if necessary.
+```
+
+Deprecated된 이유는 template-local definition에서 일부 `this` keyword 사용이 암묵적인 circular dependency를 만들어 evaluation 과정에서 infinite loop를 일으킬 수 있기 때문입니다.
+</Warning>
+
+#### Migration
+이 feature를 사용하지 않도록 code를 변경하는 것을 강력히 권장합니다. 각 template-local definition을 일반 top-level definition으로 교체해야 합니다. 기존 definition이 contract field 또는 contract body(`this`)를 사용했다면 새 definition은 이를 parameter로 받아야 하며, 해당 definition을 사용하는 위치에서는 적절한 값을 argument로 전달해야 합니다.
+
+아래 template `Person`은 template-local binding `fullName`을 정의하고 사용하므로 이제 deprecation warning이 발생합니다.
+
+```haskell
+template Person
+  with
+    owner : Party
+    first : Text
+    last : Text
+  where
+    signatory owner
+    let fullName = last <> ", " <> first
+    nonconsuming choice GetDescription : ()
+      controller owner
+      do
+        let desc = "An account owned by " <> fullName <> "."
+        debug desc
+```
+
+Feature가 제거된 뒤에도 code가 동작하게 하려면 `fullName`을 top-level function으로 정의하고 사용 위치에서 `this`를 명시적으로 전달해야 합니다.
+
+```haskell
+fullName : Person -> Text
+fullName Person {first, last} = last <> ", " <> first
+-- takes 'Person' as an explicit parameter and unpacks required fields
+
+template Person
+  with
+    owner : Party
+    first : Text
+    last : Text
+  where
+    signatory owner
+    nonconsuming choice GetDescriptionV3 : ()
+      controller owner
+      do
+        -- let bindings in choice bodies are unaffected
+        let desc = "An account owned by " <> fullName this <> "."
+                                             -- 'this' is passed explicitly
+        debug desc
+```
+
+#### Turning off the warning
+이 warning은 `template-let` warning flag로 control하므로 다른 warning과 독립적으로 toggle할 수 있습니다. 이 syntax를 사용한 code를 단계적으로 migrate할 때 특히 유용합니다.
+
+Daml file에서 warning을 끄려면 file 상단에 다음 line을 추가합니다.
+
+```haskell
+{-# OPTIONS_GHC -Wno-template-let #-}
+```
+
+전체 Daml project에서 warning을 끄려면 project의 `daml.yaml` file에 있는 `build-options` field에 다음 entry를 추가합니다.
+
+```yaml
+build-options:
+- --ghc-option=-Wno-template-let
+```
+
+`daml.yaml` file을 통해 warning을 끈 project에서도 개별 Daml file 상단에 다음 line을 추가하면 warning을 다시 켤 수 있습니다.
+
+```haskell
+{-# OPTIONS_GHC -Wtemplate-let #-}
+```
+
+### Signatory Parties
+<DamlReferenceTemplateSigsSnippet />
+
+- `where` 뒤에 오는 `signatory` keyword이며 하나 이상의 `Party`가 뒤따릅니다.
+
+- Signatory는 이 contract 생성에 동의해야 하는 party입니다. `Party` type을 참조하세요. Contract가 생성될 때 *obligable position*에 놓이는 party입니다.
+
+  Daml은 동의 없이 누군가를 obligable position에 놓지 않습니다. 따라서 contract가 어떤 party에게 obligation을 발생시킨다면 그 party는 *반드시* signatory여야 합니다. **Party가 authorize하지 않으면 contract를 생성할 수 없습니다.** 이 경우 다음과 같은 error가 표시될 수 있습니다.
+
+  `NameOfTemplate requires authorizers Party1,Party2,Party, but only Party1 were given.`
+
+- Signatory가 contract 생성에 동의하면 해당 contract에서 exercise할 수 있는 choice의 consequence도 authorize합니다.
+
+- Contract는 모든 signatory와 기타 contract stakeholder에게 표시됩니다. Compiler는 signatory를 observer로 자동 추가합니다.
+
+- 각 template에는 signatory가 **하나 이상** 있어야 합니다. Signatory declaration은 `signatory` keyword 뒤에 comma로 구분한 하나 이상의 expression으로 구성되며, 각 expression은 `Party` 또는 그 collection을 나타냅니다.
+
+### Observers
+<DamlReferenceTemplateObsSnippet />
+
+- `where` 뒤에 오는 `observer` keyword이며 하나 이상의 `Party`가 뒤따릅니다.
+- Observer는 추가 stakeholder이므로 이 party에게 contract가 표시됩니다. `Party` type을 참조하세요.
+- 선택 항목이며 comma로 구분하거나 keyword를 반복해 여러 observer를 지정할 수 있습니다. `[Party]` type의 list도 전달할 수 있습니다.
+- Contract를 보거나 contract event를 통지받아야 하지만 signatory 또는 controller가 아닌 party에 사용합니다.
+- Choice를 `controller`가 아니라 `choice`로 시작한다면 아래 `daml-ref-choices`를 참조하고, 잠재적인 controller를 observer로 추가해야 합니다. 그렇지 않으면 contract를 볼 수 없어 choice를 exercise할 수 없습니다.
+
+### Choices
+<DamlReferenceTemplateChoiceSnippet />
+
+- Contract가 controlling party에게 부여하며 *exercise*할 수 있는 권리입니다.
+- 본질적으로 template의 모든 logic이 들어가는 위치입니다.
+- 기본적으로 choice는 *consuming*입니다. Choice를 exercise하면 contract가 archive돼 더 이상 choice를 exercise할 수 없습니다. `nonconsuming` keyword로 non-consuming choice를 만들 수 있습니다.
+- 전체 reference는 `choices`를 참조하세요.
+
+### Serializable Types
+Template의 모든 parameter, choice argument 및 choice result는 *serializable type*이어야 합니다. 이는 단순히 "byte로 변환 가능"하다는 뜻이 아니라 Daml에서 특정한 의미를 가지며 다음 세 목적을 제공합니다.
+
+1.  Ledger value를 영구 저장하는 안정적인 수단을 제공합니다.
+2.  `ledger-api`를 통해 적절한 encoding을 제공합니다.
+3.  Language codegen에서 Java 같은 language의 Daml counterpart와 직접 대응하는 적절한 *type*을 제공합니다.
+
+예를 들어 Daml이 제공하는 일부 type parameter는 (1), (2)와 compatible하지만 (3)에 적절한 counterpart가 없어 허용되지 않습니다. 마찬가지로 function type은 적절한 Java counterpart가 있어 (3)을 충족하지만 API를 통해 안정적으로 저장하거나 공유할 방법이 없어 (1), (2)를 충족하지 못합니다.
+
+다음 type은 *serializable하지 않으므로* template에서 사용할 수 없습니다.
+
+- Function type
+- Serializable하지 않은 field가 있는 record type
+- Serializable하지 않은 value case가 있는 variant type
+- Constructor가 없는 variant 및 enum type
+- Serializable하지 않은 type argument가 있는 parameterized data type reference. Data type definition이 type parameter를 사용하는지와 무관하게 적용됩니다.
+- `Nat` kind 또는 `*` 이외 kind의 type parameter가 있는 defined data type. 즉 higher-kinded type 및 `Numeric`에 전달할 목적으로만 parameter를 받는 type은 serializable하지 않습니다.
+
+#### Migration
+Agreement declaration feature는 language에서 완전히 제거됐으므로 code에서 모든 agreement declaration을 제거해야 합니다.
+
+### Preconditions
+<DamlReferenceTemplateEnsureSnippet />
+
+- Boolean condition이 뒤따르는 `ensure` keyword입니다.
+- Contract 생성 시 사용합니다. `ensure`는 contract parameter로 전달할 수 있는 value를 제한하며 boolean condition이 true일 때만 contract를 생성할 수 있습니다.
+
+### Contract Keys and Maintainers<span id="daml-ref-contract-keys"></span>
+<DamlReferenceContractKeySnippet />
+
+- `key` 및 `maintainer` keyword입니다.
+
+- 이 feature는 contract를 해당 template의 instance로 고유하게 식별하는 "key"를 지정합니다.
+
+- `key`를 지정하면 `maintainer`도 지정해야 합니다. Maintainer는 자신이 인지하는 모든 key의 uniqueness를 보장하는 `Party`입니다.
+
+  따라서 `key`에는 `maintainer` `Party`를 포함해야 하며, 예를 들어 tuple 또는 record의 일부로 포함할 수 있습니다. `maintainer`는 signatory여야 합니다.
+
+- 전체 설명은 `contractkeys`를 참조하세요.
+
+### Interface Instances
+<DamlInterfacesINTERFACEINSTANCEINTEMPLATE />
+
+- Template을 기존 interface의 instance로 만드는 데 사용합니다.
+- Clause는 `interface instance` keyword로 시작하고 interface name, `for` keyword, enclosing declaration과 일치해야 하는 template name, 마지막으로 interface의 **모든** method를 구현하는 block을 시작하는 `where` keyword 순서로 구성됩니다.
+- Interface 전체 reference는 `interfaces`, interface instance는 `interface-instances` 절을 참조하세요.
+
+
+{/* COPIED_END */}
+
+
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/reference/daml/choices.rst" hash="a391ce22" */}
+
+## Reference: Choices
+이 절에서는 choice reference를 제공합니다. Choice의 high-level structure는 `structure`를 참조하세요.
+
+### Choice Name
+<DamlReferenceChoiceNameSnippet />
+
+- `choice` keyword입니다.
+- Choice의 name이며 대문자로 시작해야 합니다.
+- Module 안에서 고유해야 합니다. 같은 module에 정의된 서로 다른 template은 choice name을 공유할 수 없습니다.
+
+### Controllers
+<DamlReferenceControllerSnippet />
+
+- `controller` keyword입니다.
+
+- Controller는 comma로 구분한 value list이며 각 value는 party 또는 party collection입니다.
+
+  Choice를 exercise할 때 **모든** party가 함께 authorize해야 합니다.
+
+<Warning>
+Controller party가 contract의 observer 또는 signatory인지 **반드시** 확인해야 합니다. 그렇지 않으면 contract를 볼 수 없어 choice를 exercise할 수 없습니다.
+</Warning>
+
+### Choice Observers
+`observer` keyword를 사용해 *choice observer*를 choice에 연결할 수 있습니다. Choice observer는 stakeholder는 아니지만 action의 모든 consequence를 볼 수 있는 party list입니다.
+
+<DamlStructureOfChoiceObserverSnippet />
+
+#### Contract Consumption
+Qualifier가 없으면 choice는 *consuming*입니다. Choice body를 evaluate하기 전에 contract가 archive되며 controller와 모든 contract stakeholder가 action의 모든 consequence를 볼 수 있습니다.
+
+### Preconsuming Choices
+<DamlReferencePreconsumingSnippet />
+
+- 선택적인 `preconsuming` keyword입니다.
+- Choice를 pre-consuming으로 만듭니다. Exercise body를 실행하기 전에 contract가 archive됩니다.
+- Contract의 create argument는 exercise body에서 계속 사용할 수 있지만 contract ID로 fetch할 수는 없습니다.
+- Archival behavior는 기본 *consuming* behavior와 유사합니다.
+- Contract의 controller와 signatory만 action의 모든 consequence를 봅니다. 다른 stakeholder는 archive action만 봅니다.
+- 다른 동작보다 먼저 contract를 암묵적으로 archive하는 non-consuming choice로 이해할 수 있습니다.
+
+### Postconsuming Choices
+<DamlReferencePostconsumingSnippet />
+
+- 선택적인 `postconsuming` keyword입니다.
+- Choice를 post-consuming으로 만듭니다. Exercise body를 실행한 뒤 contract가 archive됩니다.
+- Contract의 create argument를 exercise body에서 계속 사용할 수 있고 contract ID로 fetch할 수도 있습니다.
+- Contract의 controller와 signatory만 action의 모든 consequence를 봅니다. 다른 stakeholder는 archive action만 봅니다.
+- Choice exercise 뒤에 contract를 암묵적으로 archive하는 non-consuming choice로 이해할 수 있습니다.
+
+### Non-consuming Choices
+<DamlReferenceNonconsumingSnippet />
+
+- 선택적인 `nonconsuming` keyword입니다.
+- Choice를 non-consuming으로 만듭니다. Choice를 exercise해도 contract를 archive하지 않습니다.
+- Contract의 controller와 signatory만 action의 모든 consequence를 봅니다.
+- Choice를 두 번 이상 exercise해야 하는 여러 상황에서 유용합니다.
+
+#### Return Type
+- Return type은 choice name 바로 뒤에 작성합니다.
+- 모든 choice에는 return type이 있습니다. 아무것도 return하지 않으면 "unit", 즉 `()`를 return한다고 표시해야 합니다.
+- Choice body에서 contract를 생성했다면 일반적으로 `ContractId <name of template>` type인 contract ID를 return합니다. 이 값은 choice exercise 시 return되며 여러 방식으로 사용할 수 있습니다.
+
+### Choice Arguments
+<DamlReferenceChoiceParamsSnippet />
+
+- `with` keyword입니다.
+- Choice argument는 `daml-ref-template-parameters`와 유사한 record type structure입니다.
+- Choice argument는 해당 choice가 속한 template의 parameter와 같은 name을 사용할 수 없습니다.
+- 선택 항목이며 choice exercise에 추가 정보를 전달해야 할 때만 사용합니다.
+
+### Choice Body
+- `do`로 시작합니다.
+- 이 절의 logic은 choice가 exercise될 때 실행됩니다.
+- Choice body에는 `Update` expression이 포함됩니다. 자세한 내용은 `updates`를 참조하세요.
+- 기본적으로 choice의 마지막 expression을 return합니다. 여러 update를 tuple 또는 custom data type으로 return할 수 있습니다. `Update` type이 아닌 값을 return하려면 `return` keyword를 사용합니다.
+
+
+{/* COPIED_END */}
+
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/reference/daml/updates.rst" hash="f8b9a0ff" */}
+
+## Reference: Updates
+이 절에서는 Update reference를 제공합니다. Update를 둘러싼 structure는 `structure`를 참조하세요.
+
+### Background
+- `Update`는 ledger update이며 여러 종류가 아래에 나열돼 있습니다.
+- Choice body에 들어갈 수 있는 항목입니다.
+
+### Binding Variables
+```haskell
+boundVariable <- UpdateExpression1
+```
+
+- Choice body에서는 Update expression을 variable에 bind, 즉 assign할 수 있습니다. 아래 모든 Update에 적용됩니다.
+
+### do
+```haskell
+do
+   updateExpression1
+   updateExpression2
+```
+
+- `do`는 `Update` expression을 group으로 묶습니다. Choice에는 update expression을 하나만 둘 수 있으므로 매우 단순한 choice가 아니라면 `do` block을 사용합니다.
+
+- Choice body에 넣을 수 있는 모든 항목을 `do` block에 넣을 수 있습니다.
+
+- 기본적으로 `do`는 **block의 마지막 expression**이 return하는 값을 return합니다.
+
+  다른 값을 return하려면 `return`을 명시적으로 사용해야 합니다. 예제는 `daml-ref-return`을 참조하세요.
+
+### archive
+```haskell
+archive ContractId
+```
+
+- `archive` function입니다.
+- 이미 생성돼 ledger에 있는 contract를 archive합니다. 고유 contract identifier `ContractId <name of template>`로 contract를 fetch한 뒤 해당 contract에서 `Archive` choice를 exercise합니다.
+- Unit을 return합니다.
+- Contract controller/signatory의 authorization이 필요합니다. 필요한 authorization이 없으면 transaction이 fail합니다. 자세한 내용은 `daml-ref-signatories`를 참조하세요.
+- 모든 template에는 제거할 수 없는 `Archive` choice가 암묵적으로 있으며 다음과 같습니다.
+
+```haskell
+choice Archive : ()
+  controller (signatory this)
+  do return ()
+```
+
+### create
+```haskell
+create NameOfTemplate with exampleParameters
+```
+
+- `create` function입니다.
+
+- Ledger에 contract를 생성합니다. Contract가 ledger에 commit되면 `ContractId <name of template>` type의 고유 contract identifier가 부여됩니다.
+
+- Contract 생성은 해당 `ContractId`를 return합니다.
+
+- `with`로 template parameter를 지정합니다.
+
+- 생성할 contract signatory의 authorization이 필요합니다. 다른 contract를 생성하는 원래 contract의 signatory 또는 controller이거나 contract를 직접 명시적으로 생성하면 authorization이 주어집니다.
+
+  필요한 authorization이 없으면 transaction이 fail합니다. 자세한 내용은 `daml-ref-signatories`를 참조하세요.
+
+### exercise
+```haskell
+exercise IdOfContract NameOfChoiceOnContract with choiceArgument1 = value1
+```
+
+- `exercise` function입니다.
+- 지정된 contract에서 지정된 choice를 exercise합니다.
+- `with`로 choice parameter를 지정합니다.
+- Choice controller의 authorization이 필요합니다. Authorization이 없으면 transaction이 fail합니다.
+
+### exerciseByKey
+```haskell
+exerciseByKey @ContractType contractKey NameOfChoiceOnContract with choiceArgument1 = value1
+```
+
+- `exerciseByKey` function입니다.
+- `exercise`와 유사하지만 contract ID 대신 contract key로 contract를 지정합니다.
+- 자세한 내용은 Reference: Contract Keys의 exerciseByKey를 참조하세요.
+
+### fetch
+```haskell
+fetchedContract <- fetch IdOfContract
+```
+
+- `fetch` function입니다.
+- 해당 ID를 가진 contract를 fetch합니다. 위 예제처럼 bound variable과 함께 사용하는 경우가 많습니다.
+- Contract에서 choice를 exercise하기 전에 contract detail을 확인하거나 reference data를 참조할 때 자주 사용합니다.
+- `cid`가 active contract의 contract ID가 아니면 `fetch cid`가 fail하고 전체 transaction이 abort됩니다.
+- Submit party는 contract의 observer 또는 signatory여야 합니다. 그렇지 않으면 `fetch`가 fail하고 전체 transaction이 abort됩니다.
+
+### fetchByKey
+```haskell
+fetchedContract <- fetchByKey @ContractType contractKey
+```
+
+- `fetchByKey` function입니다.
+- `fetch`와 유사하지만 contract ID 대신 contract key로 contract를 fetch합니다.
+- 자세한 내용은 [Contract Keys](/appdev/modules/m3-contract-keys#fetchbykey)를 참조하세요.
+
+### visibleByKey
+```haskell
+isVisible <- visibleByKey @ContractType contractKey
+```
+
+- `visibleByKey` function입니다.
+- 주어진 contract key를 가진 contract가 존재하는지 확인합니다.
+- 자세한 내용은 Reference: Contract Keys의 visibleByKey를 참조하세요.
+
+### lookupByKey
+```haskell
+fetchedContractId <- lookupByKey @ContractType contractKey
+```
+
+- `lookupByKey` function입니다.
+- 주어진 contract key를 가진 contract가 존재하는지 확인합니다.
+- 자세한 내용은 Reference: Contract Keys의 lookupByKey를 참조하세요.
+
+### abort
+```haskell
+abort errorMessage
+```
+
+- `abort` function입니다.
+- Transaction을 fail 처리하며 transaction의 어떤 내용도 ledger에 commit되지 않습니다.
+- `errorMessage`는 `Text` type입니다. Error message로 external system에 더 많은 context를 제공합니다. 예를 들어 Daml Studio script result에 표시됩니다.
+- 대신 `assert False`를 사용할 수도 있습니다.
+
+### assert
+```haskell
+assert (condition == True)
+```
+
+- `assert` keyword입니다.
+- Condition이 false이면 transaction을 fail 처리합니다. 따라서 boolean expression이 `True`로 evaluate될 때만 choice를 exercise할 수 있습니다.
+- Contract choice에 전달할 수 있는 argument를 제한하는 데 자주 사용합니다.
+
+다음은 parameter로 전달된 `Party`가 blacklist에 있을 때 choice exercise를 막는 `assert` 예제입니다.
+
+<DamlRestrictedPayoutCHOICEWITHASSERT />
+
+### getTime
+```haskell
+currentTime <- getTime
+```
+
+- `getTime` keyword입니다.
+- Ledger time을 가져옵니다. 일반적으로 value에 접근할 수 있도록 즉시 variable에 bind합니다.
+- Choice를 실행할 수 있는 시점을 제한합니다. 예를 들어 특정 시각보다 늦었는지 `assert`로 확인합니다.
+
+다음은 현재 시각을 확인하는 choice 예제입니다.
+
+<DamlSnippetsCHOICEWITHTIMECHECK />
+
+### return
+```haskell
+return ()
+```
+
+- `return` keyword입니다.
+- `do` block에서 `Update` type이 아닌 value를 return합니다.
+
+다음 예제는 choice에서 contract 두 개를 생성하고 두 ID를 tuple로 return합니다.
+
+```haskell
+do
+  firstContract <- create SomeContractTemplate with arg1; arg2
+  secondContract <- create SomeContractTemplate with arg1; arg2
+  return (firstContract, secondContract)
+```
+
+### let
+`daml-ref-let` documentation을 참조하세요.
+
+Let은 variable binding과 비슷해 보이지만 매우 다릅니다. 다음 code example을 참조하세요.
+
+```haskell
+do
+  -- defines a function, createdContract, taking a single argument that when
+  -- called _will_ create the new contract using argument for issuer and owner
+  let createContract x = create NameOfContract with issuer = x; owner = x
+
+  createContract party1
+  createContract party2
+```
+
+### this
+`this`를 사용하면 choice body 내부에서 현재 contract를 참조할 수 있습니다. Contract ID가 아니라 *contract*를 참조합니다.
+
+예를 들어 현재 contract를 template 외부의 helper function에 전달할 때 유용합니다.
+
+
+{/* COPIED_END */}
+
+
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/reference/daml/data-types.rst" hash="e8514698" */}
+
+## Reference: Data Types
+이 절에서는 Daml data type reference를 제공합니다.
+
+### Built-in Types
+#### Table of built-in primitive types
+| Type        | 용도                                    | Example                           | 설명                                                                                                                                                                                                                                                                                                                                                                                               |
+|-------------|----------------------------------------|-----------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Int`       | Integer                               | `1`, `1000000`, `1_000_000`       | `Int` value는 signed 64-bit integer이며 `-9,223,372,036,854,775,808` 이상 `9,223,372,036,854,775,807` 이하의 수를 표현합니다. Overflow 또는 `0`으로 나누는 arithmetic operation은 error를 발생시킵니다. 긴 숫자의 가독성을 위해 underscore를 선택적으로 추가할 수 있습니다.                                                                                                       |
+| `Decimal`   | `Numeric 10`의 축약형                 | `1.0`                             | `Decimal` value는 precision 38, scale 10인 rational number입니다.                                                                                                                                                                                                                                                                                                                               |
+| `Numeric n` | Fixed-point decimal number            | `1.0`                             | `Numeric n` value는 총 `38` digit의 rational number입니다. Scale parameter `n`은 decimal point 뒤 digit 수를 control합니다. 예를 들어 `Numeric 10`은 decimal point 앞 28 digit와 뒤 10 digit, `Numeric 20`은 앞 18 digit와 뒤 20 digit을 가집니다. `n`은 `0` 이상 `37` 이하이어야 합니다. |
+| `Text`      | String                                | `"hello"`                         | `Text` value는 double quote로 감싼 character string입니다.                                                                                                                                                                                                                                                                                                                                  |
+| `Bool`      | Boolean value                         | `True`, `False`                   |                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `Party`     | Party를 나타내는 Unicode string    | `alice <- getParty "Alice"`       | Daml system의 각 *party*는 `Party` type의 고유 identifier를 가집니다. `Party` type value를 만들려면 `getParty` call result를 bind합니다. Party text에는 alphanumeric character, `-`, `_`, space만 사용할 수 있습니다.                                                                                                                                                           |
+| `Date`      | Date model                           | `date 2007 Apr 5`                 | 허용되는 date range는 year-month-day format 기준 `0001-01-01`부터 `9999-12-31`입니다. `Date` type value를 만들려면 `date` function을 사용하며 이 function은 `DA.Date`를 import해 가져옵니다.                                                                                                                                                                                                      |
+| `Time`      | Absolute time(UTC) model             | `time (date 2007 Apr 5) 14 30 05` | `Time` value는 microsecond precision을 가지며 year-month-day format 기준 `0001-01-01`부터 `9999-12-31`까지 허용됩니다. `Time` type value를 만들려면 `Date`와 `time` function을 사용하며 이 function은 `DA.Time`을 import해 가져옵니다.                                                                                                                                                     |
+| `RelTime`   | Time value 간 차이 model | `seconds 1`, `seconds (-2)`       | `RelTime` value는 microsecond precision을 가지며 허용 range는 `-9,223,372,036,854,775,808ms`부터 `9,223,372,036,854,775,807ms`입니다. `RelTime` literal은 없습니다. 대신 `days`, `hours`, `minutes`, `seconds`, `milliseconds`, `microseconds` 중 하나로 생성하며 이 function들은 `DA.Time`을 import해 가져옵니다.       |
+
+#### Escaping Characters
+`Text` literal은 delimiter(`\"`)와 backslash 자체(`\\`)를 포함하기 위한 backslash escape를 지원합니다.
+
+#### Time
+Ledger의 time definition은 execution environment의 property입니다. Daml은 contract stakeholder 사이에 time에 대한 공통 이해가 있다고 가정합니다.
+
+### Lists
+`[a]`는 type `a` element list를 나타내는 built-in data type입니다. Empty list는 `[]`로 표시하며 `[1, 3, 2]`는 `[Int]` type list의 예입니다.
+
+`[]`와 list 앞에 element를 추가하는 operator `::`로 list를 구성할 수도 있습니다. 예제는 다음과 같습니다.
+
+<DamlSnippetsLISTSEXAMPLE />
+
+#### Sum a List
+List의 합계를 계산하려면 Daml에 loop가 없으므로 *fold*를 사용합니다. 자세한 내용은 `daml-ref-folding`을 참조하세요.
+
+### Records and Record Types
+`data` 및 `with` keyword로 새 record type을 선언합니다.
+
+```haskell
+data MyRecord = MyRecord
+  with
+    label1 : type1
+    label2 : type2
+    ...
+    labelN : typeN
+  deriving (Eq, Show)
+```
+
+각 항목은 다음과 같습니다.
+
+- `label1`, `label2`, ..., `labelN`은 record type 안에서 고유해야 하는 *label*입니다.
+- `type1`, `type2`, ..., `typeN`은 field type입니다.
+
+Record type은 다음과 같이 작성할 수도 있습니다.
+
+```haskell
+data MyRecord = MyRecord { label1 : type1; label2 : type2; ...; labelN : typeN }
+  deriving (Eq, Show)
+```
+
+`with` format과 `{ }` format은 syntax상 완전히 같습니다. 주요 차이는 `with`를 사용하면 newline과 적절한 indentation으로 delimiter semicolon을 생략할 수 있다는 점입니다.
+
+`deriving (Eq, Show)`는 data type을 `==`로 compare하고 `show`로 표시할 수 있게 합니다. `template` field에 사용하는 data type에는 `deriving`으로 시작하는 line이 필요합니다.
+
+일반적으로 data type에 compare하거나 표시할 수 없는 function type, 예를 들어 `Int -> Int`가 포함된 경우가 아니라면 `deriving`을 추가합니다.
+
+예제는 다음과 같습니다.
+
+```haskell
+-- This is a record type with two fields, called first and second,
+-- both of type `Int`
+data MyRecord = MyRecord with first : Int; second : Int
+  deriving (Eq, Show)
+
+-- An example value of this type is:
+newRecord = MyRecord with first = 1; second = 2
+
+-- You can also write:
+newRecord = MyRecord 1 2
+```
+
+#### Data Constructors
+`data` keyword로 새 data type을 정의할 수 있습니다. 예를 들어 임의 type `a`에 대해 `data Floor a = Floor a`로 정의합니다.
+
+Expression의 첫 번째 `Floor`는 *type constructor*입니다. 두 번째 `Floor`는 `Floor 0`, `Floor 1`처럼 `Floor Int` type value를 지정하는 *data constructor*입니다.
+
+Daml에서 data constructor는 *최대 하나의 argument*를 받을 수 있습니다.
+
+Argument가 없는 data constructor의 예는 `data Empty = Empty {}`입니다. `Empty` type의 유일한 value는 `Empty`입니다.
+
+<Note>
+`data Confusing = Int`에서 `Int`는 argument가 없는 data constructor이며 built-in `Int` type과 관련이 없습니다.
+</Note>
+
+#### Access Record Fields
+Record type field에 접근하려면 dot notation을 사용합니다.
+
+```haskell
+-- Access the value of the field `first`
+val.first
+
+-- Access the value of the field `second`
+val.second
+```
+
+#### Update Record Fields
+`with` keyword를 사용해 기존 record의 선택한 field를 교체한 새 record를 만들 수도 있습니다.
+
+예제는 다음과 같습니다.
+
+```haskell
+myRecord = MyRecord with first = 1; second = 2
+
+myRecord2 = myRecord with second = 5
+```
+
+위 code는 새 record value `MyRecord with first = 1; second = 5`를 생성합니다.
+
+Label과 같은 name의 variable이 있으면 Daml에서는 더 간결하게 보이도록 assignment 없이 사용할 수 있습니다.
+
+```haskell
+-- if you have a variable called `second` equal to 5
+second = 5
+
+-- you could construct the same value as before with
+myRecord2 = myRecord with second = second
+
+-- or with
+myRecord3 = MyRecord with first = 1; second = second
+
+-- but Daml has a nicer way of putting this:
+myRecord4 = MyRecord with first = 1; second
+
+-- or even
+myRecord5 = r with second
+```
+
+<Note>
+`with` keyword는 function application보다 강하게 bind됩니다. 따라서 `return` 같은 function에서는 `return IntegerCoordinate with first = 1; second = 5` 또는 parenthesis로 감싼 `return (IntegerCoordinate {first = 1; second = 5})`를 작성합니다.
+</Note>
+
+#### Parameterized Data Types
+Daml은 parameterized data type을 지원합니다.
+
+예를 들어 2D coordinate의 더 일반적인 type을 다음과 같이 표현합니다.
+
+```haskell
+-- Here, a and b are type parameters.
+-- The Coordinate after the data keyword is a type constructor.
+data Coordinate a b = Coordinate with first : a; second : b
+```
+
+`Coordinate`로 구성할 수 있는 type의 예는 `Coordinate Int Int`입니다.
+
+### Type Synonyms
+Type synonym을 선언하려면 `type` keyword를 사용합니다.
+
+예제는 다음과 같습니다.
+
+```haskell
+type IntegerTuple = (Int, Int)
+```
+
+그러면 `IntegerTuple`과 `(Int, Int)`이 synonym이 됩니다. 두 표현은 같은 type이며 서로 바꿔 사용할 수 있습니다.
+
+`daml-ref-built-in-types`를 포함한 모든 type에 `type` keyword를 사용할 수 있습니다.
+
+#### Function Types
+Function type은 parameter type과 result type을 포함합니다. Parameter가 두 개인 function `foo`의 type은 `ParamType1 -> ParamType2 -> ReturnType`입니다.
+
+Function type도 다른 type과 같이 다룰 수 있습니다. 예를 들어 `type FooType = ParamType1 -> ParamType2 -> ReturnType`으로 synonym을 지정할 수 있습니다.
+
+### Algebraic Data Types
+Algebraic data type은 다른 type의 조합으로 만들어진 composite type입니다. Enumeration data type이 한 예이며, 이 절에서는 더 강력한 algebraic data type을 설명합니다.
+
+#### Product Types
+다음 data constructor는 Daml에서 유효하지 않습니다: `data AlternativeCoordinate a b = AlternativeCoordinate a b`. Data constructor는 argument를 하나만 받을 수 있기 때문입니다.
+
+이를 해결하려면 value를 record로 감쌉니다: `data Coordinate a b = Coordinate {first: a; second: b}`.
+
+이러한 type을 *product type*이라고 합니다.
+
+`Coordinate Int Int` type에 첫 번째와 두 번째 dimension, 즉 2D product space가 있다고 이해할 수 있습니다. Record에 type을 추가하면 세 번째 dimension을 얻는 식으로 확장됩니다.
+
+#### Sum Types
+Sum type은 여러 종류 중 하나라는 개념을 표현합니다.
+
+Built-in data type `Bool`이 한 예입니다. `data Bool = True | False deriving (Eq,Show)`로 정의하며 `True`와 `False`는 argument가 없는 data constructor입니다. 따라서 `Bool` value는 `True` 또는 `False` 중 하나이며 다른 value로 instantiate할 수 없습니다.
+
+Template 또는 choice argument로 사용할 모든 type은 최소한 `(Eq, Show)`를 derive해야 합니다.
+
+유용한 sum type으로 Daml standard library의 `data Optional a = None | Some a deriving (Eq,Show)`가 있습니다.
+
+`Optional`은 비어 있거나 type `a` value를 포함할 수 있는 box 개념을 표현합니다.
+
+`Optional`은 type `a`를 parameter로 받는 sum type constructor이며 data constructor `None`과 `Some`으로 정의된 sum type을 생성합니다.
+
+`Some` data constructor는 argument 하나를 받으며 type `a` value를 parameter로 요구합니다.
+
+#### Pattern Matching
+`case` keyword로 value를 특정 pattern과 match할 수 있습니다.
+
+Pattern은 data constructor로 표현합니다. 다음은 `Optional Int` sum type의 예입니다.
+
+<DamlPatternMatchingL817 />
+
+`optionalIntegerToText` function의 `case` construct는 먼저 `x` argument를 `None` data constructor와 match합니다. Match되면 `"Box is empty"` text를 return합니다. Match되지 않으면 list의 다음 pattern인 `Some` data constructor와 `x`를 match합니다. Match되면 `Some` label에 연결된 value content를 `val` variable에 bind하고 해당 output text string에서 사용합니다.
+
+Case construct의 모든 pattern은 *complete*해야 합니다. 즉 각 `x`와 match하는 pattern이 하나 이상 있어야 합니다. Pattern은 위에서 아래 순서로 test하며 처음 match한 pattern의 expression을 실행합니다. `_`를 catch-all pattern으로 사용할 수 있습니다.
+
+`True`와 `False` data constructor를 사용해 `Bool` variable을 case로 구분하면 if-then-else expression과 같은 behavior를 얻을 수 있습니다.
+
+다음은 `Text` expression의 예입니다.
+
+<DamlPatternMatchingL2126 />
+
+위 예제의 nested pattern matching을 확인하세요.
+
+<Note>
+Variable name 대신 underscore를 사용했습니다. Daml Studio는 사용되지 않는 모든 variable에 warning을 생성하므로 unused variable을 찾는 데 유용합니다. Variable name을 underscore로 시작하면 warning을 suppress할 수 있습니다.
+</Note>
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/reference/daml/expressions.rst" hash="ed2e9625" */}
+
+## Reference: Expressions
+이 절에서는 update가 아닌 Daml expression reference를 제공합니다.
+
+### Definitions
+Assignment를 사용해 Daml file의 top level 또는 contract template body에서 value나 function을 bind합니다.
+
+#### Values
+예제는 다음과 같습니다.
+
+<DamlTubeSurfaceAreaL9 />
+
+`pi`의 type이 `Decimal`이라는 사실은 value에서 infer됩니다. Type을 명시적으로 annotate하려면 variable name 뒤 colon 다음에 type을 작성합니다.
+
+<DamlTubeSurfaceArea2L11 />
+
+#### Functions
+Function을 정의할 수 있습니다. 다음은 tube의 surface area를 계산하는 function 예제입니다.
+
+<DamlTubeSurfaceAreaL1416 />
+
+다음 항목을 확인할 수 있습니다.
+
+- Function name
+
+- Function type signature `Decimal -> Decimal -> Decimal`
+
+  Decimal 두 개를 받아 다른 Decimal을 return한다는 뜻입니다.
+
+- 앞에서 정의한 `pi`를 사용하는 definition `= 2.0 * pi * r * h`
+
+### Arithmetic Operators
+| Operator                          | 적용 type                   |
+|-----------------------------------|-----------------------------|
+| `+`                               | `Int`, `Decimal`, `RelTime` |
+| `-`                               | `Int`, `Decimal`, `RelTime` |
+| `*`                               | `Int`, `Decimal`            |
+| `/` (integer division)            | `Int`                       |
+| `%` (integer remainder operation) | `Int`                       |
+| `^` (integer exponentiation)      | `Int`                       |
+
+Modulo operation result는 dividend와 같은 sign을 가집니다.
+
+- `7 / 3` and `(-7) / (-3)` evaluate to `2`
+- `(-7) / 3` and `7 / (-3)` evaluate to `-2`
+- `7 % 3` and `7 % (-3)` evaluate to `1`
+- `(-7) % 3` and `(-7) % (-3)` evaluate to `-1`
+
+Infix expression을 prefix form으로 작성하려면 operator를 parenthesis로 감쌉니다. 예를 들어 `(+) 1 2`는 `1 + 2`를 작성하는 다른 방법입니다.
+
+### Comparison Operators
+| Operator             | 적용 type                                                                                                                |
+|----------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `<`, `<=`, `>`, `>=` | `Bool`, `Text`, `Int`, `Decimal`, `Party`, `Time`                                                                        |
+| `==`, `/=`           | `Bool`, `Text`, `Int`, `Decimal`, `Party`, `Time` 및 같은 contract template에서 파생된 contract identifier |
+
+### Logical Operators
+Daml의 logical operator는 다음과 같습니다.
+
+- Negation은 `not`, 예: `not True == False`
+- Conjunction은 `&&`, 여기서 `a && b == and a b`
+- Disjunction은 `||`, 여기서 `a || b == or a b`
+
+`a`와 `b`는 `Bool` variable입니다.
+
+### If-then-else
+Conditional *if-then-else* expression을 사용할 수 있습니다.
+
+```haskell
+if owner == scroogeMcDuck then "sell" else "buy"
+```
+
+### Let
+Expression 아래 scope에 포함할 value 또는 function을 bind하려면 block keyword `let`을 사용합니다.
+
+<DamlSnippetsLETEXPRESSION />
+
+`do` block 안에서도 `let`을 사용할 수 있습니다.
+
+<DamlSnippetsLETINDO />
+
+
+{/* COPIED_END */}
+
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/reference/daml/functions.rst" hash="2a0983ac" */}
+
+## Reference: Functions
+이 절에서는 Daml function reference를 제공합니다.
+
+Daml은 functional language입니다. Function을 partially apply할 수 있고 다른 function을 argument로 받는 function도 정의할 수 있습니다. 이 절에서는 이러한 *higher-order function*을 설명합니다.
+
+### Defining Functions
+`expressions`에서 `tubeSurfaceArea` function은 다음과 같이 정의됐습니다.
+
+<DamlTubeSurfaceAreaL1416 />
+
+`\`, parameter sequence 및 arrow `->`를 사용하는 lambda로 같은 function을 정의할 수도 있습니다.
+
+<DamlTubeSurfaceArea2L1314 />
+
+### Partial Application
+앞에서 설명한 `tubeSurfaceArea` function의 type은 `Decimal -> Decimal -> Decimal`입니다. 같은 type을 더 명확하게 `Decimal -> (Decimal -> Decimal)`로 읽을 수 있습니다. 즉 `tubeSurfaceArea`는 argument *하나*를 받아 다른 function을 return합니다.
+
+따라서 `tubeSurfaceArea`는 `Decimal` type argument 하나를 받고 `Decimal -> Decimal` type function을 return합니다. 즉 function이 다른 function을 return하며 *마지막 argument application만 non-function을 생성합니다.*
+
+이를 *currying*이라고 합니다. Currying은 여러 argument를 받는 function을 argument 하나만 받고 다른 function을 return하는 function으로 변환하는 process입니다. Daml의 모든 function은 curried function입니다.
+
+모든 parameter에 function을 apply하는 일반적인 방식으로 사용한다면 차이가 없습니다.
+
+Function에 일부 argument만 apply하는 것을 *partial application*이라고 하며 result는 argument 일부가 정의된 function입니다.
+
+<DamlFunctionsPARTIALAPPLICATION />
+
+같은 lambda function을 정의할 수도 있습니다.
+
+<DamlFunctionsPARTIALLAMBDA />
+
+### Functions are Values
+Lambda notation으로 작성한 `tubeSurfaceArea` function에 function type을 명시적으로 추가할 수 있습니다.
+
+<DamlTubeSurfaceArea2L814 />
+
+`tubeSurfaceArea : BinaryDecimalFunction = ...`는 `pi : Decimal = 3.14159265359`처럼 value를 bind할 때와 같은 pattern을 따릅니다.
+
+Function은 value처럼 type을 가지므로 일반 variable과 같은 방식으로 사용할 수 있습니다. Daml에서 function은 실제로 value입니다.
+
+따라서 function은 다른 function을 argument로 받을 수 있습니다. 예를 들어 `applyFilter: (Int -> Int -> Bool) -> Int -> Int -> Bool` function은 higher-order function인 첫 번째 argument를 두 번째와 세 번째 argument에 apply해 result를 생성합니다.
+
+<DamlFunctionsHIGHERORDER />
+
+`daml-ref-folding` 절에서는 function을 argument로 받는 유용한 built-in function `foldl`과 `foldr`을 살펴봅니다.
+
+<Note>
+Daml에서는 function을 contract template 및 contract choice의 parameter로 사용할 수 없습니다. 다만 choice의 후속 동작은 built-in function이나 top level 또는 contract template body에 정의된 function을 사용할 수 있습니다.
+</Note>
+
+### Generic Functions
+Function의 type parameter 중 하나 이상에서 모든 type에 동일하게 동작하면 *parametrically polymorphic*입니다. 예를 들어 function composition을 다음과 같이 정의할 수 있습니다.
+
+<DamlFunctionsGENERICFUNCTION />
+
+여기서 `a`, `b`, `c`는 임의의 data type입니다. `compose ((+) 4) ((*) 2) 3 == 10`과 `compose not ((&&) True) False`는 모두 `True`로 evaluate됩니다. `((+) 4)`의 type은 `Int -> Int`이고 `not`의 type은 `Bool -> Bool`입니다.
+
+이 function을 포함한 여러 generic function은 Daml standard library에서 찾을 수 있습니다.
+
+<Note>
+Daml은 현재 `Int`, `Decimal` number 같은 특정 type 집합에 대한 generic function을 지원하지 않습니다. 예를 들어 `a`가 `Party` type일 때 `sum (x: a) (y: a) = x + y`는 정의되지 않습니다. 이후 Daml version에 *bounded polymorphism*이 추가될 수 있습니다.
+</Note>
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/reference/daml/file-structure.rst" hash="4bb0b27c" */}
+
+## Reference: Daml File Structure
+이 절에서는 template 외부 Daml file structure reference를 제공합니다.
+
+### File Structure
+- File의 module name입니다: `module NameOfThisFile where`.
+
+  Code reuse를 돕는 hierarchical module system의 일부이며 file extension을 제외한 Daml file name과 같아야 합니다.
+
+  Path가 `./Scenarios/Demo.daml`인 file은 `module Scenarios.Demo where`를 사용합니다.
+
+### Imports
+- Qualified import인 `import qualified AndYetOtherModuleName` 및 `import qualified AndYetOtherModuleName as Signifier`를 포함해 다른 module을 `import OtherModuleName`으로 import할 수 있습니다. Circular import reference는 허용되지 않습니다.
+- `./Prelude.daml`의 `Prelude` module을 import하려면 `import Prelude`를 사용합니다.
+- `./Scenarios/Demo.daml`의 module을 import하려면 `import Scenarios.Demo`를 사용합니다.
+- `qualified`를 생략하고 module alias를 지정하면 imported module의 top-level declaration은 해당 module namespace와 지정한 alias namespace 모두로 import됩니다.
+
+### Libraries
+Daml library는 관련 Daml module의 collection입니다.
+
+Library root module을 import하는 일반 Daml file인 `LibraryModules.daml`로 Daml library를 정의합니다. Library는 `LibraryModules.daml` file과 각 module import를 recursively 따라가 찾은 모든 dependency로 구성됩니다.
+
+Daml Studio는 library 단위로 error를 report합니다. 따라서 file을 명시적으로 열지 않아도 shared Daml module의 breaking change가 표시됩니다.
+
+### Comments
+Single-line comment에는 `--`, 여러 line에 걸친 comment에는 `{-`와 `-}`를 사용합니다.
+
+### Contract Identifiers
+Template instance, 즉 contract가 ledger에 추가되면 `ContractId <name of template>` type의 고유 identifier가 부여됩니다.
+
+Identifier의 runtime representation은 execution environment에 따라 달라집니다. Sandbox의 contract identifier는 다른 Daml Ledger의 identifier와 다르게 보일 수 있습니다.
+
+같은 type의 contract identifier에는 `==`와 `/=`를 사용할 수 있습니다.
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/reference/daml/packages.rst" hash="4011d059" */}
+
+## Reference: Daml Packages
+이 절에서는 Daml package dependency reference를 제공합니다.
+
+### Building Daml Archives
+Daml project를 compile하면 compiler가 `Daml archive`를 생성합니다. 이는 compile된 Daml code의 platform-independent package이며 Daml Ledger에 upload하거나 다른 Daml project에서 import할 수 있습니다.
+
+Daml archive의 file extension은 `.dar`입니다. 기본적으로 `dpm build`를 실행하면 project root의 `.daml/dist` folder에 `.dar` file을 생성합니다. 예를 들어 version `0.0.1`인 project `foo`에서 `dpm build`를 실행하면 Daml archive `.daml/dist/foo-0.0.1.dar`가 생성됩니다.
+
+`-o` flag로 Daml archive의 다른 path를 지정할 수 있습니다.
+
+``` sh
+dpm build -o foo.dar
+
+The rest of this page will focus on how to import a Daml package in other Daml projects.
+```
+
+### Inspecting DARs
+DAR 및 DALF file decoding 절을 참조하세요.
+
+### Import Daml Packages
+Project에서 Daml package를 import하는 방법은 `dependencies`와 `data-dependencies` 두 가지이며 각각 장단점이 있습니다.
+
+- `dependencies`는 Daml archive를 library로 import합니다. Dependency의 모든 definition을 importing project에서 사용할 수 있습니다. 다만 dependency는 같은 SDK version으로 compile해야 하므로 큰 project를 서로 의존하는 작은 project로 나누거나 기존 library를 재사용할 때 적합합니다.
+- `data-dependencies`는 이미 ledger에 deploy된 package를 포함해 Daml archive(.dar) 또는 Daml-LF package(.dalf)를 import합니다. 이전의 어떤 SDK version으로 compile한 package도 사용할 수 있습니다. 반면 binary에서 Daml interface를 reconstruct해야 하므로 모든 definition을 완벽하게 가져올 수는 없습니다.
+
+다음 절에서 두 접근 방식을 더 자세히 설명합니다.
+
+#### Import a Daml package via Dependencies
+Daml project는 `daml.yaml`의 `dependencies` field에서 Daml archive를 dependency로 선언할 수 있습니다. 그러면 다른 Daml project의 module을 import하고 definition을 재사용할 수 있습니다. 주요 limitation은 dependency가 importing project와 같은 SDK version으로 build돼야 한다는 점입니다.
+
+`/home/user/foo`에 기존 Daml project `foo`가 있고 이를 `/home/user/bar`의 project `bar`에서 dependency로 사용한다고 가정합니다.
+
+먼저 `foo`의 Daml archive를 생성해야 합니다. `/home/user/foo`에서 `dpm build -o foo.dar`를 실행하면 Daml archive `/home/user/foo/foo.dar`가 생성됩니다.
+
+다음으로 생성한 Daml archive를 dependency로 사용하도록 `bar`의 project config를 update합니다. `/home/user/bar`에서 `daml.yaml`의 `dependencies` field가 생성한 \`Daml archive\`를 가리키도록 변경합니다.
+
+```yaml
+dependencies:
+  - daml-prim
+  - daml-stdlib
+  - ../foo/foo.dar
+```
+
+마지막 line을 다음과 같이 변경해 absolute import path를 사용할 수도 있습니다.
+
+```yaml
+- /home/user/foo/foo.dar
+```
+
+`bar` project에서 `dpm build`를 실행하면 compiler가 `foo.dar`의 definition을 import할 수 있게 합니다. 예를 들어 `foo`가 module `Foo`를 export한다면 일반적인 방식으로 import할 수 있습니다.
+
+```haskell
+import Foo
+```
+
+기본적으로 `foo`를 dependency로 import하면 `foo`의 모든 module을 사용할 수 있습니다. Export할 `foo` module을 제한하려면 `foo`의 `daml.yaml` file에 `exposed-modules` field를 추가합니다.
+
+```yaml
+exposed-modules:
+- Foo
+```
+
+#### Import a Daml Archive via `data-dependencies`
+`data-dependencies`로 Daml archive(.dar) 또는 Daml-LF package(.dalf)를 import할 수 있습니다. `dependencies`와 달리 SDK version이 일치하지 않아도 사용할 수 있습니다.
+
+예를 들어 다음과 같이 `foo.dar`를 import합니다.
+
+```yaml
+dependencies:
+- daml-prim
+- daml-stdlib
+data-dependencies:
+- ../foo/foo.dar
+```
+
+이 방식으로 package를 import하면 Daml compiler는 compile된 binary에서 원래 Daml interface를 reconstruct합니다. 그러나 `data-dependencies`가 여러 SDK version에서 동작하게 하려면 compiler가 SDK version 간 compatible하지 않은 일부 detail을 abstract해야 합니다. 따라서 `data-dependencies`에서는 복구할 수 없는 Daml feature가 있으며 구체적으로 다음과 같습니다.
+
+1.  Export list를 복구할 수 없으므로 `data-dependencies`를 통한 import는 원래 hidden이던 definition에도 접근할 수 있습니다. 따라서 importing module이 원래 module의 data abstraction을 준수해야 합니다. Ledger는 data abstraction을 별도로 지원하지 않으므로 ledger에서 실행되는 모든 code에도 동일합니다.
+2.  `exposed-modules`로 접근 가능한 module을 제한하는 `dependency`와 hidden module의 항목을 참조하는 `data-dependency`를 함께 사용하면, 해당 항목이 reexport만 된 경우에도 error가 발생할 수 있습니다. 일반적으로 ledger에서는 `exposed-modules`를 사용할 수 없으므로 이를 사용하지 말고 module name에 `.Internal` suffix를 붙이는 등의 naming convention으로 public API module을 구분하는 것을 권장합니다.
+3.  Daml-LF version 1.8 이전에는 typeclass를 reconstruct할 수 없었습니다. 이전 Daml-LF version으로 compile한 package의 typeclass 및 typeclass instance는 data-dependencies로 전달되지 않으며 typeclass instance에 의존하는 function을 call할 수 없습니다. Typeclass instance에 의존하는 `create`, `signatory`, `exercise` 같은 template function도 포함됩니다.
+4.  Daml-LF version 1.8부터 가능한 경우 `daml-stdlib`에서 export한 typeclass 같은 dependency의 typeclass definition을 재사용해 typeclass instance를 reconstruct합니다. 그러나 typeclass signature가 변경됐다면 reconstructed typeclass의 instance를 얻게 되며 dependency code와 interoperate하지 않습니다.
+
+#### Transitive dependency management
+Daml compiler는 project의 각 DAR dependency를 `packageId`와 fully qualified name, 즉 Daml project package name 및 version number로 식별합니다.
+
+여러 공통 transitive DAR dependency를 포함한 Daml project에서는 해당 공통 transitive dependency가 다음 조건 중 하나를 충족해야 합니다.
+
+- 각 Daml project의 `daml.yaml` file에 같은 name과 version이 지정돼 있다면 content가 같아야 합니다.
+- Content가 다르다면 각 `daml.yaml` file의 `version` entry value가 달라야 합니다.
+
+그렇지 않으면 package identification conflict 때문에 Daml project를 deploy 가능한 DAR로 build할 수 없습니다.
+
+예제는 다음과 같습니다.
+
+- Top-level Daml project X에는 dependency `DarA`와 `DarB`가 있습니다.
+- `DarA`와 `DarB` 모두 DAR dependency `DarC`를 포함합니다.
+
+Daml project X를 compile할 때 `DarA`와 `DarB`가 참조하는 `DarC` dependency의 Daml content가 같거나, content가 다르면 version number가 다른지 확인해야 합니다. Version number는 `DarC`를 생성하는 Daml project의 daml.yaml file에 있는 `version` key로 정의합니다.
+
+#### Reference Daml Packages Already On the Ledger
+Package를 download할 permission이 있으면 ledger에 upload된 Daml package를 data dependency로 import할 수 있습니다. Package를 import하려면 colon으로 구분한 package name과 version을 다음과 같이 data-dependencies stanza에 추가합니다.
+
+```yaml
+ledger:
+  host: localhost
+  port: 6865
+dependencies:
+- daml-prim
+- daml-stdlib
+data-dependencies:
+- foo:1.0.0
+```
+
+Ledger가 기본 host 및 port인 `localhost:6865`에서 실행되면 ledger stanza를 생략할 수 있습니다. 그러면 package `foo-1.0.0`을 fetch하고 install합니다. Project directory root에는 resolve된 package를 정확한 package ID에 pin하는 `daml.lock` file이 생성됩니다.
+
+```yaml
+dependencies:
+- pkgId: 51255efad65a1751bcee749d962a135a65d12b87eb81ac961142196d8bbca535
+  name: foo
+  version: 1.0.0
+```
+
+`daml.lock` file은 project version control에 commit해야 합니다. 그러면 data dependency에 지정한 package name/version tuple이 항상 같은 package ID로 resolve됩니다. `daml.lock` file을 다시 생성하거나 update하려면 file을 삭제하고 `dpm build`를 다시 실행합니다.
+
+### Handling Module Name Collisions
+같은 module name을 가진 package가 여러 개일 수 있습니다. Compiler가 어떤 version의 module을 load할지 알 수 없어 단순 import가 fail합니다. 이 문제를 해결할 수 있는 몇 가지 tool이 있습니다.
+
+첫 번째 방법은 package qualified import입니다. 서로 다른 name의 package `foo`와 `bar`가 모두 module `X`를 expose한다면 package qualified import로 원하는 package를 선택할 수 있습니다.
+
+`foo`에서 `X`를 가져오는 방법은 다음과 같습니다.
+
+```haskell
+import "foo" X
+```
+
+`bar`에서 `X`를 가져오는 방법은 다음과 같습니다.
+
+```haskell
+import "bar" X
+```
+
+둘 다 가져오려면 import하면서 module name을 변경해야 합니다.
+
+```haskell
+import "foo" X as FooX
+import "bar" X as BarX
+```
+
+같은 package의 서로 다른 version처럼 name이 같은 package 두 개를 import하면 package qualified import로 해결할 수 없습니다. 이 경우 `--package` build option이 필요합니다.
+
+Package `foo-1.0.0`과 `foo-2.0.0`을 import한다고 가정합니다. 두 package는 name `foo`가 같지만 version이 다릅니다. 두 package가 모두 expose하는 module을 가져오려면 module alias가 필요합니다. `--package` build option을 전달하도록 `daml.yaml`을 열고 다음 `build-options`를 추가합니다.
+
+```yaml
+build-options:
+- '--package'
+- 'foo-1.0.0 with (X as Foo1.X)'
+- '--package'
+- 'foo-2.0.0 with (X as Foo2.X)'
+```
+
+그러면 `foo-1.0.0`의 `X`는 `Foo1.X`, `foo-2.0.0`의 `X`는 `Foo2.X`라는 alias를 갖습니다. 이제 새 name으로 두 `X`를 모두 import할 수 있습니다.
+
+```haskell
+import qualified Foo1.X
+import qualified Foo2.X
+```
+
+`daml.yaml`의 `module-prefixes` field로 package의 모든 module에 prefix를 추가할 수도 있습니다. Package version `v`의 모든 module을 `V$v` 아래에 map할 수 있어 upgrade에 특히 유용합니다. 위 예제에는 다음을 사용할 수 있습니다.
+
+```yaml
+module-prefixes:
+  foo-1.0.0: Foo1
+  foo-2.0.0: Foo2
+```
+
+그러면 package `foo-1.0.0`의 module `X`를 `Foo1.X`로, package `foo-2.0.0`의 `X`를 `Foo2`로 import할 수 있습니다.
+
+`foo-1.0.0: Foo1.Bar`처럼 더 복잡한 module prefix를 사용할 수도 있으며 module `X`를 `Foo1.Bar.X`로 사용할 수 있게 합니다.
+
+
+{/* COPIED_END */}
+
+
+
+
+## Reference: Contract Keys
+
+Contract key는 database key와 유사하게 template parameter로 contract를 식별할 수 있게 하는 선택적인 template 항목입니다. Multi-contract-key lookup인 `lookupNByKey`, `lookupAllByKey`와 Daml Script key function을 포함한 전체 설명은 [Contract Keys](/appdev/modules/m3-contract-keys)를 참조하세요. Stdlib API surface는 [DA.ContractKeys](/appdev/reference/daml-standard-library/da-contractkeys)를 참조하세요.
+
+
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/reference/daml/interfaces.rst" hash="fdeb13bb" */}
+
+## Reference: Interfaces
+Daml에서 interface는 abstract type과 view type, method signature 및 choice로 지정한 behavior를 함께 정의합니다. Template이 interface를 따르려면 특수 `view` method를 포함한 interface의 모든 method를 구현하는 해당 `interface instance` definition이 있어야 합니다. 이를 통해 behavior와 implementation을 decouple하여 다른 developer가 concrete template 대신 interface를 기준으로 application을 작성할 수 있습니다.
+
+### Configuration
+이 feature를 사용하려면 Daml project가 현재 기본값인 Daml-LF version `1.15` 이상을 target해야 합니다.
+
+Canton을 사용한다면 Synchronizer protocol version은 `4` 이상이어야 합니다. 자세한 내용은 Canton protocol version을 참조하세요.
+
+### Interface Declaration
+Interface declaration은 template declaration과 유사합니다.
+
+#### Interface Name
+<DamlInterfacesINTERFACENAME />
+
+- Interface name입니다.
+- `interface` keyword 뒤, `where` keyword 앞에 옵니다.
+- 다른 type name과 마찬가지로 대문자로 시작해야 합니다.
+
+#### Implicit abstract type
+- Interface를 정의하면 같은 name의 abstract type도 정의됩니다. 여기서 "abstract"는 다음을 뜻합니다.
+  - 이 type의 value는 data constructor로 생성할 수 없습니다. 대신 template value에 `toInterface` function을 apply해 구성합니다.
+  - 이 type의 value는 case analysis로 직접 inspect할 수 없습니다. 대신 `fromInterface` 같은 function을 사용합니다.
+  - Interface value와 interaction하는 function은 `daml-ref-interface-functions`를 참조하세요.
+- Interface value는 자신을 구성하는 데 사용한 template value의 type과 parameter를 내부에 포함합니다.
+- Template과 마찬가지로 `I`가 interface일 때 type `I`의 local binding `b`가 존재한다고 해서 `b` 구성에 사용한 template type과 parameter를 가진 contract가 ledger에 반드시 존재하는 것은 아닙니다. `b`가 같은 transaction 안에서 ledger로부터 fetch한 result인 경우에만 이를 가정할 수 있습니다.
+
+#### Interface Methods
+<DamlInterfacesINTERFACEMETHODS />
+
+- Interface는 임의 개수의 method를 정의할 수 있습니다.
+- Method definition은 colon `:`으로 구분한 method name과 method type으로 구성됩니다. Method name은 lowercase letter 또는 underscore로 시작하는 유효 identifier여야 합니다.
+- Method definition은 같은 name의 top-level function을 도입합니다.
+  - Interface name이 `I`, method name이 `m`, function type일 수도 있는 method type이 `M`이면 function `m : I -> M`이 도입됩니다.
+
+```text
+<DamlInterfacesINTERFACEMETHODSTOPLEVEL />
+```
+  - 첫 번째 argument type `I`는 function을 interface type `I` 자체의 value에만 apply할 수 있다는 뜻입니다. Template에 대한 `I`의 `interface instance`가 있어도 method를 template value에 apply할 수 없습니다. Template value에서 interface method를 사용하려면 먼저 `toInterface` function으로 변환합니다.
+
+  - Function을 해당 argument에 apply하면 underlying template type `t`에 대한 `I`의 interface instance에서 `m` implementation에 해당하는 type `M` value가 생성됩니다. `t`는 interface value를 구성한 template value의 type입니다.
+- Viewtype에는 특수 method `view`를 정의해야 합니다. 아래 `interface-viewtype`을 참조하세요.
+
+#### Interface View Type
+<DamlInterfacesINTERFACEVIEWTYPEDATATYPE />
+<DamlInterfacesINTERFACEVIEWTYPE />
+
+- 모든 interface instance는 `viewtype`이 선언한 type value를 return하는 특수 `view` method를 구현해야 합니다.
+- Type은 record여야 합니다.
+- Interface subscription은 이 type을 return합니다.
+
+#### Interface Choices
+<DamlInterfacesINTERFACECHOICES />
+
+- Interface choice는 template choice와 매우 유사하게 동작합니다. Interface instance가 존재하는 template type의 모든 contract는 controlling party에게 choice를 부여합니다.
+- Interface choice는 해당 interface type의 value에서만 exercise할 수 있습니다. Template value에서 interface choice를 exercise하려면 먼저 `toInterface` function으로 변환합니다.
+- Interface method는 choice controller, 예를 들어 `method1`과 choice를 *exercise*할 때 실행하는 action, 예를 들어 `method2`, `method3`을 정의하는 데 사용할 수 있습니다.
+- Template choice와 마찬가지로 `choice` keyword 앞에 선택적으로 `nonconsuming` keyword를 붙여 choice exercise 시 contract를 consume하지 않도록 지정할 수 있습니다. 지정하지 않으면 choice는 `consuming`입니다. Interface choice는 `preconsuming` 및 `postconsuming` qualifier를 지원하지 않습니다.
+- 전체 reference는 `choices`를 참조하세요. Interface choice는 controller-first syntax를 지원하지 않습니다.
+
+#### Empty Interfaces
+<DamlInterfacesEMPTYINTERFACE />
+
+- Method, precondition 또는 choice가 없는 interface도 정의할 수 있지만 반드시 유용한 것은 아닙니다. View type은 항상 정의해야 하며 unit으로 설정할 수 있습니다.
+
+### Interface Instances
+다음은 context를 위한 간단한 template definition입니다.
+
+<DamlInterfacesTEMPLATEHEADER />
+
+#### `interface instance` clause
+<DamlInterfacesINTERFACEINSTANCEINTEMPLATE />
+
+- Template을 기존 interface의 instance로 만들려면 template declaration에 `interface instance` clause를 정의해야 합니다.
+- Clause의 template은 enclosing declaration과 일치해야 합니다. 즉 template `T` declaration에는 template이 `T`인 `interface instance` clause만 포함할 수 있습니다.
+- Clause는 `interface instance` keyword, interface name, `for` keyword, template name, 마지막으로 interface의 **모든** method를 구현하는 block을 시작하는 `where` keyword 순서로 구성됩니다.
+- Clause 내부에는 method를 apply하는 contract를 참조하는 암묵적인 local binding `this`가 있으며 type은 template의 data record type입니다. 이 contract의 template parameter도 scope에 포함됩니다.
+- Method implementation은 pattern match와 guard, 예를 들어 `method3`을 포함해 top-level function과 같은 syntax로 정의할 수 있습니다.
+- 각 method implementation은 interface declaration에서 해당 method에 지정한 것과 같은 type을 return해야 합니다.
+- 특수 `view` method implementation은 interface declaration에서 `viewtype`으로 지정한 type을 return해야 합니다.
+
+#### Empty `interface instance` clause
+- Interface에 method가 없다면 interface instance는 `view` method만 구현하면 됩니다.
+
+<DamlInterfacesEMPTYINTERFACEINSTANCE />
+
+### Interface Functions
+#### `interfaceTypeRep`
+
+|  |  |
+| --- | --- |
+| Type | `HasInterfaceTypeRep i =>`<br />`i -> TemplateTypeRep` |
+| Instantiated Type | `MyInterface -> TemplateTypeRep` |
+| Notes | Result `TemplateTypeRep` value는 interface value 구성에 사용한 template을 나타냅니다. |
+
+#### `toInterface`
+
+|  |  |
+| --- | --- |
+| Type | `forall i t.`<br />`HasToInterface t i =>`<br />`t -> i` |
+| Instantiated Type | `MyTemplate -> MyInterface` |
+| Notes | Template value를 interface value로 변환합니다. |
+
+#### `fromInterface`
+
+|  |  |
+| --- | --- |
+| Type | `HasFromInterface t i =>`<br />`i -> Optional t` |
+| Instantiated Type | `MyInterface -> Optional MyTemplate` |
+| Notes | Interface value를 template value로 다시 변환합니다. 예상 template type이 contract 구성에 사용한 underlying template type과 일치하지 않으면 result는 `None`입니다. |
+
+#### `toInterfaceContractId`
+
+|  |  |
+| --- | --- |
+| Type | `forall i t.`<br />`HasToInterface t i =>`<br />`ContractId t -> ContractId i` |
+| Instantiated Type | `ContractId MyTemplate -> ContractId MyInterface` |
+| Notes | Template Contract ID를 Interface Contract ID로 변환합니다. |
+
+#### `fromInterfaceContractId`
+
+|  |  |
+| --- | --- |
+| Type | `forall t i.`<br />`HasFromInterface t i =>`<br />`ContractId i -> ContractId t` |
+| Instantiated Type | `ContractId MyInterface -> ContractId MyTemplate` |
+| Notes | Interface contract ID를 template contract ID로 변환합니다. 이 function은 주어진 contract ID가 실제로 result type의 contract를 가리키는지 verify하지 않습니다. 그렇지 않으면 이후 `fetch`, `exercise` 또는 `archive`가 fail합니다. Underlying contract가 result type임을 알고 있거나 result를 즉시 `fetch`, `exercise`, `archive` action에 사용하고 type mismatch 시 transaction failure가 의도한 behavior인 경우에만 사용하세요. 그 외에는 `fetchFromInterface`를 고려하세요. |
+
+#### `coerceInterfaceContractId`
+
+|  |  |
+| --- | --- |
+| Type | `forall j i.`<br />`(HasInterfaceTypeRep i, HasInterfaceTypeRep j) =>`<br />`ContractId i -> ContractId j` |
+| Instantiated Type | `ContractId SourceInterface -> ContractId TargetInterface` |
+| Notes | Interface contract ID를 다른 interface의 contract ID로 변환합니다. 이 function은 주어진 contract ID가 실제로 result type contract를 가리키는지 verify하지 않습니다. 그렇지 않으면 이후 `fetch`, `exercise` 또는 `archive`가 fail합니다. Underlying contract가 result type임을 알고 있거나 result를 즉시 `fetch`, `exercise`, `archive` action에 사용하고 mismatch 시 transaction failure가 의도한 behavior인 경우에만 사용하세요. |
+
+#### `fetchFromInterface`
+
+|  |  |
+| --- | --- |
+| Type | `forall t i.`<br />`(HasFromInterface t i, HasFetch i) =>`<br />`ContractId i -> Update (Optional (ContractId t, t))` |
+| Instantiated Type | `ContractId MyInterface ->`<br />`Update (Optional (ContractId MyTemplate, MyTemplate))` |
+| Notes | Interface contract ID를 fetch해 template으로 변환합니다. Conversion이 성공하면 변환한 contract와 contract ID를 모두 return하고 그렇지 않으면 `None`을 return합니다. |
+
+### Required Interfaces
+<DamlInterfacesINTERFACEREQUIRES />
+
+- Interface는 다른 interface에 의존할 수 있습니다. Interface name 뒤, `where` keyword 앞에서 comma로 구분한 `requires` keyword로 지정합니다.
+
+- Interface declaration이 유효하려면 required interface list가 transitively closed여야 합니다. 즉 interface `I`가 interface `J`를 require한다면 `J`가 require하는 모든 interface도 명시적으로 require해야 합니다. 순서는 중요하지 않습니다.
+
+  예를 들어 다음 declaration이 있을 때
+
+  <DamlInterfacesINTERFACETRANSITIVEREQUIRESGIVEN />
+
+  Interface `Square`의 다음 declaration은 compiler error를 발생시킵니다.
+
+  <DamlInterfacesINTERFACETRANSITIVEREQUIRESINCORRECT />
+
+  Required interface에 `Shape`를 명시적으로 추가하면 error가 해결됩니다.
+
+  <DamlInterfacesINTERFACETRANSITIVEREQUIRESCORRECT />
+
+- Template `T`가 interface `I`의 유효한 `interface instance`가 되려면 `I`가 require하는 각 interface의 `interface instance`이기도 해야 합니다.
+
+#### Interface Functions
+| Function                  | Notes                                                                                                                              |
+|---------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| `toInterface`             | Interface value를 required interface 중 하나로 변환하는 데도 사용할 수 있습니다.                                                  |
+| `fromInterface`           | Interface type value를 이를 require하는 interface 중 하나로 변환하는 데도 사용할 수 있습니다.                                       |
+| `toInterfaceContractId`   | Interface contract ID를 required interface 중 하나의 contract ID로 변환하는 데도 사용할 수 있습니다.                         |
+| `fromInterfaceContractId` | Interface contract ID를 이를 require하는 interface 중 하나의 contract ID로 변환하는 데도 사용할 수 있습니다.                        |
+| `fetchFromInterface`      | Interface contract ID를 fetch해 이를 require하는 interface 중 하나의 contract와 contract ID로 변환하는 데도 사용할 수 있습니다. |
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.5/sdk/reference/daml/serializable.rst" hash="df1dd415" */}
+
+## Reference: Serializable
+
+{/* TODO: This section leans more towards a how-to than a reference in tone.
+    Consider moving it and leaving a minimal reference here. */}
+
+Daml program은 contract와 choice 같은 data를 distributed ledger에 저장합니다.
+
+Template contract와 auxiliary data type `InstrumentId`를 살펴봅니다.
+
+```haskell
+data InstrumendId = InstrumendId with
+  admin : Party
+  id : Text
+    deriving (Eq, Show)
+
+data AssetSummary = AssetSummary with
+  total : Int
+  instrument : InstrumendId
+    deriving (Eq, Show)
+
+template Asset with
+    owner : Party
+    amount : Int
+    instrument : InstrumendId
+  where
+    signatory owner
+```
+
+Daml compiler는 `InstrumentId`에 function처럼 본질적으로 unserializable한 type이 없으므로 template contract에 포함해도 안전하다고 `infer`합니다.
+
+이 data type을 포함한 package를 upgrade할 때는 이전에 저장한 serialized data를 계속 읽을 수 있어야 합니다.
+따라서 [Smart Contract Upgrades](/appdev/deep-dives/smart-contract-upgrading-reference)는 이러한 serializable data type이 backward-compatible한 방식으로만 변경됐는지 확인합니다.
+구체적으로 optional field만 추가할 수 있습니다.
+
+이 constraint는 예제의 `AssetSummary`처럼 serialize할 수 있지만 실제 ledger에는 저장하지 않는 data type에도 적용됩니다.
+
+### Explicit Serializable
+
+앞 절에서 설명한 것처럼 serializability를 암묵적으로 infer하는 것은 helper type에 문제가 됩니다.
+
+복잡한 calculation에서 일반적으로 memory 안에서 사용되며 template 또는 choice가 직접 참조하지 않는 이러한 data type도 엄격한 [Smart Contract Upgrade](/appdev/deep-dives/smart-contract-upgrading-reference) check 대상입니다.
+
+따라서 Daml developer는 `daml.yaml`의 `build-options`에서 `--explicit-serializable=yes` option을 활성화하는 것이 좋습니다.
+
+그러면 compiler가 data type의 serializability를 자동으로 infer하지 않습니다.
+대신 명시적인 `Serializable` instance를 derive해야 하며 memory 안에서만 사용하는 helper data type에서는 이를 생략할 수 있습니다.
+
+```haskell
+data InstrumendId = InstrumendId with
+  admin : Party
+  id : Text
+    deriving (Eq, Show, Serializable)
+
+data AssetSummary = AssetSummary with
+  total : Int
+  instrument : InstrumendId
+    deriving (Eq, Show)
+
+template Asset with
+    owner : Party
+    amount : Int
+    instrument : InstrumendId
+  where
+    signatory owner
+```
+
+작성할 내용이 조금 늘어나지만, 어떤 data type을 ledger에 저장하고 어떤 type을 upgrade 가능하게 할지 Daml developer가 생각하도록 강제하므로 이 option을 켜는 것이 좋습니다.
+
+Explicit Serializable은 향후 release에서 기본값이 될 예정이므로 일찍 opt-in하는 것이 좋습니다.
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/reference/daml/exceptions.rst" hash="0c6fee4c" */}
+
+## Reference: Exceptions (Deprecated)
+<Warning>
+User-defined Daml Exception, catch 및 throw는 deprecated됐으며 Daml error를 `InvalidGivenCurrentSystemStateOther`로 나타내는 Canton error framework로 대체되고 있습니다.
+</Warning>
+
+Exception은 deprecated된 Daml feature입니다. Transaction을 abort하는 대신 interpretation 중 발생하는 특정 error를 처리하고 error를 일으킨 state change를 rollback하는 방법을 제공합니다.
+
+Error에는 두 type이 있습니다.
+
+### Builtin Errors
+| Exception type       | 발생 조건                                                   |
+|----------------------|-------------------------------------------------------------|
+| `GeneralError`       | `error` 및 `abort` call                                |
+| `ArithmeticError`    | Overflow 및 division by zero 같은 arithmetic error       |
+| `PreconditionFailed` | `False`를 return하는 `ensure` statement                     |
+| `AssertionFailed`    | Fail한 `assert` call 또는 `DA.Assert`의 다른 function |
+
+다른 error는 exception으로 처리할 수 없습니다. 예를 들어 inactive contract의 exercise는 여전히 transaction abort를 일으킵니다.
+
+### User-defined Exceptions
+사용자는 throw하고 catch할 수 있는 자체 exception type을 정의할 수 있습니다. Definition은 template과 유사하며 주어진 name의 record type과 해당 type을 throw 및 catch 가능하게 하는 instance를 생성합니다.
+
+Exception은 record field 외에 `message` function도 정의해야 합니다.
+
+<DamlExceptionsEXCEPTION />
+
+### Throw Exceptions
+Exception을 throw하는 방법은 두 가지입니다.
+
+1.  `Update` 또는 `Script` 같은 `Action` 내부에서는 `DA.Exception`의 `throw`를 사용할 수 있습니다. `ActionThrow`의 instance인 모든 `Action`에서 동작합니다.
+2.  `ActionThrow` 외부에서는 `throwPure`로 exception을 throw할 수 있습니다.
+
+두 방법을 모두 사용할 수 있다면 exception이 정확히 언제 throw되는지 reasoning하기 쉬운 `throw`를 사용하는 것이 일반적으로 좋습니다.
+
+### Catch Exceptions
+Exception은 Java 같은 language의 try-catch block과 유사한 방식으로 catch합니다. `try` block은 error를 처리할 scope를 정의하고 `catch` clause는 처리할 error type과 program이 계속되는 방식을 정의합니다. Exception을 catch하면 `try`와 exception throw 지점 사이의 subtransaction이 rollback됩니다. Rollback node 아래 action도 계속 validate되므로 해당 시점에 inactive인 contract를 fetch하거나 같은 key를 가진 contract 두 개를 동시에 active 상태로 둘 수 없습니다. 하지만 create 및 consuming exercise 같은 모든 ledger state change는 rollback node 이전 state로 rollback됩니다.
+
+각 try-catch block에는 여러 `catch` clause가 있을 수 있으며 처음 적용되는 clause가 우선합니다.
+
+아래 예제에서는 `T`의 `create`가 rollback되고 첫 번째 `catch` clause가 적용돼 `Error` contract를 생성합니다.
+
+<DamlExceptionsTRY />
+
+
+{/* COPIED_END */}
+
+
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/reference/daml/working-with.rst" hash="56b3d265" */}
+
+## Reference: Built-in Functions
+이 절에서는 여러 공통 개념을 다루는 built-in function reference를 제공합니다.
+
+### Work with Time
+Daml에는 time을 다루는 다음 built-in function이 있습니다.
+
+- `datetime`: year, month, day, hour, minute, second를 argument로 받아 `Time`을 생성합니다.
+- `subTime`: 한 time에서 다른 time을 빼고 `time1`과 `time2`의 차이인 `RelTime`을 return합니다.
+- `addRelTime`: `Time`과 `RelTime`을 받아 `Time`에 `RelTime`을 더합니다.
+- `days`, `hours`, `minutes`, `seconds`: 지정한 길이의 `RelTime`을 구성합니다.
+- `pass`: Daml Script test에서만 사용하며 `pass : RelTime -> Script Time`으로 argument만큼 ledger time을 진행하고 새 time을 return합니다.
+
+### Work with Numbers
+Daml에는 number를 다루는 다음 built-in function이 있습니다.
+
+- `round`: `Decimal` number를 `Int`로 round합니다.
+
+  `round d`는 `d`에 *가장 가까운* `Int`입니다. 같은 거리라면 zero에서 멀어지는 방향으로 round합니다.
+
+  ``` none
+  round 2.5 == 3    round (-2.5) == -3
+  round 3.4 == 3    round (-3.7) == -4
+  ```
+
+- `truncate`: `Decimal` number를 zero 방향으로 truncate해 `Int`로 변환합니다.
+
+  ``` none
+  truncate 2.2 == 2    truncate (-2.2) == -2
+  truncate 4.9 == 4    v (-4.9) == -4
+  ```
+
+- `intToDecimal`: `Int`를 `Decimal`로 변환합니다.
+
+Division result를 표현하는 데 decimal place가 10개보다 많이 필요할 수 있으므로 `Decimal`로 표현하는 number 집합은 division에 대해 closed가 아닙니다. 예를 들어 `1.0 / 3.0 == 0.3333...`은 rational number지만 `Decimal`은 아닙니다.
+
+### Work with Text
+Daml에는 text를 다루는 다음 built-in function이 있습니다.
+
+- `<>` operator: 두 `Text` value를 concatenate합니다.
+- `show`: primitive type인 `Bool`, `Int`, `Decimal`, `Party`, `Time`, `RelTime` value를 `Text`로 변환합니다.
+
+Daml string에서 text를 escape하려면 `\`를 사용합니다.
+
+| Character | Escape 방법 |
+| --- | --- |
+| `\` | `\\` |
+| `"` | `\"` |
+| `'` | `\'` |
+| Newline | `\n` |
+| Tab | `\t` |
+| Carriage return | `\r` |
+| Unicode, `!` 예제 | <ul><li>Decimal code: <code>\33</code></li><li>Octal code: <code>\o41</code></li><li>Hexadecimal code: <code>\x21</code></li></ul> |
+
+### Work with Lists
+Daml에는 list를 다루는 다음 built-in function이 있습니다.
+
+- `foldl` 및 `foldr`: 아래 `daml-ref-folding`을 참조하세요.
+
+#### Fold
+*Fold*는 다음 항목을 받습니다.
+
+- Binary operator
+- 첫 번째 *accumulator* value
+- Value list
+
+List element는 하나씩 처리하며 `foldl`은 왼쪽부터, `foldr`은 오른쪽부터 처리합니다.
+
+<Note>
+일반적으로 `foldr`보다 `foldl`을 권장합니다. `foldr`은 element 처리를 시작하기 전에 전체 list를 traverse해야 하므로 보통 더 느립니다.
+</Note>
+
+Process는 다음과 같습니다.
+
+1.  Binary operator를 첫 번째 accumulator value와 list의 첫 element에 apply해 두 번째 accumulator value를 생성합니다.
+2.  Binary operator를 *두 번째* accumulator value와 list의 두 번째 element에 apply해 세 번째 accumulator value를 생성합니다.
+3.  List에 element가 없을 때까지 계속한 뒤 마지막 accumulator value를 return합니다.
+
+다음은 Daml에서 integer list의 합계를 계산하는 예제입니다.
+
+<DamlSnippetsSUMLISTEXAMPLE />
+
+
+{/* COPIED_END */}
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/reference/fixity.rst" hash="a12a5d86" */}
+
+## Fixity, Associativity and Precedence
+일반적인 *prefix* operator, 예를 들어 function에서 `f g h`의 semantics는 명확합니다. `f`는 `g`와 `h`를 parameter로 받는 function입니다. `g`를 `h`에 apply한 result를 `f`가 받게 하려면 `f (g h)`로 작성합니다.
+
+*Infix* operator, 예를 들어 `+`, `*` 같은 symbol operator나 `` `elem ```처럼 backtick으로 감싼 function은 덜 명확합니다. ``x - y - z``는 무엇을 의미할까요? ``x``에서 ``y``를 먼저 빼는 ``(x - y) - z``와 ``y``에서 ``z``를 먼저 빼는 ``x - (y - z)``는 일반적으로 result가 다릅니다. Daml에서 subtraction operator ``-``는 \*left-associative\* operator로 정의됩니다. 즉 ``x - y - z - ...``를 작성하면 parser는 \*왼쪽으로\* associate하여 ``((x - y) - z) - ...`\`로 interpret합니다.
+
+일부 operator는 *right-associative*입니다. 앞서 본 function application이 한 예입니다. Function signature `a -> b -> c -> ...`는 `(a -> (b -> (c -> ...)))`로 parse됩니다.
+
+일부 operator는 non-associative입니다. `==`, `>` 같은 comparison operator가 좋은 예입니다. 따라서 `a == b == c` 또는 `a > b > c`처럼 operator를 ambiguous하게 사용하면 **parse error**가 발생합니다.
+
+<Note>
+Non-associative operator를 `+`처럼 left-associative이면서 right-associative인 operator와 혼동하면 안 됩니다. `(x + y) + z = x + (y + z)`이기 때문입니다. Deterministic parser를 위해 이러한 operator도 left-associative 또는 right-associative 중 하나로 선언해야 합니다. Daml의 `+` operator는 left-associative로 선언돼 있습니다.
+</Note>
+
+Operator *precedence*는 서로 다른 operator를 조합할 때 먼저 처리할 operator를 정의합니다. 일반적으로 Daml에서도 multiplication은 addition보다 *precedence가 높습니다*. 따라서 `x + y * z`는 `x + (y * z)`로 parse됩니다. Operator precedence는 숫자로 표현하며 높은 숫자가 높은 precedence를 뜻합니다. 같은 precedence의 operator는 왼쪽으로 associate합니다. 예를 들어 `x + y - z`는 `(x + y) - z`로 parse됩니다.
+
+Operator의 fixity와 precedence는 0 이상 9 이하 integer와 fixity를 적용할 operator를 받는 `infixl`, `infix`, `infixr` keyword로 선언합니다. 각 keyword는 left-associativity, non-associativity, right-associativity를 나타냅니다. 예를 들어 `infixl 6 +`는 `+`가 precedence `6`인 `left-associative` operator라고 선언합니다. User-defined operator에도 이 keyword를 사용할 수 있습니다. 다음 table은 `+`, `-` 같은 Daml built-in operator의 fixity와 precedence를 보여줍니다.
+
+| Precedence | Left-associative | Non-associative | Right-associative |
+| --- | --- | --- | --- |
+| 9 8 7 6 5 4 3 2 1 0 | `!!`<br />`*`, `/`, `%` `+`, `-`<br />`<$`, `<$>`, `$>`, `<*`, `<*>`, `*>`<br />`>>`, `>>=`, `<&>` | `==`, `/=`, `<`, `<=`, `>==`, `>`, `===`, `=/=` | `.` `<#&&>`, `^`, `**`<br />`<>` `++`, `::`<br />`&&`, `&&&` `\|\|`, `\|\|\|` `=<<`, `<=<`, `>=>` `$` |
+
+
+{/* COPIED_END */}

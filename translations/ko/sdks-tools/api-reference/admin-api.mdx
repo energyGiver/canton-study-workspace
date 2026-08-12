@@ -1,0 +1,84 @@
+---
+title: Admin API
+description: Node administration, Key Management, Topology, Party Management를 다루는 Canton Admin API reference입니다.
+source_id: "SRC-11832E6C38"
+source_path: "sdks-tools/api-reference/admin-api"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "0b3055f95ea9fcc91ad158db1f01d04199994359e5ebad26fd01edd5a130a767"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/api-reference/admin-api.md)을 함께 확인하세요.
+</Warning>
+
+import DamlDocsSdksToolsApiReferenceAdminApiL47 from "/snippets/daml-docs/sdks-tools_api-reference_admin-api_L47.mdx";
+
+
+Canton Admin API는 모든 Canton Node, Participant/Sequencer/Mediator가 노출하는 gRPC API입니다. Key, Topology state, Synchronizer connection, Package, user, pruning, Node health를 관리하는 [Ledger API](/sdks-tools/api-reference/ledger-api) 범위 밖의 administrative operation을 제공합니다. Command submit과 transaction read를 처리하는 Ledger API와 달리 Admin API는 Node 자체를 제어합니다.
+
+<Warning>
+적절한 security control 없이 Admin API를 public에 노출하지 마세요. Administration 전용이며 Node 전체 control을 부여합니다. TLS를 사용하고 신뢰할 수 있는 Operator로 network access를 제한하세요.
+</Warning>
+
+## Admin API service
+
+Admin API는 `com.daml.ledger.api.v2.admin` Package에 정의된 **Ledger API admin service**와 Canton Console 또는 직접 gRPC call로 access하는 **Canton 전용 admin service** 두 layer로 나뉩니다.
+
+### Ledger API Admin service
+
+이 service는 Ledger API와 함께 Participant Node에서 실행되며 [gRPC Ledger API proto specification](/reference/grpc-ledger-api-reference)에 정의되어 있습니다.
+
+### Canton 전용 Admin service
+
+Canton은 표준 Ledger API admin service에 Canton architecture 전용 operation을 추가합니다. [Canton Console](/global-synchronizer/reference/canton-console-reference) 또는 gRPC로 직접 access합니다.
+
+- **Key Management** — Signing/Encryption Key 생성, import, export, rotation. 목적별 Key 목록과 Key metadata 확인
+- **Topology Management** — Party-to-Participant Mapping, Namespace Delegation, Synchronizer Trust Certificate, Package Vetting 등 Topology state inspect/modify. Topology Transaction을 통해 Canton Node가 서로의 capability를 발견
+- **Synchronizer connectivity** — Participant와 Synchronizer connect/disconnect/reconnect, active connection list, Synchronizer connection configuration 및 alias 관리
+- **Node health 및 status** — Node running status, health, identity query, initialize 여부 확인, unique identifier 조회
+
+## Configuration
+
+Synchronizer Node에서 Admin API는 다른 Node setting과 같은 level에 설정합니다.
+
+### Keep-Alive setting
+
+이 parameter가 connection 동작에 미치는 영향은 [gRPC keep-alive documentation](https://grpc.io/docs/guides/keepalive/)을 참조하세요.
+
+## TLS
+
+Production deployment에서는 mutual TLS, mTLS로 server와 client를 모두 authenticate합니다.
+
+## App developer가 사용하는 일반 operation
+
+Admin API는 주로 Operator tool이지만 App developer도 개발 및 test 중 Ledger API가 다루지 않는 작업에 사용합니다.
+
+**Party allocation** — Application이 Party로 command를 submit하려면 해당 Party가 Participant에 존재해야 합니다. Production에서는 일반적으로 Operator가 처리하고 Sandbox 개발 중에는 직접 Party를 allocate합니다.
+
+<DamlDocsSdksToolsApiReferenceAdminApiL47 />
+
+또는 gRPC의 `PartyManagementService.AllocateParty` RPC를 사용합니다.
+
+**DAR upload** — Contract를 생성하기 전에 compile한 Daml Package를 Participant에 upload해야 합니다. 현재 `dpm`에는 remote Validator에 DAR를 upload하는 `deploy` command가 없습니다. `PackageManagementService.UploadDarFile` gRPC call, `curl` 또는 [Canton Console](/global-synchronizer/reference/canton-console-reference)로 Admin API를 직접 사용합니다.
+
+**User management** — Ledger API는 `actAs`, `readAs`, `executeAs`, `readAsAnyParty`, `executeAsAnyParty` user right를 기준으로 request를 authorize합니다. `UserManagementService`로 user를 생성하고 설정해 application이 어떤 Party로 operate할 수 있는지 제어합니다.
+
+## 관련 페이지
+
+<CardGroup cols={2}>
+  <Card title="Ledger API" href="/sdks-tools/api-reference/ledger-api">
+    Command submit 및 transaction read용 gRPC API
+  </Card>
+  <Card title="JSON API" href="/sdks-tools/api-reference/json-api">
+    Ledger API용 HTTP/REST wrapper
+  </Card>
+  <Card title="Splice APIs" href="/sdks-tools/api-reference/splice-apis">
+    Scan, Validator, SV REST API
+  </Card>
+  <Card title="Canton Console Reference" href="/global-synchronizer/reference/canton-console-reference">
+    Admin API와 상호 작용하는 Console command
+  </Card>
+</CardGroup>

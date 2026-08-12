@@ -1,0 +1,282 @@
+---
+title: "Darsyncer Docker Image"
+description: "DAR file을 Participant에 upload/synchronize합니다."
+source_id: "SRC-BFE2C5C00D"
+source_path: "sdks-tools/development-tools/darsyncer"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "48fa435bb30438708bb8ac3635dff1319cd3ff1db505a3a0fd60dd35ba409f4c"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. [공식 영어 원문](https://docs.canton.network/sdks-tools/development-tools/darsyncer.md)을 함께 확인하세요.
+</Warning>
+
+# darsyncer
+
+`darsyncer`는 하나 이상의 DAR file을 Participant Ledger에 synchronize합니다. 누락된 DAR upload, 필수 Package 존재 검증, synchronization 완료 대기를 수행할 수 있습니다.
+
+## Docker Image
+
+```text
+europe-docker.pkg.dev/da-images/public/docker/darsyncer:latest
+```
+
+## 기능
+
+* 하나 이상의 DAR file을 Participant에 upload
+* 전체 DAR directory synchronize
+* 필수 DAR가 이미 제공되는지 검증
+* Participant가 모든 필수 DAR를 받을 때까지 대기
+* OAuth authentication 지원
+* Configurable transport security
+* Kubernetes deployment용 health probe endpoint
+
+## Image pull
+
+```bash
+docker pull europe-docker.pkg.dev/da-images/public/docker/darsyncer:latest
+```
+
+### 사용 가능한 version
+
+Released Darsyncer version은 Google Artifact Registry UI에서 볼 수 있습니다. 누구나 접근할 수 있지만 Google login이 필요합니다.
+
+| Source          | Location                                                                                                                                                     |
+|-----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Browse UI       | <a href="https://console.cloud.google.com/artifacts/docker/da-images/europe/public/docker%2Fdarsyncer?project=da-images">Browse available image versions</a> |
+| Docker Registry | `europe-docker.pkg.dev/da-images/public/docker/darsyncer:<version-tag>`                                                                                      |
+
+Tag를 지정하지 않으면 Docker는 default로 `:latest`를 pull합니다. 이 문서는 example에 `:latest`를 사용합니다. Version 고정이 필요하면 floating tag 대신 `europe-docker.pkg.dev/da-images/public/docker/darsyncer@sha256:<digest>` 같은 immutable image digest를 사용하세요.
+
+일반적으로 Darsyncer version은 Participant/Splice version 간 compatible합니다. Security vulnerability fix와 기타 patch를 받으려면 최신 상태를 유지하는 것이 좋습니다.
+
+## Quickstart
+
+DAR file이 `./dars`에 있다고 가정합니다.
+
+```bash
+docker run --rm \
+  -v $(pwd)/dars:/dars:ro \
+  europe-docker.pkg.dev/da-images/public/docker/darsyncer:latest \
+  --endpoint participant.example.com:443 \
+  --dars /dars
+```
+
+## Usage
+
+```text
+darsyncer [global options]
+```
+
+### 필수 option
+
+| Option       | Description                                                    |
+| ------------ | -------------------------------------------------------------- |
+| `--endpoint` | Synchronize할 Participant endpoint입니다.                      |
+| `--dars`     | 단일 DAR file 또는 DAR file directory path입니다.              |
+
+## Command-line option
+
+### General
+
+| Option                 | Description                                                                 | Default                         |
+| ---------------------- | --------------------------------------------------------------------------- | ------------------------------- |
+| `--dars`               | DAR file/directory path입니다.                                              |                                 |
+| `--log`                | Log level입니다.                                                            | `info`                          |
+| `--transport-security` | Connection security mode인 `https-with-plaintext-fallback`/`https-only`입니다. | `https-with-plaintext-fallback` |
+| `--help`               | Help 정보를 표시합니다.                                                     |                                 |
+
+### Authentication
+
+이 option은 environment variable로도 제공할 수 있습니다.
+
+| Option            | Environment Variable | Description               |
+| ----------------- | -------------------- | ------------------------- |
+| `--audience`      | `AUDIENCE`           | OAuth audience            |
+| `--client-id`     | `CLIENT_ID`          | OAuth client ID           |
+| `--client-secret` | `CLIENT_SECRET`      | OAuth client secret       |
+| `--oauth-domain`  | `OAUTH_DOMAIN`       | OAuth domain              |
+| `--scope`         | `SCOPE`              | OAuth scope               |
+| `--token-path`    | `TOKEN_PATH`         | JWKS token file path      |
+
+### Mode
+
+| Option             | Description                                                 |
+| ------------------ | ----------------------------------------------------------- |
+| `--endpoint`       | Participant endpoint                                        |
+| `--check`          | Participant에 모든 DAR가 있는지 검증 후 exit                |
+| `--wait`           | Participant에 모든 DAR가 들어올 때까지 대기 후 exit         |
+| `--just-print`     | Upload 없이 Package ID 출력                                 |
+| `--probe-endpoint` | Health probe bind address                                   |
+| `--retry-delay`    | Retry attempt 간 delay                                      |
+
+## Examples
+
+### Directory의 모든 DAR upload
+
+```bash
+docker run --rm \
+  -v $(pwd)/dars:/dars:ro \
+  europe-docker.pkg.dev/da-images/public/docker/darsyncer:latest \
+  --endpoint participant.example.com:443 \
+  --dars /dars
+```
+
+### 단일 DAR upload
+
+```bash
+docker run --rm \
+  -v $(pwd)/dars:/dars:ro \
+  europe-docker.pkg.dev/da-images/public/docker/darsyncer:latest \
+  --endpoint participant.example.com:443 \
+  --dars /dars/example.dar
+```
+
+### 필수 DAR 검증
+
+```bash
+docker run --rm \
+  -v $(pwd)/dars:/dars:ro \
+  europe-docker.pkg.dev/da-images/public/docker/darsyncer:latest \
+  --endpoint participant.example.com:443 \
+  --dars /dars \
+  --check
+```
+
+### Synchronization 완료 대기
+
+```bash
+docker run --rm \
+  -v $(pwd)/dars:/dars:ro \
+  europe-docker.pkg.dev/da-images/public/docker/darsyncer:latest \
+  --endpoint participant.example.com:443 \
+  --dars /dars \
+  --wait
+```
+
+### Package ID 출력
+
+```bash
+docker run --rm \
+  -v $(pwd)/dars:/dars:ro \
+  europe-docker.pkg.dev/da-images/public/docker/darsyncer:latest \
+  --dars /dars \
+  --just-print
+```
+
+## Using Environment Variables
+
+Authentication parameter는 environment variable로 제공할 수 있습니다.
+
+```bash
+docker run --rm \
+  -v $(pwd)/dars:/dars:ro \
+  -e CLIENT_ID=my-client \
+  -e CLIENT_SECRET=my-secret \
+  -e AUDIENCE=my-audience \
+  -e OAUTH_DOMAIN=https://auth.example.com \
+  europe-docker.pkg.dev/da-images/public/docker/darsyncer:latest \
+  --endpoint participant.example.com:443 \
+  --dars /dars
+```
+
+## Health Probe
+
+Default로 health probe server는 다음 address에서 listen합니다.
+
+```text
+0.0.0.0:8080
+```
+
+Address 변경 방법은 다음과 같습니다.
+
+```bash
+--probe-endpoint 0.0.0.0:9090
+```
+
+이 endpoint는 Kubernetes liveness/readiness probe용입니다.
+
+## Logging
+
+Log level을 설정합니다.
+
+```bash
+--log info
+```
+
+Default:
+
+```text
+info
+```
+
+## Transport Security
+
+| Mode                            | Description                                                 |
+| ------------------------------- | ----------------------------------------------------------- |
+| `https-with-plaintext-fallback` | 먼저 HTTPS를 시도하고 필요하면 plaintext로 fallback합니다.  |
+| `https-only`                    | 모든 Participant connection에 HTTPS를 요구합니다.           |
+
+## Volume Mounts
+
+DAR file이 있는 directory를 container에 mount합니다.
+
+Example은 다음과 같습니다.
+
+```bash
+-v $(pwd)/dars:/dars:ro
+```
+
+## Environment Variables
+
+| Variable        | Description           |
+| --------------- | --------------------- |
+| `DARS`          | DAR file/directory     |
+| `ENDPOINT`      | Participant endpoint  |
+| `CLIENT_ID`     | OAuth client ID       |
+| `CLIENT_SECRET` | OAuth client secret   |
+| `AUDIENCE`      | OAuth audience        |
+| `OAUTH_DOMAIN`  | OAuth provider        |
+| `SCOPE`         | OAuth scope           |
+| `TOKEN_PATH`    | JWKS token file       |
+
+## Troubleshooting
+
+### DAR를 찾지 못함
+
+다음을 검증하세요.
+
+* Mounted directory에 `.dar` file이 있습니다.
+* `--dars`에 제공한 path가 올바릅니다.
+* Directory가 container에 mount되어 있습니다.
+
+### Authentication failure
+
+다음을 확인하세요.
+
+* OAuth credential이 valid합니다.
+* Configured audience/scope가 올바릅니다.
+* Participant가 제공한 credential을 accept합니다.
+
+### 연결할 수 없음
+
+다음을 검증하세요.
+
+* Participant endpoint에 접근할 수 있습니다.
+* 선택한 transport security mode가 Participant configuration과 일치합니다.
+* Network policy/firewall이 connection을 허용합니다.
+
+## Help 표시
+
+```bash
+docker run --rm \
+  europe-docker.pkg.dev/da-images/public/docker/darsyncer:latest \
+  --help
+```
+
+## Contribution
+
+Darsyncer는 https://github.com/digital-asset/darsyncer 에 공개된 open-source component이며 contribution/enhancement를 환영합니다.
