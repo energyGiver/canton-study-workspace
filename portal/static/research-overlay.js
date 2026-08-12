@@ -9,7 +9,7 @@
   const PROGRESS_ORDER = ["unreviewed", "in_progress", "complete"];
   const PROGRESS_DISPLAY = {
     unreviewed: { icon: "□", label: "Unreviewed" },
-    in_progress: { icon: "◩", label: "In progress" },
+    in_progress: { icon: "⏳", label: "In progress" },
     complete: { icon: "✓", label: "Complete" },
   };
   const state = {
