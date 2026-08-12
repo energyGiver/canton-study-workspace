@@ -113,7 +113,7 @@ scope: included
 scope_reason: "Required for the public testnet foundation"
 summary_status: ai_draft
 updated_at: 2026-08-12
-updated_by: codex
+updated_by: team-member
 ---
 ```
 
@@ -352,6 +352,12 @@ The first usable portal is complete when:
 - An upstream source change makes affected translations and summaries visibly stale.
 - Upstream sync, local build, and research publishing are documented and reproducible.
 - The official source, deployed snapshot, shared research, and local data remain distinguishable in both the filesystem and the UI.
+
+## Implementation status
+
+The local portal MVP was implemented on 2026-08-12. Phases 1 and 2 are complete, and the Phase 3 workflow is complete with one Korean page seeded as an `ai_draft`; remaining translations are team research work rather than portal development.
+
+Phase 4 currently includes English/Korean/research full-text search, source-linked evidence capture for claim or question drafts, claims/questions backlinks, and progress/scope/upstream-change dashboards. Generative document Q&A remains intentionally deferred until a model provider, credential policy, citation validation, and fail-closed behavior are approved. This prevents uncited model output from entering a documentation-only evidence workflow.
 
 ## Required conditions
 

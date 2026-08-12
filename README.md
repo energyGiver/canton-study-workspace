@@ -19,12 +19,23 @@ The knowledge base is useful only under three conditions: conclusions remain tra
 
 ```bash
 git submodule update --init --recursive
-python3 -m portal build
-cd .generated/site
-npx mintlify@4.2.595 dev
+python3 -m portal dev
 ```
 
 The generated site is intentionally ignored. Official files remain read-only in `upstream/cf-docs`, while the build composes local research features under `.generated/site`.
+
+The documentation UI runs at `http://localhost:3000` and the local-only research API runs at `http://127.0.0.1:8787`. Use `python3 -m portal build`, `python3 -m portal serve`, or `python3 -m portal index` when running individual components.
+
+The portal adds personal tri-state progress, Git-reviewed scope decisions, collapsed three-line summaries, ENG/KOR comparison for translated pages, source-linked claim/question evidence drafts, unified full-text search, and claims/questions/progress/scope/change dashboards. The initial Korean translation and summary cover `What is Canton Network?`; the remaining 803 pages stay visibly unreviewed until the team researches them.
+
+Before publishing shared research, run:
+
+```bash
+python3 -m portal validate
+python3 -m unittest discover -s tests -v
+```
+
+Check official `cf-docs` changes with `python3 -m portal sync`. Apply the latest `origin/main` commit with `python3 -m portal sync --update`, inspect the changed submodule pointer and stale-content dashboard, then commit the reviewed update separately.
 
 ## Repository layout
 
