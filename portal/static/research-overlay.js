@@ -337,8 +337,15 @@
       </details>`;
 
     const heading = root.querySelector("h1");
-    if (heading?.parentNode) heading.parentNode.insertBefore(panel, heading.nextSibling);
-    else root.prepend(panel);
+    const pageHeader = heading?.closest("#header, header");
+    if (pageHeader?.parentNode && root.contains(pageHeader)) {
+      pageHeader.parentNode.insertBefore(panel, pageHeader.nextSibling);
+    } else if (heading?.parentElement?.parentNode) {
+      const titleRow = heading.parentElement;
+      titleRow.parentNode.insertBefore(panel, titleRow.nextSibling);
+    } else {
+      root.prepend(panel);
+    }
 
     const item = state.statusByPath.get(data.path) || {
       source_id: data.source_id,
