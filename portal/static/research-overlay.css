@@ -295,6 +295,12 @@
   font: inherit;
 }
 
+@media (min-width: 1024px) {
+  nav[aria-label="Pages"] {
+    width: 20.7rem;
+  }
+}
+
 .research-nav-scope,
 .research-nav-marker {
   display: inline-flex;
