@@ -6,11 +6,11 @@
     "https://cdn.jsdelivr.net/npm/mermaid@11.16.1/dist/mermaid.min.js";
   const MERMAID_FALLBACK_INTEGRITY =
     "sha384-aBQXj4hK6Jm05i7aQAsUV3bLdSUrHX1BGYfMB0166TtWt/RRaw+h0Eelme9OCOvy";
-  const PROGRESS_ORDER = ["unreviewed", "in_progress", "complete"];
+  const PROGRESS_ORDER = ["unreviewed", "complete"];
   const PROGRESS_DISPLAY = {
-    unreviewed: { icon: "□", label: "Unreviewed" },
-    in_progress: { icon: "⏳", label: "In progress" },
+    unreviewed: { icon: "", label: "Unreviewed" },
     complete: { icon: "✓", label: "Complete" },
+    excluded: { icon: "✕", label: "Excluded from scope" },
   };
   const state = {
     statusByPath: new Map(),
@@ -144,9 +144,8 @@
     return payload;
   }
 
-  function nextProgress(current) {
-    const index = PROGRESS_ORDER.indexOf(current);
-    return PROGRESS_ORDER[(index + 1) % PROGRESS_ORDER.length];
+  function normalizeProgress(current) {
+    return PROGRESS_ORDER.includes(current) ? current : "unreviewed";
   }
 
   async function setProgress(item, status) {
@@ -161,38 +160,28 @@
   }
 
   function updateProgressControl(control, item) {
-    const display = PROGRESS_DISPLAY[item.progress] || PROGRESS_DISPLAY.unreviewed;
+    const status = item.scope === "excluded" ? "excluded" : normalizeProgress(item.progress);
+    const display = PROGRESS_DISPLAY[status];
     if (control.textContent !== display.icon) control.textContent = display.icon;
-    control.dataset.status = item.progress;
+    control.dataset.status = status;
     control.title = display.label;
-    control.setAttribute("aria-label", `Research status: ${display.label}`);
+    control.setAttribute(
+      "aria-label",
+      `${display.label}. Activate to change the document status.`
+    );
   }
 
-  function updateScopeControl(control, item) {
-    const excluded = item.scope === "excluded";
+  function updateFavoriteControl(control, item) {
     const favorite = Boolean(item.favorite);
-    const label = favorite
-      ? "Favorite and included in launch scope"
-      : excluded
-        ? "Excluded from launch scope"
-        : "Included in launch scope";
-    const rawReason = (item.scope_reason || "No reason recorded").trim();
-    const reason = /[.!?]$/.test(rawReason) ? rawReason : `${rawReason}.`;
-    const icon = favorite ? "★" : excluded ? "✕" : "○";
+    const label = favorite ? "Favorite" : "Not a favorite";
+    const icon = favorite ? "★" : "☆";
     if (control.textContent !== icon) {
       control.textContent = icon;
     }
-    control.dataset.scope = item.scope;
-    control.dataset.navigationState = favorite
-      ? "favorite"
-      : excluded
-        ? "excluded"
-        : "included";
+    control.dataset.favorite = String(favorite);
     control.title = favorite
       ? `${label}. Click to remove from Favorites.`
-      : excluded
-        ? `${label}. ${reason} Click to add to Favorites.`
-        : `${label}. Click to exclude.`;
+      : `${label}. Click to add to Favorites.`;
     control.setAttribute("aria-label", control.title);
   }
 
@@ -213,7 +202,6 @@
       scope_source: research.scope_source,
       research_file_sha256: research.file_sha256,
     });
-    if (scope === "excluded") item.favorite = false;
   }
 
   async function setFavorite(item, favorite) {
@@ -224,23 +212,11 @@
     item.favorite = payload.favorite;
   }
 
-  async function cycleNavigationState(item, control) {
+  async function toggleFavorite(item, control) {
     control.dataset.busy = "true";
     control.setAttribute("aria-busy", "true");
     try {
-      if (item.favorite) {
-        await setFavorite(item, false);
-      } else if (item.scope === "excluded") {
-        await setScope(item, "included");
-        await setFavorite(item, true);
-      } else {
-        const reason = window.prompt(
-          "Reason for excluding this page from the current scope:",
-          ""
-        );
-        if (!reason) return;
-        await setScope(item, "excluded", reason);
-      }
+      await setFavorite(item, !item.favorite);
       state.favoritesNavigationSignature = null;
       renderFavoritesNavigation();
       decorateNavigation();
@@ -258,6 +234,38 @@
     }
   }
 
+  async function cycleDocumentStatus(item, control) {
+    if (control.dataset.busy === "true") return;
+    control.dataset.busy = "true";
+    control.setAttribute("aria-busy", "true");
+    try {
+      if (item.scope === "excluded") {
+        await setScope(item, "included");
+        await setProgress(item, "unreviewed");
+      } else if (normalizeProgress(item.progress) === "complete") {
+        const reason = window.prompt(
+          "Reason for excluding this page from the current scope:",
+          ""
+        );
+        if (!reason) return;
+        await setProgress(item, "unreviewed");
+        await setScope(item, "excluded", reason);
+      } else {
+        await setProgress(item, "complete");
+      }
+      decorateNavigation();
+      if (canonicalPath() === item.path) await refreshCurrentPage(true);
+    } catch (error) {
+      console.warn("Unable to update document status", error);
+      window.alert(`Document status update failed: ${error.message}`);
+    } finally {
+      if (control.isConnected) {
+        control.removeAttribute("aria-busy");
+        delete control.dataset.busy;
+      }
+    }
+  }
+
   function decorateNavigation() {
     if (!state.statusByPath.size) return;
     document.querySelectorAll("aside a[href], nav a[href]").forEach((link) => {
@@ -265,24 +273,24 @@
       const item = state.statusByPath.get(canonicalPath(link.href));
       if (!item) return;
 
-      let scopeControl = link.querySelector(".research-nav-scope");
-      if (!scopeControl) {
-        scopeControl = document.createElement("span");
-        scopeControl.className = "research-nav-scope";
-        scopeControl.setAttribute("role", "button");
-        scopeControl.setAttribute("tabindex", "0");
-        link.prepend(scopeControl);
+      let favoriteControl = link.querySelector(".research-nav-favorite");
+      if (!favoriteControl) {
+        favoriteControl = document.createElement("span");
+        favoriteControl.className = "research-nav-favorite";
+        favoriteControl.setAttribute("role", "button");
+        favoriteControl.setAttribute("tabindex", "0");
+        link.prepend(favoriteControl);
       }
-      updateScopeControl(scopeControl, item);
-      const changeScope = async (event) => {
+      updateFavoriteControl(favoriteControl, item);
+      const changeFavorite = async (event) => {
         event.preventDefault();
         event.stopPropagation();
-        if (scopeControl.dataset.busy === "true") return;
-        await cycleNavigationState(item, scopeControl);
+        if (favoriteControl.dataset.busy === "true") return;
+        await toggleFavorite(item, favoriteControl);
       };
-      scopeControl.onclick = changeScope;
-      scopeControl.onkeydown = (event) => {
-        if (event.key === "Enter" || event.key === " ") changeScope(event);
+      favoriteControl.onclick = changeFavorite;
+      favoriteControl.onkeydown = (event) => {
+        if (event.key === "Enter" || event.key === " ") changeFavorite(event);
       };
 
       let marker = link.querySelector(".research-nav-marker");
@@ -294,33 +302,22 @@
 
       updateProgressControl(marker, item);
       if (item.scope === "excluded") {
-        marker.dataset.disabled = "true";
-        marker.title = `${marker.title}. Include this page in scope to update its review status.`;
-        marker.setAttribute("aria-label", marker.title);
-        marker.setAttribute("aria-disabled", "true");
-        marker.setAttribute("tabindex", "-1");
-        marker.setAttribute("role", "button");
         link.classList.add("research-nav-excluded");
-        link.removeAttribute("title");
-        marker.onclick = null;
-        marker.onkeydown = null;
       } else {
-        delete marker.dataset.disabled;
-        marker.setAttribute("role", "button");
-        marker.setAttribute("tabindex", "0");
-        marker.removeAttribute("aria-disabled");
         link.classList.remove("research-nav-excluded");
-        link.removeAttribute("title");
-        const advance = async (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          await setProgress(item, nextProgress(item.progress));
-        };
-        marker.onclick = advance;
-        marker.onkeydown = (event) => {
-          if (event.key === "Enter" || event.key === " ") advance(event);
-        };
       }
+      marker.setAttribute("role", "button");
+      marker.setAttribute("tabindex", "0");
+      link.removeAttribute("title");
+      const advance = async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        await cycleDocumentStatus(item, marker);
+      };
+      marker.onclick = advance;
+      marker.onkeydown = (event) => {
+        if (event.key === "Enter" || event.key === " ") advance(event);
+      };
     });
   }
 
@@ -431,7 +428,7 @@
     ) {
       return;
     }
-    if (event.target.closest?.(".research-nav-scope, .research-nav-marker")) return;
+    if (event.target.closest?.(".research-nav-favorite, .research-nav-marker")) return;
     const link = event.target.closest?.("a[data-research-localized-href]");
     if (!link || link.target === "_blank" || link.hasAttribute("download")) return;
 
@@ -568,11 +565,7 @@
         </summary>
         <div class="research-summary-body">
           <div class="research-toolbar">
-            ${
-              research.scope === "excluded"
-                ? '<span class="research-button scope-disabled" title="Progress is not tracked for excluded pages"><span aria-hidden="true">✕</span> Excluded</span>'
-                : '<button class="research-button" type="button" data-page-progress-control></button>'
-            }
+            <button class="research-button" type="button" data-page-progress-control></button>
             <a class="research-button subtle" href="/${escapeHtml(data.path)}">ENG</a>
             ${languageLink}
             ${compareButton}
@@ -649,7 +642,7 @@
     const progressControl = panel.querySelector("[data-page-progress-control]");
     if (progressControl) {
       updateProgressControl(progressControl, item);
-      progressControl.onclick = () => setProgress(item, nextProgress(item.progress));
+      progressControl.onclick = () => cycleDocumentStatus(item, progressControl);
     }
 
     const editor = panel.querySelector(".research-editor");
@@ -796,10 +789,10 @@
     return items.reduce(
       (counts, item) => {
         if (item.scope === "excluded") counts.excluded += 1;
-        else counts[item.progress] = (counts[item.progress] || 0) + 1;
+        else counts[normalizeProgress(item.progress)] += 1;
         return counts;
       },
-      { unreviewed: 0, in_progress: 0, complete: 0, excluded: 0 }
+      { unreviewed: 0, complete: 0, excluded: 0 }
     );
   }
 
@@ -816,7 +809,7 @@
         .map(
           (item) => `<tr>
             <td><a href="/${escapeHtml(item.path)}">${escapeHtml(item.title)}</a></td>
-            <td>${escapeHtml(item.progress.replaceAll("_", " "))}</td>
+            <td>${escapeHtml(normalizeProgress(item.progress))}</td>
             <td>${escapeHtml(item.scope)}</td>
             <td>${escapeHtml(item.summary_status)}${item.summary_stale ? " / stale" : ""}</td>
             <td>${item.translation_available ? (item.translation_stale ? "stale" : "available") : "missing"}</td>
@@ -1032,7 +1025,7 @@
               ? `<div class="research-favorite-grid">${favorites
                   .map(renderFavoriteCard)
                   .join("")}</div>`
-              : '<p class="research-empty">Cycle a page marker to ★ to add it here.</p>'
+              : '<p class="research-empty">Select ☆ next to a page title to add it here.</p>'
           }
         </section>`;
         return;
@@ -1055,7 +1048,6 @@
         <div class="research-stats">
           ${card("Official pages", config.documents)}
           ${card("Unreviewed", counts.unreviewed)}
-          ${card("In progress", counts.in_progress)}
           ${card("Complete", counts.complete)}
           ${card("Excluded", counts.excluded)}
         </div>

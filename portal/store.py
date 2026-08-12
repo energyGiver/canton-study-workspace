@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Iterable, Mapping
 
 
-VALID_PROGRESS = {"unreviewed", "in_progress", "complete"}
+VALID_PROGRESS = {"unreviewed", "complete"}
 VALID_DRAFT_KINDS = {"summary", "translation", "note"}
 
 
@@ -38,20 +38,29 @@ class PortalStore:
         with self.connect() as connection:
             for migration in sorted(self.migrations_dir.glob("*.sql")):
                 connection.executescript(migration.read_text(encoding="utf-8"))
+            connection.execute(
+                "UPDATE page_progress SET status = 'unreviewed' WHERE status = 'in_progress'"
+            )
 
     def get_progress(self, source_id: str) -> str:
         with self.connect() as connection:
             row = connection.execute(
                 "SELECT status FROM page_progress WHERE source_id = ?", (source_id,)
             ).fetchone()
-        return row["status"] if row else "unreviewed"
+        status = row["status"] if row else "unreviewed"
+        return status if status in VALID_PROGRESS else "unreviewed"
 
     def all_progress(self) -> dict[str, str]:
         with self.connect() as connection:
             rows = connection.execute(
                 "SELECT source_id, status FROM page_progress"
             ).fetchall()
-        return {row["source_id"]: row["status"] for row in rows}
+        return {
+            row["source_id"]: (
+                row["status"] if row["status"] in VALID_PROGRESS else "unreviewed"
+            )
+            for row in rows
+        }
 
     def set_progress(self, source_id: str, status: str) -> str:
         if status not in VALID_PROGRESS:

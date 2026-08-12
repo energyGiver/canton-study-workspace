@@ -213,7 +213,9 @@ class ContentHelpersTest(unittest.TestCase):
     def test_public_testnet_scope_profile_is_conservative_and_stable(self) -> None:
         repository = ContentRepository()
         excluded = [
-            row for row in repository.status_rows({}) if row["scope"] == "excluded"
+            page
+            for page in repository.pages
+            if repository.profile_scope(page)["scope"] == "excluded"
         ]
         self.assertEqual(len(excluded), 153)
         self.assertEqual(
@@ -279,8 +281,19 @@ class StoreTest(unittest.TestCase):
 
     def test_progress_defaults_and_updates(self) -> None:
         self.assertEqual(self.store.get_progress("SRC-TEST"), "unreviewed")
-        self.store.set_progress("SRC-TEST", "in_progress")
-        self.assertEqual(self.store.get_progress("SRC-TEST"), "in_progress")
+        self.store.set_progress("SRC-TEST", "complete")
+        self.assertEqual(self.store.get_progress("SRC-TEST"), "complete")
+        with self.assertRaises(ValueError):
+            self.store.set_progress("SRC-TEST", "in_progress")
+
+    def test_legacy_in_progress_is_migrated_to_unreviewed(self) -> None:
+        with self.store.connect() as connection:
+            connection.execute(
+                "INSERT INTO page_progress(source_id, status, updated_at) VALUES (?, ?, ?)",
+                ("SRC-LEGACY", "in_progress", self.store.now()),
+            )
+        self.store.migrate()
+        self.assertEqual(self.store.get_progress("SRC-LEGACY"), "unreviewed")
 
     def test_favorites_default_toggle_and_list(self) -> None:
         self.assertFalse(self.store.is_favorite("SRC-TEST"))

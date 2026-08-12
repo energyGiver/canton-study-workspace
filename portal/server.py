@@ -202,8 +202,6 @@ def make_handler(application: PortalApplication) -> type[BaseHTTPRequestHandler]
                 favorite = body.get("favorite")
                 if not isinstance(favorite, bool):
                     raise ValueError("Favorite must be a boolean")
-                if favorite and application.content.research(page)["scope"] == "excluded":
-                    raise ValueError("An excluded page must be included before favoriting")
                 favorite = application.store.set_favorite(page.source_id, favorite)
                 self._send(
                     HTTPStatus.OK,
@@ -229,8 +227,6 @@ def make_handler(application: PortalApplication) -> type[BaseHTTPRequestHandler]
                     str(body.get("reason", "")),
                     body.get("base_file_sha256"),
                 )
-                if research["scope"] == "excluded":
-                    application.store.set_favorite(page.source_id, False)
                 self._send(HTTPStatus.OK, research)
                 return
             self._send(HTTPStatus.NOT_FOUND, {"error": "Unknown endpoint"})

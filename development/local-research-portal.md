@@ -80,7 +80,8 @@ One research file per official page is preferred over one large registry. This r
 
 | Item | Reason |
 | --- | --- |
-| Personal page status: `unreviewed`, `in_progress`, `complete` | Applies to one researcher and changes frequently |
+| Personal page status: `unreviewed`, `complete` | Applies to one researcher and changes frequently |
+| Personal Favorites | Applies to one researcher and changes frequently |
 | Last visited page and recent-history list | Personal navigation state |
 | Preferred language, theme, and collapsed panels | Personal UI settings |
 | Bookmarks and private highlights | Personal until deliberately published |
@@ -176,27 +177,29 @@ The build process composes an ignored `.generated/site/` directory from the pinn
 
 Mintlify supports local preview with `mint dev` and globally included JavaScript and CSS. The overlay can therefore add sidebar status controls and the summary panel while preserving the official navigation and article layout. Mintlify warns that styling selectors can change, so upstream updates require browser smoke tests. See [local preview](https://www.mintlify.com/docs/cli/preview) and [custom scripts](https://www.mintlify.com/docs/customize/custom-scripts).
 
-## Page status UX
+## Sidebar page-state UX
 
-Personal research progress uses one compact tri-state control in the left navigation:
+Each page row keeps two compact controls with distinct ownership and meaning:
 
-| Display | Status | Behavior |
-| --- | --- | --- |
-| Empty checkbox | `unreviewed` | Default state |
-| Gray partial checkbox | `in_progress` | Page has been opened for research or status was advanced once |
-| Green checked checkbox | `complete` | Researcher considers their review complete |
+| Position | Display | State | Storage |
+| --- | --- | --- | --- |
+| Left | Gray `☆` | Not a Favorite | Local SQLite |
+| Left | Filled purple `★` | Favorite | Local SQLite |
+| Right | Empty box | `unreviewed` and in scope | Local SQLite |
+| Right | Green `✓` box | `complete` and in scope | Local SQLite |
+| Right | Gray `✕` box | Excluded from the launch scope | Git-tracked page research metadata |
 
-Clicking advances the state. The icon, color, tooltip, and accessible label all communicate the status so color is not the only signal. A small context menu allows direct selection or reset without cycling through every state.
+The left star toggles Favorite independently of review and scope, so an excluded page can still be saved for later reference. The right control advances `empty → complete → excluded → empty`. Moving from complete to excluded asks for a reason because that transition changes shared launch-scope metadata. Moving from excluded to empty creates an explicit include override and resets personal progress to `unreviewed`.
 
-Progress is stored in SQLite by stable `source_id`, not by page title. Renaming a title therefore does not lose personal progress.
+Progress and Favorites are stored by stable `source_id`, not by page title. Renaming a title therefore does not lose personal state. Legacy `in_progress` rows are migrated to `unreviewed`; the UI no longer exposes an intermediate progress state.
 
 ## Scope exclusion UX
 
-Scope is independent from personal progress. The Git-tracked profile at `research/scope/public-testnet.json` defines the conservative default for the current standalone private Synchronizer public testnet. It excludes only documentation that clearly depends on historical releases, Global Synchronizer economics and rewards, Super Validator-only operations, or existing Global network services. Core protocol, Daml, APIs, topology, onboarding, security, monitoring, wallet, custody, traffic, and private Synchronizer material remains included.
+Scope remains independent from personal Favorites and is shared rather than personal. The Git-tracked profile at `research/scope/public-testnet.json` defines the conservative default for the current standalone private Synchronizer public testnet. It excludes only documentation that clearly depends on historical releases, Global Synchronizer economics and rewards, Super Validator-only operations, or existing Global network services. Core protocol, Daml, APIs, topology, onboarding, security, monitoring, wallet, custody, traffic, and private Synchronizer material remains included.
 
 A page-level action named **Exclude from current scope** or **Include in scope** writes an explicit override and reason to the shared page research file. A summary publish does not create a scope override by itself, so later profile updates continue to apply unless a team member deliberately made a page-specific decision.
 
-Excluded pages show a small gray `X` badge at the far right of the left-navigation row. The progress checkbox is hidden or disabled for that page, and the tooltip shows the exclusion reason. The action is reversed from the same page menu. This avoids treating exclusion as a fourth progress state.
+Excluded pages show a gray `X` in the right-side status box. Activating that box includes the page and returns it to the empty `unreviewed` state. The left Favorite star remains independently available.
 
 The `/research/scope` view lists only X-marked pages. It shows the active profile and conditions, exclusion counts, search, documentation-area and reason filters, per-page rationale, and ENG/KOR links when a Korean translation exists.
 

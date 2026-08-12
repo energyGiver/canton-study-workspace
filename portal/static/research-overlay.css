@@ -97,10 +97,10 @@
   color: white;
 }
 
-.research-button[data-status="in_progress"] {
-  border-color: #d97706;
-  background: color-mix(in srgb, #d97706 14%, transparent);
-  color: inherit;
+.research-button[data-status="excluded"] {
+  border-color: color-mix(in srgb, #7f8792 52%, transparent);
+  background: color-mix(in srgb, #7f8792 14%, transparent);
+  color: #6f7782;
 }
 
 .research-summary-lines {
@@ -301,7 +301,7 @@
   }
 }
 
-.research-nav-scope,
+.research-nav-favorite,
 .research-nav-marker {
   display: inline-flex;
   width: 1.1rem;
@@ -316,64 +316,68 @@
   cursor: pointer;
 }
 
-.research-nav-scope {
+.research-nav-favorite {
   border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
   margin-left: 0;
   margin-top: 0.05rem;
   background: transparent;
-  font-size: 0.68rem;
+  color: #8a919b;
+  font-size: 0.8rem;
   font-weight: 700;
   line-height: 1;
   transition: border-color 120ms ease, background 120ms ease, color 120ms ease,
     transform 120ms ease;
 }
 
-.research-nav-scope[data-scope="included"] {
-  border-color: color-mix(in srgb, #734be2 45%, transparent);
+.research-nav-favorite[data-favorite="true"] {
+  border-color: color-mix(in srgb, #734be2 62%, transparent);
   color: #734be2;
-  background: color-mix(in srgb, #734be2 8%, transparent);
+  background: color-mix(in srgb, #734be2 18%, transparent);
 }
 
-.research-nav-scope[data-scope="excluded"] {
-  border-color: color-mix(in srgb, #7f8792 45%, transparent);
-  color: #6f7782;
-  background: color-mix(in srgb, #7f8792 14%, transparent);
+.dark .research-nav-favorite[data-favorite="true"],
+[data-theme="dark"] .research-nav-favorite[data-favorite="true"] {
+  border-color: color-mix(in srgb, #a78bfa 72%, transparent);
+  color: #c4b5fd;
+  background: color-mix(in srgb, #8b5cf6 28%, transparent);
 }
 
-.research-nav-scope[data-navigation-state="favorite"] {
-  border-color: color-mix(in srgb, #d97706 58%, transparent);
-  color: #b45309;
-  background: color-mix(in srgb, #f59e0b 16%, transparent);
-}
-
-.research-nav-scope:hover {
+.research-nav-favorite:hover {
   border-color: currentColor;
   transform: translateY(-1px);
 }
 
-.research-nav-scope:focus-visible {
+.research-nav-favorite:focus-visible {
   outline: 2px solid #734be2;
   outline-offset: 2px;
 }
 
-.research-nav-scope[data-busy="true"] {
+.research-nav-favorite[data-busy="true"],
+.research-nav-marker[data-busy="true"] {
   cursor: wait;
   opacity: 0.55;
 }
 
+.research-nav-marker {
+  border: 1px solid color-mix(in srgb, currentColor 38%, transparent);
+  background: transparent;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+
 .research-nav-marker[data-status="complete"] {
+  border-color: #18945b;
   background: #18945b;
   color: white;
 }
 
-.research-nav-marker[data-status="in_progress"] {
-  border-color: #d97706;
-  background: color-mix(in srgb, #d97706 14%, transparent);
+.research-nav-marker[data-status="excluded"] {
+  border-color: color-mix(in srgb, #7f8792 52%, transparent);
+  background: color-mix(in srgb, #7f8792 16%, transparent);
+  color: #6f7782;
 }
 
-.research-nav-marker[data-disabled="true"] {
-  cursor: not-allowed;
-  opacity: 0.55;
+.research-nav-marker:hover {
+  border-color: currentColor;
 }
 
 .research-favorites-header-link {
@@ -461,7 +465,7 @@
   outline: none;
 }
 
-.research-favorite-navigation-link > span:not(.research-nav-scope, .research-nav-marker) {
+.research-favorite-navigation-link > span:not(.research-nav-favorite, .research-nav-marker) {
   min-width: 0;
   flex: 1;
 }
