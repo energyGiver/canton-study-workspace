@@ -1,0 +1,78 @@
+---
+title: "User API"
+description: "Session, network, identity provider, wallet 및 transaction을 관리하는 Wallet Gateway User API"
+source_id: "SRC-EA3080F7AC"
+source_path: "integrations/wallet-gateway/reference/user-api"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "b6731645b314262a8544180d61e19cc6382be81a29ef8d51cb199b61b96091af"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/wallet-gateway/reference/user-api.md)을 사용하세요.
+</Warning>
+
+User API는 user의 wallet, network, identity provider, session 및 transaction을 관리하는 JSON-RPC 2.0 API입니다. User UI는 이 API로 구축되며 script, backend 또는 custom UI에서 직접 호출할 수 있습니다.
+
+- **Base path**: `/api/v0/user`, `server.userPath`로 설정 가능
+- **Protocol**: JSON-RPC 2.0
+- **Authentication**: 아래에 별도로 표시된 경우를 제외하고 JWT bearer token 사용
+
+## Methods
+
+| Category | Method | Description |
+| --- | --- | --- |
+| Sessions | `addSession()` | 새 session 생성, authenticate되지 않은 initial connection에 사용 |
+| | `removeSession()` | 현재 session 종료 |
+| | `listSessions()` | 현재 user의 session 조회 |
+| Networks | `listNetworks()` | 설정된 network 조회, public metadata만 반환하며 auth secret은 제외 |
+| | `getNetwork()` | Auth를 포함한 전체 network configuration 조회, admin only |
+| | `selfSignedAccessToken()` | Login용 self-signed JWT mint, unauthenticated |
+| | `addNetwork()` | 새 network configuration 추가 |
+| | `removeNetwork()` | Network configuration 제거 |
+| Identity providers | `listIdps()` | 모든 Identity Provider 조회 |
+| | `addIdp()` | 새 Identity Provider 추가 |
+| | `removeIdp()` | Identity Provider 제거 |
+| Wallets | `createWallet()` | Network에 새 wallet, 즉 Party 생성 |
+| | `listWallets()` | 현재 user의 모든 wallet 조회 |
+| | `setPrimaryWallet()` | Primary wallet 설정 |
+| | `removeWallet()` | Wallet 제거 |
+| | `syncWallets()` | Wallet을 ledger와 synchronize |
+| | `isWalletSyncNeeded()` | Wallet synchronization 필요 여부 확인 |
+| Transactions | `sign()` | Transaction sign |
+| | `execute()` | Signed transaction execute |
+| | `getTransaction()` | ID로 transaction 조회 |
+| | `listTransactions()` | Transaction 목록 조회 |
+
+## Authentication
+
+대부분의 method는 `Authorization` header의 JWT가 필요합니다.
+
+```text
+Authorization: Bearer <jwt-token>
+```
+
+Client가 connection을 bootstrap할 수 있도록 다음 method는 authentication 없이 사용할 수 있습니다.
+
+- `addSession()`
+- `listNetworks()`
+- `listIdps()`
+- `selfSignedAccessToken()`
+
+## 전체 Specification
+
+완전한 OpenRPC specification은 [openrpc-user-api.json](https://github.com/canton-network/wallet/blob/main/api-specs/openrpc-user-api.json)에서 확인할 수 있습니다.
+
+## Rate Limiting
+
+Abuse를 방지하기 위해 request에 rate limit을 적용합니다. [Server settings](/integrations/wallet-gateway/operate/configure#server)에서 limit을 설정합니다. Response에는 다음 header가 포함됩니다.
+
+- `X-RateLimit-Limit`: Window당 최대 request 수
+- `X-RateLimit-Remaining`: 현재 window에서 남은 request 수
+- `X-RateLimit-Reset`: Limit이 reset되는 시점
+
+## CORS
+
+Cross-origin access는 `server.allowedOrigins`로 제어합니다. Default는 `["*"]`이며 production에서는 알려진 origin으로 제한해야 합니다. [Wallet Gateway 설정](/integrations/wallet-gateway/operate/configure#server)을 참조하세요.

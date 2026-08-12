@@ -1,0 +1,127 @@
+---
+title: "SV Governance Reference"
+description: "Decentralized Synchronizer Operator(DSO)의 governance model, voting mechanism, governance action"
+source_id: "SRC-4FA5D0A091"
+source_path: "overview/reference/sv-governance-reference"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "732fa65340f9bc7d795a3d60e18740cb4dfd7c6bf266d2f81fb3f64ffa2f020d"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/reference/sv-governance-reference.md)을 사용하세요.
+</Warning>
+
+Global Synchronizer는 Decentralized Synchronizer Operator(DSO)로 공동 행동하는 Super Validator(SV)가 governance합니다. Governance decision은 `splice-dso-governance` Package에 정의된 Daml contract를 사용한 on-chain voting을 통해 이루어집니다.
+
+## DSO Governance Model
+
+DSO는 모든 SV Node에 걸쳐 hosting되는 Decentralized Party입니다. Daml Package structure, DSO Party requirement, code dependency graph를 포함한 전체 기술 architecture는 [Splice Architecture](/sdks-tools/api-reference/splice-architecture)를 참고하세요. DSO는 action에 SV supermajority의 approval이 필요한 Byzantine Fault Tolerant(BFT) confirmation model을 사용합니다. 전체 SV 수가 `n`일 때 `f = floor((n - 1) / 3)`개의 faulty 또는 dishonest node를 감내합니다.
+
+모든 governance action에 필요한 vote 수는 다음과 같습니다.
+
+```
+requiredNumVotes = ceiling((numSVs + f + 1) / 2)
+```
+
+이 threshold는 두 property를 보장합니다. Dishonest minority가 action을 통과시키지 못하는 **integrity**와 최대 `f`개의 abstaining SV가 progress를 차단하지 못하는 **availability**입니다.
+
+## Governance 역할
+
+어떤 SV든 on-chain `VoteRequest`를 생성하여 governance action을 propose할 수 있습니다. 이후 다른 모든 SV가 해당 request에 accept/reject vote를 cast할 수 있습니다. Vote threshold를 충족하면 어떤 SV든 [CIP-0064](https://github.com/canton-foundation/cips/blob/main/cip-0064/cip-0064.md)에 설명된 delegateless automation으로 action을 execute할 수 있으므로 지정된 DSO delegate가 필요하지 않습니다.
+
+Confirmation이 필요한 action에는 두 execution path가 있습니다.
+
+- **Voted action** -- 어떤 SV든 vote request를 생성하고 다른 SV가 accept/reject vote로 response합니다. `requiredNumVotes`개의 accept vote를 모으면 action이 execute됩니다.
+- **Automated confirmation** -- Mining round advance 같은 routine operational action에서는 각 SV Node가 precondition을 충족하면 자동으로 confirmation을 생성합니다. 충분한 confirmation이 쌓이면 manual voting 없이 execution이 진행됩니다.
+
+## Voting Mechanism
+
+Vote request는 DSO ledger의 `VoteRequest` Daml contract로 표현됩니다. 각 request는 proposed `ActionRequiringConfirmation`, `voteBefore` deadline, scheduled action을 위한 optional `targetEffectiveAt` timestamp를 지정합니다.
+
+Vote는 다음 중 하나로 resolve됩니다.
+
+- **Accepted** -- 최소 `requiredNumVotes`개 SV가 accept에 vote합니다. Action이 on-chain에서 execute됩니다.
+- **Rejected** -- 최소 `requiredNumVotes`개 SV가 reject에 vote합니다. Request가 archive됩니다.
+- **Expired** -- 어느 방향으로도 충분한 vote를 얻지 못한 채 `voteBefore` deadline이 지납니다.
+
+`targetEffectiveAt` date가 있는 vote request는 threshold에 도달하고 effective time이 지난 뒤에만 action이 execute됩니다. 이를 통해 SV는 parameter update나 upgrade activation 같은 change를 미리 schedule할 수 있습니다.
+
+SV operator는 SV Web UI의 **Governance tab**에서 vote를 관리합니다. 새 vote request 생성, pending proposal review, vote cast, outcome tracking을 수행할 수 있습니다. UI는 쉽게 추적하도록 vote request를 "Action Needed", "In Progress", "Planned", "Executed", "Rejected" 같은 category로 group화합니다.
+
+## Governance Action 유형
+
+Governance action은 이를 표현하는 Daml data type에 따라 `ARC_DsoRules`, `ARC_AmuletRules`, `ARC_AnsEntryContext` 세 category로 나뉩니다.
+
+### DSO Rules Action(`ARC_DsoRules`)
+
+- **Add SV**(`SRARC_AddSv`) -- 새 Super Validator를 DSO에 onboarding
+- **Offboard SV**(`SRARC_OffboardSv`) -- DSO에서 Super Validator 제거
+- **Grant featured app right**(`SRARC_GrantFeaturedAppRight`) -- Featured app reward를 받을 Application Provider 승인
+- **Revoke featured app right**(`SRARC_RevokeFeaturedAppRight`) -- Provider의 featured app status 제거
+- **Update SV reward weight**(`SRARC_UpdateSvRewardWeight`) -- SV에 assign된 reward weight 변경
+- **Set DSO config**(`SRARC_SetConfig`) -- Network-level parameter를 control하는 `DsoRulesConfig` 수정
+
+### Amulet Rules Action(`ARC_AmuletRules`)
+
+- **Set amulet config**(`CRARC_SetConfig`) -- Fee schedule, issuance curve, Traffic pricing을 포함한 Canton Coin economics를 governance하는 `AmuletConfig` 변경
+
+### Canton Name Service Action(`ARC_AnsEntryContext`)
+
+- **Collect initial entry payment**(`ANSRARC_CollectInitialEntryPayment`) -- 새 CNS entry payment 자동 collection
+- **Reject entry payment**(`ANSRARC_RejectEntryInitialPayment`) -- Invalid CNS entry payment 자동 rejection
+
+### Automated Action
+
+일부 action은 manual voting이 필요하지 않습니다. Precondition을 충족하면 SV Node가 confirmation을 자동 생성합니다.
+
+- **Start issuing round**(`CRARC_MiningRound_StartIssuing`) -- Reward summary 계산 후 Mining round를 issuing으로 transition
+- **Archive closed mining round**(`CRARC_MiningRound_Archive`) -- 완전히 expired된 Mining round 정리
+- **Confirm SV onboarding**(`SRARC_ConfirmSvOnboarding`) -- Identity verification 후 Party가 SV가 될 수 있음을 confirm
+
+## Parameter Governance
+
+SV는 voted config change를 통해 Network parameter를 governance합니다. 주요 configurable parameter는 다음과 같습니다.
+
+- **Traffic pricing**(`extraTrafficPrice`) -- Synchronizer Traffic MB당 USD cost입니다. [CIP-0042](https://github.com/canton-foundation/cips/blob/main/cip-0042/cip-0042.md)에 따라 standard Canton Coin transfer cost가 1 USD가 되도록 calibrate해야 합니다.
+- **Read vs. write scaling factor**(`readVsWriteScalingFactor`) -- Write Traffic cost에 대한 Read Traffic cost ratio로 ordering과 persistence보다 message delivery infrastructure cost가 낮음을 반영합니다.
+- **CC-USD conversion rate** -- 각 SV가 원하는 dollar-to-CC rate를 on-chain에 publish합니다. DSO가 모든 published value의 **median**을 사용하여 어떤 단일 SV의 manipulation에도 저항합니다.
+- **Round duration** -- Mining round 길이로 기본값은 10분입니다. Reward calculation과 issuance 빈도를 결정합니다.
+- **SV reward weight** -- 각 SV에는 SV reward distribution share를 결정하는 configurable reward weight가 있습니다. 변경하려면 governance vote가 필요하며 [CF configs repository](https://github.com/global-synchronizer-foundation/configs)에도 반영해야 합니다.
+
+CC-USD rate의 median-based approach에서는 모든 SV operator가 preferred value를 publish하고 system이 median을 자동 선택합니다. 이를 통해 SV operator 중 약 3분의 2의 position을 나타내는 predictable aggregate-preference pricing을 생성합니다.
+
+Traffic parameter는 주기적인 recalibration이 필요합니다. 실제 Traffic cost는 DSO의 SV 수와 Canton protocol version 같은 factor에 따라 변하므로 SV는 current cost를 측정하고 governance vote를 통해 parameter를 조정해야 합니다.
+
+## CIP Process
+
+Canton Network standard와 protocol의 공식 변경은 Canton Improvement Proposal(CIP) process를 따릅니다. CIP는 기술 specification, governance procedure, informational guideline을 다룹니다. SV는 위에서 설명한 동일한 on-chain governance mechanism을 통해 CIP adoption에 vote합니다.
+
+CIP lifecycle과 참여 방법의 전체 개요는 [CIP란 무엇인가요?](/overview/reference/what-are-cips)를 참고하세요. CIP repository는 [github.com/canton-foundation/cips](https://github.com/canton-foundation/cips)에서 관리합니다.
+
+## Canton Foundation
+
+[Canton Foundation(CF)](https://sync.global)은 Global Synchronizer governance와 growth를 지원하기 위해 설립된 Linux Foundation 산하 독립 nonprofit body입니다. CF는 다음을 수행합니다.
+
+- 자체 SV Node를 운영하고 member를 대신해 governance vote에 참여
+- Super Validator governance decision과 Network operation에 transparency 제공
+- SV operator group 전체의 upgrade schedule과 maintenance coordination
+- Splice codebase governance 관리와 featured application review 감독
+
+CF는 Network를 일방적으로 control하지 않습니다. CF의 SV Node는 다른 모든 SV와 같은 voting weight를 가지며 모든 governance action은 여전히 표준 BFT vote threshold를 통과해야 합니다. 현재 Super Validator 목록은 CF가 관리합니다.
+
+## On-Chain Governance Architecture
+
+모든 governance state는 Daml contract로 on-chain에 존재합니다. `DsoRules` contract는 authoritative DSO membership record인 `svs` map과 current configuration을 보유합니다. `AmuletRules` contract는 Canton Coin configuration schedule을 보유합니다. Vote request, confirmation, SV state contract는 모두 ledger-visible하므로 Scan App에 access할 수 있는 모든 Party가 governance를 audit할 수 있습니다.
+
+Decentralized Party model에서 DSO Party 자체의 confirmation threshold는 `ceiling(numSVs * 2.0 / 3.0)`입니다. DSO Party가 signing한 모든 Transaction은 최소한 이 수의 SV Participant Node가 confirm해야 하므로 application-level voting logic과 독립적으로 Canton protocol layer에서 BFT를 enforce합니다.
+
+## BFT Guarantee
+
+On-chain voting과 decentralized automation의 결합은 dishonest SV가 `f`개 이하라고 신뢰하는 Network Participant에게 세 guarantee를 제공합니다.
+
+- **Valid Transaction** -- DSO-confirmed Transaction은 모두 Daml [ledger validity model](/overview/learn/ledger-model)을 충족합니다.
+- **Timely automation** -- Round advancement와 reward issuance 같은 routine operational action이 delay 없이 execute됩니다.
+- **Predictable parameter** -- Fee와 configuration value가 최소 SV operator 3분의 2의 aggregate preference를 반영합니다.

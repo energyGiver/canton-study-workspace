@@ -1,0 +1,114 @@
+---
+title: "Party 관리"
+description: "Wallet Gateway의 User UI를 통해 로그인하고 Party를 생성, 구성 및 제거합니다."
+source_id: "SRC-0D642CBE3F"
+source_path: "integrations/wallet-gateway/use/party-management"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "54c37fb9d71df4b8451153d7fde1658bb763056e998831298e120e8421c37da9"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/wallet-gateway/use/party-management.md)을 사용하세요.
+</Warning>
+
+End user는 Wallet Gateway가 root URL에서 제공하는 web app인 **User UI**를 통해 Wallet Gateway를 사용합니다. User UI에서 로그인하고, Party를 생성 및 관리하며, Transaction을 검토하고, dApp의 요청을 승인할 수 있습니다. 이 가이드에서는 UI 로그인과 Party 관리 방법을 설명합니다. Script 또는 backend에서 동일한 작업을 수행하려면 [User API를 사용한 자동화](/integrations/wallet-gateway/automation/automate-with-user-api)를 참조하세요.
+
+<Note>
+**dApp API**는 별도입니다. dApp은 user가 wallet을 연결할 때 [dApp SDK](/sdks-tools/sdks/dapp-sdk/overview)를 통해 이 API를 호출하며, user가 직접 호출하지는 않습니다. [dApp API](/integrations/wallet-gateway/reference/dapp-api)를 참조하세요.
+</Note>
+
+## User UI
+
+Wallet Gateway는 root URL에서 web UI를 제공합니다(예: `http://localhost:3030`). 주요 페이지는 다음과 같습니다.
+
+| 페이지 | Path | 기능 |
+| --- | --- | --- |
+| **Login** | `/login` | Network 및 identity provider를 선택한 다음 로그인합니다(OAuth redirect 또는 self-signed). |
+| **Parties** | `/parties` | Party를 나열, 생성 및 제거하고 primary Party를 설정합니다. 기본 landing page입니다. |
+| **Activities** | `/activities` | Activity 목록과 각 activity의 status 및 상세 정보를 표시합니다. |
+| **Approve** | `/approve` | dApp이 요청한 Transaction을 검토하고 signing하거나 거부합니다. |
+| **Settings** | `/settings` | `/networks` 및 `/identity-providers`를 관리하고 session과 version 정보를 확인합니다. |
+| **Callback** | `/callback` | 로그인 후 사용하는 internal OAuth redirect target입니다. |
+
+## 로그인
+
+1. User UI를 열고 **Login** 또는 **Connect**로 이동합니다.
+2. 사용 가능한 CIP-0103 compliant provider 또는 gateway 목록에서 선택합니다. 또는 custom remote gateway URL을 입력합니다.
+3. **Wallet Gateway** option을 선택하면 network를 선택하라는 안내가 표시됩니다. 이 network는 연결된 Validator 또는 Node와 연계되며, Validator 또는 Node setting에서 구성되어 있어야 합니다.
+<img src="/integrations/wallet-gateway/use/images/selectNetwork.png" alt="wallet gateway network selection" style={{ display: 'block', margin: '0 auto', maxWidth: '50%', height: 'auto' }} />
+
+
+4. **Connect**를 클릭하여 Party 조회를 authorize합니다.
+   - **OAuth / OpenID Connect**: Provider로 redirect된 후 다시 돌아옵니다.
+   - **Self-signed**: Token이 local에서 생성됩니다(development 전용).
+5. 성공하면 **Parties** 페이지로 이동합니다. Session이 필요한 페이지에 인증되지 않은 user가 접근하면 자동으로 **Login** 페이지로 redirect됩니다.
+
+<Note>
+선택할 수 있는 network와 IDP는 operator가 구성합니다. 항목을 추가하려면 admin이 **Settings** 또는 configuration file에서 관리합니다. [Network 및 identity provider](/integrations/wallet-gateway/operate/networks-and-identity)를 참조하세요.
+</Note>
+
+## Party 생성
+
+Wallet은 Wallet Gateway가 하나의 network에서 user를 위해 관리하고 하나의 signing provider가 signing하는 Canton **Party**입니다.
+
+1. **Parties** 목록으로 이동합니다.
+2. **+ New**를 선택합니다.
+3. Wallet의 **Party ID** 또는 hint를 입력합니다.
+4. Wallet이 속할 **network**를 선택합니다.
+5. 이 wallet의 key를 보관하고 Transaction을 signing할 **signing provider**를 선택합니다. [Signing provider](/integrations/wallet-gateway/operate/signing-providers)를 참조하세요.
+<img src="/integrations/wallet-gateway/use/images/addWallet.png" alt="add a new party" style={{ display: 'block', margin: '0 auto', maxWidth: '50%', height: 'auto' }} />
+
+
+6. 선택 사항으로 **primary** wallet로 지정합니다.
+7. **Create party**를 선택합니다.
+
+각 wallet은 정확히 하나의 network 및 하나의 signing provider와 연결됩니다. 따라서 동일한 Wallet Gateway에서 서로 다른 network 또는 custody provider의 Party를 나란히 유지할 수 있습니다.
+
+<Warning>
+Parties header 옆의 refresh icon을 클릭하여 Party 목록을 다시 load할 수 있습니다. Wallet Gateway 외부에서 생성된 Party도 표시될 수 있지만 access할 수 없으며 disabled status로 표시됩니다.
+</Warning>
+
+## Primary Party 설정
+
+Wallet 하나를 **primary**로 지정할 수 있습니다. Primary account를 요청하는 dApp은 기본적으로 이 wallet을 받으므로, 가장 자주 Transaction을 수행하는 Party로 설정하세요. **Parties** 페이지에서 언제든지 변경할 수 있습니다.
+
+1. 원하는 Party card를 찾습니다. 새 Party card는 목록 아래쪽에 있습니다.
+2. **Set as primary**를 선택합니다.
+3. 녹색 `Primary` tag로 설정을 확인합니다.
+
+<img src="/integrations/wallet-gateway/use/images/parties.png" alt="navigating between parties" style={{ display: 'block', margin: '0 auto', maxWidth: '50%', height: 'auto' }} />
+
+<Warning>
+Primary wallet을 변경하면 dApp이 기본으로 사용하는 Party도 변경됩니다. 연결된 dApp은 `accountsChanged` event를 통해 통지를 받으며, primary account를 cache하지 말고 다시 읽어야 합니다. [dApp API](/integrations/wallet-gateway/reference/dapp-api)를 참조하세요.
+</Warning>
+
+## Activity 보기
+
+**Activities** 페이지에는 Wallet Gateway가 해당 Party를 위해 prepare, signing 또는 실행한 Transaction과 그 status 및 상세 정보가 표시됩니다. dApp이 요청한 Transaction의 검토 및 승인은 **Approve** 페이지에서 수행합니다. [Transaction 승인 및 signing](/integrations/wallet-gateway/use/approve-and-sign)을 참조하세요.
+
+## Wallet provider 변경
+
+1. 오른쪽 위 hamburger icon을 선택하고 **Logout**을 선택합니다.
+2. dApp UI에서 **Login** 또는 **Connect**를 클릭하여 popup을 실행합니다.
+3. 로그인할 새 provider를 선택하고 해당 provider의 지침을 따릅니다.
+
+
+## Session 및 logout
+
+로그인하면 Wallet Gateway는 이후 User API 및 dApp API 호출을 authorize하는 **session**(JWT)을 발급합니다. Session은 로그인 시 생성되어 Wallet Gateway database에 저장됩니다.
+
+Layout control에서 logout합니다. Logout하면 session(`removeSession`)을 종료하고 local auth state를 지운 뒤 **Login** 페이지로 돌아갑니다. UI가 승인 popup으로 열린 경우에는 window가 닫힙니다.
+
+<Note>
+Session은 Wallet Gateway database에 존재합니다. Operator가 backup에서 database를 restore하거나 database를 잃으면 active session이 invalidated될 수 있으며 user는 다시 로그인해야 합니다. [Network 및 identity provider](/integrations/wallet-gateway/operate/networks-and-identity)를 참조하세요.
+</Note>
+
+## 다음 단계
+
+- [Transaction 승인 및 signing](/integrations/wallet-gateway/use/approve-and-sign): dApp이 요청한 Transaction을 검토하고 승인하며 추적합니다.
+- [User API를 사용한 자동화](/integrations/wallet-gateway/automation/automate-with-user-api): Script 또는 backend에서 wallet 설정과 Transaction을 수행합니다.
+- [Network 및 identity provider](/integrations/wallet-gateway/operate/networks-and-identity): Operator가 구성하는 network와 login option을 이해합니다.
+- [Signing provider](/integrations/wallet-gateway/operate/signing-providers): 각 wallet의 key가 어디에 있고 누가 signing하는지 확인합니다.

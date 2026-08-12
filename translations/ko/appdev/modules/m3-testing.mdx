@@ -1,0 +1,187 @@
+---
+title: "Daml Contract Testing"
+description: "Daml Script를 사용해 Daml smart contract test 작성 및 실행하기"
+source_id: "SRC-2B94383721"
+source_path: "appdev/modules/m3-testing"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "ef42b4a0c302a84ac4c975a8decec88f2ef20252209a8a8a33afe200171e458e"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m3-testing.md)을 사용하세요.
+</Warning>
+
+import DamlDocsAppdevModulesM3TestingL149 from "/snippets/daml-docs/appdev_modules_m3-testing_L149.mdx";
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/tutorials/smart-contracts/tests.rst" hash="b7bc1096" */}
+
+# Daml Contract Test
+
+이 section에서는 이전 chapter의 tool을 사용해 구축한 Daml contract를 test하고 debug하는 방법을 설명합니다. IDE 안에서 code를 test하는 방법으로 Daml Script를 이미 접했습니다. 이 chapter에서는 Daml Script를 실행하는 더 많은 방법과 testing 및 debugging에 사용할 수 있는 다른 tool을 학습합니다. 구체적으로 다음 내용을 다룹니다.
+
+- template을 test하고 debug하기 위한 Daml Script 실행
+- `trace` 및 `debug` function
+- choice coverage
+
+이 section에서는 Daml contract testing만 다룹니다.
+
+<Tip>
+`dpm new intro-test  --template daml-intro-test`를 실행하면 이 section의 모든 code를 `intro-test` folder에 불러올 수 있습니다.
+</Tip>
+
+## Multi-Package Project Structure
+
+project structure section에서는 script와 template을 별도의 package에 유지하는 것이 중요하다고 학습했습니다. 이 section의 project는 `compose`와 `dependencies`의 모든 code를 포함하는 multi-package build입니다. folder structure는 다음과 같습니다.
+
+``` none
+.
+├── asset
+├── asset-tests
+├── multi-trade
+├── multi-trade-tests
+└── multi-package.yaml
+```
+
+`asset`, `asset-tests`, `multi-trade`, `multi-trade-tests`는 각각 package이며 자체 `daml.yaml` file을 포함합니다. `asset`에는 `Asset` 및 `Trade` template의 code가 있습니다. `Asset`과 `Trade`를 test하는 script는 `asset`에 의존하는 `asset-tests` package에 있습니다. `asset-tests`와 달리 `asset`은 Canton ledger에 upload하기 위한 package입니다.
+
+마찬가지로 `multi-trade`에는 `MultiTrade` template이 있고 `multi-trade-tests`에는 이에 대응하는 script가 있습니다.
+
+`multi-package.yaml`은 multi-package configuration입니다. `dpm`이 각 sub-package의 build를 조정할 수 있도록 하며 다음과 같은 sub-package list를 포함합니다.
+
+```yaml
+packages:
+- ./asset
+- ./asset-tests
+- ./multi-trade
+- ./multi-trade-tests
+```
+
+모든 sub-package를 build하려면 multi-package project root에서 `dpm build --all`을 실행합니다. 또는 어떤 sub-package에서든 `dpm build`를 실행할 수 있습니다. dependency를 감지해 올바른 순서로 build합니다. 예를 들어 `multi-trade-tests`에서 `dpm build`를 실행하면 `asset`, `multi-trade`, `multi-trade-tests` 순서로 build됩니다.
+
+## Daml Script로 Template Test하기
+
+Daml Script는 Daml contract를 test하는 주요 tool입니다. script에서는 처음에 비어 있는 새로운 ledger에 여러 Party의 Command와 query를 submit할 수 있습니다.
+
+Daml Script를 실행하는 주요 방법은 두 가지입니다. VS Code에서 `Script results` lens를 클릭하면 debugging에 유용한 table 및 Transaction view가 제공됩니다. `dpm test` Command는 regression check와 coverage에 유용합니다.
+
+### VS Code에서 Script 실행하기
+
+앞의 script testing section에서는 VS Code에서 Daml Script를 작성하고 실행하는 방법을 학습했습니다.
+
+복습을 위해 `asset-tests` 또는 `multi-trade-tests`에서 script를 찾고 script name 위에 나타나는 `Script results` lens를 클릭하세요. VS Code가 side pane에 table view를 열어야 합니다. table view는 script 종료 시점의 ledger final state를 설명합니다. Active Contract의 목록과 data, 각 Party가 contract를 볼 수 있는지를 표시합니다. archived contract 목록을 보려면 `Show archived` toggle을 클릭하세요.
+
+side pane에서 `Show transaction view` button을 클릭해 Transaction view로 전환하세요. script가 실행한 모든 Transaction과 sub-transaction을 보여 줍니다. script가 실패할 때 failure message도 표시합니다. `exerciseCmd`의 submitting Party를 변경하고 script가 계속 성공하는지 확인해 보세요.
+
+VS Code의 table 및 Transaction view를 사용하면 각 contract의 visibility와 각 Party의 authority를 더 잘 이해할 수 있습니다.
+
+### `dpm`으로 모든 Script 실행하기
+
+`dpm`은 package 안의 모든 script를 실행할 수 있습니다. 빠른 regression check와 CI automation에 유용합니다.
+
+`multi-trade-tests` folder에서 terminal을 열고 `dpm test`를 실행하세요. 성공하면 다음 test summary가 출력되어야 합니다.
+
+``` none
+Test Summary
+
+daml/Intro/Asset/MultiTradeTests.daml:testMultiTrade: ok, 12 active contracts, 28 transactions.
+daml/Intro/Asset/TradeSetup.daml:setupRoles: ok, 2 active contracts, 4 transactions.
+daml/Intro/Asset/TradeSetup.daml:test_issuance: ok, 3 active contracts, 5 transactions.
+daml/Intro/Asset/TradeSetup.daml:tradeSetup: ok, 6 active contracts, 10 transactions.
+Modules internal to this package:
+- Internal templates
+  0 defined
+  0 (100.0%) created
+- Internal template choices
+  0 defined
+  0 (100.0%) exercised
+- Internal interface implementations
+  0 defined
+    0 internal interfaces
+    0 external interfaces
+- Internal interface choices
+  0 defined
+  0 (100.0%) exercised
+Modules external to this package:
+- External templates
+  7 defined
+  5 ( 71.4%) created in any tests
+  5 ( 71.4%) created in internal tests
+  0 (  0.0%) created in external tests
+- External template choices
+  27 defined
+  7 ( 25.9%) exercised in any tests
+  7 ( 25.9%) exercised in internal tests
+  0 (  0.0%) exercised in external tests
+- External interface implementations
+  0 defined
+- External interface choices
+  0 defined
+  0 (100.0%) exercised in any tests
+  0 (100.0%) exercised in internal tests
+  0 (100.0%) exercised in external tests
+```
+
+summary의 첫 부분은 실행된 각 script의 목록입니다. 각 script에 대해 총 Transaction 수와 script 종료 시점의 Active Contract 수를 확인할 수 있습니다. 예를 들어 `testMultiTrade`는 28개 Transaction을 실행해 12개 Active Contract를 생성했습니다.
+
+summary의 두 번째 부분은 coverage report입니다. package의 전체 script 집합이 test한 template과 choice 수를 전체 template 및 choice 수에 대한 비율로 보여 줍니다.
+
+## Debug, Trace, Stacktrace
+
+위 내용은 happy path를 test하는 방법을 잘 보여 줍니다. 하지만 function이 예상대로 동작하지 않으면 어떻게 해야 할까요? Daml에는 세밀한 printf debugging을 수행할 수 있는 `debug`와 `trace` function이 있습니다. 둘 다 해당 code에 도달하면 StdOut에 내용을 출력합니다. `debug`와 `trace`의 차이는 `abort`와 `error`의 관계와 비슷합니다.
+
+- `debug : Text -> m ()`는 text를 StdOut 출력이라는 side effect가 있는 Action에 매핑합니다.
+- `trace : Text -> a -> a`는 expression이 evaluate될 때 StdOut에 출력합니다.
+
+``` none
+daml> let a : Script () = debug "foo"
+daml> let b : Script () = trace "bar" (debug "baz")
+[Daml.Script:378]: "bar"
+daml> a
+[DA.Internal.Prelude:532]: "foo"
+daml> b
+[DA.Internal.Prelude:532]: "baz"
+daml>
+```
+
+확실하지 않다면 `debug`를 사용하세요. 두 function 중 결과를 해석하기 더 쉽습니다.
+
+square bracket 안의 내용은 마지막 location입니다. 출력을 trigger한 Daml file과 line number를 알려 주지만 대개 그 이상의 정보는 제공하지 않습니다. 전체 stacktrace는 sub-transaction privacy를 쉽게 위반할 수 있기 때문입니다. module의 순수 functional code 일부에 stacktrace를 활성화하려면 `DA.Stack` module의 기능을 사용할 수 있지만 여기서는 더 다루지 않습니다.
+
+
+{/* COPIED_END */}
+
+## dpm sandbox를 사용한 Local Testing
+
+Daml Script를 넘어 integration testing을 수행하려면 `dpm sandbox`를 사용해 local Canton sandbox를 실행할 수 있습니다. 이 Command는 in-memory ledger가 있는 local Participant Node를 시작하므로 DevNet 또는 TestNet에 deploy하기 전에 더 현실적인 environment에서 contract를 test할 수 있습니다.
+
+<DamlDocsAppdevModulesM3TestingL149 />
+
+sandbox가 실행되면 Ledger API인 gRPC 또는 JSON을 통해 interaction하고, codegen 기반 Java 또는 TypeScript client에서 Command를 submit하고, 실제 API authentication으로 multi-party workflow를 test할 수 있습니다.
+
+### Sandbox와 Daml Script를 사용하는 시점
+
+authorization rule, choice behavior, multi-party workflow, edge case와 같은 contract logic을 격리해 test하려면 **Daml Script를 사용**하세요. script는 ledger 없이 in-process로 실행되므로 빠르고 deterministic합니다. Daml model의 unit testing에 적합합니다.
+
+application과 ledger의 integration을 test해야 할 때는 **sandbox를 사용**하세요. 다음과 같은 상황에서는 sandbox가 더 적합합니다.
+
+- Ledger API를 대상으로 Java 또는 TypeScript backend test
+- codegen으로 생성된 type이 올바르게 serialize 및 deserialize되는지 확인
+- frontend의 JSON API interaction test
+- multi-participant configuration 실행
+- Admin API를 통한 DAR upload, Party allocation, user management test
+- application의 authorization token 처리 validation
+
+### Local Canton Network를 사용하는 시점
+
+[CN Quickstart](/sdks-tools/reference-projects/cn-quickstart) project에는 Participant, Sequencer, Mediator, Splice application으로 구성된 전체 Canton Network를 local에서 실행하는 LocalNet configuration이 포함되어 있습니다. 다음 항목을 test해야 할 때 sandbox 대신 LocalNet을 사용하세요.
+
+- Canton Coin transfer 및 Traffic Credit purchase
+- Wallet SDK integration
+- Splice API interaction (Scan, Validator API)
+- Global Synchronizer가 관여하는 end-to-end application flow
+
+LocalNet 시작 방법은 [QuickStart walkthrough](/appdev/quickstart/running-the-demo)를 참고하세요.

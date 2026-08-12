@@ -1,0 +1,219 @@
+---
+title: "Configuration reference"
+description: "Wallet Gateway store backend, backup, signing store 및 secret에 관한 전체 reference입니다."
+source_id: "SRC-BC5C937B81"
+source_path: "integrations/wallet-gateway/reference/configuration-reference"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "2f474c5ba01b1a478daffb20d18f34ba2c8d4f28881e6b69da4e6cbb5014eb7f"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/wallet-gateway/reference/configuration-reference.md)을 사용하세요.
+</Warning>
+
+이 reference는 production에 필요한 세부 정보로 task 중심 가이드를 보완합니다. Store backend 전체 내용, backup 및 recovery, signing store security, 환경별 secret 처리 방법을 설명합니다. Config file 전체 구조는 [Wallet Gateway 구성](/integrations/wallet-gateway/operate/configure)을 참조하세요. Network 및 authentication은 [Network 및 identity provider](/integrations/wallet-gateway/operate/networks-and-identity)를 참조하세요.
+
+## 전체 Configuration schema
+
+모든 field 및 type을 포함하는 configuration file의 전체 JSON Schema를 확인하려면 다음을 실행합니다.
+
+```bash
+wallet-gateway --config-schema
+```
+
+Output을 validation 및 IDE autocompletion에 사용하세요. 생성된 schema가 모든 configuration option의 authoritative source입니다.
+
+## Store backend
+
+`store.connection` object는 세 가지 backend 중 하나를 선택합니다.
+
+### PostgreSQL
+
+Robustness, concurrent access 및 backup support 때문에 production에 권장됩니다.
+
+| Field | 필수 | 설명 |
+| --- | --- | --- |
+| `type` | yes | `"postgres"`여야 합니다. |
+| `host` | yes | PostgreSQL server의 hostname 또는 IP입니다. |
+| `port` | no(기본값 `5432`) | PostgreSQL이 listen하는 port입니다. |
+| `user` | yes | 연결에 사용할 database user입니다. |
+| `password` | yes | Database user의 password입니다. |
+| `database` | yes | 사용할 database 이름이며 미리 존재해야 합니다. |
+| `ssl` | no | Node.js `pg` driver에 전달되는 TLS setting입니다. [TLS/SSL을 사용하는 PostgreSQL](#postgresql-over-tls-ssl)을 참조하세요. |
+
+```json
+{
+    "store": {
+        "connection": {
+            "type": "postgres",
+            "host": "db.example.com",
+            "port": 5432,
+            "user": "wallet_gateway",
+            "password": "secure-password",
+            "database": "wallet_gateway_db"
+        }
+    }
+}
+```
+
+### TLS/SSL을 사용하는 PostgreSQL
+
+PostgreSQL server가 TLS를 요구하는 경우(managed database 및 hardened deployment에서 일반적), `store.connection` 및 사용하는 경우 `signingStore.connection` 아래에 `ssl` object를 추가합니다. Wallet Gateway는 client-side TLS만 구성하며 server private key는 필요하지 않습니다.
+
+**Local test**(self-signed server certificate, encryption만 사용): `rejectUnauthorized: false`를 설정합니다.
+
+```json
+{
+    "store": {
+        "connection": {
+            "type": "postgres",
+            "host": "localhost",
+            "port": 5432,
+            "user": "postgres",
+            "password": "postgres",
+            "database": "app_db",
+            "ssl": { "rejectUnauthorized": false }
+        }
+    }
+}
+```
+
+**Production**(server certificate 검증): `rejectUnauthorized: true`를 설정하고 server certificate에 signing한 CA certificate PEM을 `ssl.ca`로 제공합니다.
+
+```json
+{
+    "store": {
+        "connection": {
+            "type": "postgres",
+            "host": "db.example.com",
+            "port": 5432,
+            "user": "wallet_gateway",
+            "password": "secure-password",
+            "database": "wallet_gateway_db",
+            "ssl": {
+                "rejectUnauthorized": true,
+                "ca": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n"
+            }
+        }
+    }
+}
+```
+
+Local Docker 기반 Postgres-over-TLS walkthrough는 [Deploy](/integrations/wallet-gateway/operate/deploy#local-postgresql-over-tls-docker)를 참조하세요.
+
+### SQLite
+
+Single-instance deployment 및 local development에 적합합니다. 모든 data를 하나의 file에 저장합니다.
+
+| Field | 필수 | 설명 |
+| --- | --- | --- |
+| `type` | yes | `"sqlite"`여야 합니다. |
+| `database` | yes | SQLite database file path입니다. |
+
+```json
+{
+    "store": {
+        "connection": {
+            "type": "sqlite",
+            "database": "store.sqlite"
+        }
+    }
+}
+```
+
+### Memory
+
+모든 data를 RAM에 유지합니다. Test에 유용하며 production에는 적합하지 않습니다.
+
+| Field | 필수 | 설명 |
+| --- | --- | --- |
+| `type` | yes | `"memory"`여야 합니다. |
+
+```json
+{
+    "store": {
+        "connection": {
+            "type": "memory"
+        }
+    }
+}
+```
+
+## Backup 및 recovery
+
+Store database에는 user session, Network 및 IDP(bootstrap에서 seed되고 이후 runtime에 변경 가능), wallet configuration 및 Party mapping, 진행 중인 Transaction이 포함됩니다.
+
+Database를 잃고 restore할 수 없는 경우:
+
+- 모든 session이 invalidated됩니다. User는 다시 로그인해야 합니다.
+- Network 및 IDP가 bootstrap에서 다시 seed되지만 runtime 변경 사항은 사라집니다.
+- 진행 중인 Transaction이 사라지며 수동 개입이 필요할 수 있습니다.
+- 사라진 Network를 reference하는 wallet을 다시 구성해야 할 수 있습니다.
+
+권장 사항:
+
+- **PostgreSQL**: `pg_dump` 또는 자동화 solution(pgBackRest, WAL-E)을 사용합니다.
+- **SQLite**: Copy 중에는 write하지 않고 database file을 정기적으로 복사합니다.
+- Retention policy가 있는 자동 daily backup을 schedule하고 restore를 test합니다.
+
+<Warning>
+Wallet Gateway를 signing provider로 사용하는 경우 signing store에 private key가 보관됩니다. Signing store를 잃으면 해당 key를 복구할 수 없습니다. 중요한 system에는 internal signing을 사용하지 마세요. [Signing provider](/integrations/wallet-gateway/operate/signing-providers)를 참조하세요.
+</Warning>
+
+## Signing store security
+
+선택 사항인 `signingStore`는 `store`와 동일한 connection option을 사용하며 internal signing provider에만 필요합니다. Key를 보관할 때는 다음 지침을 따르세요.
+
+- Access가 제한된 안전한 위치에 file을 저장합니다.
+- 엄격한 filesystem permission을 사용합니다. 예: SQLite file에 `chmod 600`.
+- PostgreSQL에는 최소 privilege를 가진 별도 credential을 사용합니다.
+- Database at-rest encryption을 고려합니다.
+- Production key를 보관한다면 정기적으로 backup합니다.
+- Signing store file을 version control에 절대 commit하지 않습니다.
+
+## Secret 및 환경
+
+Setting과 credential을 격리하기 위해 환경별로 별도의 configuration file을 유지합니다. 예: `config.dev.json`, `config.staging.json`, `config.prod.json`.
+
+Secret을 절대 commit하지 마세요. Field에 `Env` suffix를 사용하여 environment variable로 sensitive value를 override합니다. 예: `clientSecretEnv`.
+
+```json
+{
+    "bootstrap": {
+        "networks": [
+            {
+                "auth": {
+                    "clientSecretEnv": "OAUTH_CLIENT_SECRET"
+                }
+            }
+        ]
+    }
+}
+```
+
+그런 다음 실행 시 variable을 설정합니다.
+
+```bash
+export OAUTH_CLIENT_SECRET="my-secret"
+wallet-gateway -c ./config.json
+```
+
+추가 지침:
+
+- Network 및 IDP configuration(secret 제외)은 Ledger access 권한이 있는 user에게 표시됩니다.
+- Shared config repository에 read access가 있는 모든 사람은 secret이 아닌 configuration을 볼 수 있습니다.
+- Sensitive value에는 environment variable 또는 secret manager(HashiCorp Vault, AWS Secrets Manager)를 사용합니다.
+- `adminAuth` credential은 민감합니다. 안전하게 저장하고 정기적으로 rotate하며 반드시 필요한 경우에만 사용하세요.
+
+### 권장 환경 profile
+
+| Setting | Development | Production |
+| --- | --- | --- |
+| Store | SQLite 또는 memory | PostgreSQL |
+| Authentication | Self-signed | OAuth |
+| Network endpoint | Localhost | Production endpoint |
+| CORS | Permissive | 알려진 origin으로 제한 |
+| Secret | Inline(non-sensitive) | Environment variable 또는 secret manager |

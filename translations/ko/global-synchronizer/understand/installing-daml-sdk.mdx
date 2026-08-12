@@ -1,0 +1,38 @@
+---
+title: "호환되는 Daml SDK 설치"
+description: "현재 Splice release와 호환되는 Daml SDK version을 설치하는 방법"
+source_id: "SRC-0B100BAB39"
+source_path: "global-synchronizer/understand/installing-daml-sdk"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "451c3998cd4691949dee4a15de7d6f929720cd3aec95c85e6d6ac4cc6a0494ff"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalSpliceMainSpliceRstCodeDocsSrcAppDevOverviewVersionInformationBash42 from "/snippets/internal/splice/main/splice-rst-code-docs-src-app-dev-overview-version-information-bash-42.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/understand/installing-daml-sdk.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/app_dev/overview/version_information.rst#installing-a-compatible-daml-sdk" hash="2149e7a4" */}
+
+이 Splice release를 build하는 데 사용된 것과 정확히 같은 Daml SDK version을 설치할 필요는 없습니다. 이 version들은 참고용으로만 제공됩니다. 이전 3.x Daml SDK로 build한 `.dar` file은 일반적으로 이 Splice release에서 사용하는 Canton version과 호환됩니다.
+
+app과 Validator Node의 상호 작용을 test할 때는 이 Splice release에서 사용하는 Canton version을 권장합니다. Validator deployment 지침에 따라 Validator Node를 deploy하면 해당 version을 사용하게 됩니다.
+
+Daml SDK의 최신 기능과 bug fix를 활용하려면 이 Splice release에서 사용하는 Canton version과 *major 및 minor version이 같은* 최신 Daml SDK release를 사용하는 것이 좋습니다.
+
+호환되는 최신 OSS Daml SDK version을 설치하려면 다음 단계를 따르세요.
+
+1.  위와 같은 major 및 minor version을 가진 가장 최신 stable release를 선택합니다.
+
+2.  다음을 사용하여 해당 release를 설치합니다.
+
+    <ExternalSpliceMainSpliceRstCodeDocsSrcAppDevOverviewVersionInformationBash42 />
+
+Daml SDK 설치에 관한 자세한 내용은 [DPM 설치 가이드](/sdks-tools/cli-tools/dpm)를 참조하세요.
+
+
+{/* COPIED_END */}

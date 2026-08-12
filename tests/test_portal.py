@@ -52,6 +52,15 @@ class ContentHelpersTest(unittest.TestCase):
         self.assertGreater(len(repository.claims()), 0)
         self.assertGreater(len(repository.questions()), 0)
 
+    def test_repository_falls_back_to_published_snapshot(self) -> None:
+        repository = ContentRepository()
+        page = repository.page(
+            "global-synchronizer/extension-synchronizers/private-synchronizers"
+        )
+        self.assertFalse(repository.upstream_path(page).exists())
+        self.assertTrue(repository.official_source_path(page).exists())
+        self.assertEqual(repository.source_sha256(page), page.published_sha256)
+
 
 class StoreTest(unittest.TestCase):
     def setUp(self) -> None:

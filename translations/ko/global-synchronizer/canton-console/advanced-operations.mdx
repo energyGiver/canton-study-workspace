@@ -1,0 +1,195 @@
+---
+title: "고급 Operation"
+description: "숙련된 operator를 위한 고급 Canton Console operation"
+source_id: "SRC-46C9573741"
+source_path: "global-synchronizer/canton-console/advanced-operations"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "1095499ed8565101eaa6b4dfea55b30110f07de8c6dc962febc2a72eaf85fce4"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-advanced-operations-0.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-advanced-operations-1.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_2 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-advanced-operations-2.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_3 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-advanced-operations-3.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_4 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-advanced-operations-4.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_5 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-advanced-operations-5.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_6 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-advanced-operations-6.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_7 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-advanced-operations-7.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_REPAIR_HOCON_0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/docs-global-synchronizer-canton-console-advanced-operations-repair-hocon-0.mdx";
+import CantonGlobalSynchronizerCantonConsoleAdvancedOperationsL114 from "/snippets/canton-docs/global-synchronizer_canton-console_advanced-operations_L114.mdx";
+import CantonGlobalSynchronizerCantonConsoleAdvancedOperationsL172 from "/snippets/canton-docs/global-synchronizer_canton-console_advanced-operations_L172.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/canton-console/advanced-operations.md)을 사용하세요.
+</Warning>
+
+이 페이지에서는 Topology 관리, key rotation 및 repair procedure와 같은 고급 Console operation을 설명합니다. 이러한 operation은 일상적인 administration을 넘어가며 일반적으로 Canton internal state에 대한 더 깊은 이해가 필요합니다.
+
+## Topology 관리
+
+Canton은 Party, Participant, Synchronizer 및 cryptographic key 간 mapping을 추적하기 위해 Topology state를 사용합니다. Console을 통해 이 state를 검사하고 수정할 수 있습니다.
+
+### Topology state 검사
+
+Participant의 current Topology Transaction을 나열합니다.
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_0 />
+
+
+특정 Topology mapping type으로 filter하려면:
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_1 />
+
+
+이 명령은 어떤 Party가 어떤 Participant에 hosting되어 있는지 permission level(Observation, Confirmation 또는 Submission)과 함께 보여줍니다.
+
+### Party-to-Participant mapping
+
+각 Party는 Party-to-Participant mapping을 통해 하나 이상의 Participant와 연결됩니다. 이 mapping을 검사하여 hosting configuration을 확인할 수 있습니다.
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_2 />
+
+
+Output에는 Party에 대해 각 Participant에 부여된 permission이 포함됩니다. 세 permission level은 다음과 같습니다.
+
+- **Observation** -- Party와 관련된 contract를 read-only로 볼 수 있음
+- **Confirmation** -- Participant가 Party를 대신하여 Transaction을 confirm할 수 있음
+- **Submission** -- Participant가 Party를 위한 Command를 제출할 수 있음(Local Party 전용)
+
+<Note>
+일부 오래된 Console Command 및 configuration key에는 "domain"이라는 용어가 나타납니다. Canton은 "domain"을 deprecated하고 "Synchronizer"를 사용합니다. Command name 또는 output에서 `domain`을 발견하면 `synchronizer`와 동일한 의미로 취급하세요.
+</Note>
+
+### Topology state 수정
+
+Participant에 새 Party를 추가합니다.
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_3 />
+
+
+Confirmation threshold 조정 또는 hosting Participant 추가와 같은 더 복잡한 Topology 변경에는 Topology management Command를 사용합니다.
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_4 />
+
+
+Topology 변경은 Synchronizer Topology protocol을 통해 propagate됩니다. Topology 변경이 proposed 상태가 된 시점과 effective 상태가 되는 시점 사이에는 built-in delay가 있습니다. 이 delay는 Synchronizer level에서 구성할 수 있으며 빠르고 잠재적으로 해로운 변경을 방지하기 위해 존재합니다.
+
+## Key 관리 및 rotation
+
+Canton Node는 signing 및 encryption에 cryptographic key를 사용합니다. 시간이 지나면 security hygiene를 위해 또는 compromise가 의심되는 상황에 대응하여 key를 rotate해야 할 수 있습니다.
+
+### Key 목록
+
+Participant에 현재 등록된 key를 봅니다.
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_5 />
+
+
+Key fingerprint, purpose(signing 또는 encryption) 및 key scheme이 표시됩니다.
+
+### 새 Key 생성
+
+새 signing key를 생성합니다.
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_6 />
+
+
+새 encryption key를 생성합니다.
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_7 />
+
+
+### Key rotation
+
+Key rotation은 새 key를 생성하고 Topology Transaction을 통해 authorize한 다음 기존 key를 revoke하는 과정입니다. 구체적인 단계는 key purpose에 따라 달라집니다.
+
+1. 새 key를 생성합니다(위 내용 참조).
+2. Update된 mapping을 propose하여 Topology state에서 새 key를 authorize합니다.
+3. Topology 변경이 effective 상태가 될 때까지 기다립니다.
+4. Node가 새 key로 올바르게 동작하는지 확인합니다.
+5. 새 key가 작동함을 확인한 후에만 기존 key를 revoke합니다.
+
+<Warning>
+새 key가 완전히 propagate되고 operational 상태가 되기 전에 기존 key를 revoke하지 마세요. 너무 일찍 revoke하면 Node에 access하지 못할 수 있습니다.
+</Warning>
+
+### Key export 및 import
+
+Backup 또는 migration 목적:
+
+<CantonGlobalSynchronizerCantonConsoleAdvancedOperationsL114 />
+
+
+Deployment가 external Key Management Service(KMS)를 사용한다면 key material은 local export/import가 아니라 KMS를 통해 관리됩니다. GCP 및 AWS KMS driver는 모두 community edition에서 사용할 수 있습니다.
+
+## Repair operation
+
+<Warning>
+Repair operation은 강력하지만 위험합니다. 잘못 사용하면 영구적인 data corruption을 일으킬 수 있습니다. Canton Network technical support의 지침이 있을 때만 repair Command를 사용해야 합니다.
+
+이 Command는 완전성을 위해 문서화되어 있지만 supervision 없이 사용하도록 의도되지 않았습니다.
+</Warning>
+
+### Repair Command 활성화
+
+Repair Command는 기본적으로 disabled 상태입니다. 활성화하려면 configuration에 다음을 추가합니다.
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ADVANCED_OPERATIONS_REPAIR_HOCON_0 />
+
+
+변경 후 Node를 restart합니다. Repair가 완료되면 accidental misuse를 방지하기 위해 이 setting을 제거하고 다시 restart하세요.
+
+### Repair가 필요한 경우
+
+Canton은 self-heal하도록 설계되었습니다. Database outage, Network interruption 및 유사한 infrastructure 문제는 retry와 reconnection을 통해 자동으로 처리됩니다. Manual repair는 automatic recovery로 문제를 해결할 수 없는 상황의 last resort입니다. 일반적으로 Active Contract Set(ACS) corruption 또는 sequenced event를 처리할 수 없는 경우입니다.
+
+일반적인 repair scenario category는 다음과 같습니다.
+
+- Infrastructure failure로 divergent state가 발생하여 contract를 공유하는 Participant 사이에 생긴 **ACS inconsistency**
+- Participant가 Synchronizer event를 처리할 수 없고 재연결 시 crash하는 **blocked Synchronizer connection**
+- Synchronizer가 영구적으로 unavailable 상태가 되어 contract를 migration해야 하는 **lost Synchronizer recovery**
+
+### Repair toolbox
+
+사용 가능한 repair operation은 다음과 같습니다.
+
+- Participant 사이 inconsistency를 해결하기 위해 ACS에서 **contract 추가 또는 purge**
+- Corrupted event 처리 중 멈춘 Participant의 차단을 해제하기 위해 **faulty event 무시**
+- Lost Synchronizer에서 새 Synchronizer로 **contract migration**
+- 전체 Node rehydration을 위해 identity state, Topology Transaction 및 DAR **export/import**
+
+### Repair macro
+
+<Note>
+Repair macro는 고급 주제입니다. 여러 repair Command를 하나의 operation으로 결합하며 incident recovery 중 technical support의 지시에 따라 사용하도록 설계되었습니다.
+</Note>
+
+일부 repair operation은 개별 repair Command sequence를 하나의 Console call로 결합한 macro로 package됩니다. 이 macro는 rehydration을 위해 Node identity state를 clone하는 등의 일반적인 recovery scenario를 처리합니다.
+
+예를 들어 identity download/upload macro는 Participant Topology state, identity 및 KMS를 사용하지 않는 경우 secret key를 disk로 export하여 clean database에서 Participant를 restore할 수 있게 합니다.
+
+<CantonGlobalSynchronizerCantonConsoleAdvancedOperationsL172 />
+
+
+### Multi-Participant repair 조정
+
+ACS inconsistency가 여러 Participant에 영향을 주면 영향받은 모든 Participant operator가 추가하거나 제거할 contract에 합의해야 합니다. 이러한 조정은 필수적입니다. 한 operator의 unilateral change는 inconsistency를 악화할 수 있습니다.
+
+일반적인 절차는 다음과 같습니다.
+
+1. Log에서 ACS commitment mismatch를 조사하여 inconsistency를 식별합니다. `ACS_COMMITMENT_MISMATCH` error를 찾으세요.
+2. 영향받은 다른 operator와 target state에 합의합니다.
+3. 각 Participant에서 합의한 addition 및 removal을 적용합니다.
+4. Repair 후 ACS commitment가 일치하는지 확인합니다.
+
+특정 repair scenario의 상세 procedure는 Canton operations documentation에서 확인할 수 있습니다. 모든 경우에 독립적으로 repair를 시도하지 말고 technical support와 함께 작업하세요.

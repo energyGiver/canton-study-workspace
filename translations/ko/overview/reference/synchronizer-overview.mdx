@@ -1,0 +1,46 @@
+---
+title: "Synchronizer"
+description: "Canton Synchronizer 개요: architecture의 역할, 기술 component, centralized/decentralized 형태"
+source_id: "SRC-9B48B9502C"
+source_path: "overview/reference/synchronizer-overview"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "c54f885b509135f8fbfbd6d2f8247d580cbda688c57ca2b89f904c88e37411d6"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/reference/synchronizer-overview.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/synchronizer/overview/index.rst" hash="67015b7d" */}
+
+# Synchronizer
+
+Synchronizer는 다음 두 가지 주요 기능을 제공하는 Canton architecture의 기반 요소입니다.
+
+1. Sequencing: 독립적인 Participant Node(Validator) 사이의 ordered confidential communication
+2. Mediating: Atomicity와 privacy를 제공하기 위한 two-phase commit protocol의 Transaction coordination
+
+Canton은 Participant Node가 동시에 여러 Synchronizer에 연결될 수 있는 network of networks로 설계되었습니다.
+
+## Canton Architecture에서의 역할
+
+- **Message Queue와 Ordering:** Synchronizer는 secure message queue 역할을 하며 Participant Node의 암호화된 Transaction request를 받아 일관된 순서로 정렬합니다. 이 ordering은 잠재적 conflict를 해소하고 consistent outcome을 달성하는 데 중요합니다.
+- **Privacy by Design:** Transaction data가 public인 전통적인 public blockchain과 달리 Canton의 Synchronizer는 Transaction payload를 **decrypt할 수 없습니다**. Message는 항상 관련 Participant(Validator) 사이에서 end-to-end로 encrypt됩니다. Synchronizer는 routing과 ordering을 위한 encrypted envelope와 metadata만 보므로 민감한 Transaction information의 privacy를 유지합니다.
+- **Validator가 아님:** Synchronizer는 **Transaction 내용을 validate할 책임이 없습니다.** 그 책임은 Canton의 two-phase commit protocol을 사용하는 특정 Transaction의 Stakeholder Participant Node(Validator)에 있습니다. Synchronizer는 Transaction request의 consistent sequencing과 delivery를 보장하고 Transaction outcome을 coordination할 뿐입니다.
+
+## 기술 Component
+
+- **Sequencer:** Sequencer는 privacy를 포함한 atomic multicast property를 준수하면서 지정된 recipient에게 message를 deliver할 책임이 있습니다.
+- **Mediator:** Mediator는 Sequencer와 함께 작동합니다. 관여한 Stakeholder Participant Node(Validator)의 Transaction confirmation을 aggregate하고 confirmation을 바탕으로 Transaction을 approve하거나 reject합니다. Two-phase commit protocol에서 핵심 역할을 하며 Transaction에 관여한 서로 다른 Participant 사이에 privacy를 제공합니다.
+- **Ordering Layer:** Ordering layer는 Sequencer를 통과하는 message에 consistent ordering을 설정하고 ordered message에 timestamp를 할당합니다. 이는 Transaction conflict detection의 토대입니다.
+
+## Synchronizer 유형
+
+- **Centralized Synchronizer:** Canton은 decentralization을 위해 설계되었지만 private Canton deployment는 단일 entity가 운영하는 centralized Synchronizer를 사용할 수 있습니다. Closed consortium 또는 internal enterprise use case에 적합합니다.
+- **Decentralized Synchronizer:** 더 public하고 robust한 형태입니다. Global Synchronizer는 독립적인 "Super Validator" network가 운영하며, 이들이 Byzantine fault-tolerant(BFT) consensus를 사용하는 Sequencer와 BFT state machine replication을 사용하는 Mediator를 공동으로 실행합니다. 신뢰하는 단일 third party에 의존하지 않는다는 의미에서 높은 resiliency와 security를 제공합니다.
+
+
+{/* COPIED_END */}

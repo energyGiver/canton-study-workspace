@@ -1,0 +1,144 @@
+---
+title: "Installation 문제"
+description: "Validator installation 중 Docker, Kubernetes 및 Network 문제 해결"
+source_id: "SRC-1E38CF69CA"
+source_path: "global-synchronizer/troubleshooting-guide/installation-issues"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "a9be5c2961b23c7b369304d0ac1fa422553dc1f754fde065090fe15eeea149d6"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+
+import CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL28 from "/snippets/canton-docs/global-synchronizer_troubleshooting-guide_installation-issues_L28.mdx";
+import CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL41 from "/snippets/canton-docs/global-synchronizer_troubleshooting-guide_installation-issues_L41.mdx";
+import CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL56 from "/snippets/canton-docs/global-synchronizer_troubleshooting-guide_installation-issues_L56.mdx";
+import CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL69 from "/snippets/canton-docs/global-synchronizer_troubleshooting-guide_installation-issues_L69.mdx";
+import CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL78 from "/snippets/canton-docs/global-synchronizer_troubleshooting-guide_installation-issues_L78.mdx";
+import CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL92 from "/snippets/canton-docs/global-synchronizer_troubleshooting-guide_installation-issues_L92.mdx";
+import CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL102 from "/snippets/canton-docs/global-synchronizer_troubleshooting-guide_installation-issues_L102.mdx";
+import CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL118 from "/snippets/canton-docs/global-synchronizer_troubleshooting-guide_installation-issues_L118.mdx";
+import CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL135 from "/snippets/canton-docs/global-synchronizer_troubleshooting-guide_installation-issues_L135.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/troubleshooting-guide/installation-issues.md)을 사용하세요.
+</Warning>
+
+Installation failure는 일반적으로 container runtime 문제, Kubernetes provisioning 문제 또는 Validator가 Synchronizer에 연결하지 못하게 하는 Network-level block의 세 category로 나뉩니다.
+
+## Docker 문제
+
+### Image Pull 실패
+
+`docker compose up`이 image pull error로 실패하는 경우:
+
+```
+Error response from daemon: pull access denied for digitalasset/canton-participant
+```
+
+가능한 원인:
+
+- Container registry에 로그인하지 않았습니다. JFrog credential로 `docker login digitalasset-docker.jfrog.io`를 실행하세요.
+- JFrog account에 필요한 repository access 권한이 없습니다. [support.digitalasset.com](https://support.digitalasset.com)을 통해 access를 요청하세요.
+- Image tag에 오타가 있습니다. `docker-compose.yaml` 또는 `.env` file의 image name과 version을 release note와 비교하세요.
+
+### Resource Limit
+
+즉시 crash하거나 `OOMKilled` status를 표시하는 container에는 더 많은 memory가 필요합니다.
+
+<CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL28 />
+
+
+Validator의 최소 resource requirement:
+
+- **Memory:** Docker에 8GB 할당
+- **CPU:** 4 core
+- **Disk:** 50GB 여유 공간
+
+macOS의 Colima user:
+
+<CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL41 />
+
+
+### Volume Permission Error
+
+Container가 mounted volume에서 permission denied error로 실패하는 경우:
+
+```
+java.io.IOException: Permission denied: /data/canton
+```
+
+Container user(일반적으로 UID 1000)에게 host directory write access가 있어야 합니다. 다음 명령으로 해결합니다.
+
+<CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL56 />
+
+
+## Kubernetes 문제
+
+### Helm Chart Error
+
+`helm install` 또는 `helm upgrade` 중 발생하는 일반적인 Helm failure:
+
+- **`Error: INSTALLATION FAILED: cannot re-use a name that is still in use`** -- 이전 release가 존재합니다. 대신 `helm upgrade`를 사용하거나 먼저 `helm uninstall validator -n validator`로 uninstall합니다.
+- **`Error: template: splice-validator/templates/...: ... not defined`** -- Values file이 이 chart version에 존재하지 않는 variable을 reference합니다. Target version chart의 `values.yaml`과 `validator-values.yaml`을 비교하세요.
+
+<CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL69 />
+
+
+### PVC Provisioning 실패
+
+Pod가 `Pending` 상태로 남아 있으면 PersistentVolumeClaim(PVC) event를 확인합니다.
+
+<CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL78 />
+
+
+일반적인 원인:
+
+- Cluster에 StorageClass가 없습니다. `kubectl get storageclass`로 사용 가능한 class를 나열하세요.
+- Cloud provider account의 disk quota가 부족합니다.
+- 요청한 storage size가 available capacity를 초과합니다.
+
+### Init Container 실패
+
+Main container가 시작되지 않으면 init container가 실패하고 있을 수 있습니다.
+
+<CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL92 />
+
+
+Init container는 일반적으로 database connectivity 문제로 실패합니다. PostgreSQL instance에 접근할 수 없거나 credential이 잘못된 경우입니다.
+
+### Image Pull Secret
+
+Kubernetes에서 private registry의 image를 pull하려면 explicit credential이 필요합니다.
+
+<CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL102 />
+
+
+그런 다음 `validator-values.yaml`의 `imagePullSecrets` 아래에서 `jfrog-creds`를 reference합니다.
+
+## Network 문제
+
+### DNS Resolution
+
+Validator가 Synchronizer hostname을 resolve할 수 없는 경우:
+
+<CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL118 />
+
+
+DNS가 실패하면 cluster CoreDNS pod 및 custom DNS configuration을 확인합니다.
+
+### Firewall Rule
+
+Validator에는 다음 port의 outbound access가 필요합니다.
+
+- **443(HTTPS/gRPC-TLS)** -- Synchronizer Sequencer 연결
+- **5432** -- PostgreSQL database 연결(external인 경우)
+- **443** -- OIDC provider 연결(authentication 사용 시)
+
+Connectivity를 test합니다.
+
+<CantonGlobalSynchronizerTroubleshootingGuideInstallationIssuesL135 />
+
+
+Connection이 timeout되면 Network team과 협력하여 필요한 egress rule을 여세요. DevNet의 경우 DevNet Sequencer에 대한 VPN connectivity도 필요합니다.

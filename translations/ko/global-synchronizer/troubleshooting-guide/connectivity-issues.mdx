@@ -1,0 +1,107 @@
+---
+title: "Connectivity 문제"
+description: "Synchronizer 연결 실패 및 TLS error diagnose와 해결"
+source_id: "SRC-3BF096A5A0"
+source_path: "global-synchronizer/troubleshooting-guide/connectivity-issues"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "2ab69b051f90a87480e89a9d50c71ac82d40fe3c04ddae7466dd6f70b0f1255c"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+
+import CantonGlobalSynchronizerTroubleshootingGuideConnectivityIssuesL36 from "/snippets/canton-docs/global-synchronizer_troubleshooting-guide_connectivity-issues_L36.mdx";
+import CantonGlobalSynchronizerTroubleshootingGuideConnectivityIssuesL71 from "/snippets/canton-docs/global-synchronizer_troubleshooting-guide_connectivity-issues_L71.mdx";
+import CantonGlobalSynchronizerTroubleshootingGuideConnectivityIssuesL101 from "/snippets/canton-docs/global-synchronizer_troubleshooting-guide_connectivity-issues_L101.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/troubleshooting-guide/connectivity-issues.md)을 사용하세요.
+</Warning>
+
+Connectivity failure는 Validator가 Synchronizer와 통신하지 못하게 합니다. 명백한 connection refusal부터 미묘한 TLS handshake error까지 증상은 다양하지만 diagnostic approach는 일관됩니다.
+
+## Synchronizer에 연결할 수 없음
+
+Validator log에 다음이 표시되는 경우:
+
+```
+Request failed for sequencer. Is the server running?
+```
+
+또는
+
+```
+SEQUENCER_SUBSCRIPTION_LOST: Lost subscription to sequencer
+```
+
+다음 확인 작업을 순서대로 수행합니다.
+
+### 1. Sequencer URL 확인
+
+Configuration이 target Network의 올바른 Sequencer endpoint를 가리키는지 확인합니다.
+
+- **DevNet:** `https://sequencer.dev.sync.global`
+- **TestNet:** `https://sequencer.test.sync.global`
+- **MainNet:** `https://sequencer.sync.global`
+
+일반적인 오류는 onboarding 중 SV sponsor URL 대신 Scan URL(`https://scan.sv-2...`)을 사용하는 것입니다. Scan URL은 read-only Network data용이며 Validator registration용이 아닙니다.
+
+### 2. Network Reachability Test
+
+<CantonGlobalSynchronizerTroubleshootingGuideConnectivityIssuesL36 />
+
+
+`nc`가 timeout되면 firewall 또는 security group이 port 443의 egress를 차단하고 있습니다.
+
+### 3. Firewall 및 Security Group 확인
+
+Validator에서 Synchronizer로 port 443 outbound HTTPS가 허용되어야 합니다. Cloud 환경에서 실행하는 경우 다음을 확인합니다.
+
+- Instance 또는 pod에 연결된 security group이 outbound TCP/443을 허용함
+- Network ACL이 traffic을 차단하지 않음
+- HTTP proxy를 사용하는 경우 Canton은 JVM system property(`-Dhttps.proxyHost`, `-Dhttps.proxyPort`)를 통한 proxy configuration을 지원함
+
+## TLS Handshake 실패
+
+TLS error는 일반적으로 다음과 같은 log message를 생성합니다.
+
+```
+io.grpc.StatusRuntimeException: UNAVAILABLE: io exception
+Channel Pipeline: [SslHandler#0, ...]
+Caused by: javax.net.ssl.SSLHandshakeException: PKIX path building failed
+```
+
+### Certificate Expiry
+
+Server certificate가 expire되었는지 확인합니다.
+
+<CantonGlobalSynchronizerTroubleshootingGuideConnectivityIssuesL71 />
+
+
+Certificate가 expire되었고 직접 control하는 경우(예: 자체 Validator의 TLS termination) renew한 다음 TLS-terminating proxy 또는 ingress controller를 restart합니다.
+
+### CA Trust Chain
+
+`PKIX path building failed`가 표시되면 Validator JVM이 server certificate authority를 trust하지 않습니다. 가능한 해결 방법:
+
+- CA certificate를 JVM truststore로 import합니다.
+
+  ```bash
+  keytool -importcert -alias myca -file ca-cert.pem \
+    -keystore $JAVA_HOME/lib/security/cacerts -storepass changeit
+  ```
+
+- Kubernetes의 경우 CA bundle을 volume으로 mount하고 `JAVA_OPTS`를 설정합니다.
+
+  ```yaml
+  env:
+    - name: JAVA_OPTS
+      value: "-Djavax.net.ssl.trustStore=/etc/ssl/truststore.jks"
+  ```
+
+### Hostname 불일치
+
+Certificate Subject Alternative Name(SAN)에 연결할 hostname이 포함되지 않으면 handshake가 실패합니다. 다음 명령으로 확인합니다.
+
+<CantonGlobalSynchronizerTroubleshootingGuideConnectivityIssuesL101 />

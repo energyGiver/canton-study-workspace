@@ -1,0 +1,141 @@
+---
+title: "Smart Contract Consensus"
+description: "Canton의 Proof of Stakeholder consensus: peer-to-peer validation, privacy-preserving consensus, trust domain 분석"
+source_id: "SRC-5883AA972A"
+source_path: "overview/reference/smart-contract-consensus"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "c404669421667a2871a8b483615e643806bd393b9174438a64b5ee3e474b9237"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/reference/smart-contract-consensus.md)을 사용하세요.
+</Warning>
+
+Canton의 smart contract consensus layer는 *누가 Transaction을 validate하는지* 그리고 *그 confirmation이 binding result를 생성하는 방식*을 결정합니다. 이 mechanism을 **Proof of Stakeholder**라고 합니다. 영향을 받는 contract에 이해관계가 있는 Party를 hosting하는 Participant Node만 validation과 confirmation에 참여합니다. State나 computation을 global하게 replicate할 필요가 없습니다.
+
+이 페이지는 smart contract consensus layer의 validation logic, confirmation policy, security property를 규정합니다. Transaction ordering과 Sequencer mechanism은 [Ordering Consensus](/overview/reference/ordering-consensus)를, end-to-end message flow는 [Transaction Lifecycle](/overview/reference/transaction-lifecycle)을 참고하세요.
+
+## Proof of Stakeholder
+
+완전히 replicated된 blockchain에서는 모든 node가 모든 Transaction을 validate합니다. Canton은 다른 접근 방식을 사용합니다. Transaction의 **Stakeholder**, 즉 Transaction이 create, consume 또는 reference하는 contract의 Signatory와 Observer만 그 Party를 hosting하는 Participant Node를 통해 Transaction을 validate하고 confirm합니다. 이것이 Proof of Stakeholder입니다.
+
+원칙은 간단합니다. Alice와 Bob 사이에 contract가 있다면 Alice와 Bob의 Participant Node만 해당 contract의 state change가 valid한지 confirm하면 됩니다. Charlie의 Participant Node는 Transaction을 보거나 validate하거나 그 발생 사실을 알 이유가 없습니다.
+
+Stakeholder scope로 제한된 validation은 두 속성을 동시에 제공합니다.
+
+- **Privacy:** Non-stakeholder는 Transaction에 관한 정보를 받지 않으며 payload content는 private하게 유지됩니다.
+- **Scalability:** 특정 Transaction의 validation workload는 network 전체 node 수가 아니라 Stakeholder 수로 제한됩니다.
+
+Ordering layer(Sequencer와 Mediator)는 double-spend 방지와 state change total order 설정 등 global consistency를 처리합니다. Smart contract consensus layer는 Daml logic이 충실하게 실행되고 authorization rule이 충족되도록 correctness를 처리합니다. [Canton Protocol Specification](/overview/reference/canton-protocol-specification)에서 two-layer consensus라고 부르는 것이 이 분리입니다.
+
+## Peer-to-Peer Validation
+
+Submitting Participant가 Transaction을 준비할 때 full Transaction tree의 subset인 **Transaction view**를 구성하며 각 view는 해당 subset을 볼 권한이 있는 Party를 위해 encrypt됩니다. Sequencer가 이 encrypted view를 적절한 Participant Node에 배포합니다. 그런 다음 각 recipient가 독립적으로 validate합니다.
+
+### 각 Confirming Participant가 하는 일
+
+Transaction의 view를 하나 이상 받은 Confirming Participant Node는 다음 check를 수행합니다.
+
+1. **Decryption and deserialization:** Participant가 자신에게 address된 view를 decrypt하고 Hosting Party에 보이는 Transaction tree 부분을 reconstruct합니다.
+
+2. **Daml interpretation:** View의 action에 대해 Daml smart contract logic을 다시 실행합니다. 계산된 결과(created contract, archived contract, Choice result)가 Submitting Participant의 주장과 일치해야 합니다.
+
+3. **Authorization verification:** 올바른 Signatory가 contract 생성을 authorize했고 올바른 Controller가 Choice를 exercise했으며 모든 required signature가 있는지 확인합니다.
+
+4. **Local ACS와의 consistency:** Transaction에서 reference하는 input contract가 local Active Contract Set에서 active한지 확인합니다. 이미 archive 또는 consume된 contract는 conflict, 즉 이 Participant의 관점에서 잠재적 double-spend를 의미합니다.
+
+5. **Confirmation 또는 rejection:** Check outcome을 바탕으로 cryptographically signed confirmation(approve) 또는 rejection(reject) response를 Sequencer를 통해 Mediator에 보냅니다.
+
+어느 단일 Participant도 전체 Transaction을 볼 필요가 없습니다. 각 Participant는 받은 view만 validate합니다. Alice를 hosting하는 Participant는 Alice의 view를, Bob을 hosting하는 Participant는 Bob의 view를 validate합니다. Transaction이 둘 모두에 걸치면 각자 독립적으로 confirm하고 Mediator가 result를 aggregate합니다.
+
+### Mediator의 역할
+
+Mediator는 Transaction의 informee list, 즉 confirm해야 하는 Party와 Confirming Participant의 signed confirmation/rejection response를 받습니다. Decrypt된 Transaction 내용은 받지 않으며 다음만 봅니다.
+
+- 각 view의 Informee인 Party(Signatory와 Observer)
+- 각 Confirming Participant의 approve/reject 여부
+- 적용되는 confirmation policy
+
+충분한 confirmation이 도착하면 아래 [Confirmation Policy](#confirmation-policies)에 따라 Mediator가 commit 또는 abort **verdict**를 발행합니다. Sequencer가 모든 관여 Participant에 verdict를 배포하면 Participant는 local ledger state에 대해 Transaction을 atomically apply하거나 discard합니다.
+
+Mediator는 protocol을 enforce하지만 Daml logic을 독립적으로 verify할 수는 없으며 이를 Confirming Participant에 의존합니다. Mediator authority는 required policy에 따라 confirmation을 tally하고 outcome을 선언하는 것으로 제한됩니다.
+
+## Consensus가 Privacy를 가능하게 하는 방식
+
+Proof of Stakeholder와 sub-transaction privacy는 서로를 강화합니다. Validation이 global replication되지 않고 영향을 받는 Stakeholder에게만 분산되므로 Canton은 privacy를 add-on이 아닌 protocol의 structural property로 달성합니다.
+
+**각 Party는 자신의 view만 봅니다.** Alice, Bob, Charlie가 관여한 Transaction은 view로 분해됩니다. Alice의 view에는 Alice가 Stakeholder인 action이, Charlie의 view에는 Charlie의 부분만 담깁니다. Alice와 Charlie는 같은 atomic Transaction에 서로 관여했다는 사실조차 모를 수 있습니다.
+
+**Sequencer는 encrypted payload만 봅니다.** Sequencer는 recipient metadata, 즉 어떤 Participant Node가 어떤 encrypted blob을 받아야 하는지를 바탕으로 message를 route합니다. Payload를 decrypt할 수 없으므로 contract content, Transaction 내 Party relationship, business logic을 알지 못합니다.
+
+**Mediator는 contract data가 아니라 informee list와 confirmation outcome을 봅니다.** Mediator는 특정 Party가 특정 Transaction을 confirm해야 한다는 사실과 approve/reject response를 받습니다. Daml code, contract payload, Choice argument는 보지 못합니다.
+
+**Global state replication이 없으므로 global visibility도 없습니다.** 각 Participant Node는 Hosting Party가 Stakeholder인 contract만 저장합니다. Query 또는 leak될 수 있는 shared global state가 없습니다.
+
+결과적으로 Transaction에 관해 무언가를 알게 되는 entity 집합은 Stakeholder set으로 제한됩니다. 그 집합 안에서도 각 Party의 visibility는 권한 있는 view로 제한됩니다.
+
+## Confirmation Policy
+
+Confirmation policy는 Mediator가 commit verdict를 발행하기 전에 필요한 confirmation 수를 정의합니다. Canton은 **Signatory-based confirmation policy**를 사용합니다. Transaction에 관여한 contract의 각 Signatory에 대해 Mediator는 해당 Signatory를 hosting하는 Participant Node의 confirmation을 요구합니다.
+
+### Single-Hosted Party
+
+가장 단순한 경우 Signatory가 정확히 하나의 Participant Node에서 hosting됩니다. Mediator는 그 단일 Participant의 confirmation을 요구합니다. Alice와 Bob이 Signatory인 contract가 Transaction에 포함되면 Mediator는 Alice의 Participant와 Bob의 Participant confirmation을 기다립니다. 둘 다 approve해야 Transaction이 commit됩니다.
+
+### Multi-Hosted Party와 Threshold
+
+Party는 multi-hosting 또는 Party replication이라는 configuration을 통해 여러 Participant Node에서 동시에 hosting될 수 있습니다. Party가 multi-hosted이면 Party-to-Participant Topology mapping이 다음을 지정합니다.
+
+- 해당 Party의 **Confirming Participant Node(CPN)**인 Participant Node
+- **Confirmation threshold:** 해당 CPN 중 confirm해야 하는 최소 수
+
+예를 들어 Alice가 confirmation threshold 2로 세 Participant Node에서 hosting되면 Mediator는 Alice를 대신하여 세 CPN 중 최소 두 곳의 approval을 요구합니다. 이는 m이 threshold이고 n이 CPN 수인 m-of-n scheme입니다.
+
+Threshold는 security와 availability 사이에 tradeoff를 만듭니다.
+
+- **더 높은 threshold**(예: 3-of-3): Confirmation 위조를 위해 더 많은 node를 compromise해야 하므로 security가 강하지만 단일 node만 unavailable해도 confirmation이 차단됩니다.
+- **더 낮은 threshold**(예: 1-of-3): CPN 중 하나만 online이면 Party가 confirm할 수 있어 availability가 높지만 하나의 compromised CPN이 Party를 대신해 approve할 수 있습니다.
+
+### Aggregation Rule
+
+Mediator는 Transaction에 관여한 각 Signatory에 confirmation policy를 독립적으로 적용합니다. **모든** Signatory의 confirmation threshold가 충족된 경우에만 Transaction이 commit됩니다. Rejection 또는 timeout으로 단 하나의 Signatory라도 threshold를 충족하지 못하면 전체 Transaction이 abort됩니다.
+
+Observer는 informational purpose로 Transaction view를 받고 local에서 validate할 수 있지만 Transaction commit에 confirmation이 필요하지는 않습니다. Commit decision은 전적으로 Signatory confirmation에 달려 있습니다.
+
+## Trust Domain 비교
+
+다음 표는 protocol designer와 security auditor에게 중요한 여섯 차원에서 Canton Proof of Stakeholder를 다른 두 architecture와 비교합니다.
+
+| Trust Domain | Canton(Proof of Stakeholder) | Fully Replicated(예: Ethereum) | Notary를 사용하는 UTXO(예: Corda) |
+|---|---|---|---|
+| Transaction validation | Stakeholder Participant만 | 모든 node | Notary + Transacting Party |
+| State storage | Hosting Participant만 | 모든 node | Transacting Party만 |
+| Finality | Mediator verdict, immediate | Block confirmation, probabilistic 또는 epoch-based | Notary signature |
+| Double-spend 방지 | Sequencer ordering + Mediator | Global ordering | Notary |
+| Transaction ordering | Synchronizer Sequencer | Block proposer/miner | Notary |
+| Message distribution | Sequencer multicast, encrypted | Gossip, public | Point-to-point |
+
+Canton 설계는 *data correctness*에 대한 trust를 Stakeholder set 안에 집중시키고 *ordering과 availability*에 대한 trust를 Synchronizer infrastructure에 위임합니다. Ethereum은 모든 trust dimension을 global Validator set에 집중시킵니다. Corda에서는 ordering, finality, double-spend 방지에 상당한 trust를 Notary에 두고 Transacting Party가 validation을 책임집니다.
+
+중요한 차이는 Canton의 Sequencer와 Mediator가 decrypt된 Transaction 내용을 보지 않으므로 Ordering layer가 자신이 order하는 Transaction에서 business intelligence를 추출할 수 없다는 점입니다. Ethereum에서는 모든 Validator가 모든 Transaction을 완전히 봅니다. Corda에서 Notary는 non-validating Notary model이면 Transaction hash를 보고 validating Notary model이면 전체 Transaction을 봅니다.
+
+## Security Property
+
+Proof of Stakeholder는 underlying cryptographic primitive와 Ordering layer가 sound하다는 가정 아래 다음 guarantee를 제공합니다.
+
+**Confirmation integrity.** 모든 required Signatory의 Participant Node가 confirm한 경우에만 Transaction이 commit됩니다. 각 confirmation에 Confirming Participant의 cryptographic signature가 있으므로 Mediator가 confirmation을 위조할 수 없습니다.
+
+**Participant isolation.** Malicious Participant는 자신이 hosting하지 않는 Party의 confirmation을 위조할 수 없습니다. Party-to-Participant mapping인 Topology state가 authenticated되고 Sequencer를 통해 배포되므로 Mediator는 각 Party를 위해 authorize된 CPN을 알 수 있습니다.
+
+**Privacy preservation.** Non-stakeholder는 Transaction에 관해 아무것도 알지 못합니다. Sequencer는 encrypted payload와 routing metadata만 봅니다. Mediator는 informee list와 confirmation outcome을 보지만 contract data는 보지 않습니다. Stakeholder Party를 전혀 hosting하지 않는 Participant는 view를 받지 않습니다.
+
+**Authorization enforcement.** Confirming Participant는 올바른 Signatory, 올바른 Controller, valid Choice exercise 등 Daml authorization rule이 충족되었는지 독립적으로 verify합니다. 이 rule을 위반한 Transaction을 구성한 Submitting Participant는 confirmation 중 reject됩니다.
+
+**Atomicity.** Mediator verdict는 all-or-nothing입니다. Transaction의 모든 action이 commit되거나 어느 action도 commit되지 않습니다. Partial commit state는 없습니다.
+
+**Liveness.** Transaction 진행은 Sequencer(message ordering/distribution), Mediator(verdict aggregation), 각 Signatory의 confirmation threshold를 충족할 만큼 충분한 Confirming Participant의 availability에 달려 있습니다. 이 중 어느 component든 protocol timeout을 넘어 unavailable하면 Transaction이 abort됩니다. Ordering layer의 liveness는 [Ordering Consensus](/overview/reference/ordering-consensus)에서 분석합니다.
+
+**Consistency.** Double-spend protection은 두 level에서 작동합니다. 각 Confirming Participant가 consumed contract를 local ACS와 대조합니다. Sequencer total ordering이 conflicting Transaction을 sequence하므로 Participant가 consistent history를 observe합니다. 두 Transaction이 같은 contract를 consume하려 하면 두 번째로 sequence된 Transaction은 contract가 이미 archive되었다는 사실을 발견하고 reject됩니다.

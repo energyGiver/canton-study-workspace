@@ -1,0 +1,117 @@
+---
+title: "Canton Protocol Specification"
+description: "Consensus layer, Transaction 처리, Topology management를 다루는 Canton protocol architecture 기술 사양"
+source_id: "SRC-E7848768B0"
+source_path: "overview/reference/canton-protocol-specification"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "8a27b9716468d64fa0ad81122e789ad6ae7ade9c6e0a1b82773f43cb9a21c28c"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/reference/canton-protocol-specification.md)을 사용하세요.
+</Warning>
+
+이 section은 Canton protocol의 전체 기술 사양을 제공합니다. [Learn](/overview/learn/architecture) page가 개념을 high level로 소개한다면 이 reference page는 Canton Network의 토대가 되는 data structure, trust assumption, message flow, formal property 등 protocol mechanism을 자세히 설명합니다.
+
+## Protocol Architecture
+
+Canton protocol은 대부분의 blockchain이 하나로 합치는 두 concern인 **smart contract validation**과 **Transaction ordering**을 분리합니다. 그 결과 각 layer를 독립적으로 optimize할 수 있는 two-layer consensus architecture가 만들어집니다.
+
+| Layer | 책임 | Mechanism | Trust Boundary |
+|-------|------|-----------|----------------|
+| **Smart contract consensus** | Transaction correctness validate | Proof of Stakeholder(peer-to-peer) | 영향을 받는 Party만 |
+| **Ordering consensus** | Consistent Synchronizer ordering 설정 | Sequencer를 통한 BFT ordering | Synchronizer operator |
+
+Protocol은 세 node type에서 작동합니다.
+
+- **Participant Node**는 Party를 hosting하고 Active Contract Set(ACS)을 유지하며 Party를 대신해 smart contract consensus protocol을 실행하고 LAPI를 사용할 수 있게 합니다.
+- **Sequencer Node**는 sender privacy를 포함하는 authenticated event ordering multicast를 제공합니다.
+- **Mediator Node**는 validation result를 최종 Transaction decision으로 결합하는 two-phase commit protocol을 mediate합니다.
+
+Participant와 Mediator는 직접 통신하지 않습니다. 모든 message는 global ordering을 제공하는 Sequencer를 통과합니다. Payload는 encrypt되므로 Sequencer는 recipient list와 message size 같은 metadata만 보고 Transaction 내용은 보지 못합니다.
+
+## Protocol 유형
+
+{/* COPIED_START source="canton:docs-open/src/sphinx/overview/explanations/canton/protocol.rst" lines="26,101-127,143-148" */}
+{/* DIVERGENCE: Sphinx refs converted to cf-docs links; "Synchronizer"/"Sequencer" casing normalized to house style. The Two-phase commit section is an empty todo stub in the canonical source (canton#25689); its prose below is copied from the never-migrated draft in canton:docs/docs-open-parking-lot/overview/explanations/canton/protocol.rst lines 56-75, with the draft's telegraphic "Underlying theory" bullets completed into sentences and its cross-reference to a DvP running example (not present on this page) dropped. */}
+
+**Member**라는 용어는 Sequencer, Mediator 또는 Participant Node를 가리킵니다.
+
+이 section에서는 Canton이 지원하는 여러 protocol을 설명합니다.
+
+- Synchronizer의 일부 또는 모든 member에게 message를 broadcast하는 [Channel broadcast](#channel-broadcast)
+- State 변경을 coordination하는 [Two-phase commit](#two-phase-commit). 예를 들어 contract state를 변경하는 Canton Transaction이나 contract assignation을 변경하는 [Reassignment](/overview/reference/reassignment-protocol)에 사용합니다. {/* Original links 'Daml Transactions' to canton/overview */}
+- Member 한 쌍이 message를 교환할 수 있게 하는 [Point-to-point](#point-to-point). Member는 항상 Sequencer를 통해 message를 교환합니다.
+
+### Channel Broadcast
+
+**Channel**은 명확히 정의된 recipient group입니다.
+
+Channel broadcast는 channel의 모든 member가 같은 message 집합을 받도록 보장합니다. Sequencer가 제공하는 ordering guarantee 덕분에 channel member는 group이 관리하는 state를 update할 때 state machine replication을 사용할 수 있습니다.
+
+예제:
+
+- [Topology state](/overview/reference/topology)는 Synchronizer의 모든 member에게 broadcast됩니다.
+- Traffic management는 Synchronizer의 모든 Sequencer에 대한 broadcast를 사용합니다.
+
+### Two-Phase Commit
+
+여러 channel의 state에 영향을 주는 atomic change를 coordination하기 위해 Canton은 [two-phase commit protocol](https://en.wikipedia.org/wiki/Two-phase_commit_protocol)을 구현합니다. Canton의 Transaction protocol은 app composability와 privacy를 함께 제공합니다. 각 Participant Node는 자신이 hosting하는 Party가 관여한 Transaction 부분만 봅니다.
+
+기반 이론은 다음과 같습니다.
+
+- 각 data item은 하나의 channel에 속하며 channel 내 모든 member가 state machine replication을 수행합니다. Transaction context의 contract에서 channel은 Stakeholder group입니다.
+- 하나의 Transaction이 여러 channel에 걸칠 수 있습니다. Two-phase commit은 모든 channel의 변경 사항이 commit되도록 보장합니다.
+- Channel 간 invariant, 예를 들어 Transaction internal consistency는 정직한 channel member만 보장할 수 있습니다.
+- 또한 다른 member가 action을 validate하거나 알림을 받아야 할 수 있습니다. 예를 들어 delegation을 확인하는 경우입니다.
+
+### Point-to-Point
+
+Point-to-point protocol을 통해 Synchronizer member가 같은 Synchronizer의 다른 member에게 message를 보낼 수 있습니다. Sequencer를 gateway로 사용하므로 이러한 message는 다른 protocol의 message에 대해 ordering됩니다. Point-to-point communication의 한 use case는 [ACS commitment](/overview/reference/pruning#non-repudiation-guarantees)입니다.
+
+{/* COPIED_END */}
+
+## Reference Page
+
+<CardGroup cols={2}>
+  <Card title="Ledger Model (Detailed)" icon="layer-group" href="/overview/reference/ledger-model-detailed">
+    Extended UTXO model: Template, Stakeholder, Choice, Transaction structure, view, witness.
+  </Card>
+  <Card title="Smart Contract Consensus" icon="handshake" href="/overview/reference/smart-contract-consensus">
+    Proof of Stakeholder validation, privacy-preserving consensus, trust domain 비교.
+  </Card>
+  <Card title="Ordering Consensus" icon="arrow-down-1-9" href="/overview/reference/ordering-consensus">
+    Sequencer와 Mediator architecture, BFT ordering service, ISS-inspired consensus protocol.
+  </Card>
+  <Card title="Transaction Lifecycle" icon="rotate" href="/overview/reference/transaction-lifecycle">
+    Preparation부터 commit까지 완전한 5-phase lifecycle.
+  </Card>
+  <Card title="Topology" icon="diagram-project" href="/overview/reference/topology">
+    Namespace management, cryptographic key, Party-to-Participant mapping, Topology Transaction.
+  </Card>
+</CardGroup>
+
+## 주요 속성
+
+Canton protocol은 다음 guarantee를 제공합니다.
+
+- **Sub-transaction privacy**: 각 Party는 자신과 관련된 Transaction 부분만 봅니다. Sequencer와 Mediator는 Transaction payload를 읽을 수 없습니다.
+- **Integrity**: 필요한 모든 Stakeholder가 confirm하고 모든 Signatory에 대한 smart contract logic validation을 통과한 경우에만 Transaction이 commit됩니다.
+- **Consistency**: Ordering layer는 특정 Synchronizer의 모든 state change에 single global ordering을 보장하여 double-spend를 방지하는 데 기여합니다.
+- **Finality**: Mediator가 commit verdict를 내리고 sequence된 뒤에는 Transaction result가 final입니다. Fork나 reorganization이 없습니다.
+- **Liveness**: BFT fault tolerance threshold, 즉 faulty ordering node가 3분의 1 미만인 조건에서 protocol이 진행됩니다.
+
+## Layer의 상호 작용 방식
+
+Canton Transaction은 lifecycle 중 두 consensus layer를 모두 거칩니다.
+
+1. Submitting Participant가 local에서 Transaction을 준비합니다(smart contract layer)
+2. Participant가 암호화된 view를 Sequencer에 보냅니다(ordering layer)
+3. Sequencer가 영향을 받는 Participant에 view를, Mediator에 informee message를 배포합니다
+4. 각 Confirming Participant가 view를 validate하고 confirmation 또는 rejection을 Mediator에 보냅니다(smart contract layer, ordering layer를 경유)
+5. Mediator가 confirmation을 aggregate하고 required time window 안에 verdict를 발행하면 Sequencer가 모든 Participant에 배포합니다(ordering layer)
+
+[Transaction Lifecycle](/overview/reference/transaction-lifecycle) page에서 각 phase를 자세히 설명합니다.

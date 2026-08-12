@@ -1,0 +1,84 @@
+---
+title: "Contract Template"
+description: "Canton smart contract의 핵심 구성 요소인 Daml contract template 정의 방법 학습하기"
+source_id: "SRC-09A4FB7F13"
+source_path: "appdev/modules/m3-contract-templates"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "3b5e86b655884e78a37bacdc568ba1f5cb99ef732863dd085bc7dd187cd2404a"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m3-contract-templates.md)을 사용하세요.
+</Warning>
+
+import DamlAppdevModulesM3ContractTemplatesL38 from "/snippets/daml-docs/appdev_modules_m3-contract-templates_L38.mdx";
+import DamlAppdevModulesM3ContractTemplatesL44 from "/snippets/daml-docs/appdev_modules_m3-contract-templates_L44.mdx";
+import DamlAppdevModulesM3ContractTemplatesL53 from "/snippets/daml-docs/appdev_modules_m3-contract-templates_L53.mdx";
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/tutorials/smart-contracts/contracts.rst" hash="9baeec6a" */}
+
+## 소개
+
+먼저 자체 발행되며 transfer할 수 없는 token을 나타내는 아주 작은 Daml template을 작성합니다. 최소한의 template이므로 그 자체로는 실제로 유용하지 않으며 이후에 더 유용하게 만들 것입니다. 하지만 다음과 같은 가장 기본적인 개념을 보여 주기에는 충분합니다.
+
+- Transaction
+- Daml module 및 file
+- Template
+- Contract
+- Signatory
+
+<Tip>
+`dpm new intro-contracts --template daml-intro-contracts`를 실행해 이 section의 code를 불러올 수 있습니다.
+</Tip>
+
+## Daml Ledger 기초
+
+ledger라고 부르는 대부분의 구조와 마찬가지로 Daml Ledger는 단순히 *commit*의 목록입니다. *commit*은 *Party*가 *Transaction*을 ledger에 성공적으로 *submit*했을 때의 최종 결과를 의미합니다.
+
+*Transaction*은 이 소개 전반에서 더 자세히 다룰 개념입니다. 가장 기본적인 예로 *contract*의 생성과 archival이 있습니다.
+
+contract는 contract를 생성하는 committed Transaction이 발생한 시점부터 contract를 *archive*하는 committed Transaction이 발생한 시점까지 *active* 상태입니다.
+
+개별 contract는 active contract를 변경할 수 없다는 의미에서 *immutable*입니다. 새 contract를 생성하거나 기존 contract를 archive하는 방법으로만 *Active Contract Set*을 변경할 수 있습니다.
+
+Daml은 Daml Ledger에서 어떤 Transaction이 유효한지 지정합니다. Daml code가 지정하는 규칙을 통틀어 *Daml model* 또는 *contract model*이라고 합니다.
+
+## Daml Module과 File
+
+각 `.daml` file은 맨 위에서 *Daml Module*을 정의합니다.
+
+<DamlAppdevModulesM3ContractTemplatesL38 />
+
+Daml의 code comment는 `--`로 시작합니다.
+
+<DamlAppdevModulesM3ContractTemplatesL44 />
+
+## Template
+
+`template`은 생성할 수 있는 contract의 type과 이를 생성할 권한이 있는 주체를 정의합니다. *contract*는 *template*의 instance입니다.
+
+<DamlAppdevModulesM3ContractTemplatesL53 />
+
+argument로 이름을 받는 `template` keyword로 template 선언을 시작합니다.
+
+Daml은 whitespace를 인식하며 layout을 사용해 *block*을 구성합니다. 첫 번째 line 아래의 모든 항목은 indent되어 있으므로 template body의 일부입니다.
+
+*contract*에는 *create argument* 또는 간단히 *argument*라고 하는 data가 포함됩니다. `with` block은 field name과 type을 나열해 create argument의 data type을 정의합니다. colon 하나인 `:`은 "type이 다음과 같다"는 뜻이므로 이를 "`Party` type의 `owner` field를 가진 `Token` template"이라고 읽을 수 있습니다.
+
+`Token` contract에는 `Party` type의 `owner` field 하나가 있습니다. template의 `with` block에서 선언된 field는 `where` block에 포함된 나머지 template body의 scope에 속합니다.
+
+## Signatory
+
+`signatory` keyword는 contract의 *Signatory*를 지정합니다. 실제 contract와 마찬가지로 contract를 생성하거나 archive할 때 그 *authority*가 필요한 Party입니다. 모든 contract에는 Signatory가 한 명 이상 있어야 합니다.
+
+또한 Daml ledger는 자신의 authority가 사용된 모든 Transaction을 해당 Party가 볼 수 있도록 *보장*합니다. 따라서 contract의 Signatory는 해당 contract의 생성과 archival을 반드시 볼 수 있습니다.
+
+## 다음 단계
+
+[Choice](/appdev/modules/m3-choices)에서는 choice를 사용해 contract에 behavior를 추가하는 방법을 학습합니다.
+
+{/* COPIED_END */}

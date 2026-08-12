@@ -1,0 +1,278 @@
+---
+title: "Migration Checklist"
+description: "Canton으로 migration하는 Ethereum developer를 위한 실용적인 checklist"
+source_id: "SRC-6B6F06FC73"
+source_path: "appdev/modules/m2-migration-checklist"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "a52171254ebaa5d1e5cb288c270931f0a7abc969066d447af230ef18d3855f39"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m2-migration-checklist.md)을 사용하세요.
+</Warning>
+
+import DamlAppdevModulesM2MigrationChecklistL117 from "/snippets/daml-docs/appdev_modules_m2-migration-checklist_L117.mdx";
+import DamlAppdevModulesM2MigrationChecklistL144 from "/snippets/daml-docs/appdev_modules_m2-migration-checklist_L144.mdx";
+import DamlAppdevModulesM2MigrationChecklistL166 from "/snippets/daml-docs/appdev_modules_m2-migration-checklist_L166.mdx";
+import DamlAppdevModulesM2MigrationChecklistL220 from "/snippets/daml-docs/appdev_modules_m2-migration-checklist_L220.mdx";
+import DamlAppdevModulesM2MigrationChecklistL99 from "/snippets/daml-docs/appdev_modules_m2-migration-checklist_L99.mdx";
+
+
+Ethereum에서 Canton으로 migration을 계획하고 실행할 때 이 checklist를 사용하세요. 각 section에서는 핵심 영역과 구체적인 action item을 다룹니다.
+
+## 시작하기 전에
+
+<AccordionGroup>
+
+<Accordion title="application architecture 평가하기">
+
+- [ ] **state model dependency 식별:** application이 global state query에 의존합니까?
+- [ ] **multi-party 관계 매핑:** contract의 Party는 누구입니까?
+- [ ] **privacy requirement 평가:** sub-transaction privacy가 필요합니까?
+- [ ] **integration point 검토:** smart contract에 연결되는 system은 무엇입니까?
+
+application이 "모든 NFT 표시" 같은 global state query에 크게 의존한다면 Party 범위 query 또는 off-ledger indexing을 사용하도록 이 기능을 다시 design해야 합니다.
+
+</Accordion>
+
+<Accordion title="paradigm 전환 이해하기">
+
+| 영역 | Ethereum 가정 | Canton의 실제 방식 |
+|------|---------------------|----------------|
+| State | global, query 가능 | distributed, Party 범위 |
+| Contract | mutable | immutable (archive + create) |
+| Authorization | runtime `msg.sender` | compile-time Signatory |
+| Privacy | 기본적으로 public | 기본적으로 private |
+| Identity | anonymous address | 이름이 있는 Party |
+
+</Accordion>
+
+<Accordion title="development environment 설정하기">
+
+- [ ] [Daml SDK](/sdks-tools/sdks/daml-sdk) 설치
+- [ ] [Daml extension](https://marketplace.visualstudio.com/items?itemName=DigitalAssetHoldingsLLC.daml)이 포함된 VS Code 설치
+- [ ] [CN Quickstart](/sdks-tools/reference-projects/cn-quickstart) clone
+- [ ] `make setup && make build && make start`를 실행해 설정이 작동하는지 확인
+
+</Accordion>
+
+</AccordionGroup>
+
+## Smart Contract Migration
+
+### Phase 1: Party Modeling
+
+<Steps>
+
+<Step title="모든 actor 식별하기">
+
+contract와 interaction하는 모든 주체를 나열하고 Canton Party에 매핑합니다.
+
+- **Contract owner** → `admin : Party` (admin contract의 Signatory)
+- **User** → `user : Party` (각 user는 서로 다른 Party)
+- **Operator** → `operator : Party` (Signatory 또는 Controller일 수 있음)
+
+</Step>
+
+<Step title="Party 관계 정의하기">
+
+각 contract에 대해 다음을 결정합니다.
+
+- **누가 생성에 동의해야 합니까?** → Signatory
+- **누가 볼 수 있어야 합니까?** → Observer
+- **누가 행동할 수 있습니까?** → choice별 Controller
+
+</Step>
+
+<Step title="Party hosting 계획하기">
+
+Party를 hosting할 위치를 결정합니다.
+
+- **User Party:** application provider의 Validator에서 hosting하는 경우가 많음
+- **Admin Party:** 조직의 Validator에 위치
+- **External Party:** 자체 Validator에 위치
+
+</Step>
+
+</Steps>
+
+### Phase 2: Contract 변환
+
+<AccordionGroup>
+
+<Accordion title="Solidity struct를 Daml data type으로 변환하기">
+
+```solidity
+// Solidity
+struct Asset {
+    address owner;
+    uint256 value;
+    bool locked;
+}
+```
+
+<DamlAppdevModulesM2MigrationChecklistL99 />
+
+</Accordion>
+
+<Accordion title="storage mapping을 contract로 변환하기">
+
+```solidity
+// Solidity: Global mapping
+mapping(address => uint256) public balances;
+```
+
+<DamlAppdevModulesM2MigrationChecklistL117 />
+
+핵심 통찰은 mapping을 가진 contract 하나 대신 holding마다 하나씩 여러 contract를 사용한다는 것입니다.
+
+</Accordion>
+
+<Accordion title="function을 choice로 변환하기">
+
+```solidity
+// Solidity
+function transfer(address to, uint256 amount) public {
+    require(balances[msg.sender] >= amount);
+    balances[msg.sender] -= amount;
+    balances[to] += amount;
+}
+```
+
+<DamlAppdevModulesM2MigrationChecklistL144 />
+
+</Accordion>
+
+<Accordion title="access control을 Signatory/Controller로 변환하기">
+
+```solidity
+// Solidity
+modifier onlyOwner() {
+    require(msg.sender == owner);
+    _;
+}
+```
+
+<DamlAppdevModulesM2MigrationChecklistL166 />
+
+</Accordion>
+
+</AccordionGroup>
+
+### Phase 3: State를 다르게 처리하기
+
+- [ ] **global query 교체:** Party 범위 query pattern design
+- [ ] **Contract Key 계획:** 주소 대신 lookup에 key 사용
+- [ ] **Contract ID 변경 수용:** update할 때마다 ID가 변경되므로 stable reference에 key 사용
+
+<Warning>
+Canton에는 모든 contract에 걸쳐 동작하는 Ethereum의 `eth_getLogs` 또는 event filtering에 대응하는 기능이 없습니다. indexing strategy를 일찍 계획하세요.
+</Warning>
+
+## Integration Migration
+
+### API 변경
+
+| Ethereum | Canton | 참고 사항 |
+|----------|--------|-------|
+| JSON-RPC | Ledger API (gRPC 또는 JSON API) | 서로 다른 protocol |
+| Web3.js / ethers.js | Ledger API client 또는 [dApp SDK](/appdev/modules/m4-sdks-apis) | 언어별 client |
+| Event log | Transaction stream | Party의 Transaction 구독 |
+| `eth_call` | non-consuming choice exercise | read-only operation |
+
+### Authentication 변경
+
+Ethereum은 private key signature를 통해 authenticate하고 `msg.sender`에서 identity를 파생합니다. Canton에서 identity는 JWT token을 사용하는 Party authentication에서 나옵니다. Ethereum은 누구나 public function을 호출할 수 있지만 Canton은 authenticated Party로만 access를 제한합니다.
+
+### Indexing Strategy
+
+global state query가 없으므로 다음을 수행합니다.
+
+- [ ] SQL 기반 query에는 **Participant Query Store (PQS)** 사용
+- [ ] 자체 database로 **Transaction streaming**
+- [ ] query하기 쉬운 key를 사용하도록 contract design
+
+## Testing Migration
+
+### Unit Test
+
+- [ ] Hardhat/Foundry test를 Daml Script test로 교체
+- [ ] authorization rule test: 누가 무엇을 exercise할 수 있는지 확인
+- [ ] multi-party workflow test: propose-accept pattern 확인
+
+<DamlAppdevModulesM2MigrationChecklistL220 />
+
+### Integration Test
+
+- [ ] LocalNet에서 test (CN Quickstart에서 제공)
+- [ ] API integration 작동 확인
+- [ ] error scenario와 rollback behavior test
+
+## Deployment Migration
+
+### Network 선택
+
+- **LocalNet** — development 및 testing
+- **DevNet** — integration testing
+- **TestNet** — pre-production validation
+- **MainNet** — production
+
+### Deployment Checklist
+
+- [ ] **Daml code packaging:** `dpm build`
+- [ ] **Validator에 upload:** admin API 또는 LAPI API 사용
+- [ ] **Party allocate:** Party identity 생성
+- [ ] **Contract initialize:** initial state 생성
+- [ ] **Application configure:** Ledger API를 가리키도록 설정
+
+## 운영 변경
+
+### Monitoring
+
+Ethereum에는 block explorer가 있지만 Canton은 Validator log와 metric을 사용합니다. Transaction hash lookup은 Transaction ID query가 되고 gas tracking은 traffic unit tracking에 대응합니다.
+
+### Key Management
+
+Ethereum EOA private key는 Canton Party key에 대응하며 Validator에 두거나 external로 보유할 수 있습니다. hardware wallet은 HSM 및 KMS integration에 대응합니다. multisig wallet은 authorization이 Daml level에서 강제되는 multi-signatory contract로 대체됩니다.
+
+## 흔한 Migration 함정
+
+<Warning>
+Ethereum에서 migration할 때 다음과 같은 흔한 실수를 피하세요.
+</Warning>
+
+| 함정 | 발생 이유 | 방지 방법 |
+|---------|----------------|--------------|
+| **global state view 구축** | Ethereum과 같은 query 예상 | 처음부터 Party 범위 data에 맞게 design |
+| **Party 과도 사용** | Party를 address처럼 취급 | Party에는 hosting cost가 있으므로 신중하게 design |
+| **propose-accept 무시** | 일방적 contract 생성 예상 | multi-party contract에는 workflow 필요 |
+| **event log 예상** | Ethereum event pattern 사용 | Transaction stream과 indexing 사용 |
+| **Contract ID를 identifier로 사용** | ID를 address처럼 취급 | stable reference에 Contract Key 사용 |
+
+## Migration Phase
+
+| Phase | 중점 | 완료 기준 |
+|-------|-------|---------------------|
+| **1. 학습** | Canton model 이해 | 팀이 Daml 기초에 익숙함 |
+| **2. Design** | Canton에 맞게 재설계 | Party model과 contract design 완료 |
+| **3. Development** | Daml로 구현 | contract와 test 완료 |
+| **4. Integration** | application 연결 | LocalNet에서 API 작동 |
+| **5. Testing** | test network에서 검증 | DevNet/TestNet test 통과 |
+| **6. Deployment** | production으로 전환 | MainNet에서 실행 |
+
+## 다음 단계
+
+<CardGroup cols={2}>
+
+<Card title="Module 3: Daml 개발" icon="code" href="/appdev/modules/m3-dev-environment">
+  Daml로 개발을 시작합니다.
+</Card>
+
+<Card title="CN Quickstart" icon="rocket" href="/sdks-tools/reference-projects/cn-quickstart">
+  작동하는 예시를 직접 사용해 봅니다.
+</Card>
+
+</CardGroup>

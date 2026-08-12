@@ -1,0 +1,120 @@
+---
+title: "용어집"
+description: "Canton Network, Splice 및 CNS 용어집"
+source_id: "SRC-91BB5B75AB"
+source_path: "global-synchronizer/splice-fundamentals/glossary"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "50a656dd5acdd681ec9e30cbbc2737051548d20415a37fe68e9a42c889a324ad"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/splice-fundamentals/glossary.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/glossary.rst" hash="81da33d3" */}
+
+<div className="glossary">
+
+ACS
+
+> `Active Contract Set`
+
+Active Contract Set
+
+> 특정 Participant의 관점에서 현재 Ledger에서 active 상태인 contract의 집합입니다.
+
+Amulet
+
+> Canton Coin을 구현하는 code 및 logic의 일반 명칭입니다.
+
+Amulet Name Service
+
+> Canton Name Service를 구현하는 code 및 logic의 일반 명칭입니다.
+
+CC
+
+> `Canton Coin`
+
+CN
+
+> `Canton Network`
+
+Canton Network
+
+> Business entity가 CN application의 형태로 운영하는 multi-party business process의 Network입니다.
+
+CN Application
+
+> 하나의 business entity가 다른 Canton Network entity에 특정 multi-party business process에 대한 access를 제공할 목적으로 운영하는 Canton Participant 및 domain node와 supporting code의 집합입니다.
+
+BFT
+
+> Byzantine Fault Tolerance입니다. 일정 수의 faulty node가 있어도 distributed system이 올바르게 계속 작동할 수 있게 하는 property입니다. 일반적으로 `f`는 system이 허용할 수 있는 faulty node 수를 나타냅니다. Splice의 모든 layer에서 `f`는 전체 SV 수의 1/3보다 약간 작은 수에 해당하며, 정확히는 `floor((n-1)/3)`입니다.
+
+CN Global Synchronizer
+
+> - Global synchronization domain
+> - 작은 app을 domain에서 직접 hosting할 수 있음
+> - 서로 다른 app domain 사이를 중개하는 shared synchronization domain 역할
+> - Super Validator collective가 BFT를 사용해 운영
+> - Domain 사용에는 `synchronizer fees`가 발생하며 각 Validator operator가 Canton Coin으로 지불
+
+Canton Coin
+
+> - Global Synchronizer에서 완료한 activity에 대한 reward로 Validator, Application Provider 및 Super Validator가 mint하는 utility token
+> - `synchronizer fees`에 사용
+> - Coin이 Super Validator storage space를 사용하는 비용을 지불하는 holding fee가 누적됨
+> - 모든 CC Transaction은 public임
+> - Lock holder가 unlock할 수 있는 locked coin 지원
+> - Single sender 및 multi-receiver transfer 지원
+> - Transfer에는 admin fee가 들며 receiver를 위한 app reward와 sender를 hosting하는 Validator를 위한 Validator reward가 생성됨
+> - Transfer는 mining round와 연결됨
+> - Reward는 다음 mining round에서 수집할 수 있음
+
+CN Validator
+
+> - CN의 Node 하나
+> - Canton Participant, Validator app 및 wallet app으로 구성
+> - Validator operator의 user/Party 관리와 같은 admin operation을 위한 Validator app
+
+CN Supervalidator
+
+> - CN의 Node 하나
+> - CN Validator component 외에도 Canton Sequencer, Canton Mediator, SV app 및 Scan app으로 구성
+> - `CN Global Synchronizer`의 admin operation을 위한 SV app
+> - Public data 제공을 위한 Scan app
+
+CN Wallet
+
+> - 다른 app이 기반으로 사용할 수 있는 payment API("pay with CC")와 결제 승인 등의 해당 UI 제공
+> - CN user가 CC holding 및 reward collection을 관리하는 데 사용
+> - 두 user 사이의 peer-to-peer transfer 관리 UI 제공
+
+Canton Name Service(sometimes also called directory service)
+
+> - Party가 일정 기간 자신의 Party에 mapping되는 globally unique하고 사람이 읽을 수 있는 name을 구매할 수 있게 함(DNS와 유사)
+> - 각 Party가 entry 하나를 primary entry로 선언하여 해당 Party에 사람이 읽을 수 있는 name을 제공할 수 있게 함(reverse DNS와 유사)
+> - 다른 app(예: wallet)이 Party ID 대신 CNS name을 표시하고 입력받는 데 사용할 수 있도록 양방향 resolution API 제공
+
+Canton Foundation
+- Canton Network에서 Global Synchronizer의 development와 성장을 촉진하고 governance를 지원하는 Foundation입니다. [https://sync.global/](https://sync.global/)을 참조하세요.
+
+CF
+
+> - `Canton Foundation`의 약어
+
+Splice
+
+> - Amulet, DSO governance, Amulet Name Service, SV node 및 Validator Node code를 hosting하는 HyperLedger lab project의 이름입니다.
+
+Synchronizer fees
+
+> [Traffic](/global-synchronizer/deployment/synchronizer-traffic)
+
+</div>
+
+
+{/* COPIED_END */}

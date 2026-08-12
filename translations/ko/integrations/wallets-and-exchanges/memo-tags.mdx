@@ -1,0 +1,45 @@
+---
+title: "Memo Tags"
+description: "Memo Tag를 사용해 exchange의 특정 account로 deposit routing"
+source_id: "SRC-AEA7294230"
+source_path: "integrations/wallets-and-exchanges/memo-tags"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "9e292772e82ad59448b9ff715d3debee069daeabb4b8babf0dad4d65e683af17"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/wallets-and-exchanges/memo-tags.md)을 사용하세요.
+</Warning>
+
+Exchange의 특정 user account로 deposit을 보내려면 transfer 정보와 함께 account identifier를 exchange에 전송해야 합니다. Canton에서는 ["memo tag" pattern](https://support.ledger.com/article/4409603715217-zd)으로 이를 구현합니다.
+
+## Exchange: Memo Tag로 Fund 수신 및 배정
+
+Memo는 `splice.lfdecentralizedtrust.org/reason` key를 사용하여 transfer metadata에 저장됩니다. Canton Network Token [Standard](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md#generic-metadata)는 이 key와 transaction에서 memo tag 및 기타 transfer 정보를 parsing하는 방법을 정의합니다.
+
+Transaction history를 ingest할 때 exchange는 incoming transfer에서 `splice.lfdecentralizedtrust.org/reason` metadata key를 parsing하여 deposit과 fund를 배정할 internal account를 연계합니다.
+
+## Wallet: Memo Tag로 Exchange에 Fund 전송
+
+### Canton Coin Wallet
+
+Canton Coin wallet에서는 아래 screenshot의 "Description" field를 사용하여 exchange가 요구하는 형식으로 account identifier를 전달해야 합니다. 예: "AcmeExchange account: \<exchangeInternalAccountId\>".
+
+![Splice wallet UI](/images/splice_wallet_kernel/splice-wallet.png)
+
+### CN Token Standard Wallets
+
+Token Standard는 transfer에 대한 사람이 읽을 수 있는 설명을 전달하는 목적으로 `splice.lfdecentralizedtrust.org/reason` metadata key를 정의합니다. [CIP-0056](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md#generic-metadata)을 참조하세요.
+
+Token Standard wallet은 Canton Coin wallet과 같은 "Description" 또는 "Reason" field를 제공해야 합니다. Transfer를 시작할 때 그 값을 `Transfer` specification의 metadata field에 저장해야 합니다. 관련 [code](https://github.com/hyperledger-labs/splice/blob/332e06a7ae9e13fde5bba0bf7dcb059aa36f979e/token-standard/splice-api-token-transfer-instruction-v1/daml/Splice/Api/Token/TransferInstructionV1.daml#L12-L43)를 참조하세요. Canton Coin transfer를 시작할 때 Canton Coin wallet도 내부적으로 이 방식으로 동작합니다.
+
+마찬가지로 incoming transfer 또는 transfer transaction history를 표시할 때 `splice.lfdecentralizedtrust.org/reason` metadata key의 내용을 parsing하여 표시해야 합니다. Token Standard CLI의 transaction history parser가 한 예이며 관련 [문서](/appdev/deep-dives/token-standard)를 참조할 수 있습니다. 이를 통해 exchange는 redemption을 위한 correlation ID를 전달할 수 있습니다.
+
+올바른 metadata field를 설정하는 code sample은 experimental Token Standard CLI에서 "reason"을 command line argument로 받아 metadata field에 저장하도록 변경한 [pull request](https://github.com/hyperledger-labs/splice/pull/2003/files)를 참조하세요.
+
+### CN Token Registries
+
+Token Standard를 준수하는 Registry는 `TransferInstruction` interface를 사용하여 multi-step transfer를 구현할 때 `Transfer` specification을 변경하지 않고 전달해야 합니다. 관련 [code](https://github.com/hyperledger-labs/splice/blob/332e06a7ae9e13fde5bba0bf7dcb059aa36f979e/token-standard/splice-api-token-transfer-instruction-v1/daml/Splice/Api/Token/TransferInstructionV1.daml#L108-L115)를 참조하세요.

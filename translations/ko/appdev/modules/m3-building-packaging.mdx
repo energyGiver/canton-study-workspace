@@ -1,0 +1,259 @@
+---
+title: "Build와 Packaging"
+description: "Daml project build, dependency 관리, deployment용 DAR file packaging"
+source_id: "SRC-E3254802F0"
+source_path: "appdev/modules/m3-building-packaging"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "0a8409d0cccab97b1cee56482bf21de2dce77867545d3634b2cd0b28570508ef"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m3-building-packaging.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/tutorials/smart-contracts/dependencies.rst" hash="da2790f4" */}
+
+# Dependency 사용하기
+
+`compose`의 application은 asset atomic swap을 위한 완전하고 안전한 model이지만 개선할 여지가 많습니다. 그러나 application을 production에 적용하기 전에 모든 기능을 구현할 수는 없으므로 이미 실행 중인 code를 변경하는 방법을 이해하는 것이 중요합니다. 수행하려는 변경은 근본적으로 두 종류입니다.
+
+1. 기존 logic을 변경하는 upgrade입니다. 예를 들어 `Asset` template에 여러 Signatory를 두고 싶을 수 있습니다.
+2. 추가 template을 통해 새 기능만 추가하는 extension입니다.
+
+upgrade는 이 Daml 소개 밖의 별도 section인 [smart contract upgrade](/appdev/deep-dives/smart-contract-upgrade)에서 다룹니다. 이 section에서는 간단한 두 번째 workflow인 multi-leg trade를 사용해 `compose` model을 확장합니다. 그 과정에서 다음을 학습합니다.
+
+- Daml stack의 software architecture
+- dependency와 data dependency
+- identifier
+
+`compose`를 확장하므로 이 chapter의 설정은 조금 더 복잡합니다.
+
+1. base directory에서 `dpm new intro-compose  --template daml-intro-compose`를 사용해 `compose` project를 불러옵니다. 여기서 `intro7` directory는 생성할 다른 project가 참조하므로 중요합니다.
+2. 같은 directory에서 `dpm new intro-9  --template daml-intro-9`를 사용해 이 chapter의 project를 불러옵니다.
+
+`Dependencies`에는 새 module `Intro.Asset.MultiTrade`와 이에 대응하는 test module `Test.Intro.Asset.MultiTrade`가 포함됩니다.
+
+## DAR File, Daml-LF, Engine
+
+`compose`에서 project, Daml-LF, DAR file, dependency에 대해 이미 조금 학습했습니다. 이 chapter에서는 현재 project에서 `compose` project로 이어지는 dependency가 실제로 필요하므로 이를 더 자세히 살펴봅니다.
+
+`compose`의 DAR file 내부를 살펴보겠습니다. DAR file은 Java JAR file처럼 단순한 ZIP archive이지만 SDK에는 DAR을 검사하는 utility도 기본 제공됩니다.
+
+1. `intro7` directory로 이동합니다.
+2. `dpm build -o assets.dar`를 사용해 build합니다.
+3. `dpm damlc inspect-dar assets.dar`를 실행합니다.
+
+많은 output이 표시됩니다. "DAR archive contains the following files:" heading 아래에는 DAR에 다음 항목이 포함된 것을 볼 수 있습니다.
+
+1. project와 모든 dependency의 `*.dalf` file
+2. 원본 Daml source code
+3. 각 `*.daml` file의 `*.hi` 및 `*.hie` file
+4. 일부 meta-inf 및 config file
+
+첫 번째 file은 `intro7-1.0.0-887056cbb313b94ab9a6caf34f7fe4fbfe19cb0c861e50d1594c665567ab7625.dalf`와 비슷하며 project의 실제 compiled package입니다. `*.dalf` file에는 Daml의 intermediate language인 Daml-LF가 포함됩니다. file content는 [`digital-asset/daml` repository의 Daml-LF tooling](https://github.com/digital-asset/daml/tree/main/sdk/daml-lf)이 정의한 binary encoded protobuf message입니다. Daml-LF는 Daml Engine에 의해 ledger에서 evaluate됩니다. Daml Engine은 IDE script runner, Sandbox, 실제 production ledger 같은 tool에 포함되는 JVM component입니다. Daml-LF와 Daml의 관계가 Java Bytecode와 Java의 관계와 같다면 Daml Engine과 Daml의 관계는 JVM과 Java의 관계와 같습니다.
+
+## Hash와 Identifier
+
+"DAR archive contains the following packages:" heading 아래에는 package name과 반복되는 긴 random string의 유사한 목록이 표시됩니다. 이 hexadecimal string, 이 예시에서는 `887056cbb313b94ab9a6caf34f7fe4fbfe19cb0c861e50d1594c665567ab7625`가 package hash이며 availability와 preservation이 보장되는 package의 주된 유일한 identifier입니다. name인 "intro7"과 version인 "1.0.0" 같은 meta information은 사람이 읽는 데 도움이 되지만 의존해서는 안 됩니다. compiler가 생성한 DAR file을 항상 사용하는 것은 아니며 실행 중인 ledger에서 load하거나 artifact repository에서 가져올 수도 있습니다.
+
+실제 동작을 살펴볼 수 있습니다. DAR file을 ledger에 deploy하면 모든 meta information이 보존되는 것은 아닙니다.
+
+1. 위 `inspect-dar` 실행 결과에서 main package hash를 기록합니다.
+2. ledger를 실행하고 `assets.dar` DAR을 upload하여 project를 시작합니다.
+
+```bash
+cat <<EOF
+canton.parameters.enable-alpha-state-via-config = yes
+canton.parameters.state-refresh-interval = 5s
+canton.participants.sandbox.alpha-dynamic.dars = [
+  { location = "./assets.dar" }
+]
+EOF > config.conf
+
+dpm sandbox -c config.conf
+```
+
+3. 다른 terminal을 열고 gRPC Ledger API로 dar을 download합니다. hash를 적절한 값으로 바꿔야 합니다.
+
+```bash
+grpcurl  localhost:6866 com.digitalasset.canton.admin.participant.v30.PackageService.GetDar \
+  -d '{"mainPackageId": "887056cbb313b94ab9a6caf34f7fe4fbfe19cb0c861e50d1594c665567ab7625"}' \
+  -plaintext | jq -r '.payload' | base64 --decode > assets_ledger.dar
+```
+
+4. `dpm damlc inspect-dar assets_ledger.dar`를 실행합니다.
+
+두 가지를 확인할 수 있습니다. 첫째, 많은 dependency에서 name이 사라져 이제 hash로만 식별할 수 있습니다. 물론 완전히 다른 content를 가진 두 번째 project `intro7-1.0.0`도 만들 수 있으므로 name과 version을 사용할 수 있더라도 package hash만 안전한 identifier입니다.
+
+따라서 Ledger API에서는 template과 record 같은 모든 type을 `(entity name, module name, package hash)` triple로 식별합니다. client application은 interaction할 package hash를 알아야 합니다. 이를 돕기 위해 `inspect-dar`는 출력하는 information에 대해 machine-readable format도 제공합니다. `dpm damlc inspect-dar --json assets_ledger.dar`를 사용하세요. 결과 JSON payload의 `main_package_id` field가 project의 package hash입니다.
+
+둘째, 모든 `*.daml`, `*.hi`, `*.hie` file이 사라진 것을 볼 수 있습니다. 여기서 data dependency가 필요해집니다.
+
+## Dependency와 Data Dependency
+
+`daml.yaml`의 `dependencies` group에 있는 dependency는 `*.hi` file에 의존합니다. 이 file의 information은 function, type, typeclass를 제공하는 Daml standard library 같은 dependency에 매우 중요합니다.
+
+하지만 위에서 본 것처럼 이 information은 보존되지 않습니다. 또한 보존하는 것이 바람직하지 않을 수도 있습니다. SDK 1.100.0으로 `intro7`을 build하고 SDK 1.101.0으로 `intro9`를 build한다고 가정해 보세요. built-in type의 모든 typeclass와 instance가 변경되었을 수 있으며 현재 SDK와 dependency에서 각각 한 번씩 두 번 존재하게 됩니다. 상황이 빠르게 복잡해지므로 SDK는 SDK version 간 `dependencies`를 지원하지 않습니다. ledger에서 fetch했거나 이전 SDK version에서 가져온 contract model dependency에는 `data-dependencies`라는 더 단순한 dependency가 있습니다. `data-dependencies`의 syntax는 같지만 "binary" `*.dalf` file에만 의존합니다. 이 name은 이러한 dependency의 주된 목적이 data인 Record, Choice, Template을 처리한다는 의미를 전달하려고 합니다. project 간 contract composability를 사용하는 데 필요한 항목입니다.
+
+이 extension model에는 `data-dependencies`가 적합하므로 현재 project는 이 방식으로 `compose`를 포함합니다.
+
+{/* TODO: Fix or remove this literal include — the RST source used a literal-include directive pointing to daml.yaml */}
+
+`compose` trade setup Script와 거의 같은 module `Test.Intro.Asset.TradeSetup`이 있다는 점에 유의하세요. `data-dependencies`는 기존 contract와 data type을 사용하도록 설계되었습니다. Daml Script는 import되지 않습니다. 실제로 Ledger API를 사용해 ledger에서 download하는 DAR file에 test script가 포함될 것으로 기대해서도 안 됩니다. 더 큰 project에서는 test script를 분리하고 template만 ledger에 deploy하는 것이 좋습니다.
+
+## Project Structure 소개
+
+여기서 살펴본 것처럼 identifier는 package 전체에 의존하고 package에는 항상 모든 dependency가 함께 포함됩니다. 따라서 복잡한 dependency graph에서 무엇이든 변경하면 상당한 영향이 발생할 수 있습니다. dependency graph를 단순하게 유지하고 서로 다른 속도로 변경될 가능성이 높은 concern을 별도 package로 분리하는 것이 좋습니다.
+
+예를 들어 이 chapter를 포함해 이 소개의 모든 project에서는 script와 template이 같은 project에 있습니다. 실제로는 test를 변경하면 모든 identifier가 바뀌므로 바람직하지 않습니다. maintainability를 위해 test와 main template을 분리하는 편이 좋습니다. [Design Pattern](/appdev/modules/m3-design-patterns)에서 그렇게 했다면 해당 module을 복사할 필요도 없었을 것입니다.
+
+마찬가지로 [Design Pattern](/appdev/modules/m3-design-patterns)에서는 `Trade`가 core `Asset` model의 순수 extension인데도 `Asset`과 같은 project에 포함했습니다. `Trade`를 더 자주 변경할 것으로 예상한다면 처음부터 별도 project로 분리하는 것이 좋을 수 있습니다.
+
+## 다음 단계
+
+`MultiTrade` model에는 이전 model보다 복잡한 control flow와 data handling이 있습니다. [Language Fundamentals](/appdev/modules/m3-language-fundamentals)에서는 control flow, fold, 일반적인 typeclass, custom function, Daml standard library를 포함해 더 advanced logic을 작성하는 방법을 학습합니다. 같은 project를 사용할 예정이므로 아직 folder를 삭제하지 마세요.
+
+
+{/* COPIED_END */}
+
+## dpm으로 Build하기
+
+Canton Network project에서는 모든 build operation에 [`dpm`](/sdks-tools/cli-tools/dpm) tool을 사용하세요.
+
+- `dpm build` — Daml project를 compile하고 DAR file 생성
+- `dpm build --all` — multi-package project의 모든 package build
+- `dpm test` — 현재 package의 모든 Daml Script test 실행
+- `dpm codegen-java` — Daml model에서 Java binding 생성
+- `dpm codegen-js` — Daml model에서 TypeScript/JavaScript binding 생성
+- `dpm sandbox` — integration testing용 local Canton sandbox 시작
+
+`dpm` tool은 Daml compiler 및 build system을 Canton Network default로 wrapping하며 SDK versioning과 dependency resolution을 자동으로 처리합니다.
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/sdlc-howtos/smart-contracts/build/how-to-build-dar-files.rst" hash="497ab124" */}
+
+# Daml Archive (.dar) File Build 방법
+
+이 guide에서는 Daml workflow를 정의하는 source code를 구성하는 방법과 해당 code를 ledger에 deploy하거나 application 개발 대상으로 사용할 수 있는 Daml Archive (.dar) file로 build하고 package하는 방법을 보여 줍니다. guide는 다음과 같은 작은 how-to로 구성됩니다.
+
+- 하나 이상의 Daml package 정의 및 build 방법
+- third-party Daml package dependency 관리 방법
+- 어떤 Daml code를 어떤 package에 넣을지 결정하는 방법
+
+Daml package와 Daml Archive (.dar) file의 정확한 관계를 더 자세히 알아보려면 Daml package 및 Daml Archive (.dar) file을 참고하세요. 하지만 이 guide를 사용하는 데 세부 정보를 알 필요는 없습니다. high-level에서는 Daml archive file을 특정 Daml package build 결과로 생각할 수 있습니다.
+
+## Daml Package 정의 방법
+
+### Single Package
+
+모든 Daml package에는 `daml.yaml` file이 필요합니다. package directory root에 이 file을 생성하세요. 이 file을 채우려면 다음 information이 필요합니다.
+
+- SDK Version: 설치된 SDK version을 확인하려면 `dpm version`을 호출합니다
+- Package name: package와 회사 안에서 unique한 lower-skewer-case name입니다
+
+`<place-holders>`를 적절히 바꿔 다음 내용을 `daml.yaml`에 추가하세요.
+
+```yaml
+sdk-version: <such as 3.4.9>
+name: <your-package-name>
+version: 1.0.0
+source: daml
+dependencies:
+  - daml-prim
+  - daml-stdlib
+```
+
+package의 source code인 `.daml` file은 위 source field에 지정된 directory에 둡니다. package root에 daml folder를 생성하세요. 이 directory에 .daml file을 작성하며 다음과 같이 dot을 directory로 처리했을 때 file name이 file의 module header와 일치해야 합니다.
+
+- `MyModule.daml`에는 `module MyModule where` 포함
+- `Path/To/My/Module.daml`에는 `module Path.To.My.Module where` 포함
+
+directory와 .daml file name은 UpperCamel casing이어야 합니다.
+
+`dpm new` Command는 여러 package structure 및 tutorial용으로 미리 만들어진 template을 제공합니다. 자세한 내용은 이 DPM page를 참고하세요.
+
+### Multiple Package
+
+Daml project에는 일반적으로 workflow와 testing을 위한 package가 최소 두 개 필요합니다. Daml은 `multi-package.yaml` file을 통해 이러한 package의 build와 development를 지원합니다. package directory보다 위에 있는 directory에 `multi-package.yaml` file을 생성합니다. 다음 structure를 사용해 이 file에 package의 relative path를 나열합니다.
+
+```yaml
+packages:
+  - ./my-package1
+  - ./my-package2
+```
+
+이는 `daml.yaml` 자체가 아니라 `daml.yaml`을 포함하는 directory의 path입니다.
+
+### Configuration File의 Environment Variable
+
+project에 package가 둘 이상 있다면 environment variable을 사용해 `sdk-version` 같은 information의 중복을 피하는 방안을 고려하세요. `sdk-version` field를 `sdk-version: $SDK_VERSION` 또는 다른 valid environment variable name으로 바꾸고 build 전에 이 variable이 설정되었는지 확인합니다. `SDK_VERSION=3.4.9 dpm build --all`
+
+variable은 inline으로도 넣을 수 있으며 다음 예시와 같이 daml.yaml의 모든 string field에서 지원됩니다.
+
+```yaml
+sdk-version: $SDK_VERSION
+name: my-package-$PACKAGE_SUFFIX
+version: 1.0.$MAIN_PATCH
+source: daml
+dependencies:
+  - daml-prim
+  - daml-stdlib
+```
+
+자세한 내용은 Environment Variable Interpolation을 참고하세요.
+
+## Daml Package Build 방법
+
+single package를 build하려면 root directory로 이동해 `dpm build`를 실행합니다. multi-package project의 모든 package를 build하려면 `multi-package.yaml`이 있는 directory로 이동해 `dpm build --all`을 실행합니다. 기본적으로 build한 각 package의 Daml Archive (.dar) file이 `<package-directory>/.daml/dist/<package-name>-<package-version>.dar`에 생성됩니다. .dar file은 Canton Ledger upload와 package dependency에 모두 사용됩니다. `dpm build`의 `--output` flag를 사용하면 .dar 생성 location을 override할 수 있습니다. 이 flag는 `daml.yaml` file의 `build-options` field에도 지정할 수 있습니다.
+
+```yaml
+build-options:
+  - --output=./output-bin/my-package.dar
+```
+
+`dpm build` option의 전체 목록은 Daml Build Options를 참고하거나 `dpm build --help`를 실행하세요. LF version 변경 및 warning 구성 option이 포함됩니다. 이러한 option은 모두 위 `build-options`를 통해 제공할 수도 있습니다. 권장 warning flag 집합은 Recommended Build Options를 참고하세요.
+
+`sdk-version`이나 LF version 같은 configuration option을 변경할 때 문제가 발생하면 package를 clean하면 도움이 될 수 있습니다. single package를 clean하려면 package directory에서 `daml clean`을 실행합니다. project의 모든 package를 clean하려면 `multi-package.yaml`이 있는 directory에서 `daml clean --all`을 실행합니다.
+
+## Daml Package에 의존하는 방법
+
+Daml의 dependency는 Daml Archive (.dar) file로 지정합니다. package에 dependency를 추가하려면 다음과 같이 dependency .dar file의 path를 `daml.yaml`에 추가합니다.
+
+```yaml
+...
+data-dependencies:
+  - ./path/to/your/dep.dar
+  - ./path/to/a/package/.daml/dist/my-package-1.0.0.dar
+```
+
+앞에서 다룬 `dependencies` field 대신 `data-dependencies`를 사용한다는 점에 유의하세요. 후자는 `daml-prim`, `daml-stdlib`, 선택적 testing library인 `daml-script`용으로 예약되어 있습니다. `daml.yaml`에 추가하면 dependency .dar의 module을 이 package의 module에서 import할 수 있습니다. 이 package 또는 다른 dependency와 module name이 충돌하는 경우 module-prefixes를 참고하세요.
+
+local file system에 이미 있는 DAR을 사용하는 것 외에도 Daml project를 build하면서 remote OCI repository에서 사용할 수 있는 DAR에 의존할 수 있습니다. 자세한 안내와 예시는 [Remote Dars](/appdev/modules/m5-environment-c#onfiguration#remote-dars) section을 참고하세요.
+
+`multi-package.yaml`에 나열된 package의 .dar file에 의존할 때 `dpm build`와 `dpm build --all`을 호출하면 관련 package가 올바른 순서로 build됩니다.
+
+## Third-Party Daml Package Dependency 관리 방법
+
+composed Transaction을 build하려면 third-party application의 .dar file에 의존해야 합니다. 작성 시점에는 Daml Archive용 전용 package repository가 없습니다. 하지만 .dar file은 비교적 작고 자주 변경되지 않습니다. 따라서 repository의 `dars/vendored` directory에 check-in하는 것이 가장 좋습니다. 대신 build step의 일부로 .dar file을 retrieve한다면 해당 step에서 dar hash를 확인하세요.
+
+다른 사용자가 기반으로 삼을 수 있도록 .dar file을 배포하려면 documentation에 retrieval process를 포함하세요.
+
+### daml-script Test Library에 의존하기
+
+`daml-script` library는 서로 다른 Daml SDK version의 다른 release와 cross-compatible하지 않습니다. 따라서 third-party application이 공유하는 Daml script test code를 사용할 때는 해당 Daml script code를 vendor로 포함하는 것이 좋습니다. 예를 들어 repository의 `daml/vendored/` directory에 check-in합니다. 좋은 예시는 Splice가 제공하는 Canton Network Token Standard test harness입니다. `https://github.com/DACH-NY/canton-network-node/tree/main/token-standard/splice-token-standard-test`. 이러한 package를 `multi-package.yaml`에 추가하면 필요할 때 build됩니다.
+
+## 어떤 Daml Code를 어떤 Package에 넣을지 결정하는 방법
+
+다음 기준으로 project를 별도 package로 구성하세요.
+
+**workflow definition과 test 분리**
+workflow definition의 test를 workflow와 별도 package에 두어 해당 test가 ledger에 배포되고 upload되는 것을 방지합니다. 특히 production ledger에 daml-script package를 upload하지 마세요.
+
+**public API와 implementation 분리**
+application에 다른 application이 사용하도록 설계된 public API가 있다면 Daml interface를 사용해 이러한 API를 정의하고 implementation과 다른 package에 interface를 두세요. 예를 들어 다음 Canton Network Token Standard interface를 참고하세요. [https://github.com/DACH-NY/canton-network-node/blob/da5dbe251b17f9c4c5d3e96840f486d14dc8e43e/token-standard/splice-api-token-holding-v1/daml/Splice/Api/Token/HoldingV1.daml](https://github.com/DACH-NY/canton-network-node/blob/da5dbe251b17f9c4c5d3e96840f486d14dc8e43e/token-standard/splice-api-token-holding-v1/daml/Splice/Api/Token/HoldingV1.daml)
+
+**business domain별 분리**
+서로 다른 business domain의 workflow를 별도 package로 분리하는 방안을 고려하세요. 한 domain의 stakeholder가 직접 interaction하지 않는 다른 domain의 workflow를 audit하고 vet할 필요가 없도록 하기 위함입니다.
+
+{/* COPIED_END */}

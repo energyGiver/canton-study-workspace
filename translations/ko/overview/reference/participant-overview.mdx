@@ -1,0 +1,50 @@
+---
+title: "Participant Node Architecture"
+description: "Distributed ledger role, privacy model, transaction validation 및 API exposure를 포함한 Canton Participant Node 동작 방식"
+source_id: "SRC-69094F5639"
+source_path: "overview/reference/participant-overview"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "9114c82cd785be2bd11afd2db6a91e4da4683a41509273c20a700b2dbd50f58b"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/reference/participant-overview.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.6/participant/overview/index.rst" hash="3ca8e4c3" */}
+
+
+Participant는 Canton distributed ledger architecture의 핵심을 구성합니다. Participant는 Party별 distributed ledger view를 제공하고 Daml logic을 처리하며 Synchronizer를 통해 다른 Participant와 Canton Protocol에 참여합니다. 본질적으로 Canton Participant는 Canton Network 안에서 한 entity를 위한 **private, self-sovereign computation and storage unit**입니다.
+
+## 핵심 Technical Responsibilities
+
+<div className="todo">
+
+아래에서 Canton Protocol을 언급할 때 protocol description으로 연결 \<[https://github.com/DACH-NY/canton/issues/25689](https://github.com/DACH-NY/canton/issues/25689)\>
+
+</div>
+
+1. **Daml Smart Contract Execution**
+   - Participant Node는 **Daml smart contract의 runtime environment**입니다. 이 Participant가 hosting하는 Party가 관련된 transaction을 submit 또는 execute하면 node는 Daml Engine을 사용하여 contract create, archive 또는 choice exercise 같은 필요한 Daml ledger operation을 수행합니다.
+   - Daml의 built-in authorization과 privacy model을 사용하여 올바른 Party만 ledger change를 시작하거나 observe할 수 있게 합니다.
+2. **Private Contract Store**
+   - Global ledger 전체 copy를 저장하는 전통적인 blockchain node와 달리 Canton Participant는 **매우 local하고 private한 ledger state view**를 유지합니다. Signatory와 observer가 해당 Participant에 hosting된 Daml contract data만 저장합니다.
+   - 이는 Canton privacy guarantee의 기반이며 unauthorized Party로의 data leakage를 방지합니다.
+3. **Transaction Validation**
+   - Transaction에 여러 Party가 관련되면 *각 stakeholder*를 담당하는 Participant Node가 transaction을 공동 validate합니다.
+   - 각 Participant Node는 transaction이 Daml authorization rule을 준수하는지, consumed input이 자신의 local view에서 valid하고 unspent인지 확인하여 double spend를 방지하고, resulting output이 올바르게 derive됐는지 verify합니다. 이 distributed validation은 Canton Two-Phase Commit Protocol의 일부이며 transaction validation을 central entity에 의존하지 않습니다.
+   - Sub-transaction privacy: Participant는 privacy model에 따라 권한이 있는 transaction 부분만 확인합니다. 권한이 *없는* 다른 부분에 대해서는 transaction payload뿐 아니라 관련 Participant 또는 Party 같은 metadata도 확인하지 못합니다.
+4. **Synchronizer Connection**
+   - Participant는 Global Synchronizer 또는 private instance 같은 Canton Synchronizer에 연결합니다.
+   - Synchronizer를 사용하여 transaction proposal과 confirmation 관련 message를 다른 Participant와 교환합니다.
+   - Synchronizer는 이 message의 total ordering을 제공하고 관련된 모든 Participant에서 consistent outcome을 제공하는 **Two-Phase Commit Protocol**을 지원합니다.
+   - Participant는 여러 Synchronizer에 연결될 수 있으며 contract를 Synchronizer 사이에서 reassign하여 Multi-Synchronizer Transaction을 orchestrate할 수 있습니다.
+5. **Canton Ledger API Exposure:**
+   - Participant Node는 client application과 user에게 **Ledger API**, 즉 gRPC 또는 JSON 기반 API를 제공합니다.
+   - 이 API를 사용하면 user가 Daml command를 submit하여 contract를 create하거나 contract의 choice를 exercise하고, contract state를 query하며, 관련 Party의 ledger update를 subscribe할 수 있습니다.
+
+
+{/* COPIED_END */}

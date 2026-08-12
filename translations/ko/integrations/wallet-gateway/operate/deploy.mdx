@@ -1,0 +1,312 @@
+---
+title: "Deploy"
+description: "Docker 또는 Helm을 사용하여 production에서 Wallet Gateway를 실행합니다."
+source_id: "SRC-B02240CA9A"
+source_path: "integrations/wallet-gateway/operate/deploy"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "65e3b59618a7a22e9474b3f1400420c12af87866351bc94e004c7024b0e6672f"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/wallet-gateway/operate/deploy.md)을 사용하세요.
+</Warning>
+
+Local development 이외의 용도에서는 Wallet Gateway를 container로 실행하세요. **Docker**와 **Helm** variant가 모두 제공되며 image와 chart는 GitHub Container Registry에 **public**으로 공개되어 있으므로 access request가 필요하지 않습니다.
+
+- **Docker registry**: `ghcr.io/digital-asset/wallet-gateway/docker/wallet-gateway:<VERSION>`
+- **Helm repository**: `ghcr.io/digital-asset/wallet-gateway/helm/wallet-gateway:<VERSION>`
+
+`<VERSION>`을 deploy할 version으로 바꾸세요. 현재 `latest` tag는 없습니다. Version은 [GHCR tag](https://github.com/digital-asset/wallet-gateway/pkgs/container/wallet-gateway%2Fdocker%2Fwallet-gateway) 또는 일치하는 [npm package](https://www.npmjs.com/package/@canton-network/wallet-gateway-remote)에서 확인할 수 있습니다.
+
+## Deploy 전 준비
+
+Package하기 전에 configuration file에서 production 관련 선택을 완료하세요. [Wallet Gateway 구성](/integrations/wallet-gateway/operate/configure) 및 [Configuration reference](/integrations/wallet-gateway/reference/configuration-reference)를 참조하세요.
+
+- **Persistent store 사용:** `postgres`를 권장합니다. `memory` store는 container 또는 pod가 다시 생성될 때 모든 data를 잃고, `sqlite`는 file이 persistent volume에 있을 때만 유지됩니다.
+- **`kernel.publicUrl` 설정:** Reverse proxy 또는 load balancer 뒤에서는 OAuth redirect와 discovery가 동작하도록 external URL로 설정합니다.
+- **CORS 제한:** `server.allowedOrigins`를 `"*"` 대신 알려진 dApp origin으로 설정합니다.
+- **Image에서 secret 제외:** `clientSecret`, `adminAuth` 및 provider API key는 image에 포함된 config file이 아닌 environment variable 또는 secret manager를 통해 제공합니다. [Secret 및 환경](/integrations/wallet-gateway/reference/configuration-reference#secrets-and-environments)을 참조하세요.
+
+## Service 공개
+
+Wallet Gateway는 User UI를 여는 browser와 dApp API를 호출하는 hosted dApp에서 **HTTPS**로 접근할 수 있어야 합니다. Kubernetes에서는 TLS를 terminate하고 pod port(기본값 `3030`)로 전달하는 Ingress 또는 LoadBalancer를 통해 공개합니다. OAuth redirect와 discovery가 올바르게 동작하도록 `kernel.publicUrl`을 해당 external URL로 설정하세요. Subpath routing(예: `https://wallet.example.com/subpath`)도 지원됩니다.
+
+## Docker
+
+Container에는 configuration file이 필요합니다. 없다면 다음 명령으로 시작할 sample을 생성하세요.
+
+```shell
+# via Docker
+docker run --rm \
+  ghcr.io/digital-asset/wallet-gateway/docker/wallet-gateway:<VERSION> --config-example > config.json
+
+# or via npx
+npx @canton-network/wallet-gateway-remote@<VERSION> --config-example > config.json
+```
+
+Config를 mount하고 service를 시작합니다.
+
+```shell
+docker run -p 3030:3030 \
+  -v ${PWD}/config.json:/app/config.json:ro \
+  ghcr.io/digital-asset/wallet-gateway/docker/wallet-gateway:<VERSION>
+```
+
+이제 `http://localhost:3030`에서 login page를 사용할 수 있습니다.
+
+<Warning>
+Internal signing provider를 사용하면 `signingStore`에 private key가 보관됩니다. 내구성이 있고 access control이 적용된 storage에 두거나 Participant Node 또는 external custody provider를 사용하세요. [Signing provider](/integrations/wallet-gateway/operate/signing-providers)를 참조하세요.
+</Warning>
+
+## Helm
+
+Kubernetes용 공식 Helm chart가 제공됩니다. 전체 [values schema](https://github.com/digital-asset/wallet-gateway/blob/main/charts/wallet-gateway/values.schema.json)가 공개되어 있습니다. 핵심은 Wallet Gateway가 `values.yaml`의 top-level `config:` key를 통해 구성된다는 점입니다. YAML로 지정하지만 `config.json`과 동일한 schema를 사용합니다.
+
+### Signing chart value(`signing: {}`)
+
+Chart의 `signing` block은 선택 사항인 external signing driver(Blockdaemon, DFNS, Fireblocks)를 구성합니다. Participant 기반 signing에서는 비워 두는 것이 일반적입니다.
+
+```yaml
+signing: {}
+```
+
+Participant Node가 key를 처리하면 `signing` 아래에 Participant 전용 field가 필요하지 않습니다. External custody provider를 활성화할 때만 entry를 추가하세요.
+
+```yaml
+signing:
+    # optional, define to enable blockdaemon integration -- or omit
+    blockdaemon:
+        apiUrl: 'http://localhost:5080/api/cwp/canton'
+        apiKeyRef:
+            name: 'blockdaemon-creds'
+            key: 'api-key'
+    # optional, define to enable fireblocks integration -- or omit
+    fireblocks:
+        apiKeyRef:
+            name: 'fireblocks-creds'
+            key: 'fb-api-key'
+        secretRef:
+            name: 'fireblocks-creds'
+            key: 'fb-secret'
+```
+
+### Kubernetes secret의 OAuth secret(`oauthSecrets`)
+
+Chart는 environment variable name을 secret reference에 mapping한 다음 Network auth config에서 해당 variable을 reference하여 Kubernetes secret의 OAuth client secret을 주입할 수 있습니다.
+
+```yaml
+oauthSecrets:
+    # map a kubernetes secret to a Wallet Gateway network auth config
+    MY_OAUTH2_CLIENT_SECRET:
+        secretRef:
+            name: 'my-oauth'
+            key: 'client-secret'
+
+config:
+    networks:
+        - id: 'my-network'
+          adminAuth:
+              # should correlate to a secret provided in oauthSecrets
+              clientSecretEnv: 'MY_OAUTH2_CLIENT_SECRET'
+```
+
+## Production configuration 핵심 사항
+
+전체 내용은 먼저 [Configuration reference](/integrations/wallet-gateway/reference/configuration-reference)를 읽으세요. 다음은 production deployment에서 설정할 가치가 있는 field를 보여 주는 불완전한 YAML입니다.
+
+```yaml
+kernel:
+    # Publicly accessible URL users connect to. Subpath routing is supported.
+    publicUrl: 'https://wallet.example.com/subpath'
+server:
+    # In Helm/k8s, keep the default 3030 and route internally from your
+    # Ingress/LoadBalancer (exposed on 443) to the pod's port. Terminate TLS at the cluster edge.
+    port: 3030
+    # Origins for the set of web dApps allowed to call the dApp API.
+    allowedOrigins:
+        - 'https://dapp1.example.com'
+        - 'https://dapp2.example.com'
+    # Default (5mb) may need bumping for large contract payloads.
+    requestSizeLimit: '5mb'
+    # Default 10000 requests / minute / IP. Bump if you hit HTTP 429 during regular use.
+    requestRateLimit: 10000
+bootstrap:
+    networks:
+        - adminAuth:
+              # For production, inject OAuth secrets via the environment (secrets manager),
+              # naming the environment variable to read for this network.
+              clientSecretEnv: 'OAUTH2_CLIENT_SECRET'
+```
+
+### Signing provider environment variable
+
+Config의 dynamic `clientSecretEnv` variable 외에도 external signing provider는 몇 가지 static environment variable을 읽습니다.
+
+| Provider | Variable | 설명 |
+| --- | --- | --- |
+| Fireblocks | `FIREBLOCKS_API_KEY` | Fireblocks integration용 API key입니다. |
+| Fireblocks | `FIREBLOCKS_SECRET` | Fireblocks integration용 secret입니다. |
+| Blockdaemon | `BLOCKDAEMON_API_KEY` | Blockdaemon integration용 API key입니다. |
+| Blockdaemon | `BLOCKDAEMON_API_URL` | Blockdaemon API URL입니다. |
+
+자세한 내용은 [Signing provider](/integrations/wallet-gateway/operate/signing-providers)를 참조하세요.
+
+## Database persistence
+
+### SQLite
+
+Default config는 `sqlite`를 사용하며 평가 및 단기 환경에는 적합하지만 **production에는 PostgreSQL이 권장됩니다**. SQLite는 local file에 data를 저장합니다. Persistent volume이 없으면 pod가 다시 생성될 때 모든 session과 wallet state를 잃습니다. Store가 container 내부 path를 가리키도록 설정합니다.
+
+```yaml
+# config YAML for Helm, or equivalent config.json
+signingStore:
+    connection:
+        type: 'sqlite'
+        database: '/data/signing_store.sqlite'
+store:
+    connection:
+        type: 'sqlite'
+        database: '/data/store.sqlite'
+```
+
+그런 다음 해당 path에 volume을 mount합니다.
+
+```shell
+docker run -p 3030:3030 \
+  -v ${PWD}/config.json:/app/config.json:ro \
+  -v ${PWD}/data:/data \
+  ghcr.io/digital-asset/wallet-gateway/docker/wallet-gateway:<VERSION>
+```
+
+### PostgreSQL
+
+Store가 PostgreSQL instance를 가리키도록 설정합니다.
+
+```yaml
+# config YAML for Helm, or equivalent config.json
+store:
+    connection:
+        type: 'postgres'
+        host: '<HOST_NAME>'
+        port: 5432
+        database: '<DB_NAME>'
+        user: '<DB_USERNAME>'
+        password: '<DB_PASSWORD>'
+```
+
+PostgreSQL에 TLS를 사용하려면 `ssl` block을 추가합니다. 이 block은 Node.js `pg` driver에 전달됩니다. [TLS/SSL을 사용하는 PostgreSQL](/integrations/wallet-gateway/reference/configuration-reference#postgresql-over-tls-ssl)을 참조하세요.
+
+### Local PostgreSQL over TLS(Docker)
+
+Local development에서는 TLS가 활성화된 PostgreSQL을 Docker에서 실행하고 Wallet Gateway의 `store` / `signingStore`가 이를 가리키도록 할 수 있습니다.
+
+<Note>
+이는 Wallet Gateway와 PostgreSQL **사이의 TLS**를 구성합니다. Browser용 HTTPS는 구성하지 않습니다. Browser/client HTTPS의 경우 reverse proxy 또는 ingress에서 TLS를 terminate하고 `kernel.publicUrl`을 external `https://...` URL로 설정하세요.
+</Note>
+
+**1. Postgres용 self-signed TLS file 생성:**
+
+```bash
+mkdir -p .dev/postgres-tls
+cd .dev/postgres-tls
+
+# server key + cert (CN=localhost)
+openssl req -x509 -newkey rsa:2048 -nodes \
+  -keyout server.key -out server.crt -days 365 \
+  -subj "/CN=localhost"
+
+# Postgres requires strict key perms
+chmod 600 server.key
+
+# pg_hba: allow local socket (for init), enforce TLS for TCP
+cat > pg_hba.conf <<'EOF'
+# TYPE  DATABASE  USER  ADDRESS       METHOD
+local   all       all                 scram-sha-256
+hostssl all       all   0.0.0.0/0     scram-sha-256
+hostssl all       all   ::/0          scram-sha-256
+EOF
+
+cd ../..
+```
+
+**2. TLS를 활성화하여 Postgres 실행:**
+
+```bash
+docker rm -f local-postgres 2>/dev/null || true
+
+docker run --name local-postgres \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=app_db \
+  -e POSTGRES_INITDB_ARGS="--auth-host=scram-sha-256 --auth-local=scram-sha-256" \
+  -p 5432:5432 \
+  -v "$PWD/.dev/postgres-tls/server.crt:/var/lib/postgresql/server.crt:ro" \
+  -v "$PWD/.dev/postgres-tls/server.key:/var/lib/postgresql/server.key:ro" \
+  -v "$PWD/.dev/postgres-tls/pg_hba.conf:/var/lib/postgresql/pg_hba.conf:ro" \
+  -d postgres:16 \
+  -c ssl=on \
+  -c ssl_cert_file=/var/lib/postgresql/server.crt \
+  -c ssl_key_file=/var/lib/postgresql/server.key \
+  -c hba_file=/var/lib/postgresql/pg_hba.conf
+```
+
+**3. TLS 동작 확인:**
+
+```bash
+docker exec -e PGPASSWORD=postgres local-postgres \
+  psql "host=127.0.0.1 port=5432 user=postgres dbname=app_db sslmode=require" \
+  -c "select current_setting('ssl') as ssl_on;"
+```
+
+예상 결과: `ssl_on` = `on`.
+
+**4. TLS를 사용하도록 Wallet Gateway store 구성:**
+
+```json
+{
+    "store": {
+        "connection": {
+            "type": "postgres",
+            "host": "localhost",
+            "port": 5432,
+            "user": "postgres",
+            "password": "postgres",
+            "database": "app_db",
+            "ssl": { "rejectUnauthorized": false }
+        }
+    },
+    "signingStore": {
+        "connection": {
+            "type": "postgres",
+            "host": "localhost",
+            "port": 5432,
+            "user": "postgres",
+            "password": "postgres",
+            "database": "app_signing_db",
+            "ssl": { "rejectUnauthorized": false }
+        }
+    }
+}
+```
+
+Production에서는 `rejectUnauthorized: true`로 certificate verification을 사용하고 `ssl.ca`로 CA bundle을 제공하는 것이 좋습니다. [TLS/SSL을 사용하는 PostgreSQL](/integrations/wallet-gateway/reference/configuration-reference#postgresql-over-tls-ssl)을 참조하세요.
+
+## Logging
+
+`--log-format` flag로 JSON logging을 활성화합니다. 기본값은 `pretty`입니다.
+
+```shell
+docker run -p 3030:3030 \
+  -v ${PWD}/config.json:/app/config.json:ro \
+  ghcr.io/digital-asset/wallet-gateway/docker/wallet-gateway:<VERSION> \
+  --log-format=json
+```
+
+## Deploy 후 작업
+
+- 세 endpoint(User UI, `/api/v0/dapp`, `/api/v0/user`)가 응답하는지 확인합니다.
+- [Security checklist](/integrations/wallet-gateway/operate/security)를 검토합니다.
+- 시작에 실패하면 [Troubleshooting](/integrations/wallet-gateway/operate/troubleshooting)을 참조하세요.

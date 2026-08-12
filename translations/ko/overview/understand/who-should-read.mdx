@@ -1,0 +1,109 @@
+---
+title: "이 문서를 사용해야 하는 사람"
+description: "역할과 목표에 따라 적합한 시작점 찾기"
+source_id: "SRC-C64C505610"
+source_path: "overview/understand/who-should-read"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "991bd17fbaa7ab0a8898d7993108f26f8234e96f95f5abfcc5d19235776cb4f1"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/understand/who-should-read.md)을 사용하세요.
+</Warning>
+
+이 문서는 Canton Network에서 개발하거나 Network를 운영하는 다양한 독자를 대상으로 합니다. 아래에서 자신에게 맞는 경로를 찾으세요.
+
+## 역할별 안내
+
+<CardGroup cols={2}>
+
+<Card title="Application Developer" icon="code" href="/appdev/get-started/choose-your-path">
+  Daml smart contract와 Ledger API를 사용하여 Canton Network에 application을 구축합니다.
+
+  **다음을 원한다면 여기서 시작하세요.**
+  - Daml로 smart contract 작성
+  - Ledger와 상호 작용하는 frontend와 backend 구축
+  - Application 설계를 위한 Canton의 privacy model 이해
+</Card>
+
+<Card title="Ethereum/Web3 Developer" icon="ethereum" href="/appdev/modules/m2-canton-for-ethereum-devs">
+  기존 blockchain 지식을 Canton의 개념과 pattern에 연결합니다.
+
+  **다음에 해당한다면 여기서 시작하세요.**
+  - Solidity, EVM 또는 다른 blockchain platform 경험이 있음
+  - Canton이 전통적인 blockchain과 어떻게 다른지 이해하고 싶음
+  - 기존 mental model을 조정해야 함
+</Card>
+
+<Card title="Node Operator" icon="server" href="/global-synchronizer/understand/introduction">
+  Global Synchronizer에서 Validator infrastructure를 운영합니다.
+
+  **다음을 원한다면 여기서 시작하세요.**
+  - Validator node 배포와 운영
+  - Infrastructure 요구 사항 이해
+  - Operator로 Canton Network 참여
+</Card>
+
+<Card title="Solution Architect" icon="diagram-project" href="/overview/understand/five-minute-overview">
+  Enterprise use case에 Canton이 적합한지 평가합니다.
+
+  **다음이 필요하다면 여기서 시작하세요.**
+  - Canton의 architecture 접근 방식 이해
+  - Privacy에 민감한 application에 적합한지 평가
+  - Canton과 다른 blockchain solution 비교
+</Card>
+
+</CardGroup>
+
+## 목표별 안내
+
+| 하고 싶은 일 | 시작점 |
+|--------------|--------|
+| 5분 안에 Canton 이해하기 | [5분 개요](/overview/understand/five-minute-overview) |
+| Blockchain에서 privacy가 중요한 이유 알아보기 | [Canton이 해결하는 문제](/overview/understand/the-problem) |
+| Canton component가 함께 작동하는 방식 알아보기 | [Architecture 개요](/overview/learn/architecture) |
+| 첫 smart contract 작성하기 | [Module 3: Daml Smart Contracts](/appdev/modules/m3-dev-environment) |
+| 예제 application 실행하기 | [QuickStart](/appdev/quickstart) |
+| Validator node 배포하기 | [Validator 설정](/global-synchronizer/understand/introduction) |
+| 앱에 wallet 통합하기 | [통합 개요](/integrations/overview) |
+
+## 문서 구조
+
+이 문서는 네 section으로 구성됩니다.
+
+- **Overview**: 모두를 위한 Canton 개념, architecture, protocol
+- **App Development**: Developer를 위한 Daml과 API 기반 application 구축
+- **Global Synchronizer**: Operator를 위한 Validator와 infrastructure 운영
+- **Building Blocks**: Developer와 사용자를 위한 wallet, app, component, integration
+
+각 section의 내용은 단계적으로 깊어지는 다음 model을 따릅니다.
+
+- **Understand**: 모두를 위한 개념적 기초
+- **Learn**: 실제 적용을 포함한 더 상세한 이해
+- **Reference**: Protocol 동작 방식과 API에 관한 심층 문서
+
+## 사전 지식
+
+시작하기 전에 다음 경험이 있으면 좋습니다.
+
+- **Developer**: 어떤 언어든 programming 경험이 필요합니다. Functional programming 개념에 익숙하면 도움이 되지만 필수는 아닙니다.
+- **Operator**: Container 기반 배포(Docker, Kubernetes)와 기본 networking 개념에 관한 경험이 필요합니다.
+- **모든 독자**: 사전 blockchain 경험은 필요하지 않습니다. 기초 원리부터 개념을 설명합니다.
+
+## 도움받기
+
+<CardGroup cols={2}>
+
+{/* TODO: Add Slack link once available */}
+<Card title="Community Slack" icon="slack" href="/shared/support-channels">
+  Developer와 operator community channel에 참여합니다.
+</Card>
+
+<Card title="지원" icon="headset" href="/shared/support-channels">
+  Enterprise 지원을 위해 Canton Network support에 문의합니다.
+</Card>
+
+</CardGroup>

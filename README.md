@@ -26,7 +26,7 @@ The generated site is intentionally ignored. Official files remain read-only in 
 
 The documentation UI runs at `http://localhost:3000` and the local-only research API runs at `http://127.0.0.1:8787`. Use `python3 -m portal build`, `python3 -m portal serve`, or `python3 -m portal index` when running individual components.
 
-The portal adds personal tri-state progress, Git-reviewed scope decisions, collapsed three-line summaries, ENG/KOR comparison for translated pages, source-linked claim/question evidence drafts, unified full-text search, and claims/questions/progress/scope/change dashboards. The initial Korean translation and summary cover `What is Canton Network?`; the remaining 803 pages stay visibly unreviewed until the team researches them.
+The portal adds personal tri-state progress, Git-reviewed scope decisions, collapsed three-line summaries, ENG/KOR comparison for translated pages, source-linked claim/question evidence drafts, unified full-text search, and claims/questions/progress/scope/change dashboards. Korean translation is delivered in validated complete-page batches; see [translation status](translations/STATUS.md) for the current coverage. Untranslated pages remain absent from Korean navigation until a complete draft passes workspace validation.
 
 Before publishing shared research, run:
 

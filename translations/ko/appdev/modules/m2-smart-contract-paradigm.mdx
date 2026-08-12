@@ -1,0 +1,228 @@
+---
+title: "Smart Contract Paradigm 전환"
+description: "Solidity와 Daml programming model의 근본적인 차이 이해하기"
+source_id: "SRC-1672F272D8"
+source_path: "appdev/modules/m2-smart-contract-paradigm"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "363b6ddefa53f21f777715f14fd2b4e965a248897266ccf7ea6409ae2a53f9ed"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m2-smart-contract-paradigm.md)을 사용하세요.
+</Warning>
+
+import DamlAppdevModulesM2SmartContractParadigmL120 from "/snippets/daml-docs/appdev_modules_m2-smart-contract-paradigm_L120.mdx";
+import DamlAppdevModulesM2SmartContractParadigmL152 from "/snippets/daml-docs/appdev_modules_m2-smart-contract-paradigm_L152.mdx";
+import DamlAppdevModulesM2SmartContractParadigmL187 from "/snippets/daml-docs/appdev_modules_m2-smart-contract-paradigm_L187.mdx";
+import DamlAppdevModulesM2SmartContractParadigmL233 from "/snippets/daml-docs/appdev_modules_m2-smart-contract-paradigm_L233.mdx";
+import DamlAppdevModulesM2SmartContractParadigmL46 from "/snippets/daml-docs/appdev_modules_m2-smart-contract-paradigm_L46.mdx";
+import DamlAppdevModulesM2SmartContractParadigmL86 from "/snippets/daml-docs/appdev_modules_m2-smart-contract-paradigm_L86.mdx";
+
+
+Solidity에서 Daml로 이동하려면 mental model을 크게 전환해야 합니다. 이 페이지에서는 paradigm의 차이와 사고방식을 조정하는 방법을 설명합니다.
+
+## Programming Model 비교
+
+| 측면 | Solidity | Daml |
+|--------|----------|------|
+| **Paradigm** | imperative, object-oriented | functional, declarative |
+| **State** | mutable storage | immutable contract |
+| **Execution** | sequential operation | Transaction tree |
+| **Type** | dynamic call이 있는 static type | strongly typed, ADT |
+| **Side effect** | 무제한 | monad를 통해 제어 |
+
+## State Model: Mutable과 Immutable
+
+### Solidity: Mutable State
+
+Solidity에서 contract에는 직접 변경하는 mutable storage가 있습니다.
+
+```solidity
+contract Token {
+    mapping(address => uint256) public balances;
+
+    function transfer(address to, uint256 amount) public {
+        require(balances[msg.sender] >= amount, "Insufficient balance");
+
+        // Mutate state in place
+        balances[msg.sender] -= amount;
+        balances[to] += amount;
+
+        emit Transfer(msg.sender, to, amount);
+    }
+}
+```
+
+**Mental model:** contract는 변경하는 state를 가진 persistent object입니다.
+
+### Daml: Immutable Contract
+
+Daml에서 contract는 immutable data입니다. state change는 새 contract를 생성하거나 기존 contract를 archive합니다.
+
+<DamlAppdevModulesM2SmartContractParadigmL46 />
+
+**Mental model:** contract는 사실입니다. exercise는 해당 사실을 archive하고 새 사실을 생성합니다.
+
+## UTXO와 Account Model
+
+### Ethereum: Account Model
+
+- state는 account에서 balance로 이어지는 global mapping입니다
+- transfer는 account entry를 변경합니다
+- total balance를 쉽게 query할 수 있습니다
+- 자주 사용하는 account에서 contention이 발생합니다
+
+### Canton: Extended UTXO Model
+
+- state는 사용되지 않은 output과 같은 contract의 집합입니다
+- transfer는 기존 contract를 archive하고 새 contract를 생성합니다
+- balance는 소유한 contract의 합입니다
+- parallelism이 향상되고 data flow가 명시적입니다
+
+<DamlAppdevModulesM2SmartContractParadigmL86 />
+
+## Language 비교
+
+### Type System
+
+| 기능 | Solidity | Daml |
+|---------|----------|------|
+| **Type safety** | 보통 | 강함 |
+| **Null 처리** | 암묵적 (0/empty) | 명시적 (Optional) |
+| **Custom type** | Struct, enum | ADT, record |
+| **Generic** | 제한적 | 완전한 parametric polymorphism |
+
+### Solidity Type
+
+```solidity
+struct Asset {
+    address owner;
+    uint256 value;
+    bool isLocked;
+}
+
+enum State { Pending, Active, Completed }
+```
+
+### Daml Type
+
+<DamlAppdevModulesM2SmartContractParadigmL120 />
+
+### Solidity Control Flow
+
+```solidity
+function process(uint256[] memory items) public {
+    for (uint i = 0; i < items.length; i++) {
+        if (items[i] > threshold) {
+            revert("Over threshold");
+        }
+        results[i] = items[i] * 2;
+    }
+}
+```
+
+### Daml Control Flow
+
+<DamlAppdevModulesM2SmartContractParadigmL152 />
+
+## Authorization Model
+
+### Solidity: Runtime Authorization
+
+```solidity
+contract Ownable {
+    address public owner;
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not owner");
+        _;
+    }
+
+    function sensitiveAction() public onlyOwner {
+        // Only owner can call
+    }
+}
+```
+
+**문제:**
+- authorization을 runtime에 확인합니다
+- 확인을 빠뜨리기 쉽습니다
+- 누구나 호출을 시도할 수 있습니다
+- authorization이 logic과 섞여 있습니다
+
+### Daml: Declarative Authorization
+
+<DamlAppdevModulesM2SmartContractParadigmL187 />
+
+**이점:**
+- authorization을 code로 작성하지 않고 선언합니다
+- compiler가 강제하므로 빠뜨릴 수 없습니다
+- authorized Party만 시도할 수 있습니다
+- concern이 명확히 분리됩니다
+
+## Multi-Party Coordination
+
+### Solidity: 수동 Multi-Sig
+
+```solidity
+contract MultiSig {
+    mapping(address => bool) public approved;
+    uint256 public approvalCount;
+    uint256 public requiredApprovals;
+
+    function approve() public {
+        require(!approved[msg.sender], "Already approved");
+        approved[msg.sender] = true;
+        approvalCount++;
+    }
+
+    function execute() public {
+        require(approvalCount >= requiredApprovals, "Not enough approvals");
+        // Execute action
+    }
+}
+```
+
+### Daml: Native Multi-Party
+
+<DamlAppdevModulesM2SmartContractParadigmL233 />
+
+## 일반적인 Pattern 변환
+
+| Solidity Pattern | Daml 대응 항목 |
+|------------------|-----------------|
+| **Ownable** | Signatory 선언 |
+| **Pausable** | Contract archival + recreation |
+| **ERC-20** | Token Standard ([CIP-0056](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md)) |
+| **Proxy/Upgradeable** | Smart Contract Upgrade (SCU) |
+| **Pull payment** | Propose/accept pattern |
+| **Factory** | Template + create |
+| **Registry** | Contract Key (사용 가능한 경우) |
+
+## 버려야 할 기존 습관
+
+| Solidity 습관 | Daml의 실제 방식 |
+|----------------|--------------|
+| state를 제자리에서 변경 | archive + 새 contract 생성 |
+| runtime `msg.sender` 확인 | compile-time Controller 선언 |
+| 누구나 호출할 수 있는 public function | Controller만 exercise 가능 |
+| global contract address | update할 때마다 Contract ID 변경 |
+| iteration에 loop 사용 | `forA`, `mapA`, fold pattern 사용 |
+| 모든 곳에서 try/catch 사용 | validation에 assertion 사용, exception은 deprecated |
+
+## 다음 단계
+
+<CardGroup cols={2}>
+
+<Card title="Network Architecture" icon="network-wired" href="/appdev/modules/m2-network-architecture">
+  network architecture와 topology를 비교합니다.
+</Card>
+
+<Card title="Module 3: Daml" icon="code" href="/appdev/modules/m3-dev-environment">
+  Daml smart contract 작성을 시작합니다.
+</Card>
+
+</CardGroup>

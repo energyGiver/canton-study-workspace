@@ -1,0 +1,25 @@
+---
+title: "Validator Liveness"
+description: "Validator liveness"
+source_id: "SRC-0D1983E72A"
+source_path: "global-synchronizer/splice-fundamentals/validator-liveness"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "5e8d228b7b48ee794a92fdd1be1f9d6ae232b95b96fab3e9cb6da6ad93c8c6e6"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/splice-fundamentals/validator-liveness.md)을 사용하세요.
+</Warning>
+
+{/* DIVERGENCE: updated locally to reflect CIP-0096 (validator liveness rewards discontinued); upstream splice source (docs/src/background/tokenomics/val_live_tokenomics.rst, hash 48ad8bfc) describes liveness rewards as an active mechanism. See closed cf-docs issue #1049. */}
+
+{/* COPIED_START source="splice:docs/src/background/tokenomics/val_live_tokenomics.rst" hash="48ad8bfc" */}
+
+각 round에서 active한 각 Validator는 [ValidatorLivenessActivityRecord](/sdks-tools/api-reference/splice-daml/splice-amulet/splice-validatorlicense#type-splice-validatorlicense-validatorlivenessactivityrecord-17293)를 사용하여 liveness activity를 기록합니다.
+
+[CIP-0096](https://github.com/canton-foundation/cips/blob/main/cip-0096/cip-0096.md)은 Validator liveness reward를 중단했으며, Validator별 liveness reward cap을 단계적으로 낮춰 2026-04-30부터 $0으로 만들었습니다. 이제 Validator는 activity reward를 통해서만 CC를 얻습니다. 현재 Validator가 CC를 얻는 방식은 [Canton Coin과 Global Synchronizer](/overview/understand/canton-coin)를 참조하세요.
+
+{/* COPIED_END */}

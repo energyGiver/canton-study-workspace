@@ -1,0 +1,86 @@
+---
+title: "Canton Name Service"
+description: "Canton Network에서 사람이 읽을 수 있는 name을 Party Identifier에 mapping"
+source_id: "SRC-1345971119"
+source_path: "overview/reference/canton-name-service"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "a1158b879cb8bd29b940adf363025390d5487d74ef514ce00c654e518f5f5188"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/reference/canton-name-service.md)을 사용하세요.
+</Warning>
+
+Canton Name Service(CNS)는 사람이 읽을 수 있는 name을 Canton Network의 Party Identifier에 mapping합니다. Internet의 DNS와 비슷한 기능을 합니다. `auth0_007c675a429eaf831f0991308d85::12201abe669f...` 같은 길고 opaque한 Party ID 대신 `alice.unverified.cns` 같은 name을 공유할 수 있습니다.
+
+CNS는 Global Synchronizer의 Daml contract 집합으로 구현되며 DSO Party가 governance합니다. [Splice](https://github.com/canton-network/splice) codebase에서 underlying code는 Amulet Name Service(ANS)라고 합니다.
+
+## Name Format
+
+CNS entry name은 `<chosen-name>.unverified.cns` pattern을 따릅니다. 사용자가 등록한 모든 name에 `.unverified.cns` suffix가 붙습니다. `unverified` label은 registrant에 대한 identity verification을 수행하지 않았다는 뜻입니다. Wallet과 충분한 Canton Coin이 있으면 누구나 name을 등록할 수 있습니다.
+
+DSO 자체는 만료되지 않고 Contract ID도 없는 special entry `dso.cns`를 보유합니다. Standard registration flow가 아니라 DSO가 직접 제공합니다.
+
+## Registration 작동 방식
+
+CNS entry 등록은 Daml subscription payment model에 기반한 multi-step process입니다.
+
+1. 사용자가 `name`, `url`, `description`을 제공하여 Validator App ANS API의 **POST** `/v0/entry/create` endpoint를 호출합니다.
+2. Validator App이 `AnsRules_RequestEntry` Choice를 exercise하여 `AnsEntryContext` contract와 `SubscriptionRequest` contract를 생성합니다.
+3. 사용자가 wallet을 통해 subscription request를 accept하면 Canton Coin initial payment가 trigger됩니다.
+4. DSO automation이 initial payment를 collect하고(`AnsEntryContext_CollectInitialEntryPayment`), DSO에 transfer된 Canton Coin을 burn하며 `AnsEntry` contract를 생성합니다.
+
+Entry fee와 lifetime은 `AnsRules` contract의 `AnsRulesConfig`에서 설정합니다. Payment는 DSO Party로 전달되어 burn되며 redistribute되지 않습니다.
+
+## Renewal
+
+CNS entry는 만료됩니다. 각 entry에는 `expiresAt` timestamp가 있으며 owner는 name을 유지하려면 그 전에 renew해야 합니다.
+
+Renewal은 동일한 subscription payment mechanism을 사용합니다. Renewal payment due가 되면 사용자에게 충분한 Canton Coin이 있고 auto-renewal을 활성화한 경우 wallet automation이 자동으로 처리할 수 있습니다. 이후 DSO automation이 `AnsEntryContext_CollectEntryRenewalPayment`를 exercise하여 payment를 burn하고 configured `entryLifetime` interval만큼 `expiresAt`을 연장합니다.
+
+Entry가 expiration 전에 renew되지 않으면 어떤 Signatory든 `AnsEntry_Expire`를 exercise하여 archive할 수 있습니다.
+
+## Name Resolution
+
+CNS는 name에서 Party로, Party에서 name으로 양방향 resolution을 지원합니다. Forward DNS와 reverse DNS와 비슷합니다.
+
+Scan API는 lookup을 위한 세 public endpoint를 제공합니다.
+
+- **GET** `/v0/ans-entries/by-name/{name}` -- exact name을 owner Party ID를 포함한 entry로 resolve
+- **GET** `/v0/ans-entries/by-party/{party}` -- Party ID를 CNS entry로 resolve
+- **GET** `/v0/ans-entries?name_prefix=<prefix>&page_size=<n>` -- name prefix로 entry 검색
+
+Wallet 같은 application은 이 endpoint를 사용해 raw Party Identifier 대신 사람이 읽을 수 있는 name을 표시합니다. 예를 들어 다른 사용자에게 Canton Coin을 보낼 때 full Party ID 대신 `alice.unverified.cns`를 입력할 수 있습니다.
+
+같은 endpoint는 Validator App Scan Proxy API(`/v0/scan-proxy/ans-entries/*`)에서도 사용할 수 있습니다. 여러 Super Validator Node에 query하고 consensus result를 반환하여 BFT verification을 제공합니다.
+
+## Global Synchronizer의 Storage
+
+CNS state는 `splice-amulet-name-service` Package의 Daml contract로 Global Synchronizer에 전부 존재합니다. 주요 contract type은 다음과 같습니다.
+
+- **`AnsRules`** -- Entry fee, lifetime, renewal duration 등 configuration을 보유하는 singleton contract. DSO Party가 Signatory입니다.
+- **`AnsEntryContext`** -- CNS entry와 subscription의 relationship을 추적합니다. DSO와 Entry Owner가 모두 Signatory입니다.
+- **`AnsEntry`** -- Name, Owner Party, URL, description, expiration time을 포함한 실제 name record입니다. DSO와 Entry Owner가 모두 Signatory입니다.
+
+이 contract는 표준 Daml authorization rule을 따르므로 Entry Owner와 DSO가 creation, renewal, expiration에 모두 consent해야 합니다.
+
+## API Reference
+
+CNS 기능은 Validator App이 제공하는 두 API로 나뉩니다.
+
+**ANS API**(entry management) -- [ans-external.yaml](https://raw.githubusercontent.com/canton-network/splice/refs/heads/main/apps/validator/src/main/openapi/ans-external.yaml) OpenAPI spec 참고:
+
+- **POST** `/v0/entry/create` -- 새 entry creation 요청
+- **GET** `/v0/entry/all` -- Authenticated User가 소유한 모든 entry 나열
+
+**Scan API**(name resolution) -- [scan.yaml](https://raw.githubusercontent.com/canton-network/splice/refs/heads/main/apps/scan/src/main/openapi/scan.yaml) OpenAPI spec 참고:
+
+- **GET** `/v0/ans-entries` -- Name prefix로 entry 나열
+- **GET** `/v0/ans-entries/by-name/{name}` -- Exact name으로 entry lookup
+- **GET** `/v0/ans-entries/by-party/{party}` -- Party ID로 entry lookup
+- **POST** `/v0/ans-rules` -- 현재 ANS rule configuration retrieve
+
+ANS API는 token subject가 entry를 request하거나 나열하는 User와 일치하는 JWT authentication을 요구합니다. Scan API endpoint는 public입니다.

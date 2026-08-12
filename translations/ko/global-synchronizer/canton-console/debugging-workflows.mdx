@@ -1,0 +1,144 @@
+---
+title: "Debugging Workflow"
+description: "Console을 사용하는 일반적인 Canton 문제의 단계별 diagnostic procedure"
+source_id: "SRC-22CBB431E7"
+source_path: "global-synchronizer/canton-console/debugging-workflows"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "244c4bb36b1635bd1a877bb4dcde00c9728d8f485c4c4ecb9ebfcfe131af7370"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-debugging-workflows-0.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-debugging-workflows-1.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_2 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-debugging-workflows-2.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_3 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-debugging-workflows-3.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_4 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-debugging-workflows-4.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_5 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-debugging-workflows-5.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_6 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-debugging-workflows-6.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_7 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-debugging-workflows-7.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_8 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-debugging-workflows-8.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_9 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-debugging-workflows-9.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/canton-console/debugging-workflows.md)을 사용하세요.
+</Warning>
+
+Transaction이 실패하거나 Node 연결이 끊기거나 system이 예상과 다르게 동작할 때 Canton Console은 문제를 diagnose하는 tool을 제공합니다. 이 페이지에서는 구체적인 Console Command를 사용하여 일반적인 debugging scenario를 단계별로 설명합니다.
+
+## 멈춘 Transaction Debugging
+
+Command를 제출했지만 completion event가 도착하지 않으면 Transaction이 "stuck" 상태로 보입니다. 일반적인 원인은 stakeholder의 Participant에 연결할 수 없거나, 필요한 package가 vetted 상태가 아니거나, Synchronizer가 Transaction을 거부한 경우입니다.
+
+### 1단계: Node Health 확인
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_0 />
+
+
+Participant가 active 상태가 아니거나 연결된 Synchronizer가 없으면 Transaction을 진행할 수 없습니다.
+
+### 2단계: Synchronizer Connectivity 확인
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_1 />
+
+
+Synchronizer 연결이 끊겼다면 Network connectivity를 확인하고 다시 연결해 보세요.
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_2 />
+
+
+### 3단계: Package Vetting 확인
+
+Stakeholder의 Participant가 필요한 package를 vet하지 않았다면 Transaction이 실패합니다.
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_3 />
+
+
+Package가 vetted 상태가 아니면 upload하고 vet합니다.
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_4 />
+
+
+### 4단계: Party Hosting 확인
+
+Transaction에 참여하는 모든 Party가 올바르게 hosting되어 있는지 확인합니다.
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_5 />
+
+
+Party가 active Participant에 mapping되어 있지 않으면 Synchronizer가 해당 Party의 stakeholder에게 Transaction view를 전달할 수 없습니다.
+
+## Connectivity 문제
+
+### Synchronizer 연결 실패
+
+Participant가 Synchronizer에 연결할 수 없는 경우:
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_5 />
+
+
+일반적인 원인:
+
+- Network firewall이 Sequencer port를 차단함
+- TLS certificate 불일치
+- Authentication token이 expire되었거나 유효하지 않음
+- Sequencer endpoint에 연결할 수 없음
+
+### Sequencer Connectivity 확인(Sequencer Console에서)
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_6 />
+
+
+## Identity 문제
+
+### Party를 찾을 수 없음
+
+Party ID가 아무 결과도 반환하지 않는 경우:
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_7 />
+
+
+Party가 다른 Participant에 hosting되어 있거나 Party-to-Participant mapping이 아직 propagate되지 않았을 수 있습니다. Topology 변경 사항이 Network 전체에 배포되는 데는 약간의 시간이 걸립니다.
+
+### Multi-Hosting Proposal Status
+
+Multi-hosting setup이 적용되지 않는 경우:
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_8 />
+
+Pending proposal은 두 번째 Participant가 아직 signing하지 않았음을 의미합니다. Authorization procedure는 [Multi-Hosting](/appdev/deep-dives/multi-hosting)을 참조하세요.
+
+## ACS 검사
+
+Application 동작이 예상과 다르면 Active Contract Set을 검사하여 on-ledger state를 확인합니다.
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_DEBUGGING_WORKFLOWS_9 />
+
+
+### Participant 간 ACS 비교
+
+두 Participant가 같은 Party에 대해 서로 다른 state를 본다면 특정 template의 ACS count를 비교합니다. 차이가 있으면 synchronization 문제를 나타냅니다. 두 Participant가 같은 Synchronizer에 연결되어 있고 같은 package를 vet했는지 확인하세요.
+
+## Diagnostic Checklist
+
+문제를 조사할 때 다음 순서로 진행합니다.
+
+1. **Health** — Node가 실행 중입니까? `participant.health.status`
+2. **Connectivity** — Synchronizer가 연결되어 있습니까? `participant.synchronizers.list_connected`
+3. **Package** — 필요한 package가 upload되고 vetted 상태입니까? `participant.topology.vetted_packages.list()`
+4. **Party** — Party가 올바르게 hosting되어 있습니까? `participant.parties.hosted()`
+5. **Topology** — Party-to-Participant mapping이 올바릅니까? `participant.topology.party_to_participant_mappings.list(syncId)`
+6. **ACS** — On-ledger state가 예상과 일치합니까? `participant.testing.acs_search(...)`
+
+## 다음 단계
+
+- [필수 Command](/global-synchronizer/canton-console/essential-commands) — 모든 주요 Command의 quick reference
+- [Canton Console Reference](/global-synchronizer/reference/canton-console-reference) — 다양한 환경에서 Console에 access하는 방법

@@ -1,0 +1,207 @@
+---
+title: "Proof of Transfer"
+description: "End user가 Canton Network의 privacy-enabled asset transfer를 독립적으로 verify하도록 지원"
+source_id: "SRC-0E62E3CD99"
+source_path: "integrations/wallets-and-exchanges/proof-of-transfer"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "df9cfb2cbd6e00b89a9054145afc9379121df8ddaa627dabd6ac76b434289ad8"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/wallets-and-exchanges/proof-of-transfer.md)을 사용하세요.
+</Warning>
+
+## 개요
+
+DA Registry asset과 같은 Canton Network의 privacy-enabled asset은 관련 Party의 privacy를 보호하면서 user가 transaction outcome을 verify하기 위한 특수한 mechanism이 필요합니다. User는 단일 platform의 internal reporting에 의존하지 않고 asset transfer가 성공했음을 독립적이고 명백하게 verify하여 신뢰할 수 있는 network-verified confirmation을 얻어야 합니다.
+
+이 transfer proof 기능을 제공하려면 wallet에서 **Transfer Object** payload와 **UpdateID**를 추출할 수 있어야 합니다. End user는 transaction history에서 이 data를 쉽게 찾아 copy한 뒤 proof service 또는 network explorer에서 사용할 수 있어야 합니다.
+
+이 guide에서는 JSON API를 통해 ledger에서 Transfer Object를 찾고 추출하는 technical specification을 제공합니다.
+
+## Transfer Object와 UpdateID 제공
+
+### Technical Guidelines: Transfer Object의 구성
+
+**UpdateID**는 ledger에서 transaction을 식별하는 unique identifier입니다. UpdateID를 사용하면 해당 transaction의 Created, Exercised, Archived event를 가져올 수 있습니다. **주의: Wallet은 특정 transfer에 대한 가장 최근 update를 표시해야 합니다. 예를 들어 2-step transfer에서는 transaction이 accepted된 후 Wallet Provider가 updateID를 명시적으로 refresh하여 offer만이 아니라 transfer를 표시해야 합니다.**
+
+Transfer Object를 정의하는 underlying schema는 Daml model인 [`Splice/Api/Token/TransferInstructionV1.daml`](https://github.com/hyperledger-labs/splice/blob/0.5.14/token-standard/splice-api-token-transfer-instruction-v1/daml/Splice/Api/Token/TransferInstructionV1.daml#L13)을 참조하세요.
+
+Transfer Object는 다음 예시처럼 JSON format으로 serialize할 수도 있습니다.
+
+<Tabs>
+  <Tab title="JSON">
+    ```json
+    {
+        "sender": "issuer::122...",
+        "receiver": "holder::122...",
+        "amount": "2.0000000000",
+        "instrumentId": { "admin": "...", "id": "INST" },
+        "requestedAt": "2026-03-01T13:58:32.626Z",
+        "executeBefore": "2026-03-04T13:58:27.335Z",
+        "inputHoldingCids": ["005152f0eae9..."],
+        "meta": {
+            "values": {
+                "splice.lfdecentralizedtrust.org/reason": ""
+            }
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+**JSON API를 통한 Data Fetch**
+
+gRPC도 사용할 수 있지만 이 guide는 [Daml JSON API](/sdks-tools/api-reference/json-api)를 통한 integration을 가정합니다.
+
+Participant Node에서 update 정보를 가져오려면 transaction의 `UpdateID`를 사용하여 `GET /v2/updates/update-by-id` endpoint를 query합니다.
+
+### Transaction State별 Transfer Object 위치
+
+Transaction lifecycle stage에 따라 Transfer Object는 서로 다른 event argument에 위치합니다. 위 endpoint에서 반환된 event를 다음 세 scenario에 따라 parsing해야 합니다.
+
+**Scenario A: Transfer Offer 생성**
+
+Update가 transfer offer 생성을 나타내면 **Created** event를 찾습니다.
+
+- **Template:** `Utility.Registry.App.V0.Model.Transfer:TransferOffer`
+- **Location:** 이 event의 `createArgument`에서 Transfer Object를 직접 추출합니다.
+
+<Tabs>
+  <Tab title="JSON">
+    ```json
+    {
+      "createdEvent": {
+        "templateId": "...:Utility.Registry.App.V0.Model.Transfer:TransferOffer",
+        "createArgument": {
+          "operator": "operator::122...",
+          "provider": "provider::122...",
+          "transfer": {
+            "sender": "issuer::122...",
+            "receiver": "holder::122...",
+            "amount": "2.0000000000",
+            "instrumentId": { "admin": "...", "id": "INST" },
+            "requestedAt": "2026-03-01T13:58:32.626Z",
+            "executeBefore": "2026-03-04T13:58:27.335Z",
+            "inputHoldingCids": ["005152f0eae9..."],
+            "meta": { "values": { "splice.lfdecentralizedtrust.org/reason": "" } }
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+**Scenario B: Transfer 완료**
+
+Update가 accepted offer 또는 pre-approved transfer 같은 완료된 transfer를 나타내면 **Exercised** event를 찾습니다.
+
+- **Template:** `Utility.Registry.V0.Rule.Transfer:TransferRule`
+- **Triggering Choices:** 다음 choice 중 하나가 event를 trigger해야 합니다.
+  - `TransferRule_DirectTransfer`
+  - `TransferRule_TwoStepTransfer`
+  - `TransferRule_Transfer`, 이 choice는 deprecated될 예정이며 backward compatibility에만 필요합니다.
+- **Location:** 이 event의 `choiceArgument`에서 Transfer Object를 추출합니다.
+
+<Tabs>
+  <Tab title="JSON">
+    ```json
+    {
+      "ExercisedEvent": {
+        "templateId": "...:Utility.Registry.V0.Rule.Transfer:TransferRule",
+        "choice": "TransferRule_DirectTransfer",
+        "choiceArgument": {
+          "transfer": {
+            "sender": "auth0...::122...",
+            "receiver": "auth0...::122...",
+            "amount": "12.0000000000",
+            "instrumentId": { "admin": "...", "id": "INST" },
+            "requestedAt": "2026-02-24T16:27:33.139Z",
+            "executeBefore": "2026-02-27T16:27:31.633Z",
+            "inputHoldingCids": ["0000c37c6..."],
+            "meta": { "values": { "splice.lfdecentralizedtrust.org/reason": "" } }
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+**Scenario C: Transfer Offer Reject 또는 Withdraw**
+
+Update가 최종적으로 reject 또는 withdraw된 offer를 나타내면 두 단계로 object를 찾습니다.
+
+1. **Event 식별:** 다음 조건에 맞는 **Exercised** event를 찾습니다.
+   - **Interface ID:** `Splice.Api.Token.TransferInstructionV1:TransferInstruction`
+   - **Triggering Choices:** `TransferInstruction_Reject` 또는 `TransferInstruction_Withdraw`
+2. **Contract ID 조회:** 이 exercised event에서 transfer offer의 Contract ID를 추출합니다.
+3. **Original Offer 조회:** 추출한 Contract ID로 JSON API의 `GET /v2/events/events-by-contract-id`를 query합니다.
+4. **Location:** 두 번째 query가 반환한 original transfer offer, 즉 transfer instruction의 `createArgument`에서 Transfer Object를 추출합니다.
+
+<Tabs>
+  <Tab title="JSON">
+    ```json
+    {
+      "CreatedEvent": {
+        "templateId": "...:Utility.Registry.App.V0.Model.Transfer:TransferOffer",
+        "createArgument": {
+          "operator": "operator::12209b02d...",
+          "provider": "provider::1220c07e7...",
+          "transfer": {
+            "sender": "issuer::1220c07e7...",
+            "receiver": "holder::1220c07e7...",
+            "amount": "2.0000000000",
+            "instrumentId": { "admin": "registrar::1220c07e7...", "id": "INST" },
+            "requestedAt": "2026-03-01T13:58:32.626Z",
+            "executeBefore": "2026-03-04T13:58:27.335Z",
+            "inputHoldingCids": ["005152f0eae9..."],
+            "meta": { "values": { "splice.lfdecentralizedtrust.org/reason": "" } }
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Data Persistence and Pruning
+
+**Ledger data에는 pruning이 적용됩니다.** 앞 section의 JSON API query는 transaction event가 Participant Node에서 아직 prune되지 않은 경우에만 성공합니다.
+
+**Wallet Developer의 필수 조치:** End user가 proof service에서 Transfer Object에 항상 접근할 수 있게 하려면 transaction이 발생할 때 **wallet 자체 backend database에 Transfer Object와 UpdateID data를 반드시 persist해야 합니다.** Historical transaction을 실시간 ledger query에만 의존하면 transaction이 prune된 후 error가 발생합니다. Ledger data 저장 방안으로 PQS를 검토할 수 있습니다.
+
+### End User가 Transfer Object 찾기
+
+**Labeling**
+
+Transaction detail에 다음 두 항목을 표시해야 합니다.
+
+1. Update ID
+2. Transfer Object
+
+**Value 표시**
+
+Update ID는 truncated preview 또는 전체 value로 표시할 수 있습니다. JSON object도 필요에 따라 truncated preview를 표시하거나 preview를 생략할 수 있습니다.
+
+**Interactive options**
+
+User는 전체 JSON object를 검토할 수 있어야 합니다.
+
+Option 1
+
+- Click하면 modal/side-panel component 또는 external browser window를 엽니다. 처음에는 content가 숨겨져 있으므로 user가 이 component를 열면 JSON object 전체를 default로 표시해야 합니다. Component에는 "Transfer object" label, 검토할 전체 JSON object 및 접근 가능한 copy button이 포함됩니다.
+- External window를 사용한다면 해당 domain은 window를 trigger한 application domain과 같아야 합니다.
+- JSON object를 검토하기 위해 click하는 icon 또는 button은 copy icon/button과 함께 접근 가능해야 합니다. User는 review component를 열지 않고도 object를 copy할 수 있습니다.
+
+Option 2
+
+- Click하면 content를 포함한 accordion을 엽니다. Accordion은 default로 닫혀 있고 accordion을 열지 않아도 copy button에 접근할 수 있습니다.
+
+**Copy 동작**
+
+Copy 기능은 truncated preview string이 아니라 전체 Update ID와 전체 JSON object를 항상 copy해야 합니다.

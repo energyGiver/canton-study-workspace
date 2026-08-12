@@ -1,0 +1,88 @@
+---
+title: "Signing Provider"
+description: "Wallet Gateway가 Transaction signing을 위임하는 방식과 각 provider의 구성 방법입니다."
+source_id: "SRC-EE243785F6"
+source_path: "integrations/wallet-gateway/operate/signing-providers"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "d2d31c87c2c77a7d7189d4d435abcad271030a5a16253f6209a89d2f92714c14"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/wallet-gateway/operate/signing-providers.md)을 사용하세요.
+</Warning>
+
+Wallet Gateway가 private key를 보관할 필요는 없습니다. Signing은 wallet별로 선택한 **signing provider**에 위임되므로, 각 wallet의 key가 어디에 있고 누가 cryptographic signing을 수행할지 결정할 수 있습니다. 동일한 Wallet Gateway 안의 서로 다른 wallet이 다른 provider를 사용할 수 있으며, wallet을 생성할 때 Party별 provider를 선택합니다.
+
+Wallet이 Transaction을 제출하면 Wallet Gateway는 prepare된 Transaction을 해당 wallet의 signing provider에 전달합니다. Provider는 Party key로 Transaction을 signing하고 Wallet Gateway가 제출할 수 있도록 반환합니다.
+
+## 사용 가능한 Provider
+
+| Provider | Key custody | 적합한 용도 |
+| --- | --- | --- |
+| [Internal](#internal) | Wallet Gateway signing store database | Local development 및 test 전용 |
+| [Participant](#participant) | Canton Participant Node | 전용 Participant를 사용하는 enterprise deployment |
+| [Fireblocks](#fireblocks) | Fireblocks(HSM 기반) | Compliance에 민감한 high-security production |
+| [Blockdaemon](#blockdaemon) | Blockdaemon infrastructure | Managed cloud-native deployment |
+| [DFNS](#dfns) | DFNS(MPC) | Policy control이 있는 programmable custody |
+
+<Warning>
+Internal provider는 private key를 Wallet Gateway의 signing store database에 저장합니다. 가치 있는 asset을 보유한 wallet에는 사용하지 마세요. Production에서는 Participant Node 또는 external custody provider를 권장합니다.
+</Warning>
+
+## Internal
+
+Private key를 Wallet Gateway의 signing store database에 직접 저장하고 자체적으로 Transaction을 signing합니다. Development 및 test에만 적합합니다.
+
+`signingStore`가 구성되어 있으면 항상 사용할 수 있으며 다른 설정은 필요하지 않습니다. [Wallet Gateway 구성](/integrations/wallet-gateway/operate/configure#signing-store)을 참조하세요.
+
+<Warning>
+Private key는 signing store database에 저장됩니다. Database가 침해되면 모든 key가 위험해지며, database를 잃으면 복구할 수 없습니다. 엄격한 filesystem permission으로 database file을 보호하고 version control에 절대 commit하지 마세요.
+</Warning>
+
+## Participant
+
+Canton Participant Node를 사용하여 signing합니다. Participant가 key material을 보유하고 모든 cryptographic operation을 수행하므로 key는 Wallet Gateway에 존재하지 않습니다.
+
+항상 사용할 수 있고 추가 configuration이 필요하지 않습니다. Party 생성 시 선택하세요. Transaction이 제출되면 Wallet Gateway가 Command를 Participant Node에 전달하고, Participant Node는 자체 keystore에 있는 Party key를 사용하여 signing합니다.
+
+## Fireblocks
+
+Fireblocks가 제공하는 enterprise-grade HSM 기반 key management 및 signing입니다. Key는 Fireblocks의 secure infrastructure에 유지됩니다.
+
+1. [Fireblocks signing documentation](https://github.com/canton-network/wallet/tree/main/core/signing-fireblocks)의 1~3단계를 완료합니다.
+2. Fireblocks API key를 `FIREBLOCKS_API_KEY`로 제공합니다. Fireblocks API user table의 `API User (ID)` column에서 확인할 수 있습니다.
+3. Fireblocks API secret key를 `FIREBLOCKS_SECRET`으로 제공합니다.
+
+Provider는 environment variable 및 key file에서 configuration을 읽습니다. 필요한 file을 배치하는 것 외에 추가 Wallet Gateway configuration은 필요하지 않습니다.
+
+## Blockdaemon
+
+Blockdaemon infrastructure가 제공하는 managed signing입니다. [Blockdaemon signing documentation](https://github.com/canton-network/wallet/tree/main/core/signing-blockdaemon)의 설정을 완료한 다음 다음 environment variable을 설정하세요.
+
+| Variable | 설명 |
+| --- | --- |
+| `BLOCKDAEMON_API_URL` | Blockdaemon API의 base URL입니다. |
+| `BLOCKDAEMON_API_KEY` | Blockdaemon API key입니다. |
+
+## DFNS
+
+DFNS가 제공하는 programmable MPC 기반 key management 및 signing입니다. Key는 DFNS의 secure infrastructure에서 관리됩니다. [DFNS signing documentation](https://github.com/canton-network/wallet/tree/main/core/signing-dfns)의 설정을 완료하세요.
+
+적절한 permission을 가진 service account를 설정하고 credential을 download한 다음 다음 environment variable을 설정하세요.
+
+| Variable | 설명 |
+| --- | --- |
+| `DFNS_ORG_ID` | DFNS organization ID입니다. |
+| `DFNS_BASE_URL` | DFNS API URL입니다. 기본값은 `https://api.dfns.io`입니다. |
+| `DFNS_CRED_ID` | Service account credential ID입니다. |
+| `DFNS_PRIVATE_KEY` | Service account private key입니다(PEM 형식). |
+| `DFNS_AUTH_TOKEN` | Service account authentication token입니다. |
+
+DFNS는 Validator integration을 통해 Canton wallet을 직접 생성하고 활성화합니다. Canton 형식 key를 provision하고 Network에 Party를 등록한 뒤 사용할 준비가 된 wallet을 반환합니다. Signing 시 DFNS는 한 단계로 Transaction을 Canton에 broadcast하고 Update ID를 반환합니다.
+
+<Note>
+`Canton` 및 `CantonTestnet` network wallet만 지원됩니다.
+</Note>

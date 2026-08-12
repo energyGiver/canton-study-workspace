@@ -1,0 +1,47 @@
+---
+title: "Security Checklist"
+description: "User와 dApp에 공개하기 전 Wallet Gateway deployment hardening"
+source_id: "SRC-0567B78E63"
+source_path: "integrations/wallet-gateway/operate/security"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "7b9761ae73679621aed2f49beaeee2b052fd27eeeff397a64263638b9758dc36"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/wallet-gateway/operate/security.md)을 사용하세요.
+</Warning>
+
+Production에서 Wallet Gateway를 실행하기 전에 이 checklist를 확인하세요. 각 항목은 관련 configuration으로 연결됩니다.
+
+## Authentication and Identity
+
+- **OAuth / OpenID Connect IDP를 사용합니다.** Self-signed token은 development에만 사용합니다. [Networks & Identity Providers](/integrations/wallet-gateway/operate/networks-and-identity#identity-providers)를 참조하세요.
+- **`adminAuth`에는 `client_credentials`를 사용합니다.** Admin credential을 안전하게 저장하고 정기적으로 rotate합니다.
+- **`server.admin`을 의도에 맞게 설정합니다.** 설정된 admin만 runtime에 network와 IDP를 관리할 수 있습니다. Management를 bootstrap configuration으로 제한하려면 설정하지 않습니다.
+
+## Signing and Key Custody
+
+- **가치 있는 asset에는 internal signing을 사용하지 않습니다.** Participant Node 또는 Fireblocks, Blockdaemon, DFNS 같은 external custody provider를 사용합니다. [Signing providers](/integrations/wallet-gateway/operate/signing-providers)를 참조하세요.
+- **Signing store를 운영해야 한다면** filesystem permission을 제한하고 encryption at rest를 검토하며 backup하고 version control에서 제외합니다. [Signing store security](/integrations/wallet-gateway/reference/configuration-reference#signing-store-security)를 참조하세요.
+
+## Network Exposure
+
+- **CORS를 제한합니다.** `server.allowedOrigins`를 `"*"` 대신 알려진 dApp origin으로 설정합니다. [Wallet Gateway 설정](/integrations/wallet-gateway/operate/configure#server)을 참조하세요.
+- Proxy 또는 load balancer 뒤에서 운영할 때는 **`kernel.publicUrl`**을 external URL로 설정합니다.
+- **Rate와 size limit을 조정합니다.** Traffic에 맞게 `server.requestRateLimit`과 `server.requestSizeLimit`을 검토합니다.
+- Wallet Gateway 앞단에서 **TLS를 terminate**하고 valid certificate를 사용합니다.
+
+## Data and Secrets
+
+- **PostgreSQL을 사용**하고 정기적으로 검증된 backup을 생성합니다. [Backups and recovery](/integrations/wallet-gateway/reference/configuration-reference#backups-and-recovery)를 참조하세요.
+- **Secret을 config file에 저장하지 않습니다.** `clientSecret`, `adminAuth`, provider API key는 environment variable 또는 secret manager를 통해 제공합니다. [Secrets and environments](/integrations/wallet-gateway/reference/configuration-reference#secrets-and-environments)를 참조하세요.
+- 다른 environment에서 production credential을 사용하는 일을 방지하도록 **environment별 configuration을 분리**합니다.
+
+## Operations
+
+- Aggregation을 위해 structured logging인 `-f json`을 사용합니다.
+- User UI, `/api/v0/dapp`, `/api/v0/user`의 세 endpoint를 monitoring합니다.
+- Database 손실이 deployment 손실로 이어지지 않도록 restore를 rehearsal합니다.

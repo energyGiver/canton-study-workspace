@@ -1,0 +1,152 @@
+---
+title: "Development Fund"
+description: "Validator operator가 Splice Development Fund에 access하고 사용하는 방식"
+source_id: "SRC-880A592D50"
+source_path: "global-synchronizer/splice-fundamentals/validator-development-fund"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "cda9428f63e617d61a85803773da75872efe917a29ded61a622b88b8b78a1010"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/splice-fundamentals/validator-development-fund.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/validator_operator/validator_development_fund.rst" hash="5cb253be" */}
+
+## 개요
+
+Development Fund는 [CIP-0082](https://github.com/canton-foundation/cips/blob/main/cip-0082/cip-0082.md)가 도입한 protocol-level mechanism입니다. 활성화 이후 각 issuance round의 모든 future mint emission 중 구성 가능한 비율이 `IssuanceConfig.optDevelopmentFundPercentage`(기본값 5%)에 따라 Development Fund에 할당됩니다.
+
+각 issuance round에서:
+
+- Development Fund share(기본값 5%)는 해당 round에 mint할 수 있는 CC의 일부로 계산됩니다.
+- 해당 amount는 `Splice.Amulet.UnclaimedDevelopmentFundCoupon` contract 아래의 unclaimed entitlement로 기록됩니다.
+- 나머지 minting tranche는 비례하여 줄어듭니다.
+
+시간이 지나면 여러 `Splice.Amulet.UnclaimedDevelopmentFundCoupon` contract가 누적될 수 있습니다. SV app의 automation이 작은 unclaimed coupon을 정기적으로 merge하여 active contract 수를 제한합니다.
+
+Unclaimed coupon 수가 최소 `2 × unclaimedDevelopmentFundCouponsThreshold`에 도달하면 merge가 trigger됩니다. 이 threshold는 SV configuration에 정의됩니다. 조건이 충족되면:
+
+- Amount 기준으로 가장 작은 coupon `threshold`개를 선택합니다.
+- 선택한 coupon을 archive합니다.
+- 해당 amount의 합계에 대해 새 `Splice.Amulet.UnclaimedDevelopmentFundCoupon`을 생성합니다.
+
+Contract ID를 reference하는 externally prepared Transaction과의 contention을 줄이기 위해 큰 coupon은 의도적으로 변경하지 않습니다.
+
+사용 가능한 Development Fund는 DSO Party가 추적합니다. Development Fund allocation에 관한 governance 결정은 [CIP-0100](https://github.com/canton-foundation/cips/blob/main/cip-0100/cip-0100.md)에 정의된 대로 off-ledger에서 이루어집니다. 지정된 on-ledger Party인 Development Fund Manager는 누적된 entitlement의 일부를 특정 beneficiary에게 할당하여 이러한 결정을 실행합니다. Allocation 결과 beneficiary를 위한 `Splice.Amulet.DevelopmentFundCoupon` contract가 생성됩니다.
+
+할당 후에는:
+
+- Beneficiary(Local Party 또는 External Party)가 wallet app automation을 통해 allocation을 수집할 수 있습니다. 이 과정은 `Splice.Amulet.DevelopmentFundCoupon`에 포함된 minting right를 행사하고 해당 amount의 Canton Coin을 beneficiary에게 mint합니다.
+- Development Fund Manager는 수집 전에 allocation을 withdraw할 수 있습니다. 이 작업은 해당 `Splice.Amulet.DevelopmentFundCoupon`을 archive하고 새 `Splice.Amulet.UnclaimedDevelopmentFundCoupon`을 생성하여 amount를 Development Fund entitlement로 반환합니다.
+- Beneficiary가 validity period 내에 allocation을 수집하지 않으면 SV app automation을 통해 자동으로 expire될 수 있습니다. Expiration은 `Splice.Amulet.DevelopmentFundCoupon`을 archive하고 같은 amount의 새 `Splice.Amulet.UnclaimedDevelopmentFundCoupon`을 생성합니다.
+
+Development Fund Manager는 [CIP-0100](https://github.com/canton-foundation/cips/blob/main/cip-0100/cip-0100.md)에 정의된 governance 결정에 따라 allocation을 관리할 책임이 있습니다.
+
+## Development Fund Allocation 관리
+
+Development Fund allocation은 wallet UI의 **Development Fund** tab에서 관리되며, [CIP-0100](https://github.com/canton-foundation/cips/blob/main/cip-0100/cip-0100.md)에 따라 결정된 allocation을 실행하는 역할을 합니다.
+
+이 tab은 현재 Development Fund balance를 보여주며 Development Fund Manager가 coupon을 할당하고 관리할 수 있게 합니다. 또한 beneficiary는 자신의 Party가 beneficiary인 active 및 historical coupon을 볼 수 있습니다.
+
+<Warning>
+**Development Fund** tab은 주로 CF Foundation이 지정한 현재 Development Fund Manager를 위한 것입니다.
+
+해당 Party가 지정된 Development Fund Manager가 아니면 allocation을 생성할 수 없습니다.
+
+해당 Party가 과거 Development Fund Manager였다면 이 페이지에서 active Development Fund allocation을 관리하고 과거 allocation history를 검토할 수 있습니다.
+
+해당 Party가 allocation의 beneficiary라면 해당 allocation의 history를 볼 수 있습니다.
+
+그 외의 경우 이 페이지는 무시해도 됩니다.
+</Warning>
+
+### Development Fund Total
+
+**Development Fund Total** indicator는 현재 Development Fund에서 사용할 수 있는 total amount를 표시합니다.
+
+이 value는 모든 active `Splice.Amulet.UnclaimedDevelopmentFundCoupon` contract의 합계에 해당합니다.
+
+이 정보는 모든 user에게 표시됩니다.
+
+### Development Fund Allocation
+
+**Development Fund Allocation** section에서는 현재 Development Fund Manager가 beneficiary에게 fund를 할당할 수 있습니다.
+
+이 section은 현재 manager에게만 활성화됩니다.
+
+Allocation을 생성하려면 manager가 다음 정보를 제공해야 합니다.
+
+- **Amount**
+- **Beneficiary**
+- **Expires At**
+- **Reason**
+
+Allocation을 제출하면 지정된 beneficiary를 위한 `Splice.Amulet.DevelopmentFundCoupon` contract가 생성됩니다.
+
+### Unclaimed Development Fund Allocation
+
+**Unclaimed Development Fund Allocations** section에는 다음 조건을 충족하는 모든 active `Splice.Amulet.DevelopmentFundCoupon` contract가 나열됩니다.
+
+- 현재 또는 과거 manager가 할당함
+- 아직 수집, expire, withdraw 또는 reject되지 않음
+
+이 목록은 다음 대상에게 표시됩니다.
+
+- 자신이 할당한 coupon을 보는 현재 또는 과거 Development Fund Manager
+- 자신의 Party에 할당된 coupon을 보는 beneficiary
+
+특정 coupon의 Development Fund Manager만 withdrawal reason을 제공하여 해당 allocation을 withdraw할 수 있습니다.
+
+Allocation을 withdraw하면:
+
+- 해당 `Splice.Amulet.DevelopmentFundCoupon`을 archive합니다.
+- 새 `Splice.Amulet.UnclaimedDevelopmentFundCoupon`을 생성하여 amount를 Development Fund entitlement로 반환합니다.
+
+### Coupon History
+
+**Coupon History** section에서는 현재 또는 과거 Development Fund Manager가 historical allocation을 보고, beneficiary가 자신의 Party가 beneficiary였던 allocation을 볼 수 있습니다.
+
+여기에는 다음 이유로 archive된 `Splice.Amulet.DevelopmentFundCoupon` contract가 포함됩니다.
+
+- Collection(beneficiary가 claim)
+- Expiration(SV automation에 의해 expire)
+- Withdrawal(Development Fund Manager가 withdraw)
+- Rejection(beneficiary가 Ledger API를 통해 reject)
+
+UI는 각 entry에 대해 coupon이 archive된 원인이 된 event를 표시합니다.
+
+### Allocation 거부
+
+Beneficiary가 allocation을 reject하려면 Ledger API를 통해 수행해야 합니다.
+
+Wallet UI는 beneficiary에게 reject action을 제공하지 않습니다.
+
+## Development Fund Configuration 변경
+
+Development Fund configuration은 `AmuletConfig` 및 `IssuanceConfig` type에 정의됩니다.
+
+두 개의 optional field가 Development Fund 동작을 control합니다.
+
+- `IssuanceConfig.optDevelopmentFundPercentage`는 각 issuance round에서 Development Fund에 할당할 비율을 정의합니다.
+
+  이 field를 설정하지 않으면(`null`) Daml issuance logic의 기본값은 **5%**입니다.
+
+- `AmuletConfig.optDevelopmentFundManager`는 Development Fund entitlement를 할당할 authority를 가진 Party를 지정합니다.
+
+Development Fund 비율 또는 Development Fund Manager 변경은 표준 governance process를 통해 수행해야 합니다.
+
+구체적으로 이 parameter는 **"Set Amulet Rules Configuration"** vote를 통해 update됩니다.
+
+이 vote는 Network의 일반 governance rule에 따라 SV가 제출하고 승인합니다.
+
+Vote가 승인되고 update된 configuration이 effective 상태가 되면:
+
+- Update된 Development Fund 비율이 이후 issuance round에 적용됩니다.
+- 지정된 Development Fund Manager가 Development Fund entitlement를 할당할 authority를 얻습니다.
+
+
+{/* COPIED_END */}

@@ -355,7 +355,7 @@ The first usable portal is complete when:
 
 ## Implementation status
 
-The local portal MVP was implemented on 2026-08-12. Phases 1 and 2 are complete, and the Phase 3 workflow is complete with one Korean page seeded as an `ai_draft`; remaining translations are team research work rather than portal development.
+The local portal MVP was implemented on 2026-08-12. Phases 1 and 2 are complete, and the Phase 3 workflow now validates and renders complete Korean translation batches in a dedicated navigation product. Translation coverage remains incremental team research work and is recorded in `translations/STATUS.md`.
 
 Phase 4 currently includes English/Korean/research full-text search, source-linked evidence capture for claim or question drafts, claims/questions backlinks, and progress/scope/upstream-change dashboards. Generative document Q&A remains intentionally deferred until a model provider, credential policy, citation validation, and fail-closed behavior are approved. This prevents uncited model output from entering a documentation-only evidence workflow.
 

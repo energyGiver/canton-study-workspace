@@ -1,0 +1,197 @@
+---
+title: "Authorization Model"
+description: "Daml authorization model인 Signatory, Observer, Controller 이해하기"
+source_id: "SRC-70BD5CED78"
+source_path: "appdev/modules/m3-authorization"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "31987845a3aa192799122c4620730b5041bba124e093d1f0093eb353c9e73719"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m3-authorization.md)을 사용하세요.
+</Warning>
+
+import DamlAppdevModulesM3AuthorizationL122 from "/snippets/daml-docs/appdev_modules_m3-authorization_L122.mdx";
+import DamlAppdevModulesM3AuthorizationL139 from "/snippets/daml-docs/appdev_modules_m3-authorization_L139.mdx";
+import DamlAppdevModulesM3AuthorizationL159 from "/snippets/daml-docs/appdev_modules_m3-authorization_L159.mdx";
+import DamlAppdevModulesM3AuthorizationL194 from "/snippets/daml-docs/appdev_modules_m3-authorization_L194.mdx";
+import DamlAppdevModulesM3AuthorizationL209 from "/snippets/daml-docs/appdev_modules_m3-authorization_L209.mdx";
+import DamlAppdevModulesM3AuthorizationL243 from "/snippets/daml-docs/appdev_modules_m3-authorization_L243.mdx";
+import DamlAppdevModulesM3AuthorizationL258 from "/snippets/daml-docs/appdev_modules_m3-authorization_L258.mdx";
+import DamlAppdevModulesM3AuthorizationL26 from "/snippets/daml-docs/appdev_modules_m3-authorization_L26.mdx";
+import DamlAppdevModulesM3AuthorizationL284 from "/snippets/daml-docs/appdev_modules_m3-authorization_L284.mdx";
+import DamlAppdevModulesM3AuthorizationL36 from "/snippets/daml-docs/appdev_modules_m3-authorization_L36.mdx";
+import DamlAppdevModulesM3AuthorizationL373 from "/snippets/daml-docs/appdev_modules_m3-authorization_L373.mdx";
+import DamlAppdevModulesM3AuthorizationL399 from "/snippets/daml-docs/appdev_modules_m3-authorization_L399.mdx";
+import DamlAppdevModulesM3AuthorizationL62 from "/snippets/daml-docs/appdev_modules_m3-authorization_L62.mdx";
+import DamlAppdevModulesM3AuthorizationL84 from "/snippets/daml-docs/appdev_modules_m3-authorization_L84.mdx";
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/tutorials/smart-contracts/parties.rst" hash="5d3e37a1" */}
+
+# Party와 Authority
+
+Daml은 서로 신뢰하지 않는 Party가 관여하는 distributed application을 위해 설계되었습니다. 잘 구성된 contract model에서는 누구도 template과 choice에 정의된 rule을 속이거나 우회하지 못한다는 강력한 보장을 모든 Party가 받습니다.
+
+이 section에서는 Daml authorization rule과 모든 Party에게 필요한 보장을 제공하는 contract model을 개발하는 방법을 학습합니다. 특히 다음 내용을 학습합니다.
+
+- 한 contract에서 다른 contract로 authority 전달
+- advanced choice 작성
+- Daml Authorization model 추론
+
+<Tip>
+`dpm new intro-parties  --template daml-intro-parties`를 실행하면 이 section의 모든 code를 `intro-parties` folder에 불러올 수 있습니다.
+</Tip>
+
+## IOU Revocation 방지
+
+`choices`와 `constraints`의 `SimpleIou` contract에는 중요한 문제가 하나 있습니다. contract에 `issuer`만 서명합니다. Signatory는 contract를 생성하고 archive할 권한이 있는 Party입니다. Alice가 어떤 goods와 교환하여 Bob에게 \$100의 `SimpleIou`를 주었다면 goods를 받은 후 이를 archive할 수 있습니다. Bob에게 해당 action의 record는 남지만 돈을 돌려받으려면 off-ledger 수단을 사용해야 합니다.
+
+<DamlAppdevModulesM3AuthorizationL26 />
+
+<DamlAppdevModulesM3AuthorizationL36 />
+
+choice에 지정된 transformation만 실제로 따른다는 보장을 받으려면 해당 Party가 직접 Signatory이거나, 예상하지 못한 방식으로 contract를 archive하고 다시 생성하는 Transaction에 동의하지 않을 Signatory를 신뢰해야 합니다. Bob에게 `SimpleIou`가 안전하도록 하려면 Bob을 Signatory로 추가해야 합니다.
+
+<DamlAppdevModulesM3AuthorizationL62 />
+
+그러면 새로운 문제가 생깁니다. Alice가 이 `Iou`를 Bob에게 발행하거나 transfer할 방법이 없습니다. Bob이 `owner`로 서명한 `Iou`를 ledger에 올리려면 Bob의 authority가 필요합니다.
+
+<DamlAppdevModulesM3AuthorizationL84 />
+
+어색하게 보일 수 있지만 `Iou`에서 `ensure` clause가 다시 사라졌다는 점에 유의하세요. 위 `Iou`에는 negative value를 포함할 수 있으므로 Bob은 `Alice`가 어떤 `Iou`에도 자신의 signature를 넣을 수 없다는 사실을 반겨야 합니다.
+
+전체 authorization model을 자세히 살펴보기 전에 위 `Iou`의 issuance 및 transfer workflow를 구축하는 몇 가지 일반적인 방법을 학습합니다.
+
+## 일회성 Authorization에 Propose-Accept Workflow 사용
+
+Alice와 Bob 사이에 지속적인 관계가 없다면 Alice가 Bob에게 Iou issuance를 제안하고 Bob에게 accept choice를 제공할 수 있습니다. 이를 위해 proposal contract `IouProposal`을 도입합니다.
+
+<DamlAppdevModulesM3AuthorizationL122 />
+
+여기서는 template이 record라는 특성을 사용해 `Iou`를 하나의 field에 저장했습니다.
+
+<DamlAppdevModulesM3AuthorizationL139 />
+
+`IouProposal` contract에서 `iou.issuer`는 Signatory이므로 해당 authority가 contract에 포함됩니다. Bob은 `IouProposal_Accept` choice를 exercise하여 자신의 authority를 Alice의 authority에 더합니다. 따라서 해당 choice의 context 안에서 두 Signatory가 모두 있는 `Iou`를 생성할 수 있습니다.
+
+choice name이 `Accept`가 아니라 `IouProposal_Accept`인 이유는 propose-accept pattern이 매우 일반적이기 때문입니다. 실제로 바로 아래에서 다른 예시를 살펴봅니다. 각 choice는 record type을 정의하므로 같은 name의 두 choice를 scope에 둘 수 없습니다. uniqueness를 보장하려면 choice name을 qualify하는 것이 좋습니다.
+
+위 방식은 issuance 문제를 해결하지만 transfer는 해결하지 않습니다. 하지만 `TransferProposal`을 생성해 정확히 같은 방식으로 transfer를 해결할 수 있습니다.
+
+<DamlAppdevModulesM3AuthorizationL159 />
+
+`signatory`는 contract의 Signatory를 정의할 뿐 아니라 다른 contract에서 Signatory를 추출하는 데도 사용할 수 있습니다. `signatory (signatory iou)` 대신 `signatory iou.issuer, iou.owner`라고 작성할 수 있습니다.
+
+`IouProposal`에는 Signatory가 하나뿐이므로 archive하여 쉽게 cancel할 수 있습니다. `Cancel` choice가 없으면 `newOwner`가 열려 있는 TransferProposal을 option처럼 악용할 수 있습니다. `Accept`, `Reject`, `Cancel` 세 choice는 대부분의 proposal template에서 일반적으로 사용됩니다.
+
+`iou.owner`가 이러한 proposal을 생성할 수 있도록 하려면 `Iou` contract에서 transfer를 propose할 choice를 제공해야 합니다. choice는 위 `Transfer` choice와 비슷하지만 `Iou` 대신 `IouTransferProposal`을 생성합니다.
+
+<DamlAppdevModulesM3AuthorizationL194 />
+
+이제 Bob은 자신의 `Iou`를 transfer할 수 있습니다. transfer workflow는 issuance에도 사용할 수 있습니다.
+
+<DamlAppdevModulesM3AuthorizationL209 />
+
+## 지속적인 Authorization에 Role Contract 사용
+
+asset issuance나 transfer 같은 많은 action은 미리 합의할 수 있습니다. Daml에서는 relationship 또는 role contract를 통해 이를 간결하게 나타낼 수 있습니다.
+
+위 script에서 살펴본 것처럼 `owner`와 `newOwner`는 함께 asset을 transfer할 수 있습니다. `compose`에서는 `ProposeTransfer` 및 `IouTransferProposal_Accept` choice를 하나의 새 choice로 compose하는 방법을 살펴봅니다. 여기서는 다른 방법으로 두 Party에게 IOU를 transfer할 공동 권리를 부여할 수 있습니다.
+
+<DamlAppdevModulesM3AuthorizationL243 />
+
+지금까지 choice의 Controller는 현재 contract에서 알 수 있었습니다. 여기서 `newOwner` variable은 `Iou`가 아니라 choice argument의 일부입니다.
+
+Controller가 둘 이상인 choice를 보여 주는 것도 이번이 처음입니다. 여러 Controller를 지정하면 *모든* Controller의 authority가 필요합니다. 여기서는 `owner`와 `newOwner` 어느 쪽도 일방적으로 transfer를 실행할 수 없으므로 name이 `Mutual_Transfer`입니다.
+
+<DamlAppdevModulesM3AuthorizationL258 />
+
+이제 위 `IouSender` contract는 한 Party인 `sender`에게 positive amount의 `Iou` contract를 `receiver`에게 보낼 권리를 부여합니다. `Send_Iou` choice의 `nonconsuming` keyword는 choice behavior를 변경하여 choice를 exercise하는 contract가 archive되지 않도록 합니다. 따라서 `sender`는 해당 contract를 사용해 여러 Iou를 보낼 수 있습니다.
+
+다음은 실제 작동 예시입니다.
+
+<DamlAppdevModulesM3AuthorizationL284 />
+
+## Daml Authorization Model
+
+위 내용을 통해 Daml에서 authority가 전달되는 방식에 대한 직관을 얻었을 것입니다. 이 section에서는 contract model을 추론할 수 있도록 formal authorization model을 학습합니다. 그러면 runtime authorization error가 발생하지 않도록, 더 중요하게는 malicious Transaction을 허용하지 않도록 contract model을 구성할 수 있습니다.
+
+`choices`에서는 Transaction이 동등하게 말해 Transaction tree 또는 action forest라고 학습했습니다. 각 Transaction은 action list이고 각 action에는 consequence라는 child Transaction이 있습니다.
+
+각 action에는 해당 action을 authorize해야 하는 Party인 *required authorizer* 집합이 있으며 각 Transaction에는 실제로 해당 Transaction을 authorize한 Party인 *authorizer* 집합이 있습니다.
+
+authorization rule은 모든 action의 required authorizer가 parent Transaction authorizer의 subset이어야 한다는 것입니다.
+
+action의 required authorizer는 다음과 같습니다.
+
+- **exercise action**의 required authorizer는 해당 choice의 Controller입니다. `Archive`와 `archive`는 Signatory를 Controller로 하는 implicit choice일 뿐이라는 점을 기억하세요.
+- **create action**의 required authorizer는 contract의 Signatory입니다.
+- `fetchByKey`도 포함하는 **fetch action**의 required authorizer는 다소 동적이며 나중에 설명합니다.
+
+Transaction의 authorizer는 다음과 같습니다.
+
+- commit의 root Transaction은 submitting Party가 authorize합니다.
+- exercise action의 consequence는 해당 action의 actor와 action 대상 contract의 Signatory가 authorize합니다.
+
+### Authorization 예시
+
+위 script에서 Bob이 `Send_Iou` contract를 사용해 Charlie에게 `Iou`를 보내는 Transaction을 생각해 보겠습니다. fetch를 제외하면 다음과 같이 authorize됩니다.
+
+- Bob이 Transaction을 submit하므로 root Transaction의 authorizer입니다.
+- root Transaction에는 action이 하나 있습니다. Bob을 `sender`로, Charlie를 `receiver`로 하는 `IouSender` contract에서 `Send_Iou`를 exercise합니다. choice의 Controller는 `sender`이므로 Bob이 required authorizer입니다.
+- `Send_Iou` action의 consequence는 actor인 Bob과 action 대상 contract의 Signatory가 authorize합니다. 이 경우 Signatory는 Charlie이므로 Bob과 Charlie가 consequence를 authorize합니다.
+- consequence에는 action이 하나 있습니다. `issuer`가 Alice이고 `owner`가 Bob인 `Iou`에서 Charlie를 `newOwner`로 하는 `Mutual_Transfer`입니다. action의 required authorizer는 `owner`인 Bob과 `newOwner`인 Charlie이며 parent의 authorizer와 일치합니다.
+- `Mutual_Transfer`의 consequence는 actor인 Bob과 Charlie 및 Iou의 Signatory인 Alice와 Bob이 authorize합니다.
+- consequence의 단일 action은 `issuer`가 Alice이고 `owner`가 Charlie인 Iou를 생성합니다. required authorizer는 Alice와 Charlie이며 parent authorizer의 proper subset입니다.
+
+IDE의 Transaction view에서 이 Transaction graph를 볼 수 있습니다.
+
+``` none
+TX 12 1970-01-01T00:00:00Z (Parties:276:3)
+#12:0
+│   disclosed to (since): 'Bob' (12), 'Charlie' (12)
+└─> 'Bob' exercises Send_Iou on #10:0 (Parties:IouSender)
+          with
+            iouCid = #11:3
+    children:
+    #12:1
+    │   disclosed to (since): 'Bob' (12), 'Charlie' (12), 'Alice' (12)
+    └─> 'Alice' and 'Bob' fetch #11:3 (Parties:Iou)
+
+    #12:2
+    │   disclosed to (since): 'Bob' (12), 'Charlie' (12), 'Alice' (12)
+    └─> 'Bob' and 'Charlie' exercise Mutual_Transfer on #11:3 (Parties:Iou)
+                            with
+                              newOwner = 'Charlie'
+        children:
+        #12:3
+        │   disclosed to (since): 'Bob' (12), 'Charlie' (12), 'Alice' (12)
+        └─> 'Alice' and 'Charlie' create Parties:Iou
+                                  with
+                                    issuer = 'Alice';
+                                    owner = 'Charlie';
+                                    cash =
+                                      (Parties:Cash with
+                                        currency = "USD"; amount = 100.0000000000)
+```
+
+authority는 자동으로 transitively 전달되지 않는다는 점에 유의하세요.
+
+<DamlAppdevModulesM3AuthorizationL373 />
+
+<DamlAppdevModulesM3AuthorizationL399 />
+
+`TryB`의 consequence는 Alice와 Bob 모두가 authorize하지만 `TryA` action에는 Alice만 actor로 있고 contract의 유일한 Signatory도 Alice입니다.
+
+따라서 `TryA`의 consequence는 Alice만 authorize합니다. 뒤집힌 `NonTransitive`를 생성하는 데 필요한 Bob의 authority가 이제 없으므로 Transaction이 실패합니다.
+
+## 다음 단계
+
+`compose`에서는 지금까지 학습한 모든 내용을 결합해 `/app-dev/bindings-java/quickstart`의 model과 비슷한 단순한 asset holding 및 trading model을 구축합니다. 이 context에서 `Update` action과 이를 사용해 Transaction을 compose하는 방법, Daml ledger의 privacy를 더 학습합니다.
+
+
+{/* COPIED_END */}

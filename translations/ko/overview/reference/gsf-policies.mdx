@@ -1,0 +1,137 @@
+---
+title: "CF Policy"
+description: "Canton Foundation policy와 governance framework"
+source_id: "SRC-3DBE8D51A8"
+source_path: "overview/reference/gsf-policies"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "f9f994a98a9be1ba52877948986ff47306361d7ba1c5c693bcbc0e64d88f2424"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/reference/gsf-policies.md)을 사용하세요.
+</Warning>
+
+[Canton Foundation](https://canton.foundation)(CF)은 Linux Foundation과 협력하여 설립된 독립 nonprofit organization입니다. Canton Network의 decentralized interoperability/synchronization infrastructure인 Global Synchronizer를 governance합니다.
+
+## 목적과 역할
+
+CF는 Global Synchronizer에 transparent governance를 제공하고 주변 ecosystem의 성장을 위해 노력합니다. 책임은 다음과 같습니다.
+
+- Global Synchronizer governance framework 정의와 유지
+- Super Validator operation과 governance vote에 transparency 제공
+- Super Validator Node 운영과 member를 대신한 governance 참여
+- Super Validator set 전체의 upgrade schedule과 Network policy coordination
+- Outreach, developer program, Protocol Development Fund를 통한 ecosystem development 지원
+
+CF는 Network를 일방적으로 control하지 않습니다. Governance decision은 on-chain voting mechanism을 통한 Super Validator consensus를 요구합니다. CF는 여러 Super Validator 중 하나로 이 vote에 참여합니다.
+
+## Membership
+
+CF는 세 membership tier를 제공합니다.
+
+- **Premier**($150,000/year) -- Board of Directors seat, Board Committee delegate position, Board strategy day 참여, marketing material의 premium placement 포함
+- **General**($5,000--$30,000/year, organization size에 따라 조정) -- Member Committee 참여와 blog posting access 포함
+- **Associate**(무료) -- Government agency, regulatory body, nonprofit, academic institution으로 제한되며 Board approval 필요
+
+모든 member가 CF Member Committee에 참여할 수 있습니다. [CF membership page](https://canton.foundation/membership)에서 membership을 신청할 수 있습니다.
+
+## Member Committee
+
+CF는 여섯 Member Committee를 통해 governance와 operational work를 구성합니다.
+
+- **Tech and Operations** -- 기술 direction과 operational standard
+- **Tokenomics** -- Canton Coin economics, fee calibration, reward parameter
+- **Accountability** -- Oversight와 compliance
+- **Marketing** -- Ecosystem outreach와 communication
+- **Legal** -- Legal framework와 regulatory matter
+- **Audit and Finance** -- Financial oversight
+
+Premier member는 추가로 Board Committee에 access하고 delegate를 appoint할 수 있습니다.
+
+## Governance Framework
+
+Global Synchronizer는 독립적으로 행동하는 Super Validator라는 organization이 운영합니다. 이 organization은 Sequencer, Mediator, SV Application Node 등 core infrastructure를 실행하고 on-chain governance application을 통해 governance에 참여합니다.
+
+Governance action은 onboarding된 Super Validator의 약 3분의 2 confirmation threshold를 가진 Decentralized Daml Party인 DSO(Decentralized Synchronizer Operations) Party를 통해 execute됩니다. CF를 포함해 어떤 단일 entity도 일방적으로 변경할 수 없습니다. DSO Party, confirmation protocol, voting mechanism의 자세한 설명은 [SV Governance Reference](/overview/reference/sv-governance-reference)를 참고하세요.
+
+Governance framework는 다음을 다룹니다.
+
+- **Network configuration** -- Traffic pricing, fee schedule, tokenomics configuration 같은 parameter
+- **Super Validator membership** -- Super Validator onboarding/offboarding
+- **Software upgrade** -- Canton과 Splice version upgrade coordination
+- **Daml package upgrade** -- On-chain governance와 tokenomics Package upgrade 관리
+- **Canton Improvement Proposal(CIP)** -- Network rule과 standard 변경을 propose하고 ratify하는 structured process
+
+## Network Policy
+
+### Validator Onboarding
+
+Validator가 TestNet 또는 MainNet에 참여하려면 approval을 받아야 합니다. 절차는 다음과 같습니다.
+
+1. [CF validator request form](https://sync.global/validator-request/)으로 request를 제출합니다.
+2. Tokenomics Committee가 application을 review하고 approve합니다.
+3. Sponsoring Super Validator가 SV set이 관리하는 allowlist에 egress IP를 제공합니다. Network당 하나의 IP만 허용되며 DevNet, TestNet, MainNet 간에 서로 달라야 합니다.
+4. Super Validator majority가 updated allowlist를 adopt하면, 보통 2--7일이 걸리며, Sponsoring SV에서 one-time onboarding secret을 받습니다. Secret은 48시간 후 만료됩니다.
+5. Onboarding secret을 사용해 Validator Node를 deploy합니다.
+
+DevNet은 Tokenomics Committee approval 없이 모든 Validator에 열려 있지만 IP는 여전히 allowlist에 추가해야 합니다.
+
+### Traffic과 Fee Policy
+
+Super Validator가 governance vote를 통해 Traffic pricing parameter를 공동 설정합니다. `extraTrafficPrice` parameter는 Synchronizer write Traffic cost를 결정하며 [CIP-0042](https://github.com/canton-foundation/cips/blob/main/cip-0042/cip-0042.pdf)에 따라 standard Canton Coin transfer가 약 1 USD가 되도록 calibrate합니다. Super Validator는 실제 Traffic cost를 주기적으로 측정하고 그에 맞게 parameter를 조정해야 합니다.
+
+Fee parameter는 on-chain median-based voting mechanism을 통해 update됩니다. 각 SV가 preferred value를 publish하면 system이 median을 사용합니다. 따라서 단일 SV가 parameter를 큰 폭으로 움직일 수 없습니다.
+
+### Participation Requirement
+
+Super Validator는 Network 참여를 위해 operational requirement를 충족해야 합니다.
+
+- Required infrastructure component(Sequencer, Mediator, SV Application) 실행
+- BFT consensus 지원을 위한 uptime과 connectivity 유지
+- Governance vote와 upgrade coordination 참여
+- Consensus 참여를 위한 CometBFT Validator requirement 준수
+
+Global Synchronizer가 사용하는 CometBFT consensus protocol은 Network 진행을 위해 Super Validator의 3분의 2를 초과하는 수가 operational해야 합니다. Super Validator failure마다 fault tolerance buffer가 줄어듭니다.
+
+### Reward Policy
+
+Super Validator는 infrastructure 운영에 대한 reward를 받으며 reward weight parameter로 설정됩니다. Reward weight 변경은 governance vote process를 따릅니다.
+
+1. Super Validator owner가 updated weight에 agree합니다.
+2. SV Web UI에서 governance vote를 시작합니다.
+3. Super Validator quorum이 vote를 approve해야 합니다.
+4. Onboarding event 전체에서 consistency를 보장하도록 updated weight를 [CF configs repository](https://github.com/global-synchronizer-foundation/configs)에 반영합니다.
+
+## Upgrade Coordination
+
+Canton version, Splice version, Daml Package upgrade 등 Network upgrade에는 모든 Super Validator의 coordination이 필요합니다. CF는 다음을 통해 coordination을 지원합니다.
+
+- 모든 operator에 upgrade timeline과 requirement 전달
+- Super Validator set 전체의 readiness 추적
+- Daml upgrade 중 trigger pause 같은 특정 upgrade procedure를 위한 operational guidance 제공
+
+제때 upgrade하지 않는 Super Validator는 operational issue를 일으킬 수 있습니다. 예를 들어 Daml Package upgrade 중 outdated version을 실행하는 Validator가 reward expiry automation을 차단할 수 있습니다. CF는 이러한 상황의 workaround를 coordination하고 compliance deadline을 설정합니다.
+
+## CIP Governance
+
+Network rule, standard, protocol 변경은 Canton Improvement Proposal(CIP)을 통해 propose합니다. CIP process는 ecosystem의 누구나 변경을 propose하고 최종적으로 Super Validator vote로 ratify하는 structured way를 제공합니다.
+
+제안 방법을 포함한 CIP process detail은 [CIP Reference](/overview/reference/what-are-cips)를 참고하세요. 전체 CIP 목록은 [github.com/canton-foundation/cips](https://github.com/canton-foundation/cips)에서 관리합니다.
+
+## Communication Channel
+
+CF는 Validator operator와 ecosystem participant를 위해 여러 channel을 관리합니다.
+
+- **Slack** -- Operational coordination을 위한 `#validator-operations`, application development를 위한 `#gsf-global-synchronizer-appdev`, ecosystem discussion을 위한 `#gsf-outreach`
+- **Mailing list**([lists.sync.global](https://lists.sync.global/)) -- General Canton Network announcement용 `main`, 새 CIP notification용 `cip-announce`, Tokenomics Committee decision용 `tokenomics-announce`, operator 대상 announcement용 `validator-announce` 포함
+
+## 추가 Resource
+
+- [CF website](https://canton.foundation) -- Foundation information과 membership
+- [Canton Network](https://canton.network) -- Network overview와 entry point
+- [CF configs repository](https://github.com/global-synchronizer-foundation/configs) -- Network configuration parameter
+- [CIP repository](https://github.com/canton-foundation/cips) -- Canton Improvement Proposal
+- [SV Governance Reference](/overview/reference/sv-governance-reference) -- DSO Party와 voting mechanism 기술 detail

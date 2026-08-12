@@ -1,0 +1,67 @@
+---
+title: "일반 Error Code"
+description: "일반적인 Canton 및 Splice error code와 원인 및 해결 단계"
+source_id: "SRC-8AF312DCDF"
+source_path: "global-synchronizer/troubleshooting-guide/error-code-reference"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "a4d8e7f13d709ec4b7154816f08b14e92f5d94f6cc18d72e25d991fec078de20"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/troubleshooting-guide/error-code-reference.md)을 사용하세요.
+</Warning>
+
+Canton 및 Splice는 `ERROR_CODE_ID(category,correlation-id): message` 형식으로 error를 log하고 반환합니다. 예: `TRANSACTION_NOT_FOUND(11,12345): Transaction not found, or not visible.` Category number는 log level, gRPC status code 및 retry 가능 여부를 결정하는 error category를 식별합니다. Correlation ID는 request submission ID의 처음 여덟 character이며 support에 문의할 때 관련 log line을 찾는 데 도움이 됩니다.
+
+이 페이지에서는 Validator operator와 관련된 error code, 원인 및 해결 방법을 나열합니다.
+
+## Mediator Error
+
+### MEDIATOR_SAYS_TX_TIMED_OUT
+
+- **원인:** Confirmation response timeout 안에 충분한 confirmation을 받지 못해 Mediator가 Transaction을 거부했습니다. Error context의 `unresponsiveParties` field에는 제때 응답하지 않은 Party가 나열됩니다.
+- **해결:** 관련된 모든 Participant가 available 상태이고 overloaded 상태가 아닌지 확인합니다.
+
+### MEDIATOR_INVALID_MESSAGE
+
+- **원인:** Mediator가 유효하지 않은 request 또는 response를 받아 폐기했습니다. 그 결과 underlying request가 거부될 수 있지만 Ledger가 corrupted되지는 않습니다. Mediator restart 또는 failover 후에는 예상되는 상황입니다.
+- **해결:** Error 원인을 해결하고 submitter가 Command를 retry하도록 합니다.
+
+## Sequencer Error
+
+### SEQUENCER_SUBSCRIPTION_LOST
+
+- **원인:** Sequencer subscription이 중단됐습니다. Client는 무기한 재연결을 retry합니다.
+- **해결:** 상황을 monitoring합니다. Subscription이 자동으로 복구되지 않으면 Synchronizer operator에 문의합니다.
+
+## ACS Commitment Error
+
+### ACS_COMMITMENT_MISMATCH
+
+- **원인:** Validator의 Active Contract Set(ACS) commitment가 같은 period에 대한 counter-Participant의 commitment와 일치하지 않습니다. Honest Participant 사이에서는 절대 발생하지 않아야 합니다. Misbehavior, bug 또는 repair service를 통한 manual change가 원인일 수 있습니다.
+- **해결:** Counter-Participant operator와 함께 mismatch를 검사하여 원인을 확인한 다음 영향받은 Participant store를 repair합니다.
+
+### ACS_COMMITMENT_DEGRADATION
+
+- **원인:** 일반적으로 heavy load 때문에 Participant가 commitment 계산에서 하나 이상의 counter-Participant보다 뒤처져 catch-up mode에 들어갔습니다. Counter-Participant는 자체 pruning 차단을 해제하기 위해 degraded Participant를 blacklist할 수 있으며, 이 상태가 지속되는 동안 non-repudiation guarantee가 약해집니다.
+- **해결:** Catch-up mode는 기본적으로 활성화되어 있으며 Participant가 자동으로 복구되어야 합니다. Degradation이 계속되면 Participant load 및 database performance를 확인합니다.
+
+## 일반 Error
+
+### GENERIC_CONFIG_ERROR
+
+- **원인:** 기타 configuration 문제를 포괄합니다. 일반적인 원인은 알 수 없는 configuration key(예: `port` 대신 `bort`로 입력) 또는 configuration hierarchy의 잘못된 level에 유효한 key를 배치하는 경우입니다. 예: `canton.participants.replication.enabled` 대신 `canton.participants.participant2.replication.enabled`.
+- **해결:** Error message에 명시된 key를 configuration file과 대조합니다. 올바른 hierarchy는 [Canton configuration guide](/global-synchronizer/reference/canton-configuration-guide)를 참조하세요.
+
+### DB_STORAGE_DEGRADATION
+
+- **원인:** 일반적으로 storage task queue가 너무 작아 database task가 거부되었습니다. Task는 delay 후 자동으로 retry됩니다.
+- **해결:** 자주 발생하면 storage task queue size(`storage.config.queueSize` configuration parameter)를 늘립니다.
+
+### PACKAGE_SELECTION_FAILED
+
+- **원인:** Topology-aware package selection이 제출되는 Command에 대해 유효한 vetted package 집합을 찾지 못했습니다.
+- **해결:** Error message를 검사하고 Topology state(누락된 package를 vet) 또는 제출한 Command를 조정합니다.

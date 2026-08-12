@@ -1,0 +1,127 @@
+---
+title: "Canton Improvement Proposal(CIP)"
+description: "Canton Network 표준과 governance를 위한 CIP 절차 소개"
+source_id: "SRC-529E665017"
+source_path: "overview/understand/cips-introduction"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "d1b08a5832337a175cbe4d7a8c86e9a5acd1b6e45e65cb7e4402189afd9789b3"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/understand/cips-introduction.md)을 사용하세요.
+</Warning>
+
+import DamlOverviewUnderstandCipsIntroductionL81 from "/snippets/daml-docs/overview_understand_cips-introduction_L81.mdx";
+
+
+Canton Improvement Proposal(CIP)은 Canton Network의 변경, 표준, 개선 사항을 제안하는 공식 절차입니다.
+
+## CIP란 무엇인가요?
+
+CIP는 Canton community에 정보를 제공하고 Canton Network의 새로운 기능, 절차 또는 표준을 설명하는 설계 문서입니다.
+
+| CIP 유형 | 목적 |
+|----------|------|
+| **Standards Track** | 기술 사양과 표준 |
+| **Process** | Governance와 운영 절차 |
+| **Informational** | 일반 지침과 정보 |
+
+## CIP가 중요한 이유
+
+CIP는 다음을 보장합니다.
+
+- 변경 사항이 구현 전에 공개적으로 논의됨
+- 표준을 통해 interoperability를 확보함
+- Community가 network 발전 과정에 의견을 제시함
+- 결정을 투표로 정한 후 참고할 수 있도록 문서화함
+
+## 주요 CIP
+
+### CIP-0056: Canton Network Token Standard
+
+Token standard는 Canton Network의 fungible token을 위한 interface를 정의합니다.
+
+| 항목 | 사양 |
+|------|------|
+| **목적** | Token operation 표준화 |
+| **API** | Token Metadata, Holding, TransferInstruction, Allocation, AllocationRequest, AllocationInstruction |
+| **Interoperability** | Wallet과 app 호환성 |
+
+**GitHub:** [CIP-0056](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md)
+
+주요 기능:
+- 표준화된 holding 표현
+- 일관된 transfer 의미론
+- 고급 workflow를 위한 사전 승인 지원
+- 여러 단계의 transfer를 위한 allocation pattern
+
+## CIP 절차
+
+### Lifecycle
+
+| 단계 | 설명 |
+|------|------|
+| **Draft** | 논의를 위한 최초 제안 |
+| **Review** | Community 검토와 feedback |
+| **Accepted** | 구현 승인 |
+| **Final** | 구현되어 안정화됨 |
+| **Rejected** | 수용되지 않음(근거 포함) |
+
+### 제안할 수 있는 사람
+
+다음 주체가 CIP를 제안할 수 있습니다.
+- Super Validator
+- Community 구성원
+- 개발 team
+- Ecosystem participant
+
+## CIP 구현
+
+### Application Developer를 위한 지침
+
+Application을 구축할 때 관련 CIP를 고려하세요.
+
+| 상황 | 조치 |
+|------|------|
+| **Token 생성** | CIP-0056 interface 구현 |
+| **Wallet 통합** | 표준 interface 지원 |
+| **Interoperability** | 공개된 표준 준수 |
+
+### 예제: Token Standard 구현
+
+<DamlOverviewUnderstandCipsIntroductionL81 />
+
+## CIP 찾기
+
+| Resource | 내용 |
+|----------|------|
+| [GitHub Repository](https://github.com/canton-foundation/cips) | 모든 CIP 문서 |
+| [canton.foundation](https://canton.foundation) | Governance 정보 |
+| Community channel | 토론과 소식 |
+
+## CIP에 기여하기
+
+CIP를 제안하거나 CIP에 기여하려면 다음 절차를 따르세요.
+
+1. 형식을 이해하기 위해 **기존 CIP를 검토**합니다
+2. Community channel에서 **비공식적으로 논의**합니다
+3. CIP template에 따라 **초안을 작성**합니다
+4. 적절한 절차를 통해 **검토를 요청**합니다
+5. Feedback에 따라 **수정**합니다
+
+## 다음 단계
+
+<CardGroup cols={2}>
+
+<Card title="Token Standard" icon="coins" href="https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md">
+  Canton Token Standard를 구현합니다.
+</Card>
+
+<Card title="CIP Repository" icon="github" href="https://github.com/canton-foundation/cips">
+  GitHub에서 모든 CIP를 살펴봅니다.
+</Card>
+
+</CardGroup>

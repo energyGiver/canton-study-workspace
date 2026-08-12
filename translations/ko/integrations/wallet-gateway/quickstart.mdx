@@ -1,0 +1,100 @@
+---
+title: "Quickstart"
+description: "Wallet Gateway 설치, 설정, network 연결, 동작 확인"
+source_id: "SRC-F6D82438DD"
+source_path: "integrations/wallet-gateway/quickstart"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "eb52c81d910fb0c7865bd0836e9fa089c9a3a04edb63ee1874fa6a24928d9ebb"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/wallet-gateway/quickstart.md)을 사용하세요.
+</Warning>
+
+이 문서는 Wallet Gateway를 실행하는 가장 짧은 경로를 설명합니다. 설치하고 configuration file을 생성한 뒤 Canton Network에 연결하여 시작하고 세 endpoint가 응답하는지 확인합니다. 자신의 Validator에 맞게 조정할 수 있는 local setup을 대상으로 합니다.
+
+<Note>
+Node.js가 필요하며 v24에서 test됐습니다. Canton Network의 Ledger API에 접근할 수 있어야 합니다. 완전한 local target이 필요하면 [Splice LocalNet](/sdks-tools/development-tools/localnet)을 실행하세요.
+</Note>
+
+<Steps>
+<Step title="Wallet Gateway 설치">
+npm으로 global 설치합니다.
+
+```bash
+npm install -g @canton-network/wallet-gateway-remote
+```
+
+또는 설치하지 않고 `npx`로 실행합니다.
+
+```bash
+npx @canton-network/wallet-gateway-remote -c ./config.json
+```
+
+`npx`는 실행할 때마다 최신 version을 download하여 실행하므로 일회성 실행에 유용합니다.
+</Step>
+
+<Step title="Configuration file 생성">
+수정할 수 있는 example configuration을 작성합니다.
+
+```bash
+wallet-gateway --config-example > config.json
+```
+
+Example은 SQLite storage와 mock OAuth Identity Provider를 사용하는 Splice LocalNet을 대상으로 합니다.
+</Step>
+
+<Step title="Configuration 수정">
+`config.json`을 열고 최소한 다음 항목을 설정합니다.
+
+- **Store**: Wallet Gateway가 data를 persist하는 위치, `memory`, `sqlite`, `postgres` 중 하나
+- **Networks**: Ledger API `baseUrl`을 포함한 하나 이상의 Canton Network
+- **Identity providers**: User가 해당 network에 authenticate하는 방법
+
+모든 option은 [Wallet Gateway 설정](/integrations/wallet-gateway/operate/configure)을 참조하세요. Authentication 연결 방법은 [Networks & Identity Providers](/integrations/wallet-gateway/operate/networks-and-identity)를 참조하세요.
+</Step>
+
+<Step title="Wallet Gateway 시작">
+```bash
+wallet-gateway -c ./config.json
+```
+
+필요하다면 `-p`로 port를 override합니다.
+
+```bash
+wallet-gateway -c ./config.json -p 8080
+```
+</Step>
+
+<Step title="실행 확인">
+Wallet Gateway는 세 endpoint를 제공하며 default port는 `3030`입니다.
+
+- **User UI**: `http://localhost:3030`
+- **dApp API**: `http://localhost:3030/api/v0/dapp`
+- **User API**: `http://localhost:3030/api/v0/user`
+
+Browser에서 User UI를 열어 Wallet Gateway가 실행 중인지 확인합니다.
+</Step>
+</Steps>
+
+## Command-Line Options
+
+| Option | Description |
+| --- | --- |
+| `-c, --config <path>` | Config path 설정, default: `./config.json` |
+| `--config-schema` | Config JSON Schema를 출력하고 종료 |
+| `--config-example` | Example config를 출력하고 종료 |
+| `-p, --port [port]` | Port 설정, config file override |
+| `-f, --log-format <format>` | Log format을 `json` 또는 `pretty`로 설정, default: `pretty` |
+
+`--config-schema` output은 validation과 IDE autocompletion에 사용할 수 있는 완전한 JSON Schema입니다.
+
+## 다음 단계
+
+- [Wallet Gateway 설정](/integrations/wallet-gateway/operate/configure): Kernel, server, store의 모든 configuration option
+- [Networks & Identity Providers](/integrations/wallet-gateway/operate/networks-and-identity): Validator 연결과 authentication 설정
+- [Party management](/integrations/wallet-gateway/use/party-management): User UI 또는 User API로 wallet 생성 및 관리
+- [Deploy](/integrations/wallet-gateway/operate/deploy): Docker 또는 Helm으로 Wallet Gateway 실행

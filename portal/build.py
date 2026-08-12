@@ -123,6 +123,29 @@ def _extend_docs_config(translation_count: int) -> None:
             }
         )
     config["navigation"].setdefault("global", {})["languages"] = languages
+
+    translated_pages = {
+        str(path.relative_to(TRANSLATIONS_DIR).with_suffix(""))
+        for path in TRANSLATIONS_DIR.rglob("*.mdx")
+    }
+    korean_groups: list[dict] = []
+    for product in products:
+        for group in product.get("groups", []):
+            pages = [
+                f"ko/{page}"
+                for page in group.get("pages", [])
+                if isinstance(page, str) and page in translated_pages
+            ]
+            if pages:
+                korean_groups.append({"group": group["group"], "pages": pages})
+    if korean_groups:
+        products.append(
+            {
+                "product": "한글 번역",
+                "icon": "language",
+                "groups": korean_groups,
+            }
+        )
     config_path.write_text(
         json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )

@@ -1,0 +1,139 @@
+---
+title: "Contract Key"
+description: "contract의 stable reference와 key 기반 lookup에 Contract Key 사용하기"
+source_id: "SRC-3F621FF778"
+source_path: "appdev/modules/m3-contract-keys"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "c851d662db3ef82e32ebdf9b1d952b7733851948c647a77aeac7c6e594c39f45"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m3-contract-keys.md)을 사용하세요.
+</Warning>
+
+import DamlAppdevModulesM3ContractKeysL24 from "/snippets/daml-docs/appdev_modules_m3-contract-keys_L24.mdx";
+import DamlAppdevModulesM3ContractKeysL132 from "/snippets/daml-docs/appdev_modules_m3-contract-keys_L132.mdx";
+
+# Reference: Contract Key
+
+Contract Key는 template에 선택적으로 추가하는 요소입니다. database의 key와 비슷하게 template parameter를 사용해 contract를 식별하는 방법을 지정할 수 있습니다.
+
+Contract Key는 변경되지 않으므로 Contract ID가 변경되어도 contract를 가리키는 데 사용할 수 있습니다. archive 및 create operation으로 contract가 update될 때 현재 Active Contract를 Contract Key로 쉽게 참조할 수 있습니다.
+
+## Contract Key 활성화
+
+Contract Key에는 Daml-LF 2.3 이상이 필요합니다. `daml.yaml`에서 compilation target으로 명시적으로 선택하세요.
+
+```yaml
+sdk-version: 3.5.1
+name: some-name
+source: daml
+version: 0.0.1
+dependencies:
+  - daml-prim
+  - daml-stdlib
+build-options:
+  - --target=2.3
+```
+
+이 설정을 변경한 후 source code를 다시 compile하세요. package ID가 변경되므로 version도 함께 변경해야 합니다.
+
+<Note>
+Canton 3.x에서는 같은 template의 여러 Active Contract가 같은 key를 공유할 수 있습니다.
+
+일반적으로 key uniqueness는 Daml engine 외부에서 보장합니다. 예를 들어 Daml business logic 또는 backend client level에서 unique account number나 invoice number로 보장할 수 있습니다. 따라서 주요 key 기반 API인 `lookupByKey`, `fetchByKey`, `exerciseByKey`는 하나의 key가 최대 한 contract를 참조하는 일반적인 경우에 최적화되어 있습니다.
+</Note>
+
+다음은 bank account ID 역할을 하도록 bank account에 Contract Key를 설정하는 예시입니다.
+
+<DamlAppdevModulesM3ContractKeysL24 />
+
+## Contract Key로 사용할 수 있는 항목
+
+key는 Contract ID를 포함하지 않는 임의의 serializable expression일 수 있습니다. 하지만 `maintainer`로 사용할 모든 Party를 **반드시** 포함해야 합니다. 아래의 [Maintainer 지정](#specify-maintainers)을 참고하세요.
+
+list나 더 복잡한 type보다 `Text` 또는 `Int` 같은 단순한 type을 key로 사용하는 것이 좋습니다.
+
+## Maintainer 지정
+
+template에 Contract Key를 지정하면 Signatory나 Observer를 지정하는 것과 유사한 방식으로 `maintainer`도 하나 이상 지정해야 합니다. Signatory가 contract를 "소유"하는 것처럼 Maintainer는 key를 "소유"합니다. contract의 Signatory가 double spend나 잘못된 contract data 사용을 방지하는 것처럼 key의 Maintainer는 일관된 key lookup을 보장합니다. key는 contract의 일부이므로 Maintainer는 contract의 Signatory여야 **합니다**. 그러나 Maintainer는 template argument가 아니라 `key`에서 계산됩니다. 위 예시에서는 최종적으로 `bank`가 key의 Maintainer입니다.
+
+여러 template에서 동일한 key type을 사용할 수 있으므로 일부 key 관련 function에는 아래 예시와 같이 `@ContractType` annotation을 지정해야 합니다.
+
+Daml model을 작성할 때 Maintainer는 Signatory 및 Observer와 마찬가지로 authorization에 영향을 주므로 중요합니다. key를 "maintain"하기 위해 별도로 수행할 작업은 없습니다. Transaction에 관여하는 key의 Maintainer를 hosting하는 Validator는 해당 Transaction 안에서 그 key의 contract가 일관된 순서로 retrieve되는지 확인합니다.
+
+## Contract Lookup
+
+Contract Key의 주된 목적은 Daml에서 contract를 fetch하는 데 사용할 수 있는 stable하며 의미가 있을 수 있는 identifier를 제공하는 것입니다. key 기반 lookup의 주요 function은 기본적으로 제공되는 `fetchByKey`, `lookupByKey`, `exerciseByKey`입니다.
+
+여러 contract가 같은 key를 공유하면 이러한 function은 다음 lookup order에 따른 **첫 번째** contract를 반환합니다.
+
+1. 현재 Transaction 안에서 생성된 contract이며 가장 최근 항목부터 시작합니다.
+2. 명시적으로 disclosed된 contract이며 Command에 제공된 순서를 따릅니다.
+3. Participant에 알려진 contract이며 순서는 정해져 있지 않습니다. 현재 implementation은 최근 순서로 반환하지만 이는 보장되지 않으므로 의존해서는 안 됩니다.
+
+key마다 여러 contract가 예상되는 use case를 위해 `DA.ContractKeys` module은 `lookupNByKey`와 `lookupAllByKey`를 제공합니다. 아래의 [Multi-Contract Key Lookup](#multi-contract-key-lookups)을 참고하세요.
+
+disclosed contract는 known contract보다 우선하므로 disclosure를 사용해 Command submission 중 특정 retrieval order를 보장할 수 있습니다.
+
+### fetchByKey
+
+`(fetchedContractId, fetchedContract) <- fetchByKey @ContractType contractKey`
+
+지정한 key를 가진 첫 번째 contract의 ID와 data를 위의 lookup order에 따라 fetch하려면 `fetchByKey`를 사용하세요. `fetch`의 대안이며 대부분 같은 방식으로 동작합니다.
+
+contract ID와 모든 data를 포함한 contract object의 tuple을 반환합니다.
+
+`fetch`와 마찬가지로 `fetchByKey`에는 한 명 이상의 stakeholder authorization이 필요합니다.
+
+주어진 key를 가진 contract가 submitting Party에게 보이지 않으면 `fetchByKey`는 [`CONTRACT_KEY_NOT_FOUND`](/appdev/reference/error-codes#contracts-and-transactions) error를 발생시키고 Transaction을 abort합니다.
+
+### lookupByKey
+
+`optionalContractId <- lookupByKey @ContractType contractKey`
+
+지정한 key를 가진 contract가 존재하는지 확인하려면 `lookupByKey`를 사용하세요. 존재하면 위 lookup order에 따라 key와 일치하는 첫 번째 contract의 ID인 `contractId`를 담은 `Some contractId`를 반환하고, 그렇지 않으면 `None`을 반환합니다.
+
+`lookupByKey`에는 key의 **모든** Maintainer authorization이 필요합니다. 그래야 Maintainer를 hosting하는 confirming Participant가 주어진 key의 contract가 Transaction 안에서 일관된 순서로 retrieve되는지 확인할 수 있습니다.
+
+더 정확히 말하면 다음과 같습니다.
+
+- 주어진 key를 가진 contract가 존재하고 submitter가 해당 contract의 stakeholder이며 모든 Maintainer의 authorization이 있으면 `lookupByKey`는 `Some contractId`를 반환합니다.
+- 주어진 key를 가진 contract가 없거나 submitter에게 보이는 contract가 없으며 모든 Maintainer의 authorization이 있으면 `lookupByKey`는 `None`을 반환합니다.
+- Maintainer authorization이 하나라도 없으면 `lookupByKey`는 Transaction을 abort합니다.
+
+## exerciseByKey
+
+`exerciseByKey @ContractType contractKey`
+
+주어진 key를 가진 첫 번째 contract의 choice를 위 lookup order에 따라 exercise하려면 `exerciseByKey`를 사용하세요. `exercise`와 마찬가지로 `exerciseByKey`를 실행하려면 contract visibility와 choice Controller의 authorization이 필요합니다.
+
+## Multi-Contract Key Lookup
+
+여러 contract가 같은 key를 공유할 수 있는 use case를 위해 `DA.ContractKeys` module은 다음 function을 제공합니다.
+
+- **`lookupNByKey @ContractType n key`** — 주어진 key를 가진 contract를 최대 `n`개 lookup해 위에서 설명한 lookup order로 반환합니다.
+- **`lookupAllByKey @ContractType key`** — 주어진 key를 가진 모든 contract를 lookup합니다.
+
+이러한 function은 기본적으로 import되지 않습니다. 사용하려면 module에 `import DA.ContractKeys`를 추가하세요.
+
+<Note>
+performance는 key마다 contract가 0개 또는 1개인 일반적인 경우에 최적화되어 있습니다. 많은 contract가 key를 공유하면 multi-contract function인 `lookupNByKey`와 `lookupAllByKey`의 performance가 낮을 수 있습니다.
+</Note>
+
+## Daml Script Function
+
+Transaction 안에서 실행되는 위의 Daml language primitive 외에도 Transaction 밖에서 key를 query하는 Daml Script function이 있습니다.
+
+- **`queryByKey @ContractType party key`** — key로 contract를 lookup하고 ID와 data를 반환합니다. top-level `Script` action으로 실행됩니다.
+- **`queryNByKey @ContractType party n key`** — key로 최대 `n`개 contract를 lookup하고 ID와 data를 반환합니다. top-level `Script` action으로 실행됩니다.
+- **`exerciseByKeyCmd @ContractType key choiceArg`** — 주어진 key를 가진 첫 번째 contract의 choice를 exercise합니다. `Commands` action이며 다른 Command와 결합할 수 있는 `submit` block 안에서 사용해야 합니다.
+
+## 예시
+
+key 기반 lookup과 exercise를 보여 주는 예시입니다.
+
+<DamlAppdevModulesM3ContractKeysL132 />

@@ -1,0 +1,125 @@
+---
+title: "Canton Network 개요"
+description: "Wallet provider와 exchange를 위한 Canton Network 상위 수준 개요"
+source_id: "SRC-A1E2F651DD"
+source_path: "integrations/wallets-and-exchanges/canton-network-overview"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "4c36c95dc8e194e8cc2e2500dab3b8bcb59d30e331d25b06260678cf741d1020"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/wallets-and-exchanges/canton-network-overview.md)을 사용하세요.
+</Warning>
+
+## 상위 수준 개요
+
+Canton Network는 privacy를 제공하는 public Layer 1 blockchain network입니다. 금융 기관과 DeFi가 secure, interoperable, privacy-preserving transaction을 수행하고 TradFi와 DeFi의 결합을 촉진할 수 있도록 설계됐습니다.
+
+주요 특징은 다음과 같습니다.
+
+- Public blockchain의 decentralization과 금융 시장에 필요한 privacy 및 control을 고유한 방식으로 균형 있게 제공합니다.
+- 공유된 interoperable infrastructure에서 여러 asset class에 걸친 real-time의 secure synchronization 및 settlement를 지원합니다.
+- Guaranteed privacy와 real-time synchronization을 유지하면서 application 간에 asset과 data를 이동할 수 있습니다.
+
+**Technology:** Canton Network는 각 참여 기관이 자체 sub-ledger를 유지하면서 공유 synchronization layer를 통해 다른 기관과 연결하는 "network of networks"로 설계됐습니다. **Governance:** Linux Foundation 산하의 독립 비영리 조직인 Canton Foundation(CF)이 Global Synchronizer를 governance합니다. **Participants:** Canton Network는 주요 기관들이 참여하여 2023년 5월 출시했으며 세계 최대 규모의 금융 및 crypto 기관들이 계속 지원하고 있습니다. Participant에는 Goldman Sachs, HSBC, BNP Paribas, DTCC와 Deutsche Börse 같은 market infrastructure provider, DRW와 QCP 같은 crypto trading firm 등이 있습니다.
+
+## Canton의 상위 수준 Architecture
+
+### Nodes and Consensus
+
+Canton Network는 **Synchronizer**를 통해 consensus를 달성하는 **Validator**라는 node로 구성됩니다. Validator Node는 contract data 저장과 smart contract code 실행을 담당합니다. Synchronizer는 encrypted message를 배포하고 transaction coordination을 지원합니다. Confidentiality를 유지하기 위해 transaction data는 **need-to-know basis**로만 배포됩니다. 이것이 다른 chain과의 핵심 차이입니다.
+
+- 대부분의 다른 chain은 모든 state와 transaction을 모든 node/Validator에 복제합니다.
+- Canton은 smart contract에 지정된 node/Validator에만 state와 transaction을 배포합니다.
+
+### Parties
+
+Canton에서 **Party**는 핵심 on-ledger identity이자 다른 blockchain의 address 또는 Externally Owned Account(EOA)와 유사한 wallet address입니다. Party는 network의 **permission**과 **privacy**를 관리하는 핵심 단위입니다.
+
+**Party Permission 및 Role**
+
+Smart contract는 각 Party의 permission을 지정하여 할 수 있는 일과 할 수 없는 일을 결정합니다. Role에 따라 Party는 다음 작업을 수행합니다.
+
+- Asset transfer 같은 특정 transaction을 **validate**합니다.
+- Transfer 시작 같은 특정 action을 **control**합니다.
+- Holding record 같은 특정 state와 transaction을 **확인**합니다.
+
+Privacy는 Party level에서 유지됩니다. Transaction과 state data는 이를 확인해야 하는 Party에만 공유되어 높은 수준의 confidentiality를 제공합니다.
+
+#### Local Party와 External Party
+
+Party에는 internal과 external이라는 두 가지 형태가 있습니다. Internal Party는 Validator Node에서 생성되며 Validator Node에 submission right를 부여하므로 key도 Validator Node에 보관합니다. Transaction은 Validator의 internal signing key로 sign하므로 Validator operator가 Party에서 발생하는 모든 일을 완전히 control합니다.
+
+External Party는 다른 network에서 node와 상호작용하는 방식, 즉 Externally Owned Account와 유사합니다. Signing key를 외부에서 보관할 수 있고 action을 authorize하려면 transaction과 함께 signature가 필요합니다. External Party의 기본 flow는 transaction prepare, transaction sign, transaction submit의 세 단계입니다. 이 guide에서 별도 명시 없이 Party를 언급하면 External Party를 의미합니다.
+
+Internal Party와 External Party의 차이는 [Local and External Parties 문서](/overview/reference/external-party)를 참조하세요.
+
+#### Onboarding 및 Format
+
+Party format은 `name::fingerprint`입니다. Party name 또는 hint는 생성할 때 자유롭게 선택합니다. 허용 문자 집합은 \[a-zA-Z0-9:-\_ \]이고 최대 185자이며, 연속된 두 개의 colon을 사용할 수 없고 namespace 안에서 unique해야 합니다. **Fingerprint**는 unique identifier이며 public key의 SHA-256 hash 앞에 [hash purpose](https://github.com/digital-asset/canton/blob/8ee65155e7f866e1f420703c376c867336b75088/community/base/src/main/scala/com/digitalasset/canton/crypto/HashPurpose.scala#L63)에 따라 `12`를 붙인 값입니다.
+
+Public key에서 Party ID를 derive하려면 static Party Name을 사용해 fingerprint에서 key를 derive하거나, Party Name 자체도 public key에서 derive할 수 있습니다.
+
+Party를 사용하려면 node가 해당 Party를 hosting하도록 authorize하는 Topology Transaction을 submit하여 **onboard**해야 합니다. 지정된 node는 hosting request를 공식적으로 수락하기 위한 matching transaction을 submit해야 합니다. 이 작업에 대한 지침은 관련 onboarding 문서를 참조하세요.
+
+#### Party Hosting
+
+모든 user가 node를 hosting하려는 것은 아니므로 Party는 Validator Node와 연결됩니다. Validator는 다음 방법으로 Party를 "hosting"합니다.
+
+- Party의 private data를 저장하고 RPC(Remote Procedure Call) interface를 통해 제공
+- Party를 대신하여 consensus에 참여
+
+중요하게도 Validator가 Party를 hosting하더라도 Party는 Participant 외부에서 자체 **signing key**를 보유하여 최종 control을 유지합니다.
+
+Network에 참여하려면 Party가 data를 hosting할 하나 이상의 Validator Node를 지정해야 합니다. **Party Hosting**이라는 이 관계는 **Topology Transaction**을 통해 설정됩니다.
+
+#### Wallet Provider의 Party 사용 권장 사항
+
+Ethereum 또는 Bitcoin address와 달리 Party 생성에는 비용이 발생하고 Validator Node에 state를 생성하므로 다른 chain처럼 일시적으로 사용하기에 적합하지 않습니다. 따라서 Party를 "deposit address" 같은 use case에 사용하는 것은 피하는 것이 좋습니다.
+
+- Wallet은 wallet을 나타내는 key pair당 하나의 Party를 목표로 하는 것이 좋습니다.
+- Custodian은 account/wallet당 하나의 Party를 목표로 하는 것이 좋습니다.
+- Exchange는 exchange vault에 하나 또는 소수의 Party를 사용하고 deposit 추적에는 Memo Tag를 사용하는 것이 좋습니다. 자세한 내용은 관련 Memo Tag 문서를 참조하세요.
+
+### 결과 및 영향
+
+#### Data 조회 및 Validator State
+
+Privacy를 제공하는 Canton architecture의 핵심 영향 중 하나는 data를 읽는 방식입니다. Node를 쉽게 교체할 수 있는 다른 blockchain과 달리 Canton의 **Validator는 state를 보유**합니다. 따라서 Party 또는 user의 data에 접근하려면 해당 Party를 hosting하는 **Validator에 연결**해야 합니다. 모든 데이터를 조회할 수 있는 단일 blockchain RPC endpoint는 없습니다. 대신 private data에는 자신의 node RPC인 **Ledger API**를 사용하고, application provider의 data에는 해당 provider의 API, 예를 들어 **Scan API**를 사용할 수 있습니다.
+
+#### 장점 및 결과
+
+Canton Network의 설계는 다음과 같은 중요한 장점을 제공합니다.
+
+- **Privacy:** 정당하게 data를 확인해야 하는 Party에만 data를 배포하므로 smart contract level의 confidentiality를 제공합니다.
+- **Light Node Footprint:** Node는 network 전체가 아니라 자체 transaction만 처리하므로 가볍고 효율적으로 유지됩니다.
+- **Scalability:** Node를 추가하는 방식으로 network를 확장할 수 있습니다.
+
+하지만 앞서 설명했듯이 이 architecture는 decentralized data access라는 결과를 수반합니다.
+
+#### Wallet Provider에게 미치는 영향
+
+Canton Network에서 service를 제공하려면 **자신의 Party와 customer의 Party를 hosting할 Validator Node**가 필요합니다. Node를 **self-host**하거나 [Node-as-a-Service provider](https://sync.global/current-validators-offering-nodes/)를 사용할 수 있습니다.
+
+**Wallet과 custodian**은 asset을 안전하게 보관하는 역할을 넘어 **customer의 data를 안전하게 보관**하고 privacy를 보호할 책임도 갖습니다.
+
+Canton Network는 빠르게 변화하며 upgrade가 자주 수행되도록 설계됐습니다. 새로운 network upgrade로 application과 integration을 test할 수 있도록 node operator는 **DevNet, TestNet, MainNet**이라는 세 environment에서 node를 운영하도록 요청받습니다. Self-host를 선택한다면 세 environment 모두에서 node를 구성하고 유지할 준비가 필요합니다. 최신 정보를 받고 지원을 얻으려면 self-hosting node operator가 Slack의 Validator Node operator community에 참여할 것을 적극 권장합니다.
+
+## Tokenomics and Rewards
+
+- Tokenomics는 10분 단위의 "mining round"로 동작합니다.
+- 매 10분마다 network의 다양한 stakeholder는 network에 기여한 가치에 따라 Canton Coin을 mint하는 데 사용할 수 있는 coupon으로 reward를 받습니다.
+- Reward는 다음 mining round에 mint되며 redeem하지 않은 reward는 소멸합니다.
+
+Tokenomics에 대한 자세한 내용은 [Canton Coin Tokenomics section](/overview/reference/canton-coin-tokenomics)을 참조하세요.
+
+## Traffic
+
+- Traffic fee는 Party level이 아닌 Validator Node level에서 지불합니다.
+- 각 Validator는 Global Synchronizer level에 byte 단위로 측정되는 traffic balance를 가지며, 10분마다 각 mining round에 Validator Node로 일정량의 free traffic이 제공됩니다.
+- Node가 Synchronizer로 message를 보낼 때마다 traffic이 차감되며, Canton Coin을 burn하여 미리 구매합니다.
+
+추가 traffic 구매 방법과 transaction의 traffic cost 계산 방법을 포함한 전체 설명은 [Synchronizer Traffic Fees page](/global-synchronizer/deployment/synchronizer-traffic)를 참조하세요.

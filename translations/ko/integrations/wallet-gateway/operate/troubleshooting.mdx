@@ -1,0 +1,127 @@
+---
+title: "Troubleshooting"
+description: "일반적인 Wallet Gateway 문제와 해결 방법입니다."
+source_id: "SRC-49A9CAF572"
+source_path: "integrations/wallet-gateway/operate/troubleshooting"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "291e62c4e364773e395b08c413d0ff30235eff25b3f017fe691da610eba798de"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/wallet-gateway/operate/troubleshooting.md)을 사용하세요.
+</Warning>
+
+Wallet Gateway 실행 중 발생할 수 있는 일반적인 문제와 해결 방법입니다.
+
+## Database 연결 error
+
+Database 연결 error로 Wallet Gateway가 시작되지 않습니다.
+
+- **PostgreSQL**: Database가 존재하는지 확인하고(`psql -U postgres -l`), config의 credential을 확인하며, PostgreSQL이 실행 중인지 확인하고(`pg_isready`), network 및 firewall rule을 확인합니다.
+- **SQLite**: Database file directory가 존재하는지 확인하고, read/write permission 및 disk space를 확인합니다.
+- **Memory**: Configuration은 필요하지 않지만 restart하면 data가 사라진다는 점에 유의합니다.
+
+## Authentication 실패
+
+API 호출이 `401 Unauthorized`를 반환합니다.
+
+- **유효하지 않거나 만료된 token**: 유효한 JWT를 사용하고 expiration을 확인하며 필요한 경우 다시 생성합니다.
+- **Authorization header 누락**: 올바른 형식으로 `Authorization: Bearer <token>`을 포함합니다.
+- **Session을 찾을 수 없음**: 먼저 `addSession()`으로 session을 생성하고 만료되지 않았는지 확인하며 올바른 user context를 사용하는지 확인합니다.
+
+## Network 연결 문제
+
+Wallet Gateway가 구성된 Network 또는 Ledger API에 연결할 수 없습니다.
+
+- **Network에 연결할 수 없음**: Ledger API URL을 확인하고 `curl <ledger-api-url>/v2/version`으로 connectivity를 test하며 firewall rule과 routing을 확인합니다.
+- **유효하지 않은 network configuration**: `synchronizerId`가 Validator와 일치하고, `identityProviderId`가 IDP와 일치하며, credential이 올바른지 확인합니다.
+- **SSL/TLS 문제**: HTTPS endpoint의 certificate를 확인합니다. Development 환경에서는 HTTP를 사용하거나 certificate trust를 구성해야 할 수 있습니다.
+
+## Port가 이미 사용 중임
+
+`EADDRINUSE: address already in use :::3030`.
+
+- 해당 port를 사용하는 process를 찾아 종료합니다.
+
+  ```bash
+  lsof -ti:3030 | xargs kill -9
+  # Or inspect it first
+  lsof -i :3030
+  ```
+
+- 다른 port를 사용합니다.
+
+  ```bash
+  wallet-gateway -c ./config.json -p 8080
+  ```
+
+- 다른 Wallet Gateway instance가 실행 중인지 확인합니다.
+
+  ```bash
+  ps aux | grep wallet-gateway
+  ```
+
+## Configuration validation error
+
+Configuration error로 Wallet Gateway가 시작되지 않습니다.
+
+- Schema를 기준으로 config를 validate합니다.
+
+  ```bash
+  wallet-gateway --config-schema > schema.json
+  # Then run it through a JSON Schema validator
+  ```
+
+- 필수 field 누락, 유효하지 않은 JSON, type 불일치(string과 number), Network의 잘못된 IDP reference와 같은 일반적인 오류를 확인합니다.
+- Example config에서 시작합니다.
+
+  ```bash
+  wallet-gateway --config-example > my-config.json
+  ```
+
+## Signing provider 문제
+
+Signing error로 Transaction이 실패합니다. Provider의 environment variable 및 permission을 확인하세요.
+
+- **Fireblocks**: `FIREBLOCKS_SECRET` 및 `FIREBLOCKS_API_KEY`가 설정되어 있는지, key가 유효하고 적절한 permission이 있는지, Fireblocks API에 연결할 수 있는지 확인합니다.
+- **Participant**: Participant Node가 실행 중이고 연결 가능하며, Party가 해당 Node에 존재하고, Participant log에 signing error가 없는지 확인합니다.
+- **Blockdaemon**: `BLOCKDAEMON_API_URL` 및 `BLOCKDAEMON_API_KEY`가 설정되어 있는지, API에 연결할 수 있는지, key에 signing permission이 있는지 확인합니다.
+- **DFNS**: `DFNS_ORG_ID`, `DFNS_BASE_URL`, `DFNS_CRED_ID`, `DFNS_PRIVATE_KEY`, `DFNS_AUTH_TOKEN`이 설정되어 있는지, credential이 올바른지, service account에 wallet 생성 및 signing permission이 있는지 확인합니다.
+
+각 provider의 설정은 [Signing provider](/integrations/wallet-gateway/operate/signing-providers)를 참조하세요.
+
+## Debugging
+
+- 읽기 쉬운 상세 output을 위해 **pretty log를 활성화**합니다.
+
+  ```bash
+  wallet-gateway -c ./config.json -f pretty
+  ```
+
+- Aggregation을 위해 **structured log를 사용**합니다.
+
+  ```bash
+  wallet-gateway -c ./config.json -f json
+  ```
+
+- Wallet Gateway 실행 방식에 따라 console output, system log 또는 container log에서 **log를 확인**합니다.
+
+- **Endpoint의 응답을 확인**합니다.
+
+  ```bash
+  # Web UI
+  curl http://localhost:3030
+
+  # dApp API status (requires authentication)
+  curl -X POST http://localhost:3030/api/v0/dapp \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer <token>" \
+    -d '{"jsonrpc":"2.0","id":1,"method":"status","params":[]}'
+  ```
+
+## 도움 받기
+
+문제가 계속되면 log에서 상세 error를 확인하고, schema를 기준으로 configuration을 validate하며, [User API](/integrations/wallet-gateway/reference/user-api) 및 [dApp API](/integrations/wallet-gateway/reference/dapp-api) specification을 검토하고, project GitHub issue에서 유사한 report를 확인하세요.

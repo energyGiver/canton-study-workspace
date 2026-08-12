@@ -1,8 +1,43 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections import Counter
+from pathlib import Path
+import re
 
-from .content import ContentRepository
+from .content import ContentRepository, TRANSLATION_ROOT, canonical_path
+
+
+MIDDLE_DOT = "\u00b7"
+
+
+def _heading_levels(text: str) -> list[int]:
+    return [len(match.group(1)) for match in re.finditer(r"^(#{1,6})\s+", text, re.MULTILINE)]
+
+
+def _imports(text: str) -> list[str]:
+    return [line.strip() for line in text.splitlines() if line.strip().startswith("import ")]
+
+
+def _mdx_components(text: str) -> Counter[str]:
+    components = Counter(re.findall(r"</?([A-Z][A-Za-z0-9.]*)\b", text))
+    components.pop("Warning", None)
+    return components
+
+
+def _fenced_blocks(text: str) -> list[tuple[str, str]]:
+    return [
+        (match.group(1).strip(), match.group(2))
+        for match in re.finditer(r"^```([^\n]*)\n(.*?)^```\s*$", text, re.MULTILINE | re.DOTALL)
+    ]
+
+
+def _links(text: str) -> list[str]:
+    return re.findall(r"\[[^\]]*\]\(([^)]+)\)", text)
+
+
+def _normalize_code_whitespace(text: str) -> str:
+    return re.sub(r"[ \t]+(?=\n|$)", "", text)
 
 
 @dataclass(frozen=True)
@@ -24,6 +59,7 @@ def validate_workspace() -> ValidationReport:
     warnings: list[str] = []
     summaries = 0
     translations = 0
+    known_translation_paths: set[Path] = set()
 
     for page in repository.pages:
         research = repository.research(page)
@@ -47,6 +83,13 @@ def validate_workspace() -> ValidationReport:
 
         if translation["available"]:
             translations += 1
+            translation_path = repository.translation_path(page)
+            known_translation_paths.add(translation_path.resolve())
+            translation_text = translation_path.read_text(encoding="utf-8")
+            source_path = repository.official_source_path(page)
+            source_text = (
+                source_path.read_text(encoding="utf-8") if source_path.is_file() else ""
+            )
             metadata = translation["metadata"]
             if metadata.get("source_id") != page.source_id:
                 errors.append(f"{page.path}: translation source_id does not match the manifest")
@@ -62,8 +105,67 @@ def validate_workspace() -> ValidationReport:
                 "approved",
             }:
                 errors.append(f"{page.path}: translation_status is invalid")
+            if not metadata.get("translated_at"):
+                errors.append(f"{page.path}: translation translated_at is required")
+            if "reviewed_by" not in metadata:
+                errors.append(f"{page.path}: translation reviewed_by is required")
+            if not metadata.get("title"):
+                errors.append(f"{page.path}: translated title is required")
+            if "<Warning>" not in translation_text or "</Warning>" not in translation_text:
+                errors.append(f"{page.path}: unofficial translation Warning is required")
+            official_url = page.source_url.removesuffix(".md")
+            warning_url = (
+                page.source_url if page.source_url in translation_text else official_url
+            )
+            if warning_url not in translation_text:
+                errors.append(f"{page.path}: Warning must link to the official English page")
+            if translation_text.count("```") % 2:
+                errors.append(f"{page.path}: translation has an unclosed code fence")
+            if MIDDLE_DOT in translation_text:
+                errors.append(f"{page.path}: translation contains forbidden U+00B7")
+            if source_text:
+                if _heading_levels(source_text) != _heading_levels(translation_text):
+                    errors.append(f"{page.path}: translated heading hierarchy changed")
+                if _imports(source_text) != _imports(translation_text):
+                    errors.append(f"{page.path}: translated MDX imports changed")
+                if _mdx_components(source_text) != _mdx_components(translation_text):
+                    errors.append(f"{page.path}: translated MDX component structure changed")
+                source_links = Counter(_links(source_text))
+                translated_links = Counter(_links(translation_text))
+                translated_links[warning_url] -= 1
+                if translated_links[warning_url] <= 0:
+                    translated_links.pop(warning_url, None)
+                if source_links != translated_links:
+                    errors.append(f"{page.path}: translated Markdown link targets changed")
+                for marker in (r"\<", r"\>"):
+                    if source_text.count(marker) != translation_text.count(marker):
+                        errors.append(
+                            f"{page.path}: translated escaped angle marker count changed"
+                        )
+                source_blocks = _fenced_blocks(source_text)
+                translated_blocks = _fenced_blocks(translation_text)
+                if [language for language, _ in source_blocks] != [
+                    language for language, _ in translated_blocks
+                ]:
+                    errors.append(f"{page.path}: translated fenced code languages changed")
+                elif any(
+                    language.lower() != "mermaid"
+                    and _normalize_code_whitespace(source_body)
+                    != _normalize_code_whitespace(translated_body)
+                    for (language, source_body), (_, translated_body) in zip(
+                        source_blocks, translated_blocks
+                    )
+                ):
+                    errors.append(f"{page.path}: executable or example code changed")
             if translation["stale"]:
                 warnings.append(f"{page.path}: Korean translation requires source review")
+
+    for translation_path in TRANSLATION_ROOT.rglob("*.mdx"):
+        resolved = translation_path.resolve()
+        if resolved in known_translation_paths:
+            continue
+        relative = canonical_path(str(translation_path.relative_to(TRANSLATION_ROOT)))
+        errors.append(f"{relative}: translation is not a canonical manifest page")
 
     return ValidationReport(
         pages=len(repository.pages),

@@ -199,6 +199,12 @@ class ContentRepository:
     def upstream_path(self, page: PageRecord) -> Path:
         return self._safe_content_path(UPSTREAM_DOCS, page.path, ".mdx")
 
+    def official_source_path(self, page: PageRecord) -> Path:
+        upstream = self.upstream_path(page)
+        if upstream.is_file():
+            return upstream
+        return (ROOT / page.local_path).resolve()
+
     def research_path(self, page: PageRecord) -> Path:
         return self._safe_content_path(RESEARCH_ROOT, page.path, ".md")
 
@@ -207,7 +213,7 @@ class ContentRepository:
 
     def source_sha256(self, page: PageRecord) -> str | None:
         if page.source_id not in self._source_hashes:
-            self._source_hashes[page.source_id] = file_sha256(self.upstream_path(page))
+            self._source_hashes[page.source_id] = file_sha256(self.official_source_path(page))
         return self._source_hashes[page.source_id]
 
     def research(self, page: PageRecord) -> dict:
@@ -268,9 +274,7 @@ class ContentRepository:
         }
 
     def comparison(self, page: PageRecord) -> dict:
-        source_path = self.upstream_path(page)
-        if not source_path.is_file():
-            source_path = ROOT / page.local_path
+        source_path = self.official_source_path(page)
         if not source_path.is_file():
             raise KeyError(f"Official source is unavailable for {page.source_id}")
 

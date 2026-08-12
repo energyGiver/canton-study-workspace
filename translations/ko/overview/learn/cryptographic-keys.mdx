@@ -1,0 +1,205 @@
+---
+title: "Canton의 Cryptographic Key"
+description: "Canton의 secret storage, key type, key management. Offline, in-memory, KMS envelope encryption, full KMS option을 다룹니다."
+source_id: "SRC-0D6580C9C3"
+source_path: "overview/learn/cryptographic-keys"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "955b677a247389ac3befd44668345bfec06418bba04b6f6584dbd31eb3b39e40"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/learn/cryptographic-keys.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="canton:docs-open/src/sphinx/overview/explanations/canton/security.rst" hash="2101b968" */}
+
+이 section은 Canton의 cryptographic key를 다룹니다. 먼저 Canton에서 secret을 저장하는 일반적인 선택지를 설명한 다음, 여러 종류의 cryptographic key와 Canton이 이를 사용하고 저장하는 방식을 개괄합니다.
+
+## Secret Storage
+
+이 section에서는 Canton에서 secret을 저장하는 일반적인 선택지를 설명합니다.
+
+### Plaintext Storage 선택지
+
+편의를 위해 Canton은 encryption을 사용하지 않는 다음 선택지를 제공합니다.
+
+- **Database:** Canton node가 secret을 database에 plaintext로 저장합니다.
+- **File:** Canton node가 secret을 file에 plaintext로 저장합니다.
+
+### Persistence를 사용하지 않는 선택지
+
+Secret을 더 안전하게 보호하기 위해 Canton은 persistence를 사용하지 않는 선택지도 제공합니다.
+
+<div id="storage-option-offline">
+
+- **Offline:** 일부 secret의 경우 Canton은 전혀 저장하지 않는 방식을 허용합니다. 따라서 signing과 decryption operation 같은 secret 사용은 Canton 외부에서 이루어져야 합니다.
+- **In memory:** Canton은 secret을 memory에 plaintext로 저장합니다. File이나 database에는 저장하지 않습니다.
+
+</div>
+
+### Key Management Service를 사용하는 선택지
+
+Canton이 persist해야 하는 secret을 더 안전하게 보호하기 위해 key management service(KMS)를 사용할 수 있습니다.
+
+- **KMS envelope encryption:** Canton은 secret을 database에 encrypted 형태로 저장하고 memory에는 plaintext로 유지합니다. Secret을 decrypt해야 할 때 ciphertext를 KMS로 보내면 KMS가 secret을 decrypt하여 plaintext를 Canton에 돌려보냅니다.
+- **Full KMS:** KMS가 일반적으로 private signing key 또는 encryption key인 secret을 생성하고 저장합니다. KMS는 누구에게도 secret을 공개하지 않습니다. Canton이 data에 signing해야 할 때 data를 KMS로 보내면 KMS가 digital signature를 생성하여 Canton에 돌려보냅니다. 마찬가지로 Canton이 data를 decrypt해야 할 때 ciphertext를 KMS로 보내면 KMS가 ciphertext를 decrypt하여 plaintext를 돌려보냅니다.
+
+### Session Signing Key를 사용하는 KMS
+
+"Full KMS" 선택지는 상당한 latency를 수반하므로 Canton은 private signing key 보호가 약간 약해지는 대신 signing latency를 줄이는 대안을 제공합니다. 이 방식은 [명시적으로 활성화](/global-synchronizer/production-operations/key-management#increase-session-signing-keys-lifetime)해야 합니다. 이 mode에서 node는 long-term private signing key를 KMS에 저장하지만 signing에는 long-term key 대신 session signing key를 사용합니다. 이를 위해 signature와 함께 (1) private session signing key에 대응하는 public key와 (2) 정의된 기간에 session key가 long-term key의 적법한 대체 key임을 증명하는 certificate도 전달합니다. Long-term key가 이 certificate에 signing해야 합니다.
+
+이 접근 방식에서는 node가 모든 signing operation이 아니라 session key를 rollover할 때만 KMS에 접근하므로 KMS operation의 overhead를 제한합니다.
+
+Node는 설정 가능한 lifetime 동안 session signing key를 memory에 plaintext로 유지합니다. Node는 session signing key를 disk나 database에 저장하지 않습니다. 잠재적인 key compromise의 영향을 제한하기 위해 node는 certificate에 정의된 기간 밖에서 session signing key의 signature를 수락하지 않습니다. Session signing key는 [protocol message](/global-synchronizer/production-operations/key-management#signing-key-usage)에 signing할 때만 사용합니다.
+
+#### 설정 가능한 Parameter
+
+Session signing key는 생성될 때마다 validity period가 연결되며 해당 기간에만 valid합니다. 이 기간은 [Canton configuration file을 통해 조정](/global-synchronizer/production-operations/key-management#enable-session-signing-keys-and-increase-lifetime)할 수 있습니다. 이 section에서는 설정 가능한 parameter, 각 parameter가 control하는 것, 변경 시 유의할 점을 나열합니다. 이 section 전체에서 ``ts``는 signing하는 timestamp를 나타냅니다.
+
+- ``enabled``
+
+  - Protocol에서 session signing key 사용을 활성화합니다. 이 option은 KMS가 배포되고 private key가 그 안에 저장된 경우에만 사용할 수 있습니다.
+
+- ``keyValidityDuration``
+
+  - 각 session signing key의 validity duration을 지정합니다. Lifetime은 반드시 ``keyValidityDuration > 2 * cutoffDuration``을 충족해야 합니다.
+
+  - Session signing key가 message의 lifetime, 즉 maximum sequencing time을 포함하고 여러 submission request에서 재사용될 수 있도록 validity duration이 너무 짧아서도 안 됩니다.
+
+  - 다음은 권장되는 optional constraint입니다. 충족하지 않으면 일부 message에 long-term key로 signing해야 할 수 있으며 KMS load와 call 빈도가 증가할 수 있다는 점을 operator가 인지해야 합니다. 일부 parameter에 관한 자세한 내용은 [dynamic Synchronizer parameter](/global-synchronizer/extension-synchronizers/synchronizer-operations#manage-dynamic-synchronizer-parameters)를 참고하세요.
+
+     1. ``keyValidityDuration > defaultMaxSequencingTimeOffset``
+     2. ``keyValidityDuration > setBalanceRequestSubmissionWindowSize``
+     3. ``keyValidityDuration > confirmationResponseTimeout + mediatorReactionTimeout``
+
+- ``toleranceShiftDuration``
+
+  - Validity interval을 ``[ts, ts+keyValidityDuration]``에서 ``[ts-toleranceShiftDuration, ts+keyValidityDuration-toleranceShiftDuration]``으로 이동합니다.
+
+  - 다음 constraint를 반드시 준수해야 합니다.
+
+     1. ``toleranceShiftDuration < keyValidityDuration - cutoffDuration``
+     2. ``toleranceShiftDuration > cutoffDuration``
+
+  - 생성되는 interval, 즉 session signing key의 수를 최소화하기 위해 이 tolerance를 사용합니다. 예를 들어 shift가 없으면 ``ts, ts-1us, ts-2us, ts-3us`` timestamp sequence가 여러 key를 생성합니다. Timestamp가 주로 증가하는지 감소하는지에 따라 값을 조정할 수 있습니다. 일반적으로 ``keyValidityDuration``의 약 50%만큼 shift하는 것을 권장합니다.
+
+- ``cutoffDuration``
+
+  - 허용 가능한 clock skew를 측정하며 ``ledgerRecordTimeTolerance``보다 길어야 합니다. 이를 통해 clock skew 때문에 submission verification이 실패하지 않도록 합니다.
+
+  - Node는 key validity period가 양쪽에 buffer/margin을 적용한 required time range 전체를 포함하는 경우에만 기존 session signing key를 사용합니다.
+
+- ``keyEvictionPeriod``
+
+  - Private session signing key가 memory에 유지되는 기간을 정의합니다.
+
+  - 반드시 ``keyValidityDuration``보다 길어야 합니다.
+
+- ``signingAlgorithmSpec``
+
+  - Session signing key의 signing algorithm을 정의합니다. 기본값은 ``Ed25519``입니다.
+
+- ``signingKeySpec``
+
+  - Session signing key의 key scheme을 정의합니다. 기본값은 ``EcCurve25519``입니다.
+
+  - Algorithm과 key scheme은 모두 node에서 지원되고 허용되어야 합니다.
+
+### Session Encryption Key
+
+Asymmetric encryption/decryption operation으로 인한 load를 줄이기 위해 Canton은 대신 symmetric encryption을 사용합니다. 이를 통해 asymmetric encryption 사용량을 크게 줄입니다.
+
+모든 node에는 database 또는 KMS에 저장하는 long-term asymmetric encryption key가 있습니다. 또한 모든 node는 session symmetric encryption key를 생성하여 보호할 data를 encrypt하는 데 사용합니다. Node는 ciphertext와 함께 수신자의 long-term encryption key로 asymmetrically encrypt한 해당 session encryption key도 전달합니다.
+
+일반적으로 data는 session key보다 훨씬 큽니다. 또한 node는 대체로 여러 수신자에게 data를 보내야 합니다. 이러한 가정에서 session encryption key를 사용하면 여러 이유로 encryption/decryption operation의 load가 줄어듭니다.
+
+- Canton은 수신자마다 한 번씩 encrypt하는 대신 data를 한 번만 encrypt하면 되며 data ciphertext도 하나만 보내면 됩니다.
+- Canton은 큰 data에 더 저렴한 symmetric encryption을 사용하고 작은 session key에 더 비싼 asymmetric encryption을 사용합니다.
+- Node가 같은 session key로 여러 data를 encrypt할 수 있습니다. 이 경우 수신자는 session key를 처음 받았을 때만 decrypt하면 됩니다.
+
+Canton node는 session과 독립적으로 설정 가능한 lifetime 동안 session encryption key를 memory에 plaintext로 유지합니다. Session encryption key의 plaintext를 disk나 database에 저장하지 않지만 database에 encrypted 형태로 저장할 수는 있습니다. 잠재적인 key compromise의 영향을 제한하기 위해 node는 설정된 lifetime이 지난 session encryption key를 사용하지 않습니다. Node는 d1과 d2의 intended recipient가 일치하고 그 사이에 recipient의 public encryption key가 rollover되지 않은 경우에만 data d1과 data d2를 encrypt하는 데 같은 session encryption key를 재사용합니다.
+
+## Canton의 Cryptographic Key 개요
+
+이 section에서는 Canton이 cryptographic key를 사용하는 방식을 개괄합니다.
+
+### TLS Key
+
+Canton node는 client가 node와 상호 작용할 수 있게 하는 여러 gRPC와 HTTP API를 제공합니다. 예는 다음과 같습니다.
+
+- Ledger Command 제출과 Ledger Update 수신을 위한 Participant Node의 Ledger API
+- Administrative purpose를 위한 모든 유형의 node Admin API
+- Message multicasting을 위한 Sequencer API
+- Sequencer 간 internal communication을 위한 ordering API
+- Health API
+
+사용자는 node API가 server-side TLS를 사용하도록 설정할 수 있고 일부 경우에는 mutual TLS도 사용하도록 설정할 수 있습니다. Canton은 startup 시 TLS가 사용할 key를 하나 이상의 file에서 읽습니다. 이 file에는 TLS key가 plaintext로 담겨 있습니다.
+
+### Namespace Signing Key
+
+모든 Topology Namespace에는 `namespace root key`라고 하는 public signing key가 있습니다. Namespace는 root key의 hash입니다. Operator는 root key에 대응하는 private key로 Topology Transaction에 signing하여 해당 Namespace의 Transaction을 authorize합니다. Namespace에는 추가 signing key가 있을 수 있으며 operator는 이 key로도 Namespace의 Topology Transaction을 authorize할 수 있습니다.
+
+Namespace key가 root key인지 여부와 관계없이 authorize할 수 있는 Topology Transaction의 예는 다음과 같습니다.
+
+- NamespaceDelegation: Namespace 관련 Topology Transaction을 authorize할 추가 key authorize
+- OwnerToKeyMapping: Canton node에 key 연결
+- PartyToParticipant: Participant에 Party 연결
+
+Canton은 private Namespace key에 다음 storage option을 지원합니다.
+
+- Database(기본값)
+- Offline
+- KMS envelope encryption
+- Full KMS
+
+### Node Signing Key
+
+Node에는 다음 목적을 수행하는 하나 이상의 signing key가 있습니다.
+
+- Sequencer client authentication: Sequencer의 public API와 상호 작용할 때 client는 valid authentication token을 제공해야 합니다. Client는 challenge-response protocol에서 authentication token을 얻습니다. 이 protocol 중 client는 Sequencer가 생성한 nonce에 signing합니다.
+
+  또한 Sequencer state를 변경할 수 있는 request에는 sender의 signature가 포함되어야 합니다.
+
+- Sequencer server authentication: Sequencer는 client에 내보내는 모든 event에 signing합니다.
+
+- Participant Node는 Ledger API Command를 처리할 때 signing key로 Transaction과 Reassignment protocol의 일부로 전송하는 message에 signing하여 authenticate합니다. 여기에는 Daml Transaction과 Reassignment 처리가 모두 포함됩니다.
+
+- Sequencer는 ordering protocol의 일부로 message를 교환합니다. 이러한 message의 sender를 authenticate하기 위해 signing key를 사용합니다.
+
+- Participant Node는 signing key로 ACS commitment에 signing합니다.
+
+Canton은 node signing key에 다음 storage option을 지원합니다.
+
+- Database(기본값)
+- Key를 KMS에 저장하는 모든 option. 예외로 Sequencer client authentication에는 session signing key를 사용하는 KMS를 지원하지 않습니다.
+
+### External Party Signing Key
+
+기본적으로 Participant Node가 Daml Transaction 실행에 signing하여 authorize합니다. 이와 달리 submitting Party, 즉 External Party가 ledger에 추가하려는 Daml Transaction에 직접 signing하여 authorize할 수 있습니다. 다시 말해 submitting Participant Node 대신 submitting Party가 signing합니다. 이를 위해 External Party는 자체 signing key를 가집니다.
+
+External Party signing key의 권장 storage option은 "offline"입니다. Database 같은 다른 option도 기술적으로 가능할 수 있지만 권장하지 않습니다.
+
+### Encryption Key
+
+Participant Node가 Transaction을 propose할 때 Transaction을 Transaction view로 분해합니다. 각 Transaction view의 내용을 볼 수 있는 Participant Node에만 정확히 전송합니다. Transaction을 view로 분해하는 것은 sub-transaction privacy 달성에 핵심적입니다.
+
+Participant Node에는 하나 이상의 asymmetric encryption key가 있습니다. Participant Node가 다른 Participant Node에 Transaction view를 보낼 때 encrypted 형태로 전송합니다. 이는 Sequencer Node가 Transaction view의 내용을 보지 못하게 하는 데 중요합니다. Participant Node는 asymmetric encryption key로 Transaction view를 직접 encrypt하지 않고 performance 향상을 위해 session encryption key를 적용합니다.
+
+Participant Node가 아닌 node, 예를 들어 Sequencer Node에도 encryption key가 있을 수 있습니다. 하지만 현재 Canton은 그러한 node의 encryption key를 사용하지 않습니다.
+
+### Authentication과 Authorization을 위한 Token
+
+일부 API에서 Canton node는 authentication 또는 authorization을 위해 모든 request에 token을 포함하도록 client에 요구합니다. Canton은 이러한 token을 memory에 저장합니다. Token lifetime이 지났거나 client에게 request 전송 permission이 있음을 token이 증명하지 못하면 Canton node는 request를 reject합니다.
+
+Token을 받는 API에는 TLS를 반드시 활성화해야 합니다. 그렇지 않으면 attacker가 network traffic을 검사하여 authentication token을 알아낼 수 있습니다.
+
+Canton은 다음 API에서 token을 사용합니다.
+
+- Sequencer Node의 public API는 모든 request에 token 사용을 의무화합니다.
+- Operator는 Participant Node가 Ledger API에서 authorization을 활성화하도록 설정할 수 있습니다. 활성화하면 Ledger API client가 모든 request에 [JWT](https://jwt.io) token을 포함해야 합니다.
+
+
+{/* COPIED_END */}

@@ -1,0 +1,120 @@
+---
+title: "Decentralization"
+description: "Canton의 Decentralized Namespace, Decentralized Party, Decentralized Synchronizer ownership"
+source_id: "SRC-CB538DB98A"
+source_path: "overview/reference/decentralization"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "57f3682e4260c5d09aab877d41b89359b24f7f2372b681c2226eda046bd9540e"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/reference/decentralization.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/overview/explanations/canton/decentralization.rst" hash="502f5ea6" */}
+
+# Decentralization
+
+Canton context에서 decentralization은 주로 특정 entity의 power 또는 ownership을 여러 owner나 trustee에게 분산하는 것을 의미합니다. 따라서 어떤 trustee도 해당 entity를 대신해 일방적으로 변경을 실행할 수 없습니다.
+
+Canton에서 이러한 decentralized entity에는 Namespace, Party, Synchronizer가 있습니다. 개별 decentralized entity에 관한 자세한 내용은 아래 section을 참고하세요.
+
+한편으로 ownership 분산은 다른 한편으로 trust 분산을 가져옵니다. Entity에 단일 owner가 있으면 그 entity와 상호 작용하는 누구나 owner를 완전히 신뢰하거나 entity와 전혀 상호 작용하지 않아야 합니다. Decentralized entity와 상호 작용할 때는 consensus에 필요한 owner 수에 반비례하는 정도로만 각 owner를 신뢰하면 됩니다. 이 수를 decentralized entity의 *threshold*라고 합니다. 최소 threshold 수의 owner가 같은 action에 agree하면 owner가 *quorum에 도달*한 것입니다.
+
+Decentralized trust가 유용하거나 일부 경우 requirement가 될 수 있는 이유는 다음과 같습니다.
+
+- **Security:** Entity의 단일 owner가 compromise되면 전체 entity와 관련 data도 compromise됩니다. 반대로 여섯 owner 중 하나가 compromise되어도 entity에 대한 control을 유지하는 functional owner가 다섯 명 남습니다. Compromised owner는 일방적으로 변경할 수 없습니다.
+- **Regulatory restriction:** Regulator가 Synchronizer에 자신의 jurisdiction 안에서 physical presence가 있어야 한다는 restriction을 부과할 수 있습니다. 또 다른 예로 국가적으로 중요한 network의 independence를 전체적으로 보장하기 위해 여러 독립 public institution과 private company가 network를 운영해야 한다는 regulatory requirement가 있을 수 있습니다.
+- **Four-eyes principle:** Threshold를 `2`로 설정하면 owner가 중요한 entity에 four-eyes principle을 따르도록 enforce합니다. 이는 user input error 등을 방지하는 데 도움이 됩니다.
+- **Juridical person:** 여러 individual owner가 하나의 juridical person을 구성합니다.
+
+## Decentralized Namespace
+
+`topology-namespaces` section에서 설명하듯 Namespace는 궁극적으로 private key에 기반합니다. Private key에 access하는 주체는 자신을 Namespace owner로 identify하고 그에 따라 행동할 수 있습니다. 따라서 표준 Namespace는 decentralized Namespace를 나타내기에 적합하지 않습니다.
+
+Canton은 `DecentralizedNamespaceDefinition` Topology mapping으로 Decentralized Namespace를 구현합니다. 이 mapping은 owner인 Namespace 집합과 founder에서 계산되는 Decentralized Namespace의 `Namespace`를 정의합니다. 또한 `DecentralizedNamespaceDefinition`을 정의할 때 founder는 사용할 threshold에 agree해야 합니다.
+
+Decentralized Namespace ownership은 고정되지 않습니다. 현재 owner는 새 owner 추가, 기존 owner 제거, Decentralized Namespace threshold 변경을 결정할 수 있습니다. 최초 Topology Transaction 후 ownership이 변경되어도 Decentralized Namespace 자체의 `Namespace`는 변경되지 않습니다.
+
+Topology Transaction이 unique identifier를 요구할 때마다 그 identifier의 Namespace는 `NamespaceDelegation` root certificate로 정의되는 simple Namespace이거나 `DecentralizedNamespaceDefinition`으로 정의되는 Decentralized Namespace일 수 있습니다. 후자의 경우 owner quorum이 해당 UID의 후속 Topology Transaction에 signing해야 합니다. Quorum에 도달할 때까지 Topology Transaction은 proposal 상태로 유지됩니다.
+
+## Decentralized Synchronizer
+
+Synchronizer를 decentralize하는 방법은 여러 가지입니다.
+
+- **Ownership decentralization:** `SynchronizerId`의 Namespace를 여러 owner와 `1`보다 높은 threshold를 가진 Decentralized Namespace로 생성합니다.
+- **Mediator group decentralization:** Synchronizer owner는 여러 Mediator와 `1`보다 높은 threshold를 가진 Mediator group을 설정할 수 있습니다. 이는 Sequencer가 Participant Node에 verdict를 deliver하기 전에 해당 group의 최소 `threshold`개 Mediator가 two-phase commit protocol의 confirmation request에 대해 같은 verdict에 도달해야 함을 의미합니다.
+- **Sequencer decentralization:** Canton은 BFT Ordering layer 위에서 여러 Sequencer를 실행하는 방식을 지원합니다.
+- **Sequencer connection decentralization:** Participant Node는 여러 Sequencer를 사용하도록 Synchronizer connection을 설정해 단일 Sequencer에 두는 trust를 더 줄일 수 있습니다. Threshold를 `1`보다 높게 설정하면 Participant Node가 여러 Sequencer에서 event stream을 subscribe합니다. `threshold`개의 Sequencer가 하나의 event에 같은 data를 제공하는 동안에만 event를 처리하며, 그렇지 않으면 잠재적 issue를 알리는 warning을 Participant Node operator에게 보냅니다. 또한 Participant Node는 faulty 또는 malicious Sequencer의 censorship을 극복하기 위해 여러 Sequencer에 message를 제출하는 *write amplification* mechanism을 사용할 수 있습니다. Duplicate message는 Sequencer가 deduplicate하므로 최종적으로 최대 하나의 message만 recipient에게 deliver됩니다.
+
+## Decentralized Party
+
+### Decentralized Ownership
+
+Party ownership과 governance도 Synchronizer ownership처럼 decentralize할 수 있습니다. Party UID에 사용할 Decentralized Namespace를 설정하면 됩니다.
+
+### Decentralized Active Contract Management
+
+Party 관점에서 Active Contract management는 아래에서 설명하는 세 기능으로 나뉩니다.
+
+- Participant Node가 Canton Protocol의 일부로 Transaction을 validate하고 confirm
+- Party application이 Participant Node의 Ledger API를 통해 Transaction 제출
+- Party application이 Participant Node의 Ledger API에서 Active Contract와 Transaction stream 조회
+
+단일 entity가 하나의 Participant Node를 운영하므로 이러한 기능은 Participant Node quorum에서 수행해야만 decentralize할 수 있습니다. 따라서 Party를 여러 Participant Node에서 hosting합니다.
+
+#### Decentralized Validation
+
+Multi-hosted Party owner는 Party를 대신해 각 Transaction을 confirm 또는 reject해야 하는 Participant Node 수의 threshold를 지정할 수 있습니다. 예를 들어 Party `P`가 세 Participant Node `p1`, `p2`, `p3`에서 threshold `2`로 hosting된다고 가정합니다. Transaction에 이 Party의 confirmation이 필요한 경우, 예를 들어 Party가 생성되거나 사용되는 contract `c`의 Signatory인 경우 Mediator는 세 Participant Node 중 두 곳이 동일한 response, 즉 confirmation 두 개 또는 rejection 두 개를 보낼 때까지 기다립니다. Threshold에 도달하면 Mediator가 해당 response를 Party response로 사용합니다.
+
+어떤 Party의 outstanding response도 verdict를 바꿀 수 없게 되면 Mediator가 Transaction verdict를 발행합니다. 예를 들어 contract `c`에 다른 Signatory `Q`가 있고 네 Participant Node `p5`, `p6`, `p7`, `p8`에서 threshold `2`로 hosting된다고 가정합니다. `P`와 `Q`가 모두 Transaction을 confirm해야 합니다. `p1`과 `p2`가 rejection을 보내 `P` response가 rejection이면 Mediator는 즉시 "reject" verdict에 도달합니다. 반대로 P response가 confirmation이면 Mediator는 verdict를 발행하기 전에 `p5`부터 `p8`까지에서 `Q`에 대한 matching response 두 개를 기다립니다. `Q`의 경우 두 outcome이 모두 threshold에 도달할 수도 있습니다. 예를 들어 `p5`와 `p6`가 confirm하고 `p7`과 `p8`이 reject할 수 있습니다. 이 경우 Mediator는 더 먼저 threshold에 도달한 outcome을 선택합니다.
+
+Confirmation이 필요한 Party에 대해 `participant-response-timeout` 안에 threshold에 도달하지 못하면 Mediator가 timeout verdict를 발행합니다. 예를 들어 `P`에 대해 `p1`이 confirm하고 `p2`가 reject하며 `p3`가 overloaded되어 제시간에 아무것도 보내지 못하면 이런 일이 발생합니다.
+
+Canton은 confirmation이 고려되었는지 여부와 관계없이 Party를 hosting하는 모든 Participant Node에 Transaction이 전달되도록 보장합니다. 이를 통해 모두가 Ledger API에서 동일한 Transaction을 emit하고 Active Contract 집합을 그에 따라 update하도록 합니다.
+
+Confirming Participant Node는 예를 들어 Signatory를 위해 contract가 active인지, Controller를 위해 top-level action이 올바르게 authorize되었는지 확인합니다. 따라서 Party를 hosting하는 threshold 수의 Participant Node가 collude하면 다음 power를 가집니다.
+
+- Inactive contract가 active하다고 confirm하여 contract를 double-spend할 수 있습니다.
+- Party authority를 confirm하여 Party가 이전에 Signatory가 되는 데 agree하지 않았더라도 해당 Party를 Signatory로 하는 contract를 생성할 수 있습니다.
+
+특히 후자는 threshold가 Daml model에 명시적으로 encode된 governance rule과 align되어야 함을 의미합니다. Daml model의 governance rule이 threshold `t`를 요구한다면 confirmation threshold `ct`도 최소 `t`여야 합니다. 그렇지 않으면 `ct`명의 colluding Participant Node operator가 governance를 거치지 않고 governance action의 effect를 commit하는 데 agree할 수 있습니다.
+
+### Decentralized Party의 Submission
+
+`PartyToParticipant` mapping에서 threshold가 `1`보다 큰 Party는 Ledger API Command를 제출할 수 없습니다. Command submission은 항상 단일 Participant Node를 통과하며 Party submission과 그 결과 Transaction 사이에 cryptographic link가 없기 때문입니다. 따라서 Command submission은 단일 entity인 Participant Node operator가 Decentralized Party의 Active Contract를 일방적으로 변경할 수 없어야 한다는 decentralization principle을 위반합니다.
+
+Party owner는 두 방식으로 이 restriction을 해결할 수 있습니다.
+
+1. Externally signed submission으로 Transaction 제출
+2. Daml의 decentralized authorization
+
+첫 번째 option이 권장되는 접근 방식입니다.
+
+#### External Submission
+
+Party owner는 Party의 `PartyToKeyMapping` Topology mapping을 authorize하여 Party와 signing key 집합을 연결할 수 있습니다. Owner는 이 signing key를 사용해 Daml Transaction을 직접 signing하고 authorize한 뒤 Participant Node를 통해 제출할 수 있습니다. 이를 *external submission*이라고 합니다. Daml Transaction validation 시 같은 verdict에 도달해야 하는 Participant Node 수를 정의하는 `PartyToParticipant` Topology mapping의 threshold parameter와 마찬가지로 `PartyToKeyMapping`에도 submission authorization에 필요한 Topology mapping의 최소 signing key 수를 정의하는 `threshold` parameter가 있습니다.
+
+자세한 내용은 `overview_canton_external_parties`를 참고하세요.
+
+#### Daml의 Decentralized Authorization
+
+여러 Participant Node 사이에서 Command submission을 coordination하는 것은 distributed workflow이며 fixed pattern을 protocol에 encode하는 것보다 Daml이 이를 modeling하기에 더 적합합니다.
+
+따라서 confirmation threshold가 1보다 큰 Party `P`는 Daml model 안에서 Choice를 충분히 많은 다른 Party에 delegate합니다. 대체로 Party `P` 뒤의 entity가 자체 Daml Party를 가지며 `P`가 Signatory인 contract는 entity Party quorum을 Controller로 하는 Choice를 정의합니다. 이 pattern은 juridical person(`P`)이 natural person(Controller) quorum을 통해 행동한다는 발상을 모방합니다.
+
+하지만 한 가지 문제가 있습니다. 처음부터 Party가 어떻게 contract의 Signatory position에 들어갈 수 있을까요? Party가 contract 생성 Command를 제출하거나 이전에 생성한 다른 contract가 그렇게 할 right를 transitively delegate한 경우에만 가능합니다.
+
+이를 해결하기 위해 처음에는 하나의 Participant Node에 threshold `1`로 Party를 allocate합니다. 그런 다음 Party가 이 Participant Node를 통해 initial setup Command를 제출하여 Daml contract에 "genesis state"를 생성합니다. Setup이 성공하면 Party를 여러 Participant Node에 분산하고 threshold를 높여 decentralize합니다. 이 접근 방식에는 Party state가 genesis state에서 predefined way로만 evolve할 수 있다는 단점이 있습니다. 예상하지 못한 변경은 Daml smart contract upgrade로 표현할 수 없는 한 Party를 일시적으로 centralize해야 합니다. 이러한 upgrade도 모든 경우를 처리하지는 못합니다. 예를 들어 Daml language 자체의 major version upgrade는 문제가 될 가능성이 큽니다.
+
+### 여러 Participant Node에서 읽는 Application
+
+세 번째 기능은 Party application이 ledger에서 자신을 대신해 일어나는 일을 이해하는 방식입니다. 대부분의 application은 individual이 운영하며 자신이 사용하는 Participant Node operator와 trust relationship이 있습니다. 이 trust relationship 덕분에 Participant Node에서 받는 data correctness를 의심할 필요가 없습니다. 이 상황에서는 단일 Participant에서 data를 retrieve하면 충분합니다.
+
+Application을 entity group이 운영하는 등의 이유로 이러한 trust relationship이 없다면 단일 Participant Node에서만 읽는 것은 해당 Participant Node가 잘못된 data를 제공할 수 있으므로 decentralization principle을 위반합니다. 따라서 이러한 application은 여러 Participant Node에 Active Contract data를 요청하고 consistency를 확인해야 합니다.
+
+
+{/* COPIED_END */}

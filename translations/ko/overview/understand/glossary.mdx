@@ -1,0 +1,419 @@
+---
+title: "Glossary"
+description: "Canton Network 개념을 위한 authoritative terminology reference"
+source_id: "SRC-463079755E"
+source_path: "overview/understand/glossary"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "ab94ca9160d8bdeb48f091d76eb73f7f2a37dd8a174a39d1141ad1ba1dde1f1d"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/understand/glossary.md)을 사용하세요.
+</Warning>
+
+## A
+
+### Active Contract Set (ACS)
+
+Participant Node에서 hosting하는 Party를 위해 현재 active 상태로 유지되는, 즉 archive되지 않은 contract의 집합입니다. ACS는 해당 Participant의 관점에서 현재 state를 나타냅니다.
+
+**관련 용어**: Contract, Archive, Participant Node
+
+### Admin API
+
+Party 관리, package upload, node configuration 같은 운영 작업을 위해 Canton node가 제공하는 administrative API입니다. Application이 사용하는 Ledger API와는 별개입니다.
+
+**관련 용어**: Ledger API, Participant Node
+
+### Archive
+
+Contract를 consume/delete하는 action입니다. Archive된 contract에는 더 이상 action을 수행할 수 없습니다. Daml에서는 consuming Choice를 exercise하면 contract가 archive됩니다.
+
+**관련 용어**: Contract, Choice, Active Contract Set
+
+## C
+
+### Canton
+
+Privacy-preserving distributed ledger technology를 구현하는 blockchain protocol과 software입니다. Canton은 기반 기술이며 Canton Network는 이를 실행하는 public network입니다.
+
+**관련 용어**: Canton Network, Synchronizer, Participant Node
+
+### Canton Coin (CC)
+
+Global Synchronizer의 native utility token으로 Transaction fee(Traffic)와 Validator reward에 사용됩니다. 일부 context에서는 이전에 "Amulet"이라고 불렸습니다.
+
+**관련 용어**: Traffic, Global Synchronizer, Splice
+
+### Canton Console
+
+Canton node를 관리하는 interactive command-line interface입니다. Party 관리, package 배포, debugging 같은 운영 작업을 위한 Scala 기반 scripting을 제공합니다.
+
+**관련 용어**: Admin API, Participant Node
+
+### Canton Network
+
+Canton protocol에서 실행되며 Global Synchronizer가 coordination하고 Super Validator가 운영하는 public blockchain network입니다.
+
+**관련 용어**: Canton, Global Synchronizer, Super Validator
+
+### Choice
+
+Daml contract에서 exercise할 수 있는 action입니다. 특정 Party가 Choice를 control하며 다음 유형이 있습니다.
+- **Consuming**: Exercise할 때 contract를 archive함
+- **Non-consuming**: Contract를 active 상태로 유지함
+
+**관련 용어**: Contract, Template, Controller
+
+### Confirming Participant Node (CPN)
+
+Hosting하는 Party를 대신하여 Transaction을 confirm할 permission이 있는 Participant Node입니다. Transaction confirmation protocol의 일부입니다.
+
+**관련 용어**: Participant Node, Transaction
+
+### Contract
+
+Ledger에 존재하는 Template instance입니다. Contract는 immutable하므로 변경 시 새 contract를 만들고 기존 contract를 archive합니다. 각 contract에는 고유한 Contract ID가 있습니다.
+
+**관련 용어**: Template, Archive, Contract ID
+
+### Contract ID
+
+Ledger의 contract instance를 위한 unique identifier입니다. Choice와 Transaction에서 특정 contract를 참조할 때 사용합니다.
+
+**관련 용어**: Contract, Contract Key
+
+### Contract Key
+
+Contract ID를 알지 못해도 contract를 조회할 수 있게 하는 unique identifier입니다. Key는 해당 Template scope 내에서 unique해야 하며 privacy에 영향을 줍니다. Key 구조가 정보를 드러낼 수 있습니다.
+
+**관련 용어**: Contract, Contract ID, Privacy
+
+### Controller
+
+Contract의 특정 Choice를 exercise하도록 authorize된 Party입니다. Template definition에서 `controller` keyword로 선언합니다.
+
+**관련 용어**: Choice, Signatory, Observer
+
+## D
+
+### Daml
+
+Canton에서 사용하는 smart contract 언어입니다. Multi-party workflow를 위해 설계된 functional programming 언어로 authorization과 privacy가 내장되어 있습니다. Daml-LF로 compile됩니다.
+
+**관련 용어**: Template, Choice, Daml-LF
+
+### Daml-LF
+
+Daml Ledger Format으로, Daml contract의 compiled bytecode format입니다. Canton Participant Node에서 실행되는 intermediate representation입니다.
+
+**관련 용어**: Daml, DAR
+
+### DAR (Daml Archive)
+
+Participant Node에 배포할 수 있도록 준비된 Daml code(Template, data type 등)의 compiled package입니다. `daml build`로 생성합니다.
+
+**관련 용어**: Daml, Daml-LF, Package
+
+### DevNet
+
+Canton Network의 개발/test environment입니다. VPN access와 Super Validator sponsorship이 필요합니다. Faucet의 test Canton Coin을 사용합니다.
+
+**관련 용어**: TestNet, MainNet, LocalNet
+
+### Divulgence
+
+원래 Stakeholder가 아니었지만 Transaction composition을 통해 관여하게 된 Party에 contract information이 자동으로 공개되는 것입니다. Transaction에서 contract를 fetch할 때 발생합니다.
+
+**관련 용어**: Privacy, Observer, Sub-transaction Privacy
+
+### DSO (Decentralized Synchronizer Operator)
+
+Decentralized Synchronizer에서 node를 실제로 운영하는 Super Validator의 collective입니다. Governance decision을 수행하고 infrastructure를 운영합니다.
+
+**관련 용어**: Super Validator, Global Synchronizer
+
+### DSO Party
+
+Joint action을 위한 signature를 수집하고 DSO의 synchronization infrastructure를 유지하는 데 사용되는 특수한 Party construct입니다.
+
+**관련 용어**: DSO, Party
+
+## E
+
+### External Party
+
+Participant Node 외부에서 자체 signing key를 보유하여 Transaction에 명시적인 signature가 필요한 Party입니다. Ethereum의 externally owned account(EOA)와 비슷합니다. 더 큰 통제력을 제공하지만 External Signing flow가 필요합니다.
+
+**관련 용어**: Local Party, Party
+
+## G
+
+### Global Synchronizer
+
+Super Validator가 운영하며 Canton Network의 backbone 역할을 하는 public decentralized Synchronizer입니다. Canton Foundation이 governance합니다.
+
+**관련 용어**: Synchronizer, Super Validator, Canton Foundation
+
+### Canton Foundation (CF)
+
+Global Synchronizer를 governance하는 Linux Foundation 산하 독립 nonprofit body입니다. Network policy를 설정하고 upgrade를 coordination하며 Super Validator 참여를 감독합니다.
+
+**관련 용어**: Global Synchronizer, Super Validator
+
+### gRPC
+
+Serialization에 Protocol Buffers를 사용하는 Ledger API의 주요 protocol입니다. JSON API보다 performance가 높습니다.
+
+**관련 용어**: Ledger API, JSON Ledger API
+
+## H
+
+### Hosting
+
+Participant Node와 그 node가 hosting하는 Party 사이의 관계입니다. Participant는 hosting하는 Party를 위해 data를 저장하고 해당 Party를 대신해 행동합니다.
+
+**관련 용어**: Participant Node, Party
+
+## I
+
+### Interface
+
+여러 Template이 구현할 수 있는 Choice 집합을 정의하는 Daml construct입니다. Polymorphic contract 처리를 가능하게 합니다.
+
+**관련 용어**: Template, Choice
+
+## J
+
+### JSON Ledger API
+
+Ledger API의 HTTP/JSON variant입니다. gRPC보다 사용하기 쉽지만 performance overhead가 있습니다. Browser 기반 application에서 자주 사용합니다.
+
+**관련 용어**: Ledger API, gRPC
+
+### JWT (JSON Web Token)
+
+Canton API에서 사용하는 authentication mechanism입니다. Token이 Party identity와 permission을 encode합니다.
+
+**관련 용어**: Ledger API, Admin API
+
+## L
+
+### Ledger API
+
+Command 제출과 ledger data 조회를 위해 Participant Node가 제공하는 기본 API입니다. gRPC와 JSON format으로 제공됩니다. Application이 ledger와 상호 작용할 때 사용합니다.
+
+**관련 용어**: gRPC, JSON Ledger API, Admin API
+
+### Local Party
+
+Hosting Participant Node가 key를 보유하여 node가 Party를 대신해 signing할 수 있는 Party입니다. External Party보다 단순하지만 Validator에 완전한 통제권을 부여합니다.
+
+**관련 용어**: External Party, Party, Participant Node
+
+### LocalNet
+
+자신의 machine에서 Canton component를 실행하는 local development environment입니다. External network가 필요하지 않으며 simulated Canton Coin을 사용합니다.
+
+**관련 용어**: DevNet, TestNet, MainNet
+
+## M
+
+### MainNet
+
+Canton Network의 production environment입니다. 실제 경제적 가치가 있는 Canton Coin을 사용하며 전체 onboarding 절차가 필요합니다.
+
+**관련 용어**: DevNet, TestNet, LocalNet
+
+### Mediator
+
+Participant의 confirmation을 수집하고 Transaction 결과(committed 또는 rejected)를 선언하여 Transaction confirmation protocol을 지원하는 Synchronizer component입니다.
+
+**관련 용어**: Synchronizer, Sequencer, Transaction
+
+## N
+
+### Namespace
+
+Key fingerprint로 정의되는 cryptographic scope입니다. Party와 다른 Topology entity는 Namespace 안에 존재합니다. 해당 Namespace의 entity에 대한 Topology를 수정할 수 있는 주체를 control합니다.
+
+**관련 용어**: Party, Topology Transaction
+
+## O
+
+### Observer
+
+Contract를 볼 수 있지만 Choice를 exercise할 수 없는 Party입니다. 단, Controller로도 선언된 경우에는 exercise할 수 있습니다. Template에서 `observer` keyword로 명시적으로 선언합니다.
+
+**관련 용어**: Signatory, Controller, Privacy
+
+### Offset
+
+Ledger의 Transaction stream 내 위치입니다. Ledger API에서 읽을 때 pagination과 resumption에 사용합니다.
+
+**관련 용어**: Ledger API, Transaction
+
+## P
+
+### Package
+
+Participant Node에 배포되는 compiled Daml module(Template, data type)의 collection입니다. DAR file로 package됩니다.
+
+**관련 용어**: DAR, Template, Vetting
+
+### Participant Node
+
+Party를 hosting하고 contract data를 저장하며 Transaction을 validate하고 Canton protocol에 참여하는 node입니다. Canton Network context에서는 "Validator Node"라고도 합니다.
+
+**관련 용어**: Validator Node, Party, Hosting
+
+### Party
+
+Canton의 on-ledger identity로 address나 account와 비슷합니다. `name::fingerprint` 형식이며 fingerprint는 Party의 public key에서 도출됩니다.
+
+**관련 용어**: Local Party, External Party, Signatory
+
+### PQS (Participant Query Store)
+
+Performance 요구가 높은 application을 위해 ledger data에 대한 SQL 기반 query를 제공하는 optional component입니다. Ledger state와 synchronization되는 PostgreSQL database를 유지합니다.
+
+**관련 용어**: Ledger API, Active Contract Set
+
+### Pruning
+
+Storage 증가를 관리하기 위해 Participant storage에서 오래되어 더 이상 필요하지 않은 data를 제거하는 절차입니다. Prune된 data는 더 이상 query할 수 없지만 ledger는 valid한 상태로 유지됩니다.
+
+**관련 용어**: Participant Node, Active Contract Set
+
+## S
+
+### Sequencer
+
+Participant의 message 순서를 정하고 수신자에게 배포하는 Synchronizer component입니다. Decrypt된 message 내용을 보지 않고 total ordering을 제공합니다.
+
+**관련 용어**: Synchronizer, Mediator
+
+### Signatory
+
+Contract 생성을 authorize해야 하며 contract obligation에 책임을 지는 Party입니다. Signatory는 항상 contract와 그 contract의 모든 action을 봅니다.
+
+**관련 용어**: Observer, Controller, Template
+
+### Splice
+
+Decentralized Canton Synchronizer의 운영, funding, governance를 위한 infrastructure를 제공하는 Hyperledger Labs 산하 open-source project입니다. Canton Coin과 관련 application을 구현합니다.
+
+**관련 용어**: Canton Coin, Global Synchronizer, DSO
+
+### Stakeholder
+
+Signatory 또는 Observer로 contract에 이해관계가 있는 Party입니다. Stakeholder는 자신이 이해관계를 가진 contract의 Transaction view를 받습니다.
+
+**관련 용어**: Signatory, Observer, View
+
+### Sub-transaction Privacy
+
+Transaction을 view로 분해하여 각 Party가 자신과 관련된 부분만 보도록 하는 Canton의 핵심 privacy 기능입니다. Participant는 자신에게 권한이 없는 view의 내용과 metadata를 모두 보지 못합니다.
+
+**관련 용어**: View, Privacy, Transaction
+
+### Super Validator (SV)
+
+Global Synchronizer의 decentralized infrastructure에서 node를 운영하는 entity입니다. Super Validator는 Sequencer/Mediator node를 실행하고 governance에 참여하며 새 Validator를 sponsor합니다.
+
+**관련 용어**: Global Synchronizer, DSO, Validator Node
+
+### Synchronizer
+
+Transaction의 순서를 정하고 Participant Node 간 consensus를 지원하는 coordination layer입니다. 하나 이상의 Sequencer와 Mediator로 구성되며 Transaction 내용을 저장하지 않습니다.
+
+**관련 용어**: Sequencer, Mediator, Global Synchronizer
+
+## T
+
+### Template
+
+Contract data, Signatory, Observer, Choice를 지정하는 Daml definition입니다. Contract는 Template의 instance입니다. Object-oriented programming의 class와 비슷합니다.
+
+**관련 용어**: Contract, Choice, Daml
+
+### TestNet
+
+MainNet 배포 전 최종 validation에 사용하는 Canton Network의 staging environment입니다. Faucet의 test Canton Coin을 사용합니다.
+
+**관련 용어**: DevNet, MainNet, LocalNet
+
+### Topology Transaction
+
+Party hosting relationship, key authorization, Synchronizer connection 등 network Topology를 수정하는 Transaction입니다. Admin API와 Canton Console을 통해 관리합니다.
+
+**관련 용어**: Namespace, Party, Admin API
+
+### Traffic
+
+Canton Network에서 Canton Coin으로 지불하는 Transaction fee를 가리키는 용어입니다. Traffic 비용은 Transaction size와 complexity에 따라 달라집니다.
+
+**관련 용어**: Canton Coin, Transaction
+
+### Transaction
+
+Create, archive, exercise 등 하나 이상의 action으로 구성된 ledger update입니다. Transaction은 atomic하여 모든 action이 성공하거나 모두 실패합니다.
+
+**관련 용어**: View, Sub-transaction Privacy
+
+### Transaction ID
+
+Ledger의 Transaction을 위한 unique identifier입니다. Tracking과 audit에 사용합니다.
+
+**관련 용어**: Transaction, Contract ID
+
+## U
+
+### Update
+
+Create, exercise, fetch 같은 ledger operation을 나타내는 Daml monad입니다. Daml Transaction logic의 핵심 구성 요소입니다.
+
+**관련 용어**: Daml, Transaction
+
+### User
+
+하나 이상의 Party에 mapping되는 authentication layer(JWT)의 identity입니다. User는 Ledger API에 authenticate하고 연결된 Party로 행동합니다.
+
+**관련 용어**: Party, JWT, Ledger API
+
+## V
+
+### Validator Node
+
+Party를 hosting하고 contract data를 저장하며 Transaction을 validate하고 Canton protocol에 참여하는 node입니다. Canton Network context에서는 "Participant Node"와 같은 의미로 사용합니다.
+
+**관련 용어**: Participant Node, Super Validator
+
+### Vetting
+
+Participant에서 Package 사용을 승인하는 절차입니다. 해당 Package의 contract를 생성하려면 먼저 Package를 vet해야 합니다. 배포 code에 대한 security control을 제공합니다.
+
+**관련 용어**: Package, DAR, Participant Node
+
+### View
+
+특정 Party 또는 Party 집합에 보이는 Transaction의 일부입니다. Sub-transaction privacy는 view를 통해 구현되며 각 Participant는 자신에게 권한이 있는 view만 받습니다.
+
+**관련 용어**: Sub-transaction Privacy, Transaction, Stakeholder
+
+## W
+
+### Wallet
+
+Canton Coin을 관리하고 Canton Network와 상호 작용하기 위한 user-facing application입니다. Splice project가 reference wallet implementation을 제공합니다.
+
+**관련 용어**: Canton Coin, Splice, Wallet SDK
+
+### Wallet SDK
+
+Application에 wallet 기능을 통합하기 위한 SDK입니다. Balance query, transfer, user management를 위한 API를 제공합니다.
+
+**관련 용어**: Wallet, Splice, Ledger API

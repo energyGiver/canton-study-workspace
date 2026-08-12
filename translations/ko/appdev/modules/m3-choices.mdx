@@ -1,0 +1,172 @@
+---
+title: "Choice"
+description: "contract state를 변환하는 method인 choice로 Daml contract에 behavior를 추가하는 방법 학습하기"
+source_id: "SRC-7A10561336"
+source_path: "appdev/modules/m3-choices"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "82f5c0850409b596d851179fa667a137637f0a64d9c04233b285e2ac54248796"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m3-choices.md)을 사용하세요.
+</Warning>
+
+import DamlAppdevModulesM3ChoicesL104 from "/snippets/daml-docs/appdev_modules_m3-choices_L104.mdx";
+import DamlAppdevModulesM3ChoicesL115 from "/snippets/daml-docs/appdev_modules_m3-choices_L115.mdx";
+import DamlAppdevModulesM3ChoicesL201 from "/snippets/daml-docs/appdev_modules_m3-choices_L201.mdx";
+import DamlAppdevModulesM3ChoicesL24 from "/snippets/daml-docs/appdev_modules_m3-choices_L24.mdx";
+import DamlAppdevModulesM3ChoicesL69 from "/snippets/daml-docs/appdev_modules_m3-choices_L69.mdx";
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/tutorials/smart-contracts/choices.rst" hash="9b87bfb6" */}
+
+## 소개
+
+이전 section에서는 contract를 archive한 다음 update된 data로 다시 생성하여 contract의 data를 변경하는 방법을 살펴봤습니다. 그렇다면 다른 Party가 특정 변경을 수행할 수 있도록 허용하려면 어떻게 해야 할까요? 또는 contract data를 편리하게 변환하는 방법을 제공하려면 어떻게 해야 할까요?
+
+이 section에서는 *choice*를 사용해 단순한 data transformation을 정의하고 이러한 choice를 *exercise*할 권리를 다른 Party에 delegate하는 방법을 학습합니다.
+
+<Tip>
+`dpm new intro-choices --template daml-intro-choices`를 실행해 이 section의 code를 불러올 수 있습니다.
+</Tip>
+
+## Method로서의 Choice
+
+template을 class로, contract를 object로 생각한다면 method는 어디에 있을까요?
+
+contact owner가 telephone number를 변경할 수 있기를 원하는 `Contact` contract를 예로 들어 보겠습니다. [Contract Template](/appdev/modules/m3-contract-templates)에서 본 것처럼 contract를 수동으로 lookup하고 기존 contract를 archive한 다음 새 contract를 생성하도록 요구하는 대신 `Contact`에 편의 method를 제공할 수 있습니다.
+
+<DamlAppdevModulesM3ChoicesL24 />
+
+위 code는 `UpdateTelephone`이라는 *choice*를 정의합니다. choice는 contract template의 일부입니다. choice는 `Update`를 생성하는 permissioned function입니다. choice를 사용하면 authority를 이전할 수 있어 복잡한 Transaction을 구성할 수 있습니다.
+
+위 code snippet을 하나씩 살펴보겠습니다.
+
+- 첫 번째 line인 `choice UpdateTelephone`은 choice definition을 나타내며 `UpdateTelephone`은 choice name입니다. 이 line은 해당 choice를 정의하는 새 block을 시작합니다.
+
+- `: ContractId Contact`는 choice의 return type입니다.
+
+  이 choice는 현재 `Contact`를 archive하고 새 `Contact`를 생성합니다. 반환하는 값은 `ContractId Contact` 형태로 된 새 contract의 reference입니다.
+
+- 이어지는 `with` block은 record의 block입니다. template과 마찬가지로 내부적으로 `data UpdateTelephone = UpdateTelephone with`라는 새 record type이 선언됩니다.
+
+- `controller owner` line은 이 choice가 `owner`의 *control*을 받는다는 의미이며 `owner`만 이를 *exercise*할 수 있습니다.
+
+- `do`는 choice가 exercise될 때 수행할 action을 정의하는 block을 시작합니다. 이 경우 새 `Contact`가 생성됩니다.
+
+- 새 `Contact`는 `this with`를 사용해 생성됩니다. `this`는 template의 `where` block 안에서 사용할 수 있는 special value이며 현재 contract argument의 값을 가집니다.
+
+현재 `Contact`를 archive해야 한다고 명시적으로 말하는 부분은 없습니다. choice는 기본적으로 *consuming*이기 때문입니다. 즉 위 choice를 contract에서 exercise하면 해당 contract가 archive됩니다.
+
+`data`에서 언급했듯이 choice 안에서는 `createCmd` 대신 `create`를 사용합니다. `createCmd`는 ledger로 보낼 Command list를 구성하는 반면 `create`는 ledger가 직접 실행하는 더 유연한 `Update`를 구성합니다. `create`가 `ContractId Contact`가 아니라 `Update (ContractId Contact)`를 반환한다는 점을 눈치챘을 수도 있습니다. `do` block은 항상 마지막 statement의 값을 반환하므로 전체 `do` block은 `Update`를 반환하지만 choice의 return type에는 단순히 `ContractId Contact`만 표시됩니다. 이는 편의를 위한 것입니다. choice는 *항상* `Update`를 반환하므로 가독성을 위해 choice type declaration에서 생략됩니다.
+
+이제 script에서 새 choice를 exercise해 보겠습니다.
+
+<DamlAppdevModulesM3ChoicesL69 />
+
+`exercise` function을 사용해 choice를 exercise합니다. 이 function은 `ContractId a`와 type `c`의 값을 받으며 여기서 `c`는 template `a`의 choice입니다. `c`는 단순한 record이므로 이미 익숙한 `with` syntax로 choice parameter를 채울 수도 있습니다.
+
+`exerciseCmd`는 choice에 지정된 return type이 `r`인 `Commands r`을 반환하므로 새 `ContractId Contact`를 variable `newContactCid`에 저장할 수 있습니다. `createCmd`와 `create`처럼 `exerciseCmd`와 `exercise`도 있습니다. `cmd` suffix가 있는 version은 항상 client side에서 ledger의 Command list를 구성하는 데 사용됩니다. suffix가 없는 version은 choice 안에서 사용되며 server에서 직접 실행됩니다.
+
+이전 section에서 본 `createAndExerciseCmd`와 `createAndExercise`도 있습니다. 주어진 argument로 새 contract를 생성하고 즉시 그 contract의 choice를 exercise할 수 있습니다. consuming choice에서는 contract를 archive하므로 같은 Transaction 안에서 contract가 생성되고 archive됩니다.
+
+## Delegation으로서의 Choice
+
+지금까지 모든 contract에는 한 Party만 관여했습니다. 위 code에서 `party`가 `Party` field로 저장되었을 수 있으며 이는 그들이 ledger의 actor임을 시사하지만 contract를 보거나 어떤 방식으로든 변경할 수는 없었습니다. `Contact`가 저장된 당사자가 자신의 address와 telephone number를 update할 수 있는 것이 합리적입니다. 즉 `Contact`의 `owner`는 특정 종류의 data transformation을 수행할 권리를 `party`에 *delegate*할 수 있어야 합니다.
+
+아래에서는 `UpdateAddress` choice와 이에 맞게 확장한 script를 사용해 이 방식을 보여 줍니다.
+
+<DamlAppdevModulesM3ChoicesL104 />
+
+<DamlAppdevModulesM3ChoicesL115 />
+
+IDE에서 script view를 열면 Bob에게 `Contact`가 보이는 것을 확인할 수 있습니다. template에서 `party`가 `observer`로 지정되어 있고 이 경우 Bob이 `party`이기 때문입니다. *Observer*는 나중에 더 자세히 다루지만 간단히 말하면 contract의 모든 변경을 볼 수 있습니다.
+
+## Ledger Model의 Choice
+
+[Contract Template](/appdev/modules/m3-contract-templates#daml-ledger-basics)에서는 Daml ledger의 high-level structure를 학습했습니다. choice와 `exercise` function을 배우면 ledger와 Transaction의 구조를 이해하는 데 필요한 다음 핵심 요소를 갖추게 됩니다.
+
+*Transaction*은 *action*의 목록이며 action에는 `create`, `exercise`, `fetch` 세 종류가 있습니다.
+
+- `create` action은 주어진 argument로 새 contract를 생성하고 status를 *active*로 설정합니다.
+- `fetch` action은 contract가 존재하며 active인지 확인합니다.
+- `exercise` action은 contract의 choice를 exercise하여 *consequence*라는 Transaction, 즉 sub-action list를 생성합니다. exercise에는 `consuming`과 `nonconsuming`이라는 두 종류가 있습니다. `consuming`이 기본값이며 contract status를 *active*에서 *archived*로 변경합니다.
+
+각 action은 action이 root node이고 consequence가 child인 tree로 시각화할 수 있습니다. 모든 consequence에는 추가 consequence가 있을 수 있습니다. `fetch`와 `create`에는 consequence가 없으므로 항상 leaf node입니다. 위 script의 Transaction view에서 action과 consequence를 확인할 수 있습니다.
+
+``` none
+Transactions:
+  TX 0 1970-01-01T00:00:00Z (Contact:46:17)
+  #0:0
+  │   consumed by: #2:0
+  │   referenced by #2:0
+  │   disclosed to (since): 'Alice' (0), 'Bob' (0)
+  └─> 'Alice' creates Contact:Contact
+              with
+                owner = 'Alice'; party = 'Bob'; address = "1 Bobstreet"; telephone = "012 345 6789"
+
+  TX 1 1970-01-01T00:00:00Z
+    mustFailAt actAs: {'Bob'} readAs: {} (Contact:55:3)
+
+  TX 2 1970-01-01T00:00:00Z (Contact:59:20)
+  #2:0
+  │   disclosed to (since): 'Alice' (2), 'Bob' (2)
+  └─> 'Alice' exercises UpdateTelephone on #0:0 (Contact:Contact)
+              with
+                newTelephone = "098 7654 321"
+      children:
+      #2:1
+      │   consumed by: #3:0
+      │   referenced by #3:0
+      │   disclosed to (since): 'Alice' (2), 'Bob' (2)
+      └─> 'Alice' creates Contact:Contact
+                  with
+                    owner = 'Alice'; party = 'Bob'; address = "1 Bobstreet"; telephone = "098 7654 321"
+
+  TX 3 1970-01-01T00:00:00Z (Contact:69:20)
+  #3:0
+  │   disclosed to (since): 'Alice' (3), 'Bob' (3)
+  └─> 'Bob' exercises UpdateAddress on #2:1 (Contact:Contact)
+            with
+              newAddress = "1-10 Bobstreet"
+      children:
+      #3:1
+      │   disclosed to (since): 'Alice' (3), 'Bob' (3)
+      └─> 'Alice' creates Contact:Contact
+                  with
+                    owner = 'Alice';
+                    party = 'Bob';
+                    address = "1-10 Bobstreet";
+                    telephone = "098 7654 321"
+
+Active contracts:  #3:1
+
+Return value: {}
+```
+
+script의 네 `submit` statement에 대응하는 네 commit이 있습니다. 각 commit 안에는 실제로 `#commit_number:action_number` 형식의 ID를 가진 action이 있습니다. Contract ID는 해당 `create` action의 ID입니다.
+
+따라서 commit `#2`와 `#3`에는 ID가 `#2:0` 및 `#3:0`인 `exercise` action이 포함됩니다. update된 `Contact` contract의 `create` action인 `#2:1`과 `#3:1`은 indent되어 있고 `children:`이라는 line 아래에 있으므로 tree structure가 명확히 드러납니다.
+
+### Archive Choice
+
+archive action이 없다는 점을 눈치챘을 수도 있습니다. `archive cid`는 단순히 `exercise cid Archive`의 shorthand이고, `Archive`는 Signatory를 Controller로 삼아 모든 template에 암묵적으로 추가되는 choice이기 때문입니다.
+
+## 단순한 Cash Model
+
+choice를 활용하면 첫 번째 흥미로운 model인 cash IOU, 즉 차용증 발행을 구축할 수 있습니다. 여기에서 제시하는 model은 physical cash의 위치가 아니라 liability만 다루므로 [Language Fundamentals](/appdev/modules/m3-language-fundamentals)의 model보다 단순합니다.
+
+<DamlAppdevModulesM3ChoicesL201 />
+
+모든 사람이 Dora를 신뢰하는 한 위 model에는 문제가 없습니다. Dora는 언제든 `SimpleIou`를 archive하여 revoke할 수 있습니다. 하지만 모든 Transaction의 provenance가 ledger에 남기 때문에 owner는 Dora가 부정직하게 debt를 취소했다는 사실을 *증명*할 수 있습니다.
+
+## 다음 단계
+
+이제 ledger에서 data를 저장하고 변환하며 choice를 통해 다른 Party에게 특정 write access를 부여할 수도 있습니다.
+
+[Authorization Model](/appdev/modules/m3-authorization)에서는 누가 contract를 create, exercise, archive할 수 있는지를 정하는 authorization rule을 더 자세히 학습합니다.
+
+{/* COPIED_END */}

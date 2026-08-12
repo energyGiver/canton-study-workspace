@@ -1,0 +1,181 @@
+---
+title: "User를 위한 Wallet"
+description: "Canton Network wallet을 찾고 사용하는 방법"
+source_id: "SRC-6767BDF8F5"
+source_path: "integrations/wallets/for-users"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "546a1a84a80a382a22e0935408c5271b195dbc476b06fb19e2d3522c1ee4bbc4"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/wallets/for-users.md)을 사용하세요.
+</Warning>
+
+Wallet은 Canton Network로 들어가는 gateway입니다. Wallet을 통해 Canton Coin을 관리하고 application과 상호작용하며 activity를 추적할 수 있습니다.
+
+## Canton Wallet이란 무엇인가?
+
+Canton wallet은 다음 기능을 제공합니다.
+
+| Function | Description |
+|----------|-------------|
+| **Canton Coin 보유** | CC balance 저장 및 관리 |
+| **다른 token 보유** | [CIP-0056](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md) 호환 token 보유, 지원 범위는 wallet마다 다름 |
+| **Value transfer** | 다른 Party로 CC 전송 |
+| **App과 상호작용** | Canton Network application에 연결 |
+| **Activity 확인** | Transaction history 확인 |
+
+## Wallet 찾기
+
+### Splice Wallet, Reference Implementation
+
+Splice project는 reference wallet implementation을 제공합니다.
+
+- **Type**: Web-based wallet
+- **Access**: Validator 또는 application interface를 통해 접근
+- **Features**: 핵심 wallet 기능
+
+<Note>
+Splice reference wallet은 아직 [CIP-0056](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md)을 준수하지 않습니다. Token Standard 지원은 향후 release에 계획되어 있습니다.
+</Note>
+
+### Validator가 제공하는 Wallet
+
+일부 Validator는 service의 일부로 wallet interface를 제공합니다. 자신의 Validator 또는 application provider에 확인하세요.
+
+### Application에 통합된 Wallet
+
+많은 Canton application은 다음과 같은 wallet 기능을 포함합니다.
+
+- Application interface에 내장
+- App 내부의 끊김 없는 사용자 경험
+- Application별 특화 기능 포함 가능
+
+## Wallet 기본 사항
+
+### 자신의 Balance
+
+Wallet은 Canton Coin balance를 표시합니다. Wallet에 따라 [CIP-0056](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md) Token Standard를 따르는 다른 token도 표시할 수 있으므로 지원 asset은 해당 wallet에서 확인하세요. 다른 cryptocurrency와 달리 다음 특성이 있습니다.
+
+- 자신의 balance는 자신만 확인할 수 있습니다.
+- 다른 주체는 자신의 holding을 query할 수 없습니다.
+- 자신의 transaction은 private입니다.
+
+### Transfers
+
+다른 Party로 CC를 보내려면 다음 단계를 수행합니다.
+
+1. Recipient의 Party identifier를 입력합니다.
+2. Amount를 지정합니다.
+3. Transfer를 확인합니다.
+4. Transaction이 완료됩니다. 일반적으로 수 초 이내입니다.
+
+### Transaction History
+
+다음과 같은 과거 transaction을 확인할 수 있습니다.
+
+- 전송하거나 받은 transfer
+- 지불한 traffic fee
+- Application interaction
+
+<Note>
+자신이 participant였던 transaction만 확인할 수 있습니다. 모든 transaction을 공개하는 public ledger는 없습니다.
+</Note>
+
+## Security
+
+### Wallet 보호
+
+| Practice | Description |
+|----------|-------------|
+| **Secure access** | 강력한 authentication 사용 |
+| **Party 확인** | 전송 전에 recipient identifier 확인 |
+| **신뢰할 수 있는 Validator** | 평판이 좋은 출처의 wallet 사용 |
+
+### Trust Model 이해
+
+Wallet은 다음 역할을 수행하는 Validator에 연결됩니다.
+
+- 자신의 Party hosting
+- 자신의 contract data 저장
+- 자신의 transaction 처리
+
+Validator는 자신의 operation을 볼 수 있으므로 신중하게 선택해야 합니다.
+
+## 다른 Crypto Wallet과의 차이
+
+| Aspect | Traditional Crypto | Canton |
+|--------|-------------------|--------|
+| **Balance visibility** | Public | Private |
+| **Transaction history** | Public | Private |
+| **Address format** | Hex address | Party identifier |
+| **Network explorer** | 모든 transaction 표시 | 자신의 transaction만 표시 |
+
+## 시작하기
+
+### DevNet/TestNet
+
+1. Validator 또는 application을 통해 wallet interface에 접근합니다.
+2. Party를 생성하거나 import합니다.
+3. Faucet인 "tap"을 사용하여 test CC를 받습니다.
+4. Transaction을 시작합니다.
+
+### MainNet
+
+1. Validator 또는 application을 통해 wallet에 연결합니다.
+2. 다음 방법으로 CC를 확보합니다.
+   - Exchange purchase
+   - 다른 Party의 transfer
+   - Network activity reward
+
+## 일반적인 작업
+
+### Balance 확인
+
+Wallet interface를 열어 현재 CC balance를 확인합니다.
+
+### CC 보내기
+
+1. "Send" 또는 "Transfer"로 이동합니다.
+2. Recipient Party를 입력합니다.
+3. Amount를 입력합니다.
+4. 내용을 검토하고 확인합니다.
+
+### CC 받기
+
+1. Sender에게 자신의 Party identifier를 공유합니다.
+2. Confirmation 후 CC가 balance에 표시됩니다.
+
+### Traffic Top-Up
+
+Traffic이 필요한 application을 운영한다면 다음 단계를 수행합니다.
+
+1. Traffic management로 이동합니다.
+2. Top-up을 시작합니다.
+3. CC가 Traffic Credit으로 변환됩니다.
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Balance가 0으로 표시됨 | Wallet이 올바른 Validator에 연결됐는지 확인 |
+| Transfer 실패 | Recipient Party format과 충분한 balance 확인 |
+| Confirmation 지연 | Network가 혼잡할 수 있으므로 잠시 대기 |
+| 연결할 수 없음 | Network connectivity와 Validator status 확인 |
+
+## 다음 단계
+
+<CardGroup cols={2}>
+
+<Card title="Canton Wallet의 차이" icon="code-compare" href="/integrations/wallets/canton-vs-web3">
+  기술적인 차이를 이해합니다.
+</Card>
+
+<Card title="App 찾기" icon="grid-2" href="/integrations/apps/finding-apps">
+  Canton Network application을 살펴봅니다.
+</Card>
+
+</CardGroup>

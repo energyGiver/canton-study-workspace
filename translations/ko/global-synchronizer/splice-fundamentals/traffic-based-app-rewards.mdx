@@ -1,0 +1,99 @@
+---
+title: "Traffic 기반 App Reward"
+description: "CIP-0104에 따라 Network traffic에서 app reward를 계산하는 방식"
+source_id: "SRC-66FC36138B"
+source_path: "global-synchronizer/splice-fundamentals/traffic-based-app-rewards"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "77e82d7187f885fb9232641ea009403c7b4972515ffbe16e4a63ec505aa3b616"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/splice-fundamentals/traffic-based-app-rewards.md)을 사용하세요.
+</Warning>
+
+## 개요
+
+[CIP-0104](https://github.com/global-synchronizer-foundation/cips/blob/main/cip-0104/cip-0104.md)는 on-ledger `Splice.Amulet.FeaturedAppActivityMarker` mechanism을 실제 Network traffic에 기반한 off-ledger reward 계산으로 대체하는 traffic 기반 app reward를 도입합니다. 이를 통해 featured app provider의 reward를 더 정확하고 확장 가능한 방식으로 회계 처리할 수 있습니다.
+
+## Traffic 기반 Reward를 사용하는 이유
+
+이전 reward mechanism은 Transaction 중 on-ledger에서 생성되는 `Splice.Amulet.FeaturedAppActivityMarker` contract에 의존했습니다. 이 접근 방식에는 여러 한계가 있었습니다.
+
+- **실제 비용과의 불일치**: Activity marker는 application이 burn한 traffic과 직접 연관되지 않아 claim된 Network usage와 실제 usage 사이에 차이가 발생했습니다.
+- **Governance 부담**: Activity marker를 평가하고 govern하는 작업은 복잡하고 시간이 많이 들어 governance 결정을 centralized 방식으로 처리하려는 압력을 만들었습니다.
+- **Performance 영향**: Marker 생성은 모든 Transaction에 DSO Party를 포함하므로 Transaction size가 커지고 경제적으로 유용한 activity에 사용할 수 있는 throughput이 줄었습니다.
+
+Traffic 기반 reward는 Sequencer의 실제 traffic 비용을 측정하여 이러한 문제를 해결합니다. Application 간에 공정한 조건을 만들고, app builder가 올바른 위치에 marker를 생성할 필요를 없애며, activity 기록에서 Transaction별 DSO Party 참여를 제거해 Network throughput을 개선합니다.
+
+## Featured App Activity Marker와 비교
+
+| 측면 | Activity Marker(CIP-0104 이전) | Traffic 기반(CIP-0104) |
+|--------|--------------------------------|--------------------------|
+| Reward trigger | 동일한 Transaction에서 `Splice.Amulet.FeaturedAppActivityMarker` 생성 | Sequencer가 traffic 비용 측정 |
+| Reward contract | `Splice.Amulet.AppRewardCoupon` | `Splice.Amulet.RewardCouponV2` |
+| Timing | 즉시(동일 Transaction) | Round 종료 후 계산 |
+| 계산 | Transaction별 on-ledger | Round별 off-ledger, batch 처리 |
+| Expiry | Round 기반 | 시간 기반(기본값 36시간, `rewardCouponTimeToLive`로 구성) |
+| 확장성 | Transaction당 contract 하나 | Party 및 round당 contract 하나 |
+| Reward 공유 | Provider가 beneficiary용 marker 생성 가능 | Provider가 minting 전에 [beneficiary 할당](/global-synchronizer/splice-fundamentals/reward-sharing) 가능 |
+
+## Splice.Amulet.RewardCouponV2
+
+`Splice.Amulet.RewardCouponV2` contract는 특정 Party 및 round의 traffic 기반 app reward를 나타냅니다. 다음과 같은 측면에서 `Splice.Amulet.AppRewardCoupon`과 다릅니다.
+
+- **시간 기반 expiry**: Coupon은 round lifecycle에 연결되는 대신 구성 가능한 TTL(`rewardCouponTimeToLive`) 후 expire됩니다. 따라서 beneficiary가 traffic 비용을 절약하기 위해 minting을 batch 처리할 수 있습니다.
+- **Party 및 round당 하나**: Transaction당 coupon 하나가 아니라 eligible Party 및 round당 coupon 하나가 생성됩니다.
+- **Beneficiary 할당**: Coupon은 [reward 공유](/global-synchronizer/splice-fundamentals/reward-sharing)를 위한 선택적 `beneficiary` field를 지원합니다. Provider는 minting 전에 reward를 공유할 beneficiary를 할당할 수 있습니다.
+
+### Field
+
+| Field | Type | 설명 |
+|-------|------|-------------|
+| `dso` | `Party` | DSO Party |
+| `provider` | `Party` | App activity로 reward를 획득한 Party |
+| `round` | `Round` | Provider activity가 기록된 round |
+| `amount` | `Decimal` | Amulet 단위로 표시된 이 coupon의 minting allowance |
+| `expiresAt` | `Time` | Coupon이 expire되어 더 이상 mint할 수 없는 시점 |
+| `beneficiary` | `Optional Party` | Reward를 mint할 수 있는 Party. 설정하지 않으면 provider가 기본값임 |
+
+### Minting
+
+`Splice.Amulet.RewardCouponV2` coupon은 두 가지 방식으로 mint할 수 있습니다.
+
+1. Validator app에 포함된 Splice Wallet backend를 통한 **자동 minting**. Onboarding된 Internal Party와 active [Minting Delegation](/global-synchronizer/splice-fundamentals/rewards-minting)이 있는 External Party에 적용됩니다.
+
+2. Coupon을 transfer input으로 사용하는 `AmuletRules_Transfer` 호출을 구성하는 **직접 minting**. Ledger API에 직접 호출하거나 Validator Node에 deploy된 custom Daml code를 통해 간접적으로 호출할 수 있습니다.
+
+## 동작 방식
+
+Reward 계산은 각 SV Node의 두 component로 나뉩니다.
+
+1. **Scan app**은 Sequencer에서 traffic summary를 Mediator verdict와 함께 수집합니다. 각 Transaction에 대해 Party별 app activity weight를 계산합니다. 이는 특정 round에서 Party가 featured app provider였던 모든 Transaction의 traffic 비용 합계입니다. Round가 종료되면 Scan app은 activity weight를 Party별 reward total로 aggregate하고, `RewardConfig`에 정의된 minting allowance threshold를 적용한 다음, 해당 round의 app reward minting allowance에 대한 Merkle tree commitment를 구성합니다.
+
+2. **SV app**은 Scan이 계산한 data에 기반하여 `Splice.Amulet.RewardCouponV2` contract를 on-ledger에 생성합니다. `CalculateRewardsTrigger`는 Scan에서 Merkle tree root hash를 읽고 action-requiring-confirmation workflow를 통해 on-ledger에서 확인합니다. SV supermajority가 root hash에 합의하면 `Splice.Amulet.RewardAccountingV2.ProcessRewardsV2` contract가 생성됩니다. 그런 다음 `ProcessRewardsTrigger`가 Scan에서 batch를 읽어 tree를 확장하고 leaf node의 eligible Party별로 `Splice.Amulet.RewardCouponV2` contract를 생성합니다.
+
+## 활성화
+
+Traffic 기반 app reward는 Network `AmuletConfig`의 `rewardConfig` field로 control합니다. SV는 `rewardConfigMintingVersion`을 `RewardVersion_TrafficBasedAppRewards`로 설정하는 vote를 통해 기능을 활성화합니다. 전환 전 검증을 위한 dry-run mode도 제공됩니다. Governance 절차는 [SV 운영](/global-synchronizer/deployment/sv-operations#enabling-traffic-based-app-rewards)을 참조하세요.
+
+## RewardConfig
+
+`Splice.AmuletConfig`에 정의된 on-ledger `RewardConfig` type은 traffic 기반 reward mechanism을 control합니다. SV는 governance vote를 통해 다음 field를 구성합니다.
+
+| Field | Type | 설명 | 기본값 |
+|-------|------|-------------|---------|
+| `mintingVersion` | `RewardVersion` | Minting에 사용할 reward scheme입니다. Traffic 기반 reward를 활성화하려면 `RewardVersion_TrafficBasedAppRewards`로 설정합니다. | `RewardVersion_FeaturedAppMarkers` |
+| `dryRunVersion` | `Optional RewardVersion` | Minting 없이 병렬로 dry-run할 reward scheme입니다. `None`이면 dry-run이 비활성화됩니다. | `None` |
+| `batchSize` | `Int` | Minting allowance의 Merkle tree를 구성하는 batch size입니다. | 100 |
+| `rewardCouponTimeToLive` | `RelTime` | `RewardCouponV2` coupon의 TTL입니다. 24시간 prepare-submission delay와 함께 12시간 동안 collection을 batch 처리할 수 있습니다. | 36시간 |
+| `appRewardCouponThreshold` | `Decimal` | 특정 round에 Party의 coupon을 생성하지 않는 최소 reward amount(USD)입니다. Daml에서 enforce하지 않고 Merkle tree를 구성할 때 적용합니다. | 0.5 USD |
+
+## 추가 자료
+
+- [CIP-0104 specification](https://github.com/global-synchronizer-foundation/cips/blob/main/cip-0104/cip-0104.md)
+- [Reward 공유](/global-synchronizer/splice-fundamentals/reward-sharing) — Beneficiary와 reward 공유
+- [Minting Delegation](/global-synchronizer/splice-fundamentals/rewards-minting) — External Party의 minting authority 위임
+- [App Reward](/appdev/app-rewards) — Featured app status를 포함한 app reward system 개요

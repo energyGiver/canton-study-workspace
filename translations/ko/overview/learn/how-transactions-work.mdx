@@ -1,0 +1,85 @@
+---
+title: "Transaction 작동 방식"
+description: "Canton의 4단계 Transaction lifecycle"
+source_id: "SRC-822F828D78"
+source_path: "overview/learn/how-transactions-work"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "04d46414c7813d58aa7aa256d9c6565d5d24da21df0ab60d37fc427e3058e557"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/overview/learn/how-transactions-work.md)을 사용하세요.
+</Warning>
+
+Canton의 모든 Transaction은 제출, ordering과 배포, validation과 confirmation, commit이라는 4단계 lifecycle을 따릅니다. 이 flow를 이해하면 모든 Validator가 모든 Transaction을 보지 않고도 Canton이 privacy와 integrity를 함께 제공할 수 있는 이유를 알 수 있습니다.
+
+## 4단계
+
+### 1단계: 제출
+
+Application은 Ledger API를 통해 자신의 Validator에 **Command**를 보냅니다. Command는 "이 contract를 생성하라" 또는 "저 contract에서 이 Choice를 exercise하라"와 같이 실행할 작업을 설명합니다. Validator는 Daml code를 local에서 해석하고 smart contract logic을 실행하여 **Transaction tree**를 만듭니다. Transaction tree는 Command에서 발생하는 contract create, archive, sub-transaction의 전체 집합입니다.
+
+그런 다음 제출 Validator는 Transaction tree를 **view**로 암호화합니다. 각 view에는 특정 Stakeholder 집합과 관련된 Transaction 부분만 담깁니다. 암호화된 view는 Synchronizer로 전송됩니다.
+
+이 시점에 전체 Transaction을 본 주체는 제출 Validator뿐입니다. 다른 Party나 infrastructure component는 plaintext에 접근할 수 없습니다.
+
+### 2단계: Ordering과 배포
+
+Synchronizer의 **Sequencer**는 암호화된 view를 받아 global timestamp를 할당하고, 관련 Party를 hosting하는 Validator에 각 view를 전달합니다. Sequencer는 total ordering을 보장합니다. 모든 Validator가 message를 같은 순서로 받으므로 충돌하는 Transaction이 일관되지 않게 처리되는 일을 방지합니다.
+
+Sequencer와 나머지 Synchronizer infrastructure는 암호화된 data만 봅니다. Routing information을 바탕으로 어떤 Validator가 어떤 message를 받아야 하는지는 알지만 Transaction 내용은 읽을 수 없습니다.
+
+각 Validator는 자신에게 필요한 view만 받습니다. 특정 sub-transaction에 관여한 Party를 전혀 hosting하지 않는 Validator는 그 sub-transaction에 관한 정보를 아무것도 받지 않습니다.
+
+### 3단계: Validate와 Confirm
+
+View를 받은 각 Validator는 view를 decrypt하고 다음 validation을 수행합니다.
+
+- 해당 Validator가 맡은 Transaction 부분의 **Daml logic을 다시 실행**하여 결과가 제출 Validator의 주장과 일치하는지 확인합니다
+- **Authorization 확인**: 필요한 Signatory가 참여했는가? Exercise하는 Party에게 이 Choice를 exercise할 권한이 있는가?
+- **Contract status 확인**: 소비되는 contract가 여전히 active한가?
+
+Validation을 통과하면 Validator는 Synchronizer의 **Mediator**에 **confirmation**을 보냅니다. Validation이 실패하면, 예를 들어 동시 Transaction으로 contract가 이미 archive되었다면 Validator는 rejection을 보냅니다.
+
+Validator는 오직 자신의 view만을 바탕으로 confirm 또는 reject합니다. 자신의 부분을 검증하기 위해 전체 Transaction을 볼 필요가 없습니다.
+
+### 4단계: Commit
+
+Mediator는 view를 받은 모든 Validator의 confirmation을 수집합니다. 충분한 positive confirmation을 받으면, 필요한 threshold는 관여한 Stakeholder에 따라 달라지며, Transaction을 **committed**로 선언하고 Sequencer를 통해 모든 참여 Validator에 결과를 보냅니다.
+
+그런 다음 각 Validator는 새 contract 생성, 소비된 contract archive, history에 Transaction 기록 등의 변경을 자신의 local ledger에 적용합니다. 최초 Command를 제출한 application은 Ledger API를 통해 completion notification을 받습니다.
+
+필수 Validator 중 하나라도 rejection을 보내면 Transaction은 **rejected**가 됩니다. State 변경은 적용되지 않으며 제출 application은 error를 받습니다.
+
+## 이 설계가 중요한 이유
+
+이 4단계 flow가 Canton을 전통적인 blockchain과 구별합니다.
+
+**희생 없는 privacy.** Synchronizer는 암호화된 data만 처리하고 Validator는 자신의 view만 보기 때문에 어느 단일 Party도 모든 Transaction을 전역적으로 볼 수 없습니다. Privacy는 application layer access control이 아니라 protocol로 강제됩니다.
+
+**Global replication 없는 integrity.** 각 Validator는 자신의 Transaction 부분을 독립적으로 검증합니다. Mediator는 이렇게 독립적으로 수행된 확인 결과를 집계합니다. 그 결과 모든 주체가 모든 것을 검증하는 system과 동일한 integrity 보장을 data 공개 없이 제공합니다.
+
+**Horizontal scaling.** Validator는 hosting하는 Party가 관여한 Transaction만 처리하므로 network에 더 많은 Validator를 추가해도 기존 Validator의 validation 부하는 증가하지 않습니다. 각 Validator의 작업량은 network 전체 Transaction volume이 아니라 자체 Transaction volume에 따라 증가합니다.
+
+## 구체적인 예제
+
+Alice(Validator A)가 Bob(Validator B)에게 asset을 transfer합니다.
+
+1. **제출**: Alice의 application이 Validator A에 `Transfer` Command를 보냅니다. Validator A는 Daml logic을 실행하여 Alice의 asset contract를 archive하고 Bob을 owner로 하는 새 contract를 생성하는 Transaction을 만듭니다. Validator A는 자신을 위한 view(archive)와 Validator B를 위한 view(create), 총 두 개의 view를 암호화합니다.
+
+2. **Ordering과 배포**: Sequencer가 view에 timestamp를 부여하고 Alice의 view는 Validator A에, Bob의 view는 Validator B에 전달합니다. 다른 Validator는 아무것도 받지 않습니다.
+
+3. **Validate와 Confirm**: Validator A는 Alice가 transfer를 authorize했고 asset contract가 여전히 active인지 확인합니다. Validator B는 새 contract가 올바른 형식이며 Bob이 유효한 Stakeholder인지 확인합니다. 둘 다 Mediator에 confirmation을 보냅니다.
+
+4. **Commit**: Mediator는 두 confirmation을 확인하고 Transaction을 committed로 선언한 후 두 Validator에 알립니다. Validator A는 기존 contract를 archive하고 Validator B는 새 contract를 저장합니다. Alice의 application은 성공 response를 받습니다.
+
+이 과정 전체에서 Synchronizer는 asset detail, transfer amount는 물론 암호화된 routing information에 드러난 범위를 넘어 Alice와 Bob이 관여한 Party라는 사실조차 보지 못합니다.
+
+## 추가 자료
+
+- [Architecture 개요](/overview/learn/architecture): Validator, Synchronizer, application의 결합 방식
+- [Privacy Model 설명](/overview/learn/privacy-model): Sub-transaction privacy와 view decomposition에 관한 상세 설명
+- [Two-Layer Consensus](/overview/learn/two-layer-consensus): Consensus protocol의 자세한 기술 설명

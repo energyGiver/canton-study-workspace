@@ -1,0 +1,229 @@
+---
+title: "Network 및 identity provider"
+description: "Wallet Gateway를 Canton Validator에 연결하고 user authentication 방식을 구성합니다."
+source_id: "SRC-960EADC7C1"
+source_path: "integrations/wallet-gateway/operate/networks-and-identity"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "732298c69922d343a7cde2d9f70ab87e190472a5d045a5baf9fb9675cc41afab"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/wallet-gateway/operate/networks-and-identity.md)을 사용하세요.
+</Warning>
+
+Wallet Gateway는 user를 하나 이상의 **Network**에 연결합니다. 각 Network는 Canton Validator의 Ledger API를 가리키며, 해당 Validator에 대한 authentication에 사용하는 JWT를 발급하는 **identity provider**(IDP)를 reference합니다. 이 가이드에서는 두 항목과 Network가 사용할 수 있는 authentication method를 설명합니다.
+
+Network 및 IDP는 최초 실행 시 `bootstrap` section에서 seed됩니다. 이후에는 admin user([Wallet Gateway 구성](/integrations/wallet-gateway/operate/configure)의 `server.admin` 참조)가 User API 또는 User UI를 통해 runtime에 관리할 수 있습니다.
+
+## Identity provider
+
+모든 Network는 `id`로 IDP를 reference합니다. Wallet Gateway는 두 가지 IDP type을 지원합니다.
+
+<Warning>
+Production에는 **OAuth** IDP를 사용하세요. Self-signed token은 development 및 test 전용입니다.
+</Warning>
+
+### OAuth / OpenID Connect
+
+External OAuth 2.0 / OpenID Connect provider와 통합하여 token을 얻습니다.
+
+- `id`(필수): Network가 reference하는 `identityProviderId`와 일치해야 합니다.
+- `type`(필수): `"oauth"`.
+- `issuer`(필수): Provider configuration과 일치하는 `iss` claim value입니다.
+- `configUrl`(필수): OpenID Connect discovery endpoint이며 일반적으로 `${OAuthServerURL}/.well-known/openid-configuration`입니다.
+
+```json
+{
+    "bootstrap": {
+        "idps": [
+            {
+                "id": "idp-production",
+                "type": "oauth",
+                "issuer": "https://auth.example.com",
+                "configUrl": "https://auth.example.com/.well-known/openid-configuration"
+            }
+        ]
+    }
+}
+```
+
+### Self-signed
+
+Secret을 사용하여 local에서 JWT를 생성합니다. Development에는 편리하지만 production에는 적합하지 않습니다.
+
+- `id`(필수): Network가 reference하는 `identityProviderId`와 일치해야 합니다.
+- `type`(필수): `"self_signed"`.
+- `issuer`(필수): Validator가 예상하는 값과 일치하는 `iss` claim value입니다.
+
+```json
+{
+    "bootstrap": {
+        "idps": [
+            {
+                "id": "idp-self-signed",
+                "type": "self_signed",
+                "issuer": "self-signed"
+            }
+        ]
+    }
+}
+```
+### Identity provider 관리
+
+이 가이드는 administrator access 권한이 있는 Party만을 대상으로 합니다.
+
+1. 오른쪽 위 hamburger icon을 선택하고 **Identity Provider**를 클릭합니다.
+2. 사용 가능한 identity provider 목록을 검토합니다.
+3. **추가**: **+ New**를 클릭하여 새 identity provider를 추가합니다.
+4. **편집**: Identity provider card를 클릭하여 변경하거나 영구적으로 삭제합니다.
+
+
+## Network
+
+Network는 user가 Wallet Gateway를 통해 접근할 수 있는 Canton Validator를 나타냅니다. `networks`는 array이므로 하나의 Wallet Gateway에 여러 개를 구성할 수 있습니다.
+
+- `id`(필수): [CAIP-2](https://github.com/ChainAgnostic/CAIPs/blob/main/CAIPs/caip-2.md) 형식의 고유 identifier입니다. 예: `"canton:localnet"`.
+- `name`(필수): UI에 표시되는 user-friendly name입니다.
+- `description`(선택): User에게 표시되는 설명입니다.
+- `synchronizerId`(필수): Validator에서 사용하는 Synchronizer ID입니다. Synchronizer가 여러 개라면 Synchronizer별로 별도의 Network를 구성합니다.
+- `identityProviderId`(필수): 구성된 IDP의 `id`와 일치해야 합니다.
+- `ledgerApi.baseUrl`(필수): Validator Ledger API의 base URL입니다.
+- `auth`(필수): 일반 Ledger operation을 위한 authentication입니다. User가 UI에서 진행하는 method입니다.
+- `adminAuth`(선택): Admin operation을 위한 authentication이며 backend에서만 사용합니다.
+
+```json
+{
+    "bootstrap": {
+        "networks": [
+            {
+                "id": "canton:localnet",
+                "name": "Local Network",
+                "description": "Local development network",
+                "synchronizerId": "local",
+                "identityProviderId": "idp-self-signed",
+                "auth": {
+                    "method": "self_signed",
+                    "issuer": "self-signed",
+                    "audience": "https://canton.network.global",
+                    "scope": "openid daml_ledger_api offline_access",
+                    "clientId": "ledger-api-user",
+                    "clientSecret": "unsafe"
+                },
+                "ledgerApi": {
+                    "baseUrl": "http://localhost:2975"
+                }
+            }
+        ]
+    }
+}
+```
+
+## Authentication method
+
+Network의 `auth` 및 선택 사항인 `adminAuth`는 세 가지 method 중 하나를 사용합니다.
+
+| Method | 용도 | 참고 사항 |
+| --- | --- | --- |
+| `authorization_code` | Interactive user-facing flow | User가 browser에서 authorization을 부여합니다. |
+| `client_credentials` | Machine-to-machine(production) | `adminAuth` 및 server deployment에 권장됩니다. |
+| `self_signed` | Development 및 test | Wallet Gateway가 local에서 token을 signing합니다. |
+
+### authorization_code
+
+```json
+{
+    "auth": {
+        "method": "authorization_code",
+        "audience": "https://canton.network.global",
+        "scope": "openid daml_ledger_api offline_access",
+        "clientId": "my-client-id"
+    }
+}
+```
+
+### client_credentials
+
+```json
+{
+    "auth": {
+        "method": "client_credentials",
+        "audience": "https://canton.network.global",
+        "scope": "openid daml_ledger_api offline_access",
+        "clientId": "my-service-client",
+        "clientSecret": "my-secure-secret"
+    }
+}
+```
+
+### self_signed
+
+```json
+{
+    "auth": {
+        "method": "self_signed",
+        "issuer": "self-signed",
+        "audience": "https://canton.network.global",
+        "scope": "openid daml_ledger_api offline_access",
+        "clientId": "ledger-api-user",
+        "clientSecret": "unsafe-secret-for-development"
+    }
+}
+```
+
+<Warning>
+`clientSecret` 및 `adminAuth` credential은 민감합니다. Version control에 포함하지 말고 environment variable 또는 secret manager를 통해 제공하세요. [Configuration reference](/integrations/wallet-gateway/reference/configuration-reference#secrets-and-environments)를 참조하세요.
+</Warning>
+
+### `auth`와 `adminAuth` 비교
+
+각 Network는 두 개의 독립적인 OAuth configuration을 정의합니다.
+
+| | `auth` | `adminAuth` |
+| --- | --- | --- |
+| 일반적인 method | `authorization_code` | `client_credentials` |
+| 사용 주체 | User UI에 로그인하는 end user, 일반 운영의 Ledger read/write | Background job: 최초 로그인 시 자동 wallet sync, Party allocation |
+| Client ID | User-facing OAuth client | Service account / M2M client(일반적으로 별도) |
+| Validator와 일치해야 하는 항목 | `audience` 및 scope가 Ledger의 예상 값과 일치해야 함 | 동일 |
+
+**`clientId`가 같아도 됩니까?** 예. 하나의 OAuth client가 적절한 scope로 authorization-code 및 client-credentials flow를 모두 지원한다면 가능합니다. 많은 deployment가 `auth`에 전용 client를 사용하고 이를 재사용하거나 별도의 `adminAuth` client를 사용합니다. 어느 방식도 유효합니다.
+
+**`auth.clientId`에 wallet 또는 Party가 필요합니까?** 아니요. Client는 이미 Ledger right를 가진 user 또는 IDP를 통해 Ledger right를 받게 될 user의 token만 얻을 수 있으면 됩니다.
+
+**`adminAuth`는 언제 필요합니까?** User가 로그인했는데 Wallet Gateway에 저장된 wallet이 없을 때 자동 wallet sync에 필요합니다. 유효한 `adminAuth`가 없으면 `addSession`이 HTTP 500으로 실패할 수 있습니다. Wallet을 수동으로만 생성하고 sync에 의존하지 않더라도 일부 flow가 admin API를 호출할 수 있으므로, deployment에 필요하지 않다는 사실을 알고 있는 경우가 아니라면 `adminAuth`를 구성하세요.
+
+`adminAuth` secret은 config file의 plain text 대신 `clientSecretEnv` 및 Kubernetes secret(Helm `oauthSecrets`)을 통해 저장하세요.
+
+### Service account automation(`serviceAccountAuth`)
+
+Backend job이 API key로 Transaction을 제출하도록 하려면 Network에 `serviceAccountAuth` block(machine-to-machine `client_credentials`)을 추가합니다. Wallet Gateway는 API key request가 도착하면 이를 사용하여 Ledger token을 얻으므로, `prepareExecute` 호출이 prepare, sign, execute를 연속으로 수행합니다. End user는 계속 Network의 일반 `auth`로 로그인합니다.
+
+```json
+{
+    "serviceAccountAuth": {
+        "method": "client_credentials",
+        "clientId": "wallet-gateway-automation",
+        "clientSecretEnv": "WG_SERVICE_ACCOUNT_CLIENT_SECRET",
+        "audience": "https://canton.network.global",
+        "scope": "openid daml_ledger_api offline_access"
+    }
+}
+```
+
+전체 설정은 [Service account automation](/integrations/wallet-gateway/automation/service-account-automations)을 참조하세요.
+
+### Network 관리
+
+이 가이드는 administrator access 권한이 있는 Party만을 대상으로 합니다.
+
+1. 오른쪽 위 hamburger icon을 선택하고 **Network**를 선택합니다.
+2. 사용 가능한 Network 목록을 검토합니다.
+3. **추가**: **+ New**를 클릭하여 새 Network를 추가합니다.
+4. **편집**: Network card를 클릭하여 변경하거나 영구적으로 삭제합니다.
+5. 연결된 Network는 popup 위쪽의 녹색 점과 `[network name]`으로 확인하거나 Network 목록의 녹색 `Connected` tag로 확인할 수 있습니다.
+
+## Runtime 관리
+
+Wallet Gateway가 실행된 후 admin user는 restart하지 않고 User API(`addNetwork`, `removeNetwork`, `addIdp`, `removeIdp`, `listNetworks`, `listIdps`) 또는 User UI의 **Settings** 페이지를 사용하여 Network 및 IDP를 추가, 편집 및 제거할 수 있습니다. Runtime 변경 사항은 database에 저장되므로 손실을 방지하려면 backup하세요. [User API](/integrations/wallet-gateway/reference/user-api) 및 [Party 관리](/integrations/wallet-gateway/use/party-management)를 참조하세요.

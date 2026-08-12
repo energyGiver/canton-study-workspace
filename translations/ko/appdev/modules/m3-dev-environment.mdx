@@ -1,0 +1,47 @@
+---
+title: "Development Environment 설정"
+description: "Daml smart contract 작성을 위한 development environment 설정하기"
+source_id: "SRC-4C5EBDA313"
+source_path: "appdev/modules/m3-dev-environment"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "e5dd33d836a60827534f5de842006fe5f18dc357c82c2751e68bdd38209971b0"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m3-dev-environment.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/tutorials/smart-contracts/intro.rst" hash="0f1592f4" */}
+
+## 소개
+
+Daml은 Canton ledger에서 composable application을 구축하도록 설계된 smart contract language입니다.
+
+이 module에서는 asset holding 및 trading application을 구축하면서 Daml ledger의 구조와 Canton Network에서 실행되는 Daml application을 작성하는 방법을 학습합니다. 가장 중요한 language feature의 개요를 살펴보고 Daml developer tool을 사용해 application을 작성, test, compile, package, 배포하는 방법을 익힙니다.
+
+## 사전 요구 사항
+
+- [dpm](/sdks-tools/cli-tools/dpm)을 설치했습니다
+
+## Example Code 불러오기
+
+이 module의 각 section에서는 이전 section보다 더 많은 기능이 포함된 새로운 self-contained application을 제시합니다. `dpm`을 사용해 각 section의 code를 불러올 수 있습니다. 예를 들면 다음과 같습니다.
+
+```bash
+# Load the contract templates example
+dpm new intro-contracts --template daml-intro-contracts
+
+# Load the choices example
+dpm new intro-choices --template daml-intro-choices
+```
+
+{/* COPIED_END */}
+
+## 다음 단계
+
+[Contract Template](/appdev/modules/m3-contract-templates)으로 이동해 Daml smart contract 구축을 시작하세요.
+
+functional programming을 처음 접하거나 Daml syntax인 type, pattern matching, record, type class를 복습하려면 먼저 [Language Fundamentals](/appdev/modules/m3-language-fundamentals)를 참고하세요. Haskell 또는 다른 ML 계열 언어 경험이 있다면 건너뛰고 필요할 때 다시 참고할 수 있습니다.

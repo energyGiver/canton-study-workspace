@@ -1,0 +1,223 @@
+---
+title: "Daml Standard Library"
+description: "Daml standard library 둘러보기: Prelude, 주요 type과 typeclass, library 탐색 및 검색 방법"
+source_id: "SRC-49F01A70B1"
+source_path: "appdev/modules/m3-standard-library"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "1780c597466d18407de26472e2bf22cd232ce1f871e944720e621c2b4ec9e390"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m3-standard-library.md)을 사용하세요.
+</Warning>
+
+import DamlAppdevModulesM3StandardLibraryL100 from "/snippets/daml-docs/appdev_modules_m3-standard-library_L100.mdx";
+import DamlAppdevModulesM3StandardLibraryL108 from "/snippets/daml-docs/appdev_modules_m3-standard-library_L108.mdx";
+import DamlAppdevModulesM3StandardLibraryL188 from "/snippets/daml-docs/appdev_modules_m3-standard-library_L188.mdx";
+import DamlAppdevModulesM3StandardLibraryL40 from "/snippets/daml-docs/appdev_modules_m3-standard-library_L40.mdx";
+import DamlAppdevModulesM3StandardLibraryL44 from "/snippets/daml-docs/appdev_modules_m3-standard-library_L44.mdx";
+import DamlAppdevModulesM3StandardLibraryL50 from "/snippets/daml-docs/appdev_modules_m3-standard-library_L50.mdx";
+import DamlAppdevModulesM3StandardLibraryL77 from "/snippets/daml-docs/appdev_modules_m3-standard-library_L77.mdx";
+
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/tutorials/smart-contracts/stdlib.rst" hash="0782e6fd" */}
+
+`data`와 `functional-101`에서는 자체 data type과 function을 정의하는 방법을 학습했습니다. 하지만 모든 것을 처음부터 구현할 필요는 없습니다. Daml에는 다양한 use case를 다루는 type, function, typeclass가 포함된 Daml standard library가 있습니다.
+
+이 chapter에서는 필수 요소의 개요를 살펴보고 library를 탐색하고 검색해 function을 찾는 방법을 학습합니다. standard library에 익숙해지면 Daml code를 훨씬 더 효율적으로 작성할 수 있습니다. 구체적으로 다음 내용을 다룹니다.
+
+- Prelude
+- standard library의 주요 type, 관련 function 및 typeclass
+- Typeclass
+- `Functor`, `Foldable`, `Traversable` 같은 주요 typeclass
+- standard library 검색 방법
+
+이러한 주제를 자세히 학습하려면 `haskell-connection`에서 참조한 문헌을 참고하세요. `Applicative`, `Foldable`, `Traversable`, `Action`과 같은 standard library typeclass는 Haskell에서 `Monad`라고 하며 이외에도 많은 typeclass가 Haskell programmer의 기본 도구입니다.
+
+<Note>
+이 chapter에는 `daml-intro-11` project template이 있지만 이 section에 포함된 code snippet을 담은 source file 하나만 포함합니다.
+</Note>
+
+## Prelude
+
+이미 아무것도 import하지 않고 많은 function, type, typeclass를 사용했습니다. `create`, `exercise`, `(==)` 같은 function, `[]`, `(,)`, `Optional` 같은 type, `Eq`, `Show`, `Ord` 같은 typeclass가 그 예입니다. 모두 Prelude에서 나옵니다. Prelude는 모든 다른 Daml module에 암묵적으로 import되는 module이며 Daml 고유 기능과 built-in type 및 typeclass를 사용하는 데 필요한 필수 요소를 모두 포함합니다.
+
+## Prelude의 주요 Type
+
+Prelude는 `native-types` 외에도 여러 일반적인 type을 정의합니다.
+
+### List
+
+list는 이미 살펴봤습니다. list에는 constructor `[]`와 `x :: xs`가 있으며 후자는 `1 :: [2] == [1, 2]`처럼 "prepend"를 의미합니다. 실제로 `[1,2]`는 `1 :: 2 :: []`의 syntactical sugar입니다.
+
+### Tuple
+
+이미 살펴본 2-tuple 외에도 Prelude에는 최대 15개 element를 가진 tuple definition이 있습니다. tuple을 사용하면 서로 다른 data를 ad-hoc 방식으로 저장할 수 있습니다. 일반적인 use case는 여러 부분으로 구성된 function return value나 `folds`에서 살펴본 것처럼 fold 안에서 전달하는 data입니다. 비교적 긴 tuple의 예시는 `exceptions` project의 test module에서 찾을 수 있습니다. `Test.Intro.Asset.TradeSetup.tradeSetup`은 allocate된 Party와 Active Contract를 긴 tuple로 반환합니다. `Test.Intro.Asset.MultiTrade.testMultiTrade`는 pattern matching을 사용해 이를 다시 scope에 넣습니다.
+
+<DamlAppdevModulesM3StandardLibraryL40 />
+
+<DamlAppdevModulesM3StandardLibraryL44 />
+
+tuple은 list처럼 특별한 syntax를 사용합니다. tuple의 type과 constructor는 모두 `(,,,)`이며 comma 수가 tuple의 arity를 결정합니다. type 및 data constructor는 bracket 안이나 밖의 값과 함께 apply할 수 있고 partial application도 가능합니다.
+
+<DamlAppdevModulesM3StandardLibraryL50 />
+
+<Note>
+아주 긴 tuple도 사용할 수 있지만 복잡한 structure나 오래 유지되는 value에는 named field가 있는 custom record를 정의하는 편이 좋습니다. tuple을 과도하게 사용하면 code readability가 낮아질 수 있습니다.
+</Note>
+
+### Optional
+
+`Optional` type은 없을 수도 있는 value를 나타냅니다. Daml에서 "nullable" value에 가장 가까운 개념입니다. `Optional`에는 value를 받는 `Some`과 value를 받지 않는 `None`이라는 두 constructor가 있습니다. 많은 언어에서는 다음과 같은 code를 작성합니다.
+
+``` JavaScript
+lookupResult = lookupByKey(k);
+
+if( lookupResult == null) {
+  // Do something
+} else {
+  // Do something else
+}
+```
+
+Daml에서는 같은 내용을 다음과 같이 표현합니다.
+
+<DamlAppdevModulesM3StandardLibraryL77 />
+
+### Either
+
+`Either`는 하나의 value가 두 type 중 하나를 저장해야 하는 경우에 사용합니다. 두 constructor인 `Left`와 `Right`는 각각 두 type 중 한 type의 value를 받습니다. `Either`의 일반적인 use case는 확장된 `Optional`입니다. `Right`는 `Some` 역할을 하고 `Left`는 `None` 역할을 하되 error value를 저장할 수 있습니다. 예를 들어 `Either Text`는 `Optional`과 비슷하게 동작하지만 constructor가 `Left`인 value에는 text가 연결됩니다.
+
+<Note>
+tuple과 마찬가지로 `Either`도 과도하게 사용하기 쉽고 readability를 해칠 수 있습니다. 더 명시적인 자체 type을 작성하는 방안을 고려하세요. 예를 들어 `South a`와 `North b`를 반환한다면 `Either` 대신 자체 type을 사용하는 편이 code를 더 명확하게 만듭니다.
+</Note>
+
+## Typeclass
+
+`data`부터 계속 typeclass가 사용되는 것을 봤습니다. 이제 내부 동작을 살펴보겠습니다.
+
+typeclass는 `class` keyword로 선언합니다.
+
+<DamlAppdevModulesM3StandardLibraryL100 />
+
+이는 quantity의 getter와 setter가 있는 interface declaration과 비슷합니다. 이 interface를 *구현*하려면 해당 typeclass의 instance를 정의해야 합니다.
+
+<DamlAppdevModulesM3StandardLibraryL108 />
+
+typeclass에는 function처럼 constraint가 있을 수 있습니다. 예를 들어 `class Eq a => Ord a`는 "order를 비교할 수 있는 모든 항목은 equality도 비교할 수 있다"는 뜻입니다. 이것이 거의 전부입니다.
+
+## Prelude의 주요 Typeclass
+
+### Eq
+
+`Eq` typeclass를 사용하면 type의 value가 같은지 또는 다른지 비교할 수 있습니다. `==`와 `/=`라는 두 function을 제공합니다. standard library의 대부분 data type에는 `Eq` instance가 있습니다. `data`에서 이미 학습했듯이 `deriving` keyword를 사용하면 compiler가 `Eq` instance를 자동으로 derive하도록 할 수 있습니다.
+
+template에는 항상 `Eq` instance가 있으며 template에 저장되는 모든 type에도 `Eq` instance가 있어야 합니다.
+
+### Ord
+
+`Ord` typeclass를 사용하면 type의 value 순서를 비교할 수 있습니다. `<`, `>`, `<=`, `>=` function을 제공합니다. 대부분의 built-in data type에는 `Ord` instance가 있습니다. 또한 `List`와 `Optional` 같은 type은 포함하는 type에 `Ord` instance가 있으면 `Ord` instance를 가집니다. `deriving` keyword를 사용하면 compiler가 `Ord` instance를 자동으로 derive하도록 할 수 있습니다.
+
+### Show
+
+`Show`는 type을 `Text`로 serialize할 수 있음을, 즉 shell에 "표시"할 수 있음을 나타냅니다. 핵심 function은 value를 받아 `Text`로 변환하는 `show`입니다. 모든 built-in data type에는 `Show` instance가 있으며 `List`와 `Optional` 같은 type은 포함하는 type에 instance가 있으면 instance를 가집니다. `deriving` keyword도 지원합니다.
+
+### Functor
+
+Functor는 Daml에서 "container"에 가장 가까운 개념입니다. type parameter가 하나인 type을 보면 대개 `Functor`입니다. `[a]`, `Optional a`, `Either Text a`, `Update a`가 그 예입니다. Functor는 map할 수 있는 항목이므로 `Functor`의 핵심 function은 list의 `map` function이 수행하는 작업을 generic하게 수행하는 `fmap`입니다.
+
+Functor의 다른 전형적인 예로 Set, Map, Tree 등이 있습니다.
+
+### Applicative Functor
+
+Applicative Functor는 `constraints`에서 본 Action과 다소 비슷하지만 한 action의 결과를 다른 action의 input으로 사용할 수 없습니다. Daml에서 action이 아닌 중요한 Applicative Functor는 Daml Script의 `submit` block에 submit되는 `Commands` type뿐입니다. 따라서 Daml Script에서 `do` notation을 사용하려면 `ApplicativeDo` language extension을 활성화해야 합니다.
+
+### Action
+
+Action은 `constraints`에서 이미 다뤘습니다. value를 위한 "recipe"로 생각할 수 있으며 해당 value를 얻으려면 "실행"해야 합니다. Action은 항상 Functor이자 Applicative Functor입니다. 그 이유는 `fmap f x`가 `x`의 recipe에 pure function `f`를 결과에 apply하라는 instruction을 추가한 것이기 때문이라고 이해할 수 있습니다.
+
+Daml에서 매우 중요한 Action은 `Update`와 `Script`지만 `[]`, `Optional`, `Either a` 같은 다른 Action도 많습니다.
+
+### Semigroup과 Monoid
+
+Semigroup과 Monoid는 binary operation에 관한 개념이지만 실제로 중요한 용도는 `Text`와 `[]`이며 `{<>}` operator로 concatenate할 수 있게 합니다.
+
+### Additive와 Multiplicative
+
+Additive와 Multiplicative는 arithmetic operation을 abstract하여 `(+)`, `(-)`, `(*)` 및 일부 다른 function을 `Decimal`과 `Int`에 일관되게 사용할 수 있도록 합니다.
+
+## Standard Library의 주요 Module
+
+위에서 소개한 거의 모든 type과 typeclass에 대해 standard library에 다음 module이 있습니다.
+
+- List용 [DA.List](/appdev/reference/daml-standard-library/da-list)
+- `Optional`용 [DA.Optional](/appdev/reference/daml-standard-library/da-optional)
+- Tuple용 [DA.Tuple](/appdev/reference/daml-standard-library/da-tuple)
+- `Either`용 [DA.Either](/appdev/reference/daml-standard-library/da-either)
+- Functor용 [DA.Functor](/appdev/reference/daml-standard-library/da-functor)
+- Action용 [DA.Action](/appdev/reference/daml-standard-library/da-action)
+- Monoid와 Semigroup용 [DA.Functor](/appdev/reference/daml-standard-library/da-functor) 및 [DA.Semigroup](/appdev/reference/daml-standard-library/da-semigroup)
+- `Text` 작업용 [DA.Text](/appdev/reference/daml-standard-library/da-text)
+- `Time` 작업용 [DA.Time](/appdev/reference/daml-standard-library/da-time)
+- `Date` 작업용 [DA.Date](/appdev/reference/daml-standard-library/da-date)
+
+이처럼 이름만으로도 의미를 쉽게 알 수 있습니다.
+
+Prelude에서 정의된 typeclass 외에도 이미 학습한 개념을 일반화하며 알아 둘 가치가 있는 `Foldable`과 `Traversable`이라는 두 module이 있습니다. 이 module 앞부분의 예시는 list를 기반으로 했지만 가능한 iterator는 매우 다양합니다. 이는 [DA.Traversable](/appdev/reference/daml-standard-library/da-traversable)과 [DA.Foldable](/appdev/reference/daml-standard-library/da-foldable)이라는 두 추가 typeclass로 표현됩니다. 이러한 개념의 자세한 내용은 [Haskell wiki의 Foldable and Traversable](https://wiki.haskell.org/Foldable_and_Traversable)을 참고하세요.
+
+## Standard Library 검색
+
+[Daml Standard Library reference](/appdev/reference/daml-standard-library/index)에서 standard library를 탐색하는 것은 시작점이며 module name도 도움이 됩니다. 하지만 이미 접한 function이 무엇을 하는지 찾거나 필요한 작업을 수행하는 function을 찾는 데는 효율적이지 않습니다.
+
+Daml에는 [Hoogle](https://hoogle.haskell.org/) search engine의 자체 version인 [Daml Hoogle](https://hoogle.daml.com)이 있습니다. name과 signature로 standard library를 검색할 수 있습니다.
+
+### 이름으로 Function 검색하기
+
+`MultiTrade`의 `ensure` clause에 있는 function처럼 처음 보는 function을 접했다고 가정해 보겠습니다.
+
+<DamlAppdevModulesM3StandardLibraryL188 />
+
+`not`과 `null`이 무엇을 하는지 추측할 수도 있지만 documentation search에서 이러한 이름을 검색해 보세요. standard library의 검색 결과가 맨 위에 표시됩니다. 예를 들어 `not`의 결과는 다음과 같습니다.
+
+``` none
+not
+
+ : Bool -> Bool
+
+ Boolean “not”
+```
+
+signature와 type constraint 및 description을 보면 일반적으로 function이 하는 일을 명확히 알 수 있습니다.
+
+### Signature로 Function 검색하기
+
+또 다른 매우 일반적인 use case는 어떤 작업을 수행할 value가 있지만 필요한 standard library function을 모르는 경우입니다. `MultiTrade` template에는 `baseAssets` list가 있고 ensure clause 덕분에 비어 있지 않다는 것을 압니다. 기존 `Trade`에서는 `baseAsset.owner`를 Signatory로 사용했습니다. `case`를 사용한 완전한 pattern match를 거치지 않고 이 list의 첫 element를 가져와 `owner`를 추출하려면 어떻게 해야 할까요?
+
+필요한 function의 signature를 생각한 다음 이를 검색하는 것이 요령입니다. 이 경우 list에서 구별되는 element 하나가 필요하므로 signature는 `[a] -> a`여야 합니다. 이를 검색하면 다양한 결과가 나오지만 standard library 결과가 역시 맨 위에 표시됩니다.
+
+description을 살펴보면 `MultiTrade` template의 `let`에서 사용된 `head`가 확실한 선택입니다.
+
+검색 결과에는 `[]`를 명시적으로 언급하지 않는 항목도 있을 수 있습니다. 예를 들면 다음과 같습니다.
+
+``` none
+fold
+
+  : (Foldable t, Monoid m) => t m -> m
+
+  Combine the elements of a structure using a monoid.
+```
+
+그 이유는 `Foldable [a]`의 instance가 있기 때문입니다.
+
+다른 검색을 해 보겠습니다. 첫 번째 element가 아니라 index `n`의 element를 원한다고 가정해 보세요. `functional-101`의 `(!!)` operator를 기억하나요? 이제 검색할 수 있는 signature는 `[a] -> Int -> a`와 `Int -> [a] -> a` 두 가지입니다. 둘 다 검색해 보세요. 두 경우 모두 `(!!)`가 반환됩니다. argument order는 걱정하지 않아도 됩니다.
+
+## 다음 단계
+
+다음 section에서는 Daml code를 test하고 interaction하는 option을 살펴봅니다. 일부 keyword의 operational semantic과 일반적으로 관련되는 failure, Daml testing에서 coverage report가 작동하는 방식도 간단히 설명합니다.
+
+{/* COPIED_END */}
+
+{/* Mintlify preview rebuild marker. */}

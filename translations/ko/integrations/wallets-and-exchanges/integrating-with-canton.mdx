@@ -1,0 +1,45 @@
+---
+title: "Canton Network와 통합"
+description: "Wallet 통합, Validator hosting 및 Synchronizer 연결에 필요한 기능과 선택 기능"
+source_id: "SRC-32A6E1A868"
+source_path: "integrations/wallets-and-exchanges/integrating-with-canton"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "0985ace9b2d11eb5fc23a422b1c4554f4e1b626ba739fb56cba276cb5f3b399d"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/wallets-and-exchanges/integrating-with-canton.md)을 사용하세요.
+</Warning>
+
+Canton Network와 통합할 때 최적의 사용자 경험을 위해 wallet provider가 아래의 필수 기능을 지원할 것을 권장합니다. 선택 기능을 추가하면 integration을 개선하고 user에게 추가 가치를 제공할 수 있습니다.
+
+## 필수 기능
+
+Wallet provider가 Canton Network와 통합하려면 다음 기능이 필요합니다.
+
+- Canton Network에서 asset을 보유하고 transfer할 수 있도록 [CIP-0056 Token Standard](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md)를 지원합니다. Wallet SDK로 이를 구현하는 방법에 대한 문서와 지침은 이 guide의 Token Standard section에 있습니다.
+- Canton Coin과 USDCx를 명시적으로 지원합니다. Amulet의 Canton Coin package는 모든 Validator에 미리 설치됩니다. USDCx는 Digital Asset Registry를 통해 발행되며 해당 application의 DAR는 Utilities 문서의 DAR Package Versions에서 찾을 수 있습니다.
+- Exchange로 deposit을 보낼 수 있도록 [Memo Tag를 지원](/integrations/wallets-and-exchanges/memo-tags)합니다.
+- UTXO 수를 줄이기 위해 [UTXO management](/sdks-tools/sdks/wallet-sdk/guides/preparing-and-signing-a-transaction#utxo-management-and-locked-funds)를 지원합니다.
+
+## 선택 기능
+
+다음 기능은 wallet provider에게 필수는 아니지만 Canton Network를 완전하게 지원하고 user adoption을 높이기 위해 적극 권장합니다.
+
+- [Canton Coin pre-approval](/appdev/modules/m7-canton-coin-preapprovals). Wallet SDK로 pre-approval을 구현하는 방법은 이 guide의 [two-step transfer와 one-step transfer section](/sdks-tools/sdks/wallet-sdk/guides/transfer-types#two-step-transfer-vs-one-step-transfer)에 있습니다.
+- Wallet과 dApp integration 표준인 [CIP-0103](https://github.com/canton-foundation/cips/blob/main/cip-0103/cip-0103.md)을 준수하여 dApp을 지원합니다.
+- USDCx 보유와 transfer는 위 필수 기능에 포함되지만, wallet provider가 xReserve deposit과 withdrawal을 지원하거나 xReserve UI를 wallet에 직접 통합하는 등 더 높은 수준의 지원을 제공할 수 있습니다. 선택지와 지침은 이 guide의 [Wallet을 위한 USDCx Support section](/integrations/wallets-and-exchanges/usdcx-support)에 있습니다.
+- DA Registry가 발행한 asset의 pre-approval을 지원합니다.
+
+## Validator Hosting
+
+[Wallet Provider에게 미치는 영향 section](/integrations/wallets-and-exchanges/canton-network-overview#implications-for-wallet-providers)에서 설명한 것처럼 wallet provider는 user의 Party를 hosting할 Validator를 보유하는 것이 중요합니다. Canton Network가 발전할 때 application과 integration을 test하고 verify할 수 있도록 세 가지 network environment 모두에서 node를 운영할 것을 적극 권장합니다.
+
+배포 방식에 따른 node deployment 문서는 다음과 같습니다.
+
+- [Validator onboarding process](/global-synchronizer/deployment/onboarding-process)
+- [Docker Compose docs](/global-synchronizer/deployment/validator-docker-compose)
+- [Kubernetes docs](/global-synchronizer/deployment/validator-kubernetes)

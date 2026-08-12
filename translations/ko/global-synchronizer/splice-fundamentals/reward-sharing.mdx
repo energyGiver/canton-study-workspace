@@ -1,0 +1,85 @@
+---
+title: "Reward 공유"
+description: "App provider가 traffic 기반 app reward를 beneficiary와 공유하는 방식"
+source_id: "SRC-E954A5AD2D"
+source_path: "global-synchronizer/splice-fundamentals/reward-sharing"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "8c2c982afbbfaf986302c6987f3ad6e536baacfed99fe808b69f144d59d09ab3"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/splice-fundamentals/reward-sharing.md)을 사용하세요.
+</Warning>
+
+## 개요
+
+[Traffic 기반 app reward](/global-synchronizer/splice-fundamentals/traffic-based-app-rewards)가 활성화되면 featured app provider는 application에 귀속된 traffic burn이 app reward threshold를 넘은 각 round에 대해 `Splice.Amulet.RewardCouponV2` contract를 받습니다. Reward 공유를 사용하면 provider가 minting 전에 `splice-api-reward-assignment-v1` interface package에서 제공하는 `assignBeneficiaries` API를 통해 이 coupon의 minting allowance 일부 또는 전부를 다른 Party(beneficiary)에게 분배할 수 있습니다.
+
+<Note>
+`splice-api-reward-assignment-v1` API reference document는 [추후 제공될 예정입니다](https://github.com/canton-network/cf-docs/issues/838).
+</Note>
+
+Validator Node에는 이러한 reward 공유를 자동화하는 기능이 내장되어 있으며, Validator operator가 Validator Node configuration의 일부로 구성할 수 있습니다.
+
+External Party가 reward 공유에 참여하려면 active [Minting Delegation](/global-synchronizer/splice-fundamentals/rewards-minting)이 있어야 합니다.
+
+## Configuration
+
+Reward 공유는 Validator Node configuration file의 `canton.validator-apps.validator_backend.reward-sharing-config-by-party` 아래에서 구성합니다. 각 entry는 provider Party ID를 `RewardSharingConfig`에 mapping합니다.
+
+```hocon
+canton.validator-apps.validator_backend {
+  reward-sharing-config-by-party = {
+    # 30% -> charlie, 20% -> dave, remaining 50% stays with alice
+    "alice::1220abc...def" = {
+      # Minimum remaining coupon TTL before sharing is triggered (default: 30h).
+      # With the default 36h coupon TTL, 25h means sharing fires ~11h after creation.
+      min-ttl-after-sharing = 25h
+      beneficiaries = [
+        # percentage: fraction of reward in (0.0, 1.0]; provider keeps the remainder
+        { beneficiary = "charlie::1220111...222", percentage = 0.3 },
+        { beneficiary = "dave::1220333...444", percentage = 0.2 },
+      ]
+    }
+
+    # External party bob sends 100% of rewards to a treasury party
+    "bob::1220bbb...ccc" = {
+      min-ttl-after-sharing = 25h
+      # Max coupons to share per trigger run (default: 100)
+      batch-size = 50
+      beneficiaries = [
+        { beneficiary = "treasury::1220eee...fff", percentage = 1.0 },
+      ]
+    }
+  }
+}
+```
+
+## Batch 방식 공유
+
+Automation은 traffic 비용을 줄이기 위해 공유를 batch 처리합니다. 각 `Splice.Amulet.RewardCouponV2`가 도착할 때마다 개별적으로 공유하는 대신, coupon 하나의 remaining TTL이 `min-ttl-after-sharing` 아래로 내려갈 때까지 기다린 다음 누적된 모든 coupon을 하나의 Transaction에서 공유합니다.
+
+예를 들어 `Splice.Amulet.RewardCouponV2`의 기본 TTL이 36시간이고(`RewardConfig.rewardCouponTimeToLive`로 구성), `min-ttl-after-sharing`이 30시간이면 첫 coupon 생성 후 약 6시간 뒤 공유가 시작됩니다.
+
+`batch-size` property(기본값 100)는 trigger 실행당 처리하는 최대 coupon 수를 제한합니다. 누적된 coupon이 batch size보다 많으면 automation이 여러 번에 나누어 처리합니다.
+
+Batch를 공유할 때 각 beneficiary는 공유되는 input coupon 수와 같은 수의 coupon을 받습니다. Beneficiary를 위해 생성되는 각 coupon은 original coupon의 round number를 추적하므로 beneficiary는 reward의 발생 round를 식별할 수 있습니다.
+
+## 공유 후 Minting
+
+Beneficiary는 다른 `Splice.Amulet.RewardCouponV2`와 같은 mechanism을 사용해 할당된 coupon을 mint합니다. Local Party의 경우 wallet app automation을 사용하고, External Party의 경우 [Minting Delegation](/global-synchronizer/splice-fundamentals/rewards-minting)을 사용합니다. 자세한 내용은 [Minting](/global-synchronizer/splice-fundamentals/traffic-based-app-rewards#minting)을 참조하세요.
+
+## 제한 사항
+
+- **재공유 불가**: 공유된 reward를 받은 beneficiary는 `assignBeneficiaries` API로 다시 공유할 수 없습니다. Original provider만 beneficiary를 할당할 수 있습니다.
+- **동일한 expiry**: 공유된 coupon은 original `Splice.Amulet.RewardCouponV2`와 동일한 expiry를 유지합니다. 기본 TTL이 36시간인 경우 `min-ttl-after-sharing` value는 beneficiary가 expiry 전에 coupon을 mint할 충분한 시간을 남겨야 합니다.
+- `Splice.Amulet.RewardCouponV2`당 **최대 20 beneficiary**.
+
+## 추가 자료
+
+- [Traffic 기반 App Reward](/global-synchronizer/splice-fundamentals/traffic-based-app-rewards) — Traffic 기반 reward 계산 방식
+- [Minting Delegation](/global-synchronizer/splice-fundamentals/rewards-minting) — External Party의 minting authority 위임
+- [App Reward](/appdev/app-rewards) — Featured app status를 포함한 app reward system 개요

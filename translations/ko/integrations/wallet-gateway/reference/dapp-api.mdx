@@ -1,0 +1,60 @@
+---
+title: "dApp API"
+description: "Wallet Gateway의 CIP-0103 dApp API와 관련 문서 위치"
+source_id: "SRC-B43DB6BE01"
+source_path: "integrations/wallet-gateway/reference/dapp-api"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "faddc3c981be9ffd0c1d1d31b729b07e255ddaf45a3734f34b5575957e2e6aa6"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/wallet-gateway/reference/dapp-api.md)을 사용하세요.
+</Warning>
+
+dApp API는 dApp이 wallet 연결, account 조회, transaction prepare와 execute를 위해 호출하는 [CIP-0103](https://github.com/canton-foundation/cips/blob/main/cip-0103/cip-0103.md) JSON-RPC 2.0 API입니다. Wallet Gateway가 이 API를 제공하지만 직접 호출할 일은 거의 없습니다.
+
+- **Base path**: `/api/v0/dapp`, `server.dappPath`로 설정 가능
+- **Protocol**: CIP-0103에 따른 JSON-RPC 2.0
+- **Authentication**: Session을 통해 발급받은 JWT bearer token
+
+<Note>
+dApp API를 구현하고 high-level interface, session handling, wallet discovery 및 multi-transport 지원을 추가하는 [dApp SDK](/sdks-tools/sdks/dapp-sdk/overview)로 dApp을 구축하세요. Raw API는 lower-level infrastructure에만 사용합니다. Method, event 및 error handling은 SDK 문서를 기준으로 합니다.
+</Note>
+
+## 전체 Specification
+
+완전한 OpenRPC specification은 [openrpc-dapp-api.json](https://github.com/canton-network/wallet/blob/main/api-specs/openrpc-dapp-api.json)에서 확인할 수 있습니다.
+
+## Real-Time Events, SSE
+
+dApp API는 real-time notification을 위해 Server-Sent Events를 지원합니다. dApp API base URL에 상대적인 `/events` path, 예를 들어 `/api/v0/dapp/events`에 연결하세요. JWT를 `token` query parameter로 전달하여 authenticate하며 `Authorization: Bearer` header도 지원합니다.
+
+```javascript
+const eventsUrl = new URL('events', dappApiUrl + '/')
+eventsUrl.searchParams.set('token', jwtToken)
+const eventSource = new EventSource(eventsUrl.toString())
+
+eventSource.addEventListener('accountsChanged', (e) => {
+    /* ... */
+})
+eventSource.addEventListener('statusChanged', (e) => {
+    /* ... */
+})
+eventSource.addEventListener('connected', (e) => {
+    /* ... */
+})
+eventSource.addEventListener('txChanged', (e) => {
+    /* ... */
+})
+```
+
+SSE connection은 transaction status인 `txChanged`, account change인 `accountsChanged`, session state인 `connected`와 `statusChanged`에 대한 real-time update를 전달합니다.
+
+## 관련 문서
+
+- [dApp SDK overview](/sdks-tools/sdks/dapp-sdk/overview)
+- [dApp SDK events reference](/sdks-tools/sdks/dapp-sdk/reference/events)
+- [User API](/integrations/wallet-gateway/reference/user-api)

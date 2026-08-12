@@ -1,0 +1,134 @@
+---
+title: "Configuration 문제"
+description: "HOCON parsing error, permission 문제 및 environment variable conflict diagnose"
+source_id: "SRC-B652C213F7"
+source_path: "global-synchronizer/troubleshooting-guide/configuration-problems"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "534d5c72d67e3bd5fd83870cbcc74062a9f556ffed38e3693872f8eb44c4c8b9"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+
+import CantonGlobalSynchronizerTroubleshootingGuideConfigurationProblemsL20 from "/snippets/canton-docs/global-synchronizer_troubleshooting-guide_configuration-problems_L20.mdx";
+import CantonGlobalSynchronizerTroubleshootingGuideConfigurationProblemsL34 from "/snippets/canton-docs/global-synchronizer_troubleshooting-guide_configuration-problems_L34.mdx";
+import CantonGlobalSynchronizerTroubleshootingGuideConfigurationProblemsL44 from "/snippets/canton-docs/global-synchronizer_troubleshooting-guide_configuration-problems_L44.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/troubleshooting-guide/configuration-problems.md)을 사용하세요.
+</Warning>
+
+Configuration error는 Validator 시작 실패의 가장 일반적인 원인에 속합니다. HOCON syntax 오류부터 미묘한 environment variable conflict까지 다양합니다.
+
+## HOCON Parsing Error
+
+Canton은 configuration file에 HOCON(Human-Optimized Config Notation)을 사용합니다. Syntax error는 Validator 시작을 막고 다음과 같은 message를 생성합니다.
+
+```
+com.typesafe.config.ConfigException$Parse: ... Expecting close brace } or a comma
+```
+
+**일반적인 오류와 해결 방법:**
+
+- **Closing brace 누락.** HOCON file은 깊게 nested될 수 있습니다. Matching brace를 highlight하는 editor를 사용하거나 deploy 전에 linter를 실행하세요.
+
+<CantonGlobalSynchronizerTroubleshootingGuideConfigurationProblemsL20 />
+
+
+- **Quote로 감싸지 않은 special character.** `://`, `=` 또는 `#`을 포함하는 value는 quote로 감싸야 합니다.
+
+<CantonGlobalSynchronizerTroubleshootingGuideConfigurationProblemsL34 />
+
+
+- **잘못된 value type.** Schema가 duration을 요구하는데 unit 없는 integer를 제공하면 parsing이 실패합니다.
+
+<CantonGlobalSynchronizerTroubleshootingGuideConfigurationProblemsL44 />
+
+
+- **Trailing comma.** HOCON은 JSON보다 관대하지만 일부 construct는 array 내부의 trailing comma 때문에 실패할 수 있습니다.
+
+HOCON file을 적용하기 전에 validate하려면:
+
+```bash
+# Quick check using the JVM-based typesafe-config library
+java -cp "canton.jar" com.typesafe.config.impl.Parseable < your-config.conf
+```
+
+## File Permission 문제
+
+Validator process가 configuration file을 읽을 수 있어야 합니다. Linux와 container에서는 ownership 또는 permission 조정이 필요한 경우가 많습니다.
+
+```
+java.io.FileNotFoundException: /etc/canton/participant.conf (Permission denied)
+```
+
+해결 방법:
+
+```bash
+# Ensure the canton user (UID 1000) can read the file
+chmod 644 /etc/canton/participant.conf
+chown 1000:1000 /etc/canton/participant.conf
+```
+
+### Kubernetes Secret이 Mount되지 않음
+
+Configuration file이 pod에 mount되지 않은 Kubernetes Secret을 reference하면 Validator가 예상 path의 `FileNotFoundException`으로 실패합니다. 다음을 확인하세요.
+
+```bash
+# Check that the secret exists
+kubectl get secret validator-config -n validator
+
+# Check the pod spec for volume mounts
+kubectl get pod -n validator -o yaml | grep -A5 volumeMounts
+```
+
+일반적인 원인:
+
+- Helm value의 secret name이 실제 secret name과 일치하지 않음
+- Secret이 다른 namespace에 생성됨
+- `subPath` mount가 secret에 존재하지 않는 key를 가리킴
+
+## Environment Variable Conflict
+
+Canton 및 Splice component는 file과 environment variable 모두에서 configuration을 읽습니다. 둘 다 설정된 경우 environment variable이 우선하므로 예상하지 못한 동작이 발생할 수 있습니다.
+
+### `DPM_SDK_VERSION`이 `daml.yaml`을 Override
+
+`DPM_SDK_VERSION`을 environment variable로 설정하면 project `daml.yaml`의 `sdk-version` field를 override합니다. 이로 인해 build 중 version mismatch error가 발생할 수 있습니다.
+
+```
+Error: SDK version 3.3.0 from environment does not match 3.2.0 in daml.yaml
+```
+
+해결 방법: Environment variable을 unset하거나 `daml.yaml`과 일치시킵니다.
+
+```bash
+unset DPM_SDK_VERSION
+```
+
+### 충돌하는 `.env` File
+
+Docker Compose는 working directory에서 `.env`를 load합니다. 여러 `.env` file이 있으면(예: 이전 deployment의 file) stale value가 current configuration을 override할 수 있습니다.
+
+```bash
+# Show which .env file Docker Compose is using
+docker compose config | head -20
+```
+
+충돌 가능성이 있는 다음 variable을 확인하세요.
+
+- `SPLICE_APP_VERSION` -- Helm chart 또는 Docker image version과 일치해야 함
+- `PARTICIPANT_HOST` -- Host에서뿐 아니라 container 내부에서도 resolve되어야 함
+- `AUTH_URL` -- Validator container에서 접근 가능해야 함
+
+### Configuration Resolution Debugging
+
+Canton이 사용할 최종 merged configuration을 확인하려면:
+
+```bash
+# Print resolved config (redacts secrets)
+docker exec validator-app cat /proc/1/environ | tr '\0' '\n' | sort
+```
+
+HOCON file의 경우 Canton은 시작 시 resolved configuration을 `DEBUG` level로 log합니다. 이를 capture하려면 일시적으로 `canton.monitoring.logging.api.level = DEBUG`를 설정하세요.

@@ -1,0 +1,189 @@
+---
+title: "Minting Delegation"
+description: "Validator operator가 자신의 Node에 hosting된 External Party에게 minting authority를 위임하는 방식"
+source_id: "SRC-D3F9087E37"
+source_path: "global-synchronizer/splice-fundamentals/rewards-minting"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "822be4e168f2f843899dedf49dac993cf49134baf7e812d932fd72c281771a9b"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDelegationsBash309 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-delegations-bash-309.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDelegationsBash276 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-delegations-bash-276.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDelegationsBash251 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-delegations-bash-251.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDelegationsBash215 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-delegations-bash-215.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDelegationsBash201 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-delegations-bash-201.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/splice-fundamentals/rewards-minting.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/validator_operator/validator_delegations.rst" hash="af0084d8" */}
+
+Minting Delegation을 사용하면 delegate가 같은 Validator Node에 hosting된 External Party(beneficiary)를 대신해 reward minting을 자동화하도록 Validator Node에 지시할 수 있습니다. Delegate는 Validator Node wallet에 onboarding된 모든 Party가 될 수 있습니다. 예를 들어 Validator operator Party뿐 아니라 다른 Internal Party도 가능합니다. 이는 External Party의 reward collection 자동화에 유용합니다.
+
+## 개요
+
+**Minting Delegation**은 delegate Party에게 다음 authority를 부여합니다.
+
+- Beneficiary Party를 대신하여 reward coupon mint
+- Beneficiary의 Amulet을 자동으로 merge(구성된 limit까지)
+
+다음 reward coupon type을 Delegation을 통해 mint할 수 있습니다.
+
+- ValidatorRewardCoupon
+- UnclaimedActivityRecord
+- DevelopmentFundCoupon
+- AppRewardCoupon
+- ValidatorLivenessActivityRecord
+
+<Note>
+ValidatorRewardCoupon을 mint하려면 beneficiary가 먼저 ValidatorRight를 생성해야 합니다.
+</Note>
+
+Delegation에는 다음 핵심 property가 있습니다.
+
+| Property           | 설명                                                 |
+|--------------------|-------------------------------------------------------------|
+| Beneficiary        | 대신 minting이 수행되는 External Party |
+| Delegate           | Minting operation 수행 authority를 가진 Internal Party |
+| Expiration         | Delegation이 더 이상 유효하지 않게 되는 시각 |
+| Amulet merge limit | Auto-merge 후 유지할 Amulet 수 |
+
+## Automation
+
+Minting Delegation이 active 상태이면 Validator Node가 beneficiary Party를 위해 automation(`MintingDelegationCollectRewardsTrigger`)을 실행하여 정기적으로 다음을 수행합니다.
+
+1.  Beneficiary가 소유한 reward coupon 중 minting eligible 상태인 coupon 확인
+2.  Beneficiary를 대신해 reward를 수집하고 mint
+3.  Beneficiary의 Amulet 수가 구성된 merge limit의 두 배를 초과하면 merge
+
+Automation이 성공적으로 실행되려면 다음 조건을 충족해야 합니다.
+
+- Delegate가 Validator Node wallet에 onboarding된 Party여야 합니다. 예: Validator operator Party 또는 자체 user account가 있는 다른 Internal Party.
+- Delegation이 expire되지 않아야 합니다.
+- Beneficiary가 최소 observer mode로 Validator Node에 hosting되어야 합니다.
+- Beneficiary는 wallet app에 onboarding되지 않는 것이 좋습니다. 그렇지 않으면 delegated automation이 wallet app 내장 automation과 contention을 일으킵니다.
+- Beneficiary에게 처리할 reward coupon 또는 Amulet이 있어야 합니다.
+
+Minting Delegation은 [Splice wallet Party 최대 200개 제한](/global-synchronizer/production-operations/scalability)에 포함된다는 점에 유의하세요.
+
+Automation은 delegate Party로서 Transaction을 제출합니다. Transaction 비용은 Validator Node의 traffic balance에서 지불됩니다.
+
+<Note>
+Amulet merge limit은 beneficiary Amulet의 자동 consolidation을 control합니다. Amulet 수가 limit의 두 배를 넘으면 가장 작은 Amulet을 merge하여 정확히 구성된 수를 유지합니다.
+</Note>
+
+## Minting Delegation 관리
+
+Minting Delegation workflow는 다음 단계로 구성됩니다.
+
+1.  **Proposal 생성**: Beneficiary가 delegate, expiration date 및 Amulet merge limit을 지정하는 `MintingDelegationProposal`을 생성합니다. 일반적으로 Ledger API를 통해 수행합니다.
+2.  **Proposal 수락**: Delegate가 wallet UI에서 proposal을 검토하고 수락하거나 거부합니다. 수락하면 active `MintingDelegation` contract가 생성됩니다.
+3.  **Withdrawal**: Delegation이 더 이상 필요하지 않으면 delegate가 wallet UI에서 withdraw할 수 있습니다. 이 작업은 Delegation을 종료하고 beneficiary reward minting automation을 중지합니다.
+
+### Delegations Tab 사용
+
+Delegate는 wallet UI의 **Delegations** tab을 통해 Minting Delegation을 관리할 수 있습니다. 이 tab에는 두 section이 표시됩니다.
+
+#### Proposed Delegation
+
+**Proposed** section에는 현재 user가 지정된 delegate인 모든 pending `MintingDelegationProposal` contract가 표시됩니다.
+
+각 proposal에 대해 delegate는 다음을 수행할 수 있습니다.
+
+- **Accept**: Delegation request를 승인합니다. Active Minting Delegation이 생성됩니다. 같은 beneficiary에 대한 Delegation이 이미 존재하면 새 proposal을 수락할 때 기존 Delegation을 대체합니다.
+- **Reject**: Delegation request를 거부합니다. Proposal이 archive됩니다.
+
+<Note>
+Beneficiary가 아직 Validator Node에 hosting되지 않았다면 Accept button이 disabled 상태입니다. Delegation을 수락하기 전에 beneficiary가 hosting되어야 합니다.
+</Note>
+
+#### Active Delegation
+
+**Active** section에는 현재 user가 delegate인 모든 current `MintingDelegation` contract가 표시됩니다.
+
+각 active Delegation에 대해 delegate는 다음을 수행할 수 있습니다.
+
+- **Withdraw**: Delegation을 종료합니다. Delegation contract가 archive되고 beneficiary reward minting automation이 중지됩니다.
+
+### Delegation 교체
+
+이미 active Delegation이 있는 beneficiary의 proposal을 delegate가 수락하면 다음 정보를 보여주는 confirmation dialog가 나타납니다.
+
+- Current Delegation의 Merge Threshold 및 Expiration value
+- New proposal의 Merge Threshold 및 Expiration value
+
+Proposal을 수락하면 기존 Delegation이 자동으로 새 Delegation으로 교체됩니다. 따라서 beneficiary는 delegate가 기존 Delegation을 먼저 수동 withdraw할 필요 없이 expiration date 연장과 같은 Delegation parameter를 update할 수 있습니다.
+
+<Tip>
+Delegation expiration 또는 Amulet merge limit을 변경하려면 beneficiary가 update된 value로 새 proposal을 생성해야 합니다. Delegate가 이를 수락하면 기존 Delegation이 교체됩니다.
+</Tip>
+
+### Ledger API를 통한 Proposal 생성
+
+Minting을 delegate Party에 위임하려는 External Party(beneficiary)는 `MintingDelegationProposal` contract를 생성해야 합니다. Beneficiary는 일반적으로 wallet UI에 access할 수 없으므로 Canton Ledger API를 사용해 program 방식으로 proposal을 생성할 수 있습니다.
+
+#### 사전 요구 사항
+
+Proposal 생성 전에 beneficiary는 다음을 확보해야 합니다.
+
+1.  **Validator Node hosting**: Beneficiary Party가 minting을 위임하려는 Validator Node에 hosting되어야 합니다.
+2.  **Ledger API access**: 다음을 포함하는 Validator Ledger API endpoint에 대한 authenticated access.
+    - Ledger API URL(예: `https://<validator-host>:<port>`)
+    - 유효한 authentication credential(OAuth2 token 또는 구성된 다른 auth method)
+    - Beneficiary Party ID
+3.  **Delegate Party ID**: Delegate는 일반적으로 Validator operator Party지만 Validator Node의 다른 Internal Party일 수도 있습니다.
+4.  **DSO Party ID**: Network의 DSO Party ID.
+
+#### Example: Proposal 생성
+
+`MintingDelegationProposal` contract에는 위 개요 section에서 설명한 property(beneficiary, delegate, expiration 및 Amulet merge limit)와 같은 `delegation` field 및 DSO Party ID가 포함됩니다.
+
+모든 상호 작용은 JSON Ledger API를 통해 동작합니다. [OpenAPI definition](https://github.com/digital-asset/canton/blob/main/community/ledger/ledger-json-api/src/test/resources/json-api-docs/openapi.yaml)을 참조하세요. Request authentication 방법은 [Authentication document](/global-synchronizer/reference/security-configuration#configure-api-authentication-and-authorization-with-jwt)를 확인하세요.
+
+Proposal을 생성하려면 Ledger API [Command submission endpoint](https://github.com/digital-asset/canton/blob/main/community/ledger/ledger-json-api/src/test/resources/json-api-docs/openapi.yaml#L173)를 통해 `create` Command를 제출합니다.
+
+먼저 필요한 environment variable을 설정합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDelegationsBash201 />
+
+그런 다음 curl을 사용하여 proposal을 생성합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDelegationsBash215 />
+
+전체 Daml definition은 [MintingDelegationProposal template source code](https://github.com/canton-network/splice/blob/main/daml/splice-wallet/daml/Splice/Wallet/MintingDelegation.daml)를 참조하세요.
+
+#### Proposal Status Monitoring
+
+Beneficiary는 Ledger API [active contracts endpoint](https://github.com/digital-asset/canton/blob/main/community/ledger/ledger-json-api/src/test/resources/json-api-docs/openapi.yaml#L620)를 통해 active `MintingDelegationProposal` contract를 query하여 proposal status를 monitoring할 수 있습니다.
+
+Pending proposal을 query하려면:
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDelegationsBash251 />
+
+수락된 후에는 active `MintingDelegation` contract를 query하여 Delegation이 active 상태인지 확인합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDelegationsBash276 />
+
+#### Proposal Withdraw
+
+Beneficiary가 proposal이 수락되거나 거부되기 전에 withdraw하려면 Ledger API [exercise endpoint](https://github.com/digital-asset/canton/blob/main/community/ledger/ledger-json-api/src/test/resources/json-api-docs/openapi.yaml#L173)를 통해 proposal contract의 `MintingDelegationProposal_Withdraw` choice를 exercise할 수 있습니다.
+
+먼저 위 active contract query에서 proposal Contract ID를 얻은 다음 withdrawal choice를 exercise합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorDelegationsBash309 />
+
+### Security 고려 사항
+
+Minting Delegation을 관리할 때 delegate는 다음을 고려해야 합니다.
+
+1.  **Beneficiary 확인**: Delegation을 수락하기 전에 beneficiary Party를 알고 신뢰하는지 확인하세요. Party ID가 예상한 Party와 일치해야 합니다.
+2.  **Traffic 비용**: Validator operator가 Validator Node traffic balance에서 minting Transaction 비용을 지불할 의사가 있는지 확인하세요.
+3.  **Hosting status**: Hosting된 Party의 Delegation만 수락하세요. UI는 hosting되지 않은 beneficiary에 대해 Accept button을 disabled하여 이를 enforce합니다.
+4.  **Active Delegation monitoring**: Active Delegation을 정기적으로 검토하고 더 이상 필요하지 않거나 authorize되지 않은 Delegation을 withdraw하세요.
+
+
+{/* COPIED_END */}

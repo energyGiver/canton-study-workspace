@@ -1,0 +1,173 @@
+---
+title: "필수 Command"
+description: "Health check, Party 관리, package 관리 및 Topology 검사를 위한 주요 Canton Console Command"
+source_id: "SRC-5233794DFC"
+source_path: "global-synchronizer/canton-console/essential-commands"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "36156108eba08f3f5a5ed336dc6e4cf6b59d04319f9c82c4492731f6252a7ec9"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-essential-commands-0.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-essential-commands-1.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_2 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-essential-commands-2.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_3 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-essential-commands-3.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_4 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-essential-commands-4.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_5 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-essential-commands-5.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_6 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-essential-commands-6.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_7 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-essential-commands-7.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_8 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-essential-commands-8.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_9 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-essential-commands-9.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_10 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-essential-commands-10.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_11 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-essential-commands-11.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_12 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-essential-commands-12.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_13 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-essential-commands-13.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_14 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-essential-commands-14.mdx";
+import CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_15 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-canton-console-essential-commands-15.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/canton-console/essential-commands.md)을 사용하세요.
+</Warning>
+
+이 reference는 가장 자주 사용하는 Canton Console Command를 task별로 정리합니다. 별도 설명이 없으면 모든 example은 Participant Console에 연결된 상태를 가정합니다.
+
+Canton Console이 시작되면 configuration file을 읽고 구성된 각 Node에 대한 variable을 자동으로 binding합니다. 예를 들어 configuration에 Participant Node가 정의되어 있으면 Console은 해당 Node를 `participant` variable 또는 config에서 지정한 이름으로 제공합니다. 추가 setup 없이 이 variable을 직접 사용하여 `participant.health.status`와 같은 Command를 호출할 수 있습니다.
+
+## Health 및 Status
+
+Node가 healthy 상태이고 Synchronizer에 연결되어 있는지 확인합니다.
+
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_0 />
+
+
+Sequencer Node의 경우:
+
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_1 />
+
+
+## Party 관리
+
+### Party 목록
+
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_2 />
+
+
+### Party 상세 정보
+
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_3 />
+
+
+## Package 관리
+
+### Package 목록
+
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_4 />
+
+
+### Package Upload
+
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_5 />
+
+
+### Package Vetting
+
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_6 />
+
+
+## Topology 검사
+
+Topology Command는 Party-to-Participant mapping, Package Vetting 및 기타 Network 전체 configuration의 현재 상태를 보여줍니다.
+
+### Party-to-Participant Mapping
+
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_7 />
+
+
+### Synchronizer Parameter
+
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_8 />
+
+
+### Namespace Delegation
+
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_9 />
+
+
+## Synchronizer Operation
+
+### 연결된 Synchronizer 목록
+
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_10 />
+
+
+### Synchronizer에 다시 연결
+
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_11 />
+
+
+## Ledger Query
+
+### Active Contract Set(ACS)
+
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_12 />
+
+
+<Note>
+`testing.acs_search` Command는 production query가 아니라 debugging용입니다. Production read access에는 PQS를 사용하세요.
+</Note>
+
+## 일반 Pattern
+
+### Participant ID 얻기
+
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_13 />
+
+
+### Party ID 얻기
+
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_14 />
+
+
+### Synchronizer ID 얻기
+
+
+
+<CANTON_DOCS_CN_GS_CANTON_CONSOLE_ESSENTIAL_COMMANDS_15 />
+
+
+## 다음 단계
+
+- [Debugging Workflow](/global-synchronizer/canton-console/debugging-workflows) — Diagnostic scenario에서 이 Command를 사용하는 방법
+- [Canton Console Reference](/global-synchronizer/reference/canton-console-reference) — Console 시작 방법

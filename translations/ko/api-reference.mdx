@@ -1,0 +1,54 @@
+---
+title: "API Reference"
+sidebarTitle: "API Reference Index"
+mode: "wide"
+source_id: "SRC-A87339B144"
+source_path: "api-reference"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "848960829c91ee1af057f230df80bd68f4f67646bf327f44427a426fc92bd88b"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/api-reference.md)을 사용하세요.
+</Warning>
+
+API Reference는 Canton의 모든 programmatic interface를 다룹니다. Lifecycle annotation과 함께 endpoint, request/response schema, service, message 및 client library type을 확인할 수 있습니다.
+
+<Columns cols={2}>
+  <Card title="Ledger API" icon="bookmark" href="/appdev/reference/pqs-sql-reference">
+    5개 gRPC package로 구성된 Canton Ledger API의 generated reference입니다. Command, update 등의 service, request/response schema 및 version history를 확인할 수 있습니다.
+  </Card>
+
+  <Card title="TypeScript" icon="bookmark" href="/reference/typescript">
+    Daml TypeScript type과 Wallet SDK 및 dApp SDK client library의 generated reference입니다.
+  </Card>
+</Columns>
+
+<Columns cols={2}>
+  <Card title="Daml Standard Library" icon="bookmark" href="appdev/reference/daml-standard-library/da-action">
+    Core module 등을 포함하는 Daml standard library의 generated module reference입니다.
+  </Card>
+
+  <Card title="dApp API" icon="bookmark" href="reference/wallet-gateway-json-rpc/specs/dapp-api">
+    dApp이 Wallet Provider와 상호작용하기 위한 OpenRPC specification입니다.
+  </Card>
+</Columns>
+
+<Columns cols={2}>
+  <Card title="Wallet Gateway" icon="bookmark" href="/reference/wallet-gateway-json-rpc/specs/user-api">
+    Versioned OpenRPC reference입니다. Wallet과 dApp을 Splice Wallet Gateway와 통합할 때 사용합니다.
+  </Card>
+
+  <Card title="Splice APIs" icon="bookmark" href="/sdks-tools/api-reference/splice-daml-apis">
+    Canton Coin data, Name Service, Token Standard 등을 제공하는 Canton Network OpenAPI endpoint로 개발하는 방법을 설명합니다.
+  </Card>
+</Columns>
+
+<Columns cols={2}>
+  <Card title="Admin API" icon="bookmark" href="/reference/admin-api/protobuf/index">
+    Canton Admin API service, message 및 lifecycle history를 위한 generated gRPC package reference입니다.
+  </Card>
+</Columns>

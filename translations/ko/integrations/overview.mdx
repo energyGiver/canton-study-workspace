@@ -1,0 +1,83 @@
+---
+title: "Integrations 개요"
+description: "Wallet, exchange, application을 Canton Network ecosystem과 통합하는 방법"
+source_id: "SRC-1F1E5C82D5"
+source_path: "integrations/overview"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "04ebc42052fe93063e7e7b5d4fa9e15ab27e0281a5f655442ac194969ef17292"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/overview.md)을 사용하세요.
+</Warning>
+
+Integrations는 application을 Canton Network의 wallet, exchange, token 및 기타 service ecosystem과 연결합니다. Application developer가 기반으로 활용하고 end user가 직접 사용할 수 있는 즉시 사용 가능한 기능을 제공합니다.
+
+## Integration 분류
+
+Canton Network는 여러 종류의 integration을 제공합니다.
+
+- **Wallets**: 사용자와 application을 위한 Canton Coin 관리
+- **Exchange integration**: Liquidity bridge와 fiat on/off ramp
+- **Token standards**: [CIP-0056](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md)을 따르는 interoperable token
+- **Application integration**: Third-party app 연결
+
+## 대상별 안내
+
+### End User
+
+<CardGroup cols={2}>
+
+<Card title="Wallet 찾기" icon="wallet" href="/integrations/wallets/for-users">
+  Canton Coin을 관리할 수 있는 wallet option을 확인합니다.
+</Card>
+
+<Card title="App 찾기" icon="grid-2" href="/integrations/apps/finding-apps">
+  Canton Network에 구축된 application을 살펴봅니다.
+</Card>
+
+</CardGroup>
+
+### Developer
+
+<CardGroup cols={2}>
+
+<Card title="Wallet Integration" icon="code" href="/sdks-tools/sdks/wallet-sdk/overview">
+  Wallet SDK를 사용하여 application에 wallet 기능을 추가합니다.
+</Card>
+
+<Card title="Wallet 및 Exchange" icon="building-columns" href="/integrations/wallets-and-exchanges/integrating-with-canton">
+  Wallet과 exchange를 Canton Network에 통합합니다.
+</Card>
+
+</CardGroup>
+
+## Canton Integration과 다른 Ecosystem의 차이
+
+Canton의 privacy model 때문에 integration은 public blockchain과 다르게 동작합니다.
+
+- **Balance는 private입니다**: Wallet은 public이 아닌 권한 있는 Party에게만 holding을 표시합니다.
+- **Transaction은 private입니다**: Transfer는 block explorer 전체가 아니라 participant에게만 표시됩니다.
+- **Token은 private입니다**: Token balance는 holder에게만 표시됩니다.
+- **Explorer는 개인별 관점입니다**: Canton explorer는 network 전체 활동이 아니라 사용자의 transaction만 표시합니다.
+
+<Note>
+모든 transaction을 표시하는 Ethereum blockchain explorer와 달리 Canton explorer는 사용자가 stakeholder인 transaction만 표시합니다. 이는 의도된 설계입니다.
+</Note>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+
+<Card title="Integration Patterns" icon="puzzle-piece" href="/integrations/integration-patterns">
+  Integration 구축에 사용하는 일반적인 pattern을 알아봅니다.
+</Card>
+
+<Card title="Canton Ecosystem" icon="globe" href="/integrations/ecosystem">
+  더 넓은 Canton Network ecosystem을 살펴봅니다.
+</Card>
+
+</CardGroup>
