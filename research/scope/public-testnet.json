@@ -8,7 +8,7 @@
     "Validator operators are permissioned and governance uses independent identities with internal 2-of-3 control.",
     "Core protocol, Daml, Ledger API, Admin API, topology, onboarding, security, monitoring, wallet, custody, and private Synchronizer material remains in scope."
   ],
-  "expected_excluded_pages": 153,
+  "expected_excluded_pages": 155,
   "rules": [
     {
       "id": "historical-release-notes",

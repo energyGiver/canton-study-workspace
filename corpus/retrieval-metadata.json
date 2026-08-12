@@ -1,8 +1,11 @@
 {
-  "index_url": "https://docs.canton.network/llms.txt",
-  "retrieved_at": "2026-08-10T08:53:39+00:00",
-  "document_count": 804,
+  "index_source": "upstream/cf-docs/docs-main/docs.json",
+  "official_base_url": "https://docs.canton.network",
+  "retrieved_at": "2026-08-12T11:40:44+00:00",
+  "document_count": 1160,
   "manifest": "corpus/manifest.jsonl",
-  "content_root": "corpus/docs",
-  "integrity": "SHA-256 over each downloaded Markdown response body"
+  "content_root": "upstream/cf-docs/docs-main",
+  "source_commit": "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65",
+  "integrity": "SHA-256 over each official cf-docs MDX source file",
+  "scope": "File-backed MDX routes present in official docs.json navigation"
 }

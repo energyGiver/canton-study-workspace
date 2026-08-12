@@ -8,6 +8,8 @@ from pathlib import Path
 
 from .build import GENERATED_ROOT, UPSTREAM, build_site
 from .content import ContentRepository
+from .corpus import refresh_official_manifest
+from .inventory import TranslationPolicy
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,6 +22,7 @@ class SyncReport:
     target_commit: str
     updated: bool
     changed_files: list[str]
+    ignored_changed_files: list[str]
     stale_summaries: list[str]
     stale_translations: list[str]
 
@@ -49,6 +52,14 @@ def sync_upstream(update: bool = False) -> SyncReport:
     if update and previous != target:
         _git("checkout", "--detach", target)
 
+    policy = TranslationPolicy()
+    ignored_changed_files = [
+        path for path in changed_files if policy.ignored_changed_file(path)
+    ]
+    changed_files = [path for path in changed_files if path not in ignored_changed_files]
+    if update:
+        refresh_official_manifest()
+
     repository = ContentRepository()
     status_rows = repository.status_rows({})
     report = SyncReport(
@@ -57,6 +68,7 @@ def sync_upstream(update: bool = False) -> SyncReport:
         target_commit=target,
         updated=bool(update and previous != target),
         changed_files=changed_files,
+        ignored_changed_files=ignored_changed_files,
         stale_summaries=[row["path"] for row in status_rows if row["summary_stale"]],
         stale_translations=[row["path"] for row in status_rows if row["translation_stale"]],
     )
