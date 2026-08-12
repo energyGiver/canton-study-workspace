@@ -6,6 +6,8 @@
     "https://cdn.jsdelivr.net/npm/mermaid@11.16.1/dist/mermaid.min.js";
   const MERMAID_FALLBACK_INTEGRITY =
     "sha384-aBQXj4hK6Jm05i7aQAsUV3bLdSUrHX1BGYfMB0166TtWt/RRaw+h0Eelme9OCOvy";
+  // Mintlify fetches this page's RSC payload but does not commit the SPA transition.
+  const FULL_PAGE_NAVIGATION_PATHS = new Set(["overview/learn/multi-synchronizer"]);
   const PROGRESS_ORDER = ["unreviewed", "complete"];
   const PROGRESS_DISPLAY = {
     unreviewed: { icon: "", label: "Unreviewed" },
@@ -435,6 +437,32 @@
     event.preventDefault();
     event.stopImmediatePropagation();
     window.location.assign(link.dataset.researchLocalizedHref);
+  }
+
+  function preserveFullPageDocumentNavigation(event) {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey ||
+      event.target.closest?.(".research-nav-favorite, .research-nav-marker")
+    ) {
+      return;
+    }
+    const link = event.target.closest?.("a[href]");
+    if (!link || link.target === "_blank" || link.hasAttribute("download")) return;
+    const target = new URL(link.href, window.location.href);
+    if (
+      target.origin !== window.location.origin ||
+      !FULL_PAGE_NAVIGATION_PATHS.has(canonicalPath(target.pathname))
+    ) {
+      return;
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    window.location.assign(target.href);
   }
 
   function articleRoot() {
@@ -1135,6 +1163,7 @@
 
   async function boot() {
     document.documentElement.dataset.researchWorkspace = "ready";
+    document.addEventListener("click", preserveFullPageDocumentNavigation, true);
     document.addEventListener("click", preserveKoreanDocumentNavigation, true);
     await loadStatuses();
     await refreshCurrentPage(true);
