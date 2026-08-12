@@ -30,10 +30,14 @@ python3 -m portal dev --api-port 8788 --docs-port 3001
 
 ```bash
 python3 -m portal build       # ignored local site만 다시 합성
+python3 -m portal refresh     # 실행 중인 preview를 끄지 않고 번역/navigation 갱신
 python3 -m portal serve       # Research API와 search index만 실행
 python3 -m portal index       # local search index만 재생성
 python3 -m portal validate    # shared artifact를 변경하지 않고 검증
+python3 -m portal translations # 번역/로컬 제외/backlog 수와 todo JSON 생성
 ```
+
+`portal refresh`는 소수의 번역을 작업 중인 preview에 반영할 때 사용합니다. 처음으로 수백 page를 추가하거나 official navigation 전체가 바뀐 경우에는 대규모 hot compile을 피하기 위해 작업을 마친 뒤 `portal dev`를 한 번 재시작하는 편이 안전합니다.
 
 ## 공식 Canton 문서에 Workspace가 별도로 추가한 기능
 
@@ -87,8 +91,11 @@ python3 -m portal validate    # shared artifact를 변경하지 않고 검증
 - Publish 전 3줄 요약 및 evidence autosave draft
 - UI setting과 향후 개인 bookmark/highlight
 - Full-text search index와 parsed document cache
+- 번역 제외 정책: `data/local/translation-exclusions.json`
 
 `data/local/`과 `.generated/`는 Git에 commit하지 않으며 network drive에서 공동 사용하지 않습니다. 각 팀원이 자신의 DB를 가집니다.
+
+번역 제외 정책도 이 원칙을 따릅니다. 현재 public testnet 연구에 가치가 낮은 generated API reference와 Global Synchronizer 전용 application page는 정확한 official path와 제외 이유를 로컬 JSON에 기록합니다. `portal translations`와 upstream sync는 그 exact path만 건너뛰므로, 새 official path는 자동으로 제외되지 않고 다시 검토 대상이 됩니다.
 
 ### Git, 팀 공유 및 review 대상
 
@@ -107,8 +114,8 @@ python3 -m portal validate    # shared artifact를 변경하지 않고 검증
 용량 증가는 감당 가능한 수준입니다. 현재 측정값은 다음과 같습니다.
 
 - 공식 `cf-docs` submodule 전체: 약 72MB
-- 한국어 번역 796개 MDX: 약 9.4MB, 최신 진행률은 [translation status](translations/STATUS.md) 참조
-- 생성된 전체 preview: 약 71MB
+- 한국어 번역 862개 MDX: 약 10MB, 최신 진행률은 [translation status](translations/STATUS.md) 참조
+- 생성된 전체 preview: 약 79MB
 - 공식 image asset: 약 32MB이며 모든 언어가 원본을 기본 재사용
 
 따라서 현재 corpus 전체를 한 언어로 번역하면 Git tracked text가 대략 8MB에서 10MB 증가할 것으로 예상됩니다. 세 언어를 추가해도 text 증가는 대략 25MB에서 30MB 수준입니다. 다만 언어별 image를 별도로 제작하면 image 용량이 추가되므로, **공통 image와 Mermaid는 원본을 재사용하고 번역 MDX만 언어별로 저장**하는 방식을 권장합니다. `.generated/site/`는 매번 재생성되고 Git에 포함되지 않으므로 repository history를 키우지 않습니다.
@@ -122,7 +129,7 @@ python3 -m portal validate
 python3 -m unittest discover -s tests -v
 ```
 
-Check official `cf-docs` changes with `python3 -m portal sync`. Apply the latest `origin/main` commit with `python3 -m portal sync --update`, inspect the changed submodule pointer and stale-content dashboard, then commit the reviewed update separately.
+Check official `cf-docs` changes with `python3 -m portal sync`. Apply the latest `origin/main` commit with `python3 -m portal sync --update`, inspect the changed submodule pointer and stale-content dashboard, then commit the reviewed update separately. Run `python3 -m portal translations` after every update. It compares official file-backed navigation against complete translations and the Git-ignored local exclusion policy, then writes the remaining todo to `.generated/translation-backlog.json`.
 
 ## Research 목적과 읽는 순서
 
@@ -163,11 +170,15 @@ Topic notes use source IDs such as `SRC-A3F46FF397`. IDs are derived from source
 
 ## Corpus snapshot
 
-- Entry point: `https://docs.canton.network/llms.txt`
-- Retrieved: 2026-08-10
-- Documents: 804 Markdown pages
-- Integrity: SHA-256 for every response body
-- Coverage: Overview, App Development, Global Synchronizer, Integrations, SDKs/Tools, API/reference material linked by the official index
+- Primary inventory: official `upstream/cf-docs/docs-main/docs.json` navigation
+- Source commit: `5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65`
+- Retrieved: 2026-08-12
+- Active official inventory: 1,160 file-backed MDX routes
+- Korean translations: 862 complete pages
+- Local translation exclusions: 298 exact paths
+- Translation backlog: 0
+- Historical discovery snapshot: 804 Markdown responses originally collected from `llms.txt`, retained under `corpus/docs/`
+- Integrity: SHA-256 for every official MDX source file in the active manifest
 
 See [corpus/README.md](corpus/README.md) for the manifest schema and refresh procedure.
 
@@ -177,13 +188,13 @@ This repository does not inspect Canton source repositories, execute tests, depl
 
 ## Completion standard
 
-This snapshot establishes the research structure, full official corpus, dependency maps, topic mechanisms, classified claim ledger, curated glossary, use-case explanations, and an engineering backlog. It is a baseline knowledge base, not a claim that every one of the 804 pages has been exhaustively interpreted. Future refreshes must diff the corpus first, then revisit claims affected by changed sources.
+This snapshot establishes the research structure, full official navigation inventory, dependency maps, topic mechanisms, classified claim ledger, curated glossary, use-case explanations, and an engineering backlog. Korean coverage is complete for every page not explicitly excluded by the local translation policy, but this is not a claim that all 1,160 pages have completed human research review. Future refreshes must diff the corpus first, then revisit translations and claims affected by changed sources.
 
 ## `preview ready`까지 시간이 걸리는 이유
 
 `python3 -m portal dev`는 단순 web server 실행이 아니라 다음 작업을 순서대로 수행합니다.
 
-1. 804개 공식 page와 모든 번역의 source ID, SHA-256, MDX 구조, code block 및 metadata를 검증합니다. 오류가 있으면 preview를 시작하지 않습니다.
+1. 1,160개 공식 page와 모든 번역의 source ID, SHA-256, MDX 구조, code block 및 metadata를 검증합니다. 오류가 있으면 preview를 시작하지 않습니다.
 2. 기존 `.generated/site/`를 지우고 pinned `upstream/cf-docs/docs-main/` 전체를 새로 복사합니다.
 3. 번역 page, 필요한 image, Research page, ENG/KOR navigation, overlay JavaScript/CSS와 Mermaid fallback marker를 합성합니다.
 4. Local Research API를 background thread로 시작하고 SQLite migration을 적용한 뒤 official English, 번역, 공개된 research note를 FTS5 full-text search index로 다시 만듭니다.
