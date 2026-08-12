@@ -1,0 +1,68 @@
+---
+title: "Canton Coin Preapproval"
+description: "TransferPreapproval contract가 사전 승인된 Canton Coin transfer를 활성화하는 방법"
+source_id: "SRC-3E47FA3CC1"
+source_path: "appdev/modules/m7-canton-coin-preapprovals"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "6ec3e5a59f7655c8c6878efe54c7fadfd3708ba15972b8357ba1fd60512721b2"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m7-canton-coin-preapprovals.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/background/preapprovals.rst" hash="b2b9b8f3" */}
+
+ETH나 Bitcoin 같은 다른 asset과 달리, Canton Coin을 보유하려는 party는 이를 명시적으로 동의해야 합니다. 여기에는 모든 incoming transfer에 대한 명시적 동의도 포함됩니다.
+
+어떤 sender에게서든 incoming Canton Coin transfer를 받아도 되는 party는 `TransferPreapproval`을 설정할 수 있습니다. 그러면 모든 party가 `TransferPreapproval`을 설정한 party에게 Canton Coin을 보낼 수 있습니다. 이는 Canton Coin transfer에만 적용되고 다른 asset에는 적용되지 않습니다. 다른 asset은 별도로 설정해야 하는 자체 preapproval variant를 제공하거나, 각각의 incoming transfer를 개별적으로 승인하도록 요구할 수 있습니다.
+
+Super Validator가 더 이상 활동하지 않는 party의 `TransferPreapproval` contract를 저장하고 제공하지 않아도 되도록 하고 악의적인 party의 spam을 막기 위해, preapproval은 만료될 때까지 lifetime이 제한되며 생성 시 lifetime에 비례하는 fee를 burn해야 합니다. 이 fee는 Super Validator가 `transferPreapprovalFee` parameter로 제어합니다. 현재 값은 CC Scan에서 적절한 network를 선택해 확인할 수 있습니다.
+
+- DevNet: [https://scan.sv-1.dev.global.canton.network.sync.global/dso](https://scan.sv-1.dev.global.canton.network.sync.global/dso)
+- TestNet: [https://scan.sv-1.test.global.canton.network.sync.global/dso](https://scan.sv-1.test.global.canton.network.sync.global/dso)
+- MainNet: [https://scan.sv-1.global.canton.network.sync.global/dso](https://scan.sv-1.global.canton.network.sync.global/dso)
+
+현재 기본값은 연간 \$1입니다.
+
+각 preapproval에는 두 party가 있습니다. incoming transfer를 승인하는 `receiver` party와 `provider` party입니다. provider party는 fee를 지급하고 만료일이 가까워질 때 preapproval을 갱신할 책임이 있습니다. 그 대가로 `provider` party는 이 preapproval을 사용하는 모든 incoming transfer의 app provider가 되고 그에 따른 app reward를 받습니다. 실무에서 가장 일반적인 설정이기는 하지만 `provider` party가 반드시 `receiver` party와 같은 node에 hosted될 필요는 없습니다.
+
+## Preapproval 설정
+
+external signing을 사용하지 않는 party는 Splice Wallet UI의 logout button 옆에 있는 button을 통해 preapproval을 생성할 수 있습니다.
+
+<img src="/images/splice/preapproval_button.png" width="600" alt="Button to create preapproval" />
+
+external signing을 사용하는 party의 경우 가장 일반적인 방식은 Validator operator가 `ExternalPartySetupProposal` contract를 생성하는 것입니다. 그런 다음 external party가 `ExternalPartySetupProposal_Accept`를 exercise하는 transaction에 서명합니다. 이로써 external party의 Validator reward minting에 필요한 `ValidatorRight` contract와 provider가 Validator operator party로 설정된 `TransferPreapproval` contract가 모두 생성됩니다. Validator는 proposal 생성을 위한 `/v0/admin/external-party/setup-proposal` endpoint와, external party의 서명된 acceptance를 prepare하고 submit하기 위한 `/v0/admin/external-party/setup-proposal/prepare-accept` 및 `/v0/admin/external-party/setup-proposal/submit-accept` endpoint를 제공합니다. 자세한 내용은 [API documentation](/sdks-tools/api-reference/splice-validator-api)을 참고하세요. provider 지정과 관련해 다른 설정이 필요하다면 Validator API 대신 자체 setup Daml contract를 만들고 Ledger API를 통해 생성해야 할 수 있습니다.
+
+provider를 Validator operator로 지정해 preapproval을 설정할 때는 [party 수 제한](/global-synchronizer/production-operations/scalability)에 유의하세요.
+
+Validator API는 항상 만료일이 90일 후인 preapproval을 생성합니다.
+
+## Preapproval 만료 및 갱신
+
+앞서 설명한 대로 preapproval에는 항상 만료일이 있습니다. 만료일까지 갱신되지 않으면 더 이상 transfer에 사용할 수 없으며 Super Validator가 실행하는 automation이 결국 contract를 archive합니다.
+
+Validator operator party가 provider인 preapproval은 만료까지 30일 미만이 남으면 Validator App의 automation을 통해 90일 더 자동 갱신됩니다.
+
+다른 party를 provider로 지정해 preapproval을 설정했다면 주기적으로 `TransferPreapproval_Renew` choice를 exercise하는 자체 renewal automation을 설정해야 합니다.
+
+## Preapproval 취소
+
+receiver와 provider 모두 `TransferPreapproval_Cancel` choice를 통해 preapproval을 revoke할 수 있습니다.
+
+현재 Splice Wallet UI에서는 이를 지원하지 않습니다. 하지만 Validator operator가 provider인 preapproval은 Validator operator가 `/v0/admin/transfer-preapprovals/by-party/{receiver-party}`에 `DELETE` request를 보내 취소할 수 있습니다. 자세한 내용은 API documentation을 참고하세요.
+
+## Preapproval을 통한 Transfer
+
+receiver가 preapproval을 설정한 경우 Splice Wallet UI는 기본적으로 transfer에 이를 사용합니다.
+
+API를 사용하는 경우, 특히 external party의 경우 Canton Coin transfer를 exercise할 때 Token Standard API를 사용하는 것이 좋습니다. 이 API도 가능한 경우 preapproval을 사용합니다. 사용 예시는 [CIP](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md) 및 [Token Standard reference CLI](https://github.com/canton-network/splice/blob/main/token-standard/cli/src/commands/transfer.ts)를 참고하세요.
+
+마지막으로 Validator의 `/v0/admin/external-party/transfer-preapproval/prepare-send` 및 `/v0/admin/external-party/transfer-preapproval/submit-send`에 있는 non-standard Canton Coin transfer용 legacy external signing API도 사용할 수 있습니다. 자세한 내용은 API documentation을 참고하세요.
+
+
+{/* COPIED_END */}

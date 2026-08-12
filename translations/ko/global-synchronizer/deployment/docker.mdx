@@ -1,0 +1,127 @@
+---
+title: "Canton Docker Operation"
+description: "Canton Docker image 확보 및 실행"
+source_id: "SRC-C38D3E5D5B"
+source_path: "global-synchronizer/deployment/docker"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "acd36a76827ba48f7257e0a2176fb71aec57c9dd8606daf2cc0db98fcdd30915"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/deployment/docker.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/download/docker.rst" hash="54d80692" */}
+
+# Docker Image 확보
+
+(Canton Docker image 실행 지침은 Install With Docker를 참조하세요.)
+
+다음을 사용해 Canton Docker image를 download할 수 있습니다.
+
+```bash
+docker pull \
+    europe-docker.pkg.dev/da-images/public/docker/canton-base:3.4.0
+docker pull \
+    europe-docker.pkg.dev/da-images/public/docker/canton-participant:3.4.0
+docker pull \
+    europe-docker.pkg.dev/da-images/public/docker/canton-sequencer:3.4.0
+docker pull \
+    europe-docker.pkg.dev/da-images/public/docker/canton-mediator:3.4.0
+```
+
+사용 가능한 tag는 `https://europe-docker.pkg.dev/v2/da-images/public/docker/canton-participant/tags/list`에서 확인하세요.
+
+이 Docker image는 Canton version 3.4.0부터 publish됩니다.
+
+Snapshot release는 `/da-images/public/docker/` 대신 `/da-images/public-unstable/docker/`에서 사용할 수 있지만 production usage에는 권장되지 않으며 주기적으로 정리됩니다.
+
+{/* COPIED_END */}
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/participant/howtos/install/docker.rst" hash="2eaa7e6d" */}
+
+Docker image download how-to link. Hardware 및 software requirement link. Docker에서 Canton을 실행하는 방법 설명.
+
+# Docker Container 사용
+
+## Participant Image 사용
+
+편의를 위해 합리적인 default로 Canton Participant를 시작할 수 있는 pre-configured Participant image를 제공합니다.
+
+이 image를 사용하려면 여러 environment variable을 설정해야 합니다.
+
+```bash
+docker run \
+    -e AUTH_TARGET_AUDIENCE="audience" \
+    -e AUTH_JWKS_URL="fake.com/jwks" \
+    -e CANTON_PARTICIPANT_POSTGRES_SERVER="canton-postgres" \
+    -e CANTON_PARTICIPANT_POSTGRES_PORT="5432" \
+    -v "$(pwd)/bootstrap.sc:/app/bootstrap.sc" \
+    --rm -it \
+    europe-docker.pkg.dev/da-images/public-unstable/docker/canton-participant:3.5.0-ad-hoc.20251021.17321.0.v2cdf16447
+```
+
+Valid Postgres instance가 필요합니다.
+
+이 image에서는 bootstrap script를 통해 Participant를 initialize해야 합니다. 자세한 내용은 Manual identity initialization을 참조하세요.
+
+모든 configuration default와 가능한 environment variable을 확인하려면 다음을 실행합니다.
+
+```bash
+cid=$(docker create europe-docker.pkg.dev/da-images/public-unstable/docker/canton-participant:3.5.0-ad-hoc.20251021.17321.0.v2cdf1644) && docker cp "$cid":/app/app.conf ./app.conf && docker rm "$cid"
+cat app.conf
+```
+
+## Logging
+
+Log는 JSON으로 encode되어 stdout으로 전송됩니다. Log level은 `-e LOG_LEVEL_STDOUT=INFO`로 설정하며 default는 DEBUG입니다.
+
+## Bind Port
+
+`canton-participant` image는 다음 port를 bind합니다.
+
+- Ledger API port: 5001
+- Admin API port: 5002
+- HTTP Ledger API port: 7575
+- GRPC Health Server port: 5061
+
+`canton-mediator` image는 다음 port를 bind합니다.
+
+- Admin API port: 5007
+- GRPC Health Server port: 5061
+
+`canton-sequencer` image는 다음 port를 bind합니다.
+
+- Public API: 5008
+- Admin API: 5009
+- GRPC Health Server port: 5061
+
+## Custom configuration 및 DAR 제공
+
+Custom configuration을 제공하려면 다음 중 하나를 수행합니다.
+
+1.  `ADDITIONAL_CONFIG` environment variable을 통해 추가합니다.
+2.  `/app/additional-config.conf`를 container에 mount합니다.
+
+DAR는 dynamic하게 추가해야 합니다. Remote Console 또는 Admin API를 통해 수행합니다.
+
+Custom configuration으로 Participant Console을 실행하려면 다음을 사용합니다.
+
+```bash
+docker run -e ADDITIONAL_CONFIG="canton.participants.participant1 {
+      storage.type = memory
+      admin-api.port = 5012
+      ledger-api.port = 5011
+      http-ledger-api.server.port = 5013
+    }" \
+    --rm -it \
+    europe-docker.pkg.dev/da-images/public-unstable/docker/canton-participant:3.5.0-ad-hoc.20251021.17321.0.v2cdf1644 \
+    --console
+```
+
+`--console` flag는 Canton을 interactive Console mode로 시작합니다.
+
+{/* COPIED_END */}

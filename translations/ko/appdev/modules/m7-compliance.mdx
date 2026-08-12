@@ -1,0 +1,98 @@
+---
+title: "Compliance 고려 사항"
+description: "Canton application을 위한 privacy, audit 및 regulatory 고려 사항"
+source_id: "SRC-909AACC918"
+source_path: "appdev/modules/m7-compliance"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "75d151d14f0985bc9e6089d50455534b68d7e928e614983de6e37ddecdf1cd92"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m7-compliance.md)을 사용하세요.
+</Warning>
+
+import DamlDocsAppdevModulesM7ComplianceL40 from "/snippets/daml-docs/appdev_modules_m7-compliance_L40.mdx";
+
+
+Canton architecture는 public blockchain과 크게 다른 privacy 및 audit property를 기본 제공합니다. 이 page는 Canton Network에서 application을 build할 때 이해해야 할 compliance 관련 특성을 요약합니다.
+
+<Warning>
+이 page는 Canton capability에 관한 기술적 사실을 제공합니다. 법률 자문이 아닙니다. 관할권의 regulatory compliance에 관해서는 자격을 갖춘 법률 전문가와 상담하세요.
+</Warning>
+
+## Privacy Property
+
+### Sub-Transaction Privacy
+
+Canton은 transaction을 모든 Validator에 broadcast하지 않습니다. 각 transaction은 **view**로 분해되며 각 Validator는 hosted party와 관련된 view만 받습니다. transaction의 특정 부분에 stakeholder가 아닌 Validator는 그 부분에 관해 아무것도 볼 수 없습니다. payload, 관련 party는 물론 그 부분의 존재 여부조차 알 수 없습니다.
+
+이는 다음을 의미합니다.
+
+- Contract data는 Daml template에 정의된 signatory, observer 및 controller에게만 표시됩니다.
+- Synchronizer(Sequencer 및 Mediator)는 encrypted message를 처리하며 plaintext transaction data를 볼 수 없습니다.
+- Validator는 hosted party와 관련된 contract 및 transaction만 저장합니다.
+
+visibility rule에 대한 자세한 설명은 [Privacy Model 설명](/overview/learn/privacy-model)을 참고하세요.
+
+### Global State Visibility 없음
+
+모든 participant가 전체 Ledger를 읽을 수 있는 public blockchain과 달리 Canton Validator는 private local Ledger shard를 유지합니다. 모든 contract를 담은 shared database는 없습니다. party는 볼 권한이 없는 contract를 query할 수 없으며 Validator는 자신이 host하지 않는 party의 data에 access할 수 없습니다.
+
+## Audit Capability
+
+### Ledger API Transaction History
+
+각 Validator는 hosted party와 관련된 transaction의 완전한 append-only history를 유지합니다. application은 Ledger API의 update stream을 통해 이 history를 읽을 수 있습니다. update stream은 querying party에게 표시되는 모든 contract creation, choice exercise 및 archival을 시간순으로 기록합니다.
+
+### Historical Query를 위한 PQS
+
+Participant Query Store(PQS)는 Ledger state를 mirror하는 PostgreSQL database를 유지합니다. PQS는 현재 Active Contract Set과 contract event의 전체 history를 모두 저장하므로 audit query에 적합합니다.
+
+<DamlDocsAppdevModulesM7ComplianceL40 />
+
+PQS는 기반 PostgreSQL database가 유지되는 동안 data를 보존합니다. retention policy는 사용자가 제어합니다.
+
+### Daml의 Auditor Pattern
+
+auditor party를 observer로 추가해 smart contract level에서 audit access를 부여할 수 있습니다. auditor는 contract와 이에 영향을 주는 모든 event를 볼 수 있지만 contract를 수정할 수는 없습니다. auditor pattern의 code example은 [Privacy Model](/overview/learn/privacy-model) page를 참고하세요.
+
+## Data Residency
+
+### Dedicated Synchronizer
+
+regulatory environment에서 data를 특정 geographic region에 유지해야 한다면 선택한 관할권에서 실행되는 **Dedicated Synchronizer**를 운영할 수 있습니다. Dedicated Synchronizer에 연결된 Validator는 사용자가 제어하는 해당 Synchronizer infrastructure를 통해서만 통신합니다.
+
+Validator는 Global Synchronizer(cross-network interoperability용)와 하나 이상의 Dedicated Synchronizer(jurisdiction-specific workflow용)에 모두 연결될 수 있습니다. multi-Synchronizer architecture를 사용하면 각 workflow마다 별도 infrastructure를 실행하지 않고도 규제 대상 workflow를 public workflow와 분리할 수 있습니다.
+
+### Validator-Level Data Control
+
+Validator는 hosted party의 data만 저장하므로 조직의 data는 자체 Validator infrastructure에 위치합니다. on-premises, 특정 cloud region 또는 여러 location 중 infrastructure 실행 위치를 선택할 수 있습니다. 다른 Validator가 shared contract의 stakeholder인 party를 host하는 경우가 아니라면 해당 Validator는 data copy를 보유하지 않습니다.
+
+## Immutable Ledger 및 Data Modification Request
+
+Canton Ledger는 append-only입니다. contract는 제자리에서 수정되지 않고 archive된 뒤 교체됩니다. transaction history는 다시 작성할 수 없습니다.
+
+GDPR의 right to erasure처럼 data 수정 또는 삭제를 요구하는 regulation에는 다음을 고려하세요.
+
+- **Contract design** — personally identifiable information(PII)은 off-ledger에 저장하고 on-ledger에서는 opaque identifier로 reference하세요. off-ledger data를 삭제하면 on-ledger reference는 의미가 없어집니다.
+- **PQS data management** — PQS는 사용자가 제어하는 projection입니다. Ledger 자체에 영향을 주지 않고 PQS database의 record를 purge하거나 anonymize할 수 있습니다.
+- **Pruning** — Canton은 설정 가능한 retention period가 지나면 Validator local store에서 오래된 transaction data를 제거하는 Ledger pruning을 지원합니다. prune된 data는 더 이상 Ledger API를 통해 access할 수 없습니다.
+
+이는 기술적 mechanism입니다. 특정 regulatory requirement를 충족하는지는 해당 regulation과 법률 전문가의 해석에 따라 달라집니다.
+
+## Application Design Guideline
+
+- application layer뿐 아니라 contract level에서 data visibility rule을 enforce하도록 Daml signatory/observer model을 사용하세요.
+- audit trail이 필요한 contract에 auditor party를 observer로 추가하세요.
+- 민감한 PII는 off-ledger에 저장하고 on-ledger에서는 ID로 reference하세요.
+- 엄격한 data residency requirement가 있는 workflow에는 Dedicated Synchronizer를 사용하세요.
+- regulatory obligation에 따라 Ledger pruning retention period를 설정하세요.
+
+## 추가 자료
+
+- [Privacy Model 설명](/overview/learn/privacy-model) — sub-transaction privacy에 관한 전체 세부 정보
+- [Security Best Practice](/appdev/modules/m7-security) — Canton application 보안
+- [Architecture Overview](/overview/learn/architecture) — Validator와 Synchronizer의 관계

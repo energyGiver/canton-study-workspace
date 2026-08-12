@@ -1,0 +1,63 @@
+---
+title: "Validator User 및 Wallet"
+description: "Validator Node의 user, Party 및 Wallet 관리"
+source_id: "SRC-11B900FFB9"
+source_path: "global-synchronizer/deployment/validator-users"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "96cdef9e0d85d10626182374e6430d6f998b2b7fbe0e73e65af27c8294136011"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorUsersBash48 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-users-bash-48.mdx";
+import ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorUsersBash66 from "/snippets/internal/splice/main/splice-rst-code-docs-src-validator-operator-validator-users-bash-66.mdx";
+import ExternalSpliceMainSpliceRstLiteralMarkerAppsAppSrcPackExamplesSvHelmValidatorValuesEnablewalletStart from "/snippets/external/splice/main/splice-literal-marker-apps-app-src-pack-examples-sv-helm-validator-values-enablewallet-start.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/deployment/validator-users.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/validator_operator/validator_users.rst" hash="b6c1f50f" */}
+
+Canton은 [Daml Party 관리](/appdev/deep-dives/manage-daml-parties)에 자세히 설명된 대로 Party와 user를 구분합니다. 본질적으로 Party는 on-ledger identity이고 user는 하나 이상의 Party와 연결할 수 있는 off-ledger entity를 나타냅니다.
+
+Default로 user가 Wallet에 처음 login하여 "Onboard yourself" button을 누르면 Validator가 fresh Party ID가 있는 fresh Party를 allocate하고 해당 user를 새로 allocate된 Party와 연결합니다. Validator initialization의 일부로 Validator Operator용 Party가 자동으로 생성됩니다. Installation 중 `validatorWalletUser`로 제공한 user가 primary Party로 이 Party와 연결됩니다.
+
+위 접근 방식 외에도 Validator API endpoint `/v0/admin/users`는 user와 Party association을 생성하는 두 가지 추가 mode를 지원합니다.
+
+1.  Existing Party와 Association: User를 existing Party에 연결합니다.
+2.  Custom Party Hint: 사람이 읽을 수 있는 Party hint를 사용하여 새 Party를 allocate하고 user를 새로 생성된 Party에 연결합니다.
+
+Existing Party와 Association: User의 primary Party가 Validator Operator Party 또는 다른 existing Party가 되도록 구성할 수 있습니다. 실제로 이러한 user가 Wallet UI에 login하면 Validator Operator Wallet에 접근합니다. 현재 user별 finer-grained permission은 지원되지 않으므로 여러 user가 동일한 Wallet에 접근하게 된다는 점에 유의하세요.
+
+User를 Validator Operator Party와 연결하려면 다음 단계가 필요합니다.
+
+1.  Validator가 user의 새 Party를 allocate하지 않도록 UI를 통해 user를 onboard하지 않습니다.
+2.  OIDC provider에서 새 user를 생성하고 user ID(예: `auth0\|123456789`)를 얻습니다. USER environment variable에 저장합니다. `export USER=auth0|123456789`.
+3.  Validator API와 상호작용할 Validator Operator credential을 얻습니다. 한 가지 방법은 Operator로 login한 상태에서 Wallet Network activity log를 검사하고 API request에 사용된 Bearer token을 복사하는 것입니다. TOKEN environment variable에 저장합니다. `export TOKEN=<content of the token you obtained>`
+4.  Validator Operator Party ID를 얻습니다. Operator로 login한 Wallet UI의 오른쪽 위 logout button 옆에서 찾을 수 있습니다. PARTY_ID environment variable에 저장합니다. `export PARTY_ID=<PartyID of the operator>`
+5.  다음 Command를 실행하여 user를 Validator Operator Party와 연결합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorUsersBash48 />
+
+6.  이제 user가 Wallet UI에 login하여 Validator Operator Wallet에 접근할 수 있습니다. 위 API call을 통해 user가 이미 onboard되었으므로 "Onboard yourself" button이 표시되어서는 안 됩니다. Button이 보이면 위 process에서 문제가 발생한 것입니다. Button을 누르지 마세요.
+
+Custom Party Hint: 이 mode에서는 user의 새 Party를 생성할 때 사람이 읽을 수 있는 Party hint를 제공할 수 있습니다. OAuth ID 대신 descriptive hint(예: treasury_dept::...)가 있는 Party를 생성하는 데 사용합니다.
+
+1.  `Association with Existing Party` mode의 1~3단계를 따라 USER와 TOKEN을 얻습니다.
+2.  원하는 full Party ID `(Hint::Namespace)`를 결정합니다. 예: `alice::f3d917....`. Namespace 부분에는 Validator Operator Party 같은 existing Party의 namespace를 사용합니다. Full ID를 `PARTY_ID` environment variable에 저장합니다. `export PARTY_ID=alice::f3d917...`.
+3.  다음 Command를 실행하여 새 Party를 생성하고 user를 연결합니다.
+
+<ExternalSpliceMainSpliceRstCodeDocsSrcValidatorOperatorValidatorUsersBash66 />
+
+## Wallet 및 Wallet automation 비활성화
+
+Wallet HTTP server와 Wallet automation을 비활성화하려면 `validator-values.yaml` file을 `enableWallet: false`로 update합니다.
+
+<ExternalSpliceMainSpliceRstLiteralMarkerAppsAppSrcPackExamplesSvHelmValidatorValuesEnablewalletStart />
+
+Wallet이 비활성화되면 Validator에는 traffic 비용을 지불할 fund가 없습니다. 따라서 automation이 traffic top-up을 시도하지 않도록 Validator top-up config를 제거해야 합니다. 자세한 내용은 [helm_validator_topup](/global-synchronizer/deployment/validator-kubernetes)을 참조하세요.
+
+
+{/* COPIED_END */}

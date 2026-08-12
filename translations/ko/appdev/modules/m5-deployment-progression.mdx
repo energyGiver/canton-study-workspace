@@ -1,0 +1,104 @@
+---
+title: "Deployment Progression"
+description: "Canton application을 LocalNet에서 DevNet, TestNet을 거쳐 MainNet production으로 이동"
+source_id: "SRC-EF2297406B"
+source_path: "appdev/modules/m5-deployment-progression"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "61faecefd1717527d64c2ee578eb5af485165e0cb70acef19f22d0d932df4b9a"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m5-deployment-progression.md)을 사용하세요.
+</Warning>
+
+Canton application development는 네 environment에 걸쳐 이루어지며 각각 development/deployment lifecycle의 서로 다른 stage를 담당합니다. Application은 development용 LocalNet, early integration용 DevNet, pre-production validation용 TestNet, production용 MainNet 순서로 이동합니다.
+
+## Environment Overview
+
+- **LocalNet** — Docker Compose를 통해 machine에서 완전히 실행됩니다. 모든 Validator와 Synchronizer를 제어합니다. External dependency나 cost가 없습니다.
+- **DevNet** — Canton Foundation이 운영하는 shared development Network입니다. 실제 Global Synchronizer infrastructure와 early integration testing에 사용됩니다. 주기적으로 reset됩니다. 자주 update되며 breaking change가 있을 수 있습니다.
+- **TestNet** — MainNet configuration과 upgrade cadence를 mirror하는 pre-production Network입니다. Production deployment 전 final validation에 사용됩니다.
+- **MainNet** — Production Canton Network입니다. 실제 Canton Coin(CC), traffic cost, User가 사용됩니다.
+
+## What Changes Between Environments
+
+Core architecture는 네 environment 모두 동일합니다. Application은 Ledger API를 통해 Validator Participant Node와 통신합니다. 그 주변 infrastructure가 변경됩니다.
+
+| Category | LocalNet | Shared Networks (DevNet / TestNet / MainNet) |
+|---|---|---|
+| **Identity & Authentication** | Default User가 있는 pre-configured Keycloak | Validator onboarding 필요 + Validator auth provider의 valid JWT |
+| **Network Connectivity** | Localhost에서 실행 | Validator가 Global Synchronizer Sequencer Node에 연결해야 함 |
+| **Canton Coin & Traffic** | Simulated CC와 traffic 제공 | Traffic 구매에 실제 CC 필요(auto-top-up 구성 가능). DevNet에서 `Tap` 사용 가능. |
+| **DAR Deployment** | Local Validator에 direct DAR upload | Validator Participant Node를 통해 upload. Counterparty와 synchronization이 필요할 수 있음 |
+
+## Upgrade Types on the Global Synchronizer
+
+<Note>
+자세한 upgrade procedure는 [Validator Upgrades](/global-synchronizer/production-operations/validator-upgrades) 페이지를 참조하세요.
+</Note>
+
+{/* COPIED_START source="docs-website:replicated/quickstart/3.5/sdk/quickstart/upgrade/upgrades-on-global-sync.rst" hash="upgrade-types" */}
+
+Super Validator(SV)는 functionality 개선, issue 해결, 새 feature 도입을 위해 Global Synchronizer upgrade를 주기적으로 구현합니다. Node Operator 또는 Application Provider는 발생할 수 있는 세 upgrade type을 알아야 합니다.
+
+### Type 1: Backward-compatible changes
+
+Type 1 upgrade는 Splice application의 backward-compatible change 또는 Canton synchronization layer behavior 변경을 포함합니다. 이 non-breaking change는 매주 월요일 발생합니다.
+
+Validator는 Splice version 한두 개 뒤처져도 효과적으로 작동할 수 있지만 SV는 weekly upgrade에 맞게 Node를 최신으로 유지할 것을 권장합니다. 여러 version을 한 번에 건너뛰는 "skip upgrade"는 SV가 공식 test하지 않으므로 일반적으로 작동하더라도 risk가 증가합니다.
+
+### Type 2: Daml model changes
+
+Type 2 upgrade는 Splice application 기반 Daml model을 수정합니다. Application chain에 fork를 도입하며 몇 달마다 발생합니다.
+
+Type 2 upgrade process는 Type 1 upgrade를 통한 새 Daml model 배포로 시작하고 SV Node owner가 approve해야 하는 offline Canton Improvement Proposal(CIP)이 뒤따릅니다. 이어 SV가 새 model 적용 date/time을 정하는 onchain vote를 수행합니다. 이 cutoff point부터 최신 Splice version을 실행하는 Validator만 새 model을 사용하는 Transaction에 참여할 수 있습니다. Latest version을 adopt하지 않은 Validator는 참여할 수 없습니다.
+
+### Type 3: Non-compatible protocol changes
+
+Type 3 upgrade는 Canton synchronization protocol의 fundamental change입니다. Logical Synchronizer Upgrade(LSU)를 통해 수행되며 3개월에서 4개월마다 발생합니다.
+
+Type 3 upgrade implementation에는 offchain vote로 approve된 Canton Improvement Proposal(CIP), 이어 upgrade schedule을 정하는 SV onchain vote가 필요합니다. 이 migration은 모든 SV와 Validator에 영향을 주며 이전 protocol에서 새 protocol로 coordinated transition해야 합니다. 현재 Canton은 이 upgrade 중 모든 Node가 함께 migrate해야 합니다.
+
+{/* COPIED_END */}
+
+## Promotion Checklist
+
+Application을 다음 environment로 promote하기 전에 다음을 verify하세요.
+
+### LocalNet → DevNet
+
+- 모든 Daml Script unit test 통과(`dpm test`)
+- LocalNet 대상 backend integration test 통과
+- DAR clean compile(`dpm build`)
+- Validator가 DevNet에 onboard됨
+- DevNet authentication 구성(default Keycloak User 제거)
+
+### DevNet → TestNet
+
+- 실제 Multi-Party workflow의 end-to-end test가 DevNet에서 통과
+- Application이 중단 없이 Type 1 upgrade(weekly Splice update)를 처리
+- 예상 load의 performance가 acceptable
+- DAR deployment process가 문서화되고 test됨
+- Monitoring/alerting 구성
+
+### TestNet → MainNet
+
+- Full regression suite가 TestNet에서 통과
+- TestNet에서 Type 1 upgrade cycle을 최소 한 번 성공적으로 완료
+- Incident response용 operational runbook 존재
+- CC/traffic management 구성(auto-top-up, budget monitoring)
+- Organization이 counterparty와 DAR deployment coordination process 검토
+
+{/* COPIED_START source="docs-website:replicated/quickstart/3.5/sdk/quickstart/upgrade/upgrades-on-global-sync.rst" hash="preparing-upgrades" */}
+
+Application Provider는 upgrade 중 smooth operation을 보장하기 위해 DevNet, TestNet, MainNet에 Node를 유지해야 합니다. 세 environment 모두에 Node를 유지하면 MainNet upgrade가 service/customer를 중단하지 않고 진행될 가능성이 크게 높아집니다.
+
+{/* COPIED_END */}
+
+## Next Steps
+
+- [Environment Configuration](/appdev/modules/m5-environment-configuration) — Environment별 DPM configuration
+- [CI/CD Integration](/appdev/modules/m5-ci-cd-integration) — Promotion pipeline 자동화

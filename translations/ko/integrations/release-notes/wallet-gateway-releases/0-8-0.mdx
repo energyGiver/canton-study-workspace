@@ -1,0 +1,57 @@
+---
+title: "0.8.0 — 2025-11-24"
+description: "Wallet Gateway 0.8.0 release note"
+source_id: "SRC-A5864C007E"
+source_path: "integrations/release-notes/wallet-gateway-releases/0-8-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "ea15cd0fa4c7c4719c648314d6525b842e05ecb028959d5e241f711d7191bf11"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-gateway-releases/0-8-0.md)을 사용하세요.
+</Warning>
+
+
+{/* GENERATED_RELEASE_NOTES target="wallet-gateway" format="split-release" version="0.8.0" source="@canton-network/wallet-gateway-remote@0.8.0" */}
+
+# 0.8.0 — 2025-11-24
+
+### 🚀 기능
+
+- prepareExecute argument 확장 ([#904](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/904))
+- **wallet-gateway-remote:** config schema 또는 example을 출력하는 CLI flag 추가 ([#905](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/905))
+- 간편한 LocalNet 연결 ([#895](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/895))
+- user logout 시 emit ([#902](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/902))
+- syncWallets에서 accountsChanged emit ([#899](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/899))
+
+### 🩹 수정 사항
+
+- approve view에서 transaction data를 URL parameter로 사용하지 않도록 수정 ([#911](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/911))
+
+### 🧱 Dependency update
+
+- @canton-network/core-wallet-dapp-rpc-client version update: 0.15.0
+- @canton-network/core-wallet-user-rpc-client version update: 0.14.0
+- @canton-network/core-wallet-store-inmemory version update: 0.15.0
+- @canton-network/core-wallet-ui-components version update: 0.13.0
+- @canton-network/core-signing-participant version update: 0.13.0
+- @canton-network/core-signing-fireblocks version update: 0.13.0
+- @canton-network/core-signing-store-sql version update: 0.14.0
+- @canton-network/core-signing-internal version update: 0.13.0
+- @canton-network/core-wallet-store-sql version update: 0.14.0
+- @canton-network/core-ledger-client version update: 0.20.0
+- @canton-network/core-tx-visualizer version update: 0.14.0
+- @canton-network/core-wallet-store version update: 0.13.0
+- @canton-network/core-signing-lib version update: 0.15.0
+- @canton-network/core-wallet-auth version update: 0.14.0
+- @canton-network/core-rpc-errors version update: 0.10.0
+- @canton-network/core-types version update: 0.13.0
+
+### ❤️ 감사의 말
+
+- Alex Matson @alexmatson-da
+- Jasper Van der Jeugt
+- Marc Juchli @mjuchli-da

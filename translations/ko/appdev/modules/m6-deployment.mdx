@@ -1,0 +1,115 @@
+---
+title: "Upgrade Deployment"
+description: "Coordination, rollback, migration strategy로 environment 전반에 Daml Package upgrade deploy"
+source_id: "SRC-5417FBD81C"
+source_path: "appdev/modules/m6-deployment"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "984ae9387bbcd11d1fec67a49e42dde61d2aed8899bcc06ea425fd61818fdbb0"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m6-deployment.md)을 사용하세요.
+</Warning>
+
+Upgrade deployment는 모든 관련 Validator에 newer version Package를 배치하고 workflow를 current version에서 new version으로 transition하는 것을 의미합니다. Canton의 distributed 특성상 switch 하나만 flip할 수 없습니다. 기존 workflow를 계속 실행하면서 organization 간 coordinate해야 합니다.
+
+다음 설명에서 current version은 `v1`, new version은 `v2`입니다.
+
+## Deployment Sequence
+
+Deployment는 [Overview](/appdev/modules/m6-overview)에 설명된 asynchronous rollout model을 따릅니다.
+
+1. **Upload v2 DAR to your own validator** — Participant Node에 V2 Package를 upload합니다. 아직 다른 organization에는 영향을 주지 않습니다.
+
+2. **Distribute v2 DAR to counterparties** — V2 DAR file을 App User와 다른 organization에 공유합니다. V2 workflow가 여러 Party에 걸쳐 작동하려면 각 organization이 Validator에 upload해야 합니다.
+
+3. **Update backends to use v2** — Backend Ledger API client가 V2 Package를 가리키도록 합니다. 이제 새 Contract가 V2로 생성됩니다. 기존 V1 Contract는 계속 사용할 수 있습니다. Downtime을 최소화하려면 backend가 V1/V2 Package 모두와 작동해야 할 수 있습니다.
+
+4. **Migrate existing contracts (if needed)** — V2 data가 필요한 Contract의 경우 upgrade Choice를 exercise하여 V1 Contract를 archive하고 V2 replacement를 생성하는 migration automation을 실행합니다.
+
+5. **Set a switch-over date** — 모든 Party가 transition을 완료할 target date를 publish합니다. 이후 V1 Package를 unvet하여 V1 workflow를 decommission할 수 있습니다.
+
+5. **Vet the new package** — Target date에 모든 Party가 V2 Package를 vet하여 transition을 완료합니다. 이후 V1 Package를 unvet하여 V1 workflow를 decommission할 수 있습니다.
+
+6. **Unvet v1 (optional)** — 모든 V1 Contract가 archive 또는 migrate되면 V1 Package를 unvet하여 upgrade를 finalize합니다.
+
+## Coordinating with Counterparties
+
+{/* COPIED_START source="docs-website:manual/build/3.5/sdlc-howtos/applications/upgrade/arch-considerations-upgrading.rst" hash="uncoordinated-risks" */}
+
+V2 workflow로의 uncoordinated transition은 Command submission failure를 일으켜 workflow가 stuck 상태가 될 수 있습니다. 일반적인 scenario는 다음과 같습니다.
+
+- **Daml model version mismatch** — Stakeholder Participant Node에 필요한 V2 Package가 없거나 V2 Package가 vetted 상태가 아니면 V2 workflow를 reference하는 Command가 실패합니다. 이 상황에서 V1이 계속 vetted 상태이면 V1 version을 사용합니다.
+- **Explicit disclosure** — V2 Contract를 Explicit Disclosure에 사용할 때 Submitting Party Participant Node에 필요한 V2 Package가 없으면 이를 reference하는 Command가 실패합니다.
+Disclosed Contract의 모든 Stakeholder가 V2를 upload했더라도 발생합니다.
+
+{/* COPIED_END */}
+
+이 issue를 피하려면 upgrade timeline을 명확하게 communicate하세요.
+
+- Switch-over date 훨씬 전에 V2 DAR file 배포
+- DAR upload/vetting instruction 제공
+- Organization이 자체 backend를 V2 대상으로 test할 충분한 time 제공
+- V2-only workflow exercise 전 readiness 확인
+
+## Contract Migration Strategies
+
+{/* COPIED_START source="docs-website:manual/build/3.5/sdlc-howtos/applications/upgrade/arch-considerations-upgrading.rst" hash="migration-strategies" */}
+
+모든 Contract에 explicit migration이 필요한 것은 아닙니다. Daml Contract archival은 여러 path로 발생할 수 있습니다.
+
+- **Natural end of lifecycle** — Contract가 lifecycle이 자연스럽게 끝난 business entity를 나타냅니다(예: 완전히 상환된 loan).
+- **State no longer holds** — Contract가 더 이상 valid하지 않은 state를 attest했습니다.
+- **Modification of the underlying entity** — Business entity는 계속 관련 있지만 Daml Contract가 immutable이므로 update하려면 old Contract를 archive해야 합니다. Updated Contract를 V2로 생성하면 V1에서 벗어나는 organic incremental migration이 됩니다.
+- **Explicit upgrade** — Upgrade process 일부로 Contract가 archive되며 이상적으로 Upgrade Runner가 작업을 자동화합니다.
+
+External automation에 의존하기보다 Daml에서 직접 versioning/upgrade를 처리하는 접근 방식이 선호됩니다. 다만 경우에 따라 off-ledger system 또는 Active Contract Set(ACS)/PQS query를 참조해야 V1에서 valid V2를 생성할 수 있습니다.
+
+{/* COPIED_END */}
+
+Old V1 Contract를 V2 Template로 upgrade해야 하는 backward-incompatible change에는 다음을 수행합니다.
+
+1. V1 Template에 old Contract를 archive하고 새 Template instance를 생성하는 consuming `Upgrade` Choice 추가
+2. 필요한 경우 추가 Choice argument를 통해 `Upgrade` Choice에 reference data(default value 등) 제공
+3. Backend automation으로 ACS를 iterate하고 각 Contract의 `Upgrade` Choice exercise
+
+## Rollback Strategies
+
+{/* COPIED_START source="docs-website:manual/build/3.5/sdlc-howtos/applications/upgrade/arch-considerations-upgrading.rst" hash="rollback" */}
+
+### Rollback by unvetting
+
+기존 Template/Choice type을 수정하지 않는 upgrade는 V2 DAR Package를 unvet하여 rollback합니다. V2로 Contract를 생성하지 않은 경우 이 접근 방식을 사용합니다.
+
+### Rollback by roll-forward
+
+기존 Template에 새 field를 추가하는 upgrade는 rollback이 더 복잡합니다. 새 field를 사용하여 Contract를 하나라도 생성하면 이전 Daml code version으로 읽을 수 없습니다. 대신 다음을 수행합니다.
+
+1. 새로 추가된 field를 무시하는 새 DAR version을 publish합니다.
+2. 새로 추가된 field를 `None`으로 reset하는 `Downgrade` Choice를 도입합니다.
+3. Backend automation으로 ACS를 iterate하고 `Downgrade` Choice를 invoke합니다.
+
+복잡한 roll-forward rollback을 피하려면 upgrade를 두 단계로 나누는 것을 고려하세요.
+
+1. 새 field를 추가하지만 사용하지 않는 upgrade. Choice가 변경되지 않으므로 rollback이 필요하지 않습니다.
+2. 새 field를 사용하도록 Choice implementation을 수정하는 별도 upgrade. Issue가 발생하면 unvetting으로 rollback할 수 있습니다.
+
+{/* COPIED_END */}
+
+## Environment-by-Environment Rollout
+
+[Deployment Progression](/appdev/modules/m5-deployment-progression)의 standard promotion path를 적용합니다.
+
+- **LocalNet** — 전체 upgrade cycle을 local에서 test합니다. V1 upload, Contract 생성, V2 upload, cross-version behavior verify, migration automation 실행.
+- **DevNet** — 실제 counterparty와 upgrade를 deploy합니다. Validator 간 DAR distribution과 mixed-version operation이 작동하는지 verify합니다.
+- **TestNet** — Coordinated switch-over date를 포함한 complete upgrade process를 수행합니다. 이 rehearsal은 MainNet 전에 coordination issue를 포착합니다.
+- **MainNet** — 실제 counterparty/Contract와 upgrade plan을 실행합니다.
+
+## Next Steps
+
+- [Smart Contract Upgrades Overview](/appdev/modules/m6-overview) — Module overview로 돌아가기
+- [Testing Upgrades](/appdev/modules/m6-testing-upgrades) — Deployment 전 upgrade path verify
+- [Deployment Progression](/appdev/modules/m5-deployment-progression) — General environment promotion strategy

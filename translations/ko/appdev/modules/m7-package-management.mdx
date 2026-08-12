@@ -1,0 +1,104 @@
+---
+title: "Package Management"
+description: "environment 간 DAR file 관리, version pinning, dependency management 및 package distribution 조정"
+source_id: "SRC-A8023ED853"
+source_path: "appdev/modules/m7-package-management"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "36e2ca0cba4e9e3903bf7d1a9fd252c507042cbaf8fb92acca7945a3296fc6d6"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m7-package-management.md)을 사용하세요.
+</Warning>
+
+import DamlDocsAppdevModulesM7PackageManagementL23 from "/snippets/daml-docs/appdev_modules_m7-package-management_L23.mdx";
+import DamlDocsAppdevModulesM7PackageManagementL37 from "/snippets/daml-docs/appdev_modules_m7-package-management_L37.mdx";
+import DamlDocsAppdevModulesM7PackageManagementL47 from "/snippets/daml-docs/appdev_modules_m7-package-management_L47.mdx";
+
+
+Daml package(DAR)는 on-ledger logic의 deployment unit입니다. workflow에 참여하는 모든 Validator에 같은 package가 필요하므로 environment와 organization 간에 이를 관리할 때는 일반 software artifact보다 더 많은 감독이 필요합니다.
+
+## DAR Lifecycle
+
+DAR file은 여러 단계를 거칩니다.
+
+1. **Build** — `dpm build`는 Daml source를 DAR로 compile합니다. output은 deterministic합니다. 동일한 source와 SDK version은 동일한 DAR를 생성합니다.
+2. **Test** — DAR를 Sandbox 또는 LocalNet에 upload하고 test suite를 실행합니다.
+3. **Store** — DAR를 artifact repository(Artifactory, Nexus, S3 또는 CI system artifact storage)에 publish합니다.
+4. **Distribute** — Validator에 DAR가 필요한 counterparty와 공유합니다.
+5. **Deploy** — production Validator에 DAR를 upload하고 vet합니다.
+6. **Deprecate** — upgrade cycle이 성공한 뒤 이전 package version을 unvet합니다.
+
+## Version Pinning
+
+의도하지 않은 upgrade를 방지하려면 `daml.yaml`에 SDK version을 pin하세요.
+
+<DamlDocsAppdevModulesM7PackageManagementL23 />
+
+`dpm install package`를 실행해 `daml.yaml`에 지정된 SDK version을 설치합니다. pin된 `sdk-version` field는 모든 team member가 같은 SDK version으로 build하도록 보장합니다.
+
+## Dependency Management
+
+multi-package project는 `multi-package.yaml`을 사용해 package 간 dependency를 선언합니다. `dpm build`는 이를 resolve하고 topological order로 build합니다.
+
+다른 organization이 publish한 package와 같은 external dependency는 project의 DAR file로 관리하세요.
+
+<DamlDocsAppdevModulesM7PackageManagementL37 />
+
+dependency DAR를 repository에 저장하거나 environment variable interpolation을 사용해 shared artifact store에서 가져오세요.
+
+<DamlDocsAppdevModulesM7PackageManagementL47 />
+
+dependency가 새 version을 publish하면 pin된 version을 업데이트하기 전에 package를 대상으로 test하세요. dependency update는 code가 사용하는 interface와 choice의 동작을 변경할 수 있습니다.
+
+## Artifact Repository
+
+production DAR를 version metadata와 함께 전용 artifact repository에 저장하세요. 일반적인 구조는 다음과 같습니다.
+
+```text
+artifacts/
+├── com-example-licensing/
+│   ├── 1.0.0/
+│   │   ├── com-example-licensing-1.0.0.dar
+│   │   └── metadata.json
+│   └── 1.1.0/
+│       ├── com-example-licensing-1.1.0.dar
+│       └── metadata.json
+```
+
+DAR는 작으므로 소규모 project에서는 version control에 check-in하는 방법도 실용적입니다. 전용 repository를 사용하면 artifact management를 source control과 분리하고 counterparty에 더 쉽게 배포할 수 있습니다.
+
+## Counterparty에 Package 배포
+
+{/* COPIED_START source="docs-website:manual/build/3.5/sdlc-howtos/sdlc-best-practices.rst" hash="dar-distribution" */}
+
+workflow에 참여하는 party를 host하는 모든 Validator에 같은 DAR file을 deploy해야 합니다. Daml code는 Validator 간에 synchronize되는 state 및 workflow의 API를 정의합니다. 이는 gRPC client developer와 공유하는 gRPC server의 `.proto` file과 유사합니다.
+
+Daml code는 backend/frontend code와 별도 repo에 저장하고 app user organization에 tarball 또는 해당 repo의 read-only access를 제공하는 것이 좋습니다. 그러면 organization이 code를 review하고 build하여 Validator에 설치된 DAR file의 동작을 신뢰할 수 있습니다.
+
+{/* COPIED_END */}
+
+실제 distribution 단계는 다음과 같습니다.
+
+- counterparty가 access할 수 있는 shared artifact repository에 DAR를 publish합니다.
+- counterparty가 source로부터 compile하고 DAR가 일치하는지 검증할 수 있도록 build instruction을 제공합니다.
+- version 사이의 변경 사항을 기록한 changelog를 포함합니다.
+- upgrade timeline을 전달합니다. [Upgrade Deployment](/appdev/modules/m6-deployment)을 참고하세요.
+
+## Package Modularization
+
+{/* COPIED_START source="docs-website:manual/build/3.5/sdlc-howtos/sdlc-best-practices.rst" hash="dar-modularization" */}
+
+- **Stakeholder-oriented module** — upgrade를 단순화하고 privacy를 유지하도록 stakeholder interaction에 따라 workflow를 modularize합니다. DAR file은 workflow에 참여하는 party를 host하는 Validator에만 배포하면 됩니다.
+- **Public 및 private API** — public workflow를 최소화하고 internal workflow를 별도 DAR file에 저장해 변화하는 business need에 더 유연하게 적응하세요. workflow management 개선을 위해 interface definition을 별도 package로 분리하세요. public API를 지정할 때 interface definition을 사용하면 application upgrade가 쉬워집니다.
+- **Test code 분리** — test code는 production code와 별도 DAR file에 유지하세요. test DAR를 production Validator에 deploy해서는 안 됩니다.
+
+{/* COPIED_END */}
+
+## 다음 단계
+
+- [Security Best Practice](/appdev/modules/m7-security) — package 및 deployment pipeline 보안
+- [Performance](/appdev/modules/m7-performance) — Canton application optimization strategy

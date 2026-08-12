@@ -1,0 +1,102 @@
+---
+title: "Upgrade Limitations"
+description: "Daml Smart Contract Upgrade의 알려진 limitation과 constraint"
+source_id: "SRC-9BE7FFA26B"
+source_path: "appdev/modules/m6-limitations"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "f695765680e4cf6ab9463c1a3cb8b048f31245e100babaf9c5f3f88c8c7b1458"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m6-limitations.md)을 사용하세요.
+</Warning>
+
+import DamlAppdevModulesM6LimitationsL65 from "/snippets/daml-docs/appdev_modules_m6-limitations_L65.mdx";
+
+
+Daml의 Smart Contract Upgrade(SCU)는 강력하지만 명확한 boundary가 있습니다. 이 limitation을 미리 이해하면 development와 production rollout 중 예상 밖 문제를 방지할 수 있습니다.
+
+## Packages Cannot Be Removed
+
+Validator에 DAR(Daml Archive) Package를 upload하면 영구적으로 남습니다. Package를 delete하거나 unregister하는 mechanism은 없습니다. 즉 다음을 의미합니다.
+
+- Upload된 모든 Package version이 계속 사용 가능
+- Validator Package store가 시간에 따라 증가
+- Package upload를 revert할 수 없음
+
+특히 upload된 모든 Package가 무기한 persist하는 MainNet에서는 Package upload를 신중하게 계획하세요.
+
+## Template Removal Is Not Possible
+
+이후 version의 Package에서 Template을 제거할 수 없습니다. Version 1이 `Asset`과 `LegacyAsset` Template을 정의하면 version 2도 둘 다 포함해야 합니다.
+
+### Deprecating a Template
+
+{/* COPIED_START source="docs-website:manual/build/3.5/sdlc-howtos/applications/upgrade/arch-considerations-upgrading.rst" hash="0acbea7d" */}
+
+### Adding and Deprecating Templates
+
+새 Template을 추가할 수 있습니다. 기존 Template은 제거할 수 없지만 다음 방법으로 deprecate할 수 있습니다.
+
+- 다른 Daml code에서 해당 Template reference 제거
+- `ensure False`를 추가하여 non-operational 상태로 만듭니다. 그러면 해당 Template을 사용한 새 Contract 생성과 기존 Contract에서 implicit <span class="title-ref">Archive</span> Choice를 포함한 Choice exercise를 방지합니다.
+
+후자의 접근 방식에서는 `ensure` clause를 `True`로 evaluate하는 다른 update를 deploy하지 않는 한 archive할 방법이 없는 많은 Active Contract가 Ledger에 저장될 수 있습니다. Archive할 수 없는 Contract를 Ledger에 남기지 않고 Template을 deprecate하려면 automation 또는 다른 방법으로 해당 Template에서 생성된 모든 Active Contract를 archive한 후에만 Template에 `ensure False`를 추가합니다.
+
+#
+
+{/* COPIED_END */}
+
+<DamlAppdevModulesM6LimitationsL65 />
+
+## Removing Fields, Choices, or Variant Constructors Is Not Allowed
+
+SCU compatibility rule은 다음 제거를 금지합니다.
+
+- **Fields from a template** -- Optional field(default 포함)는 추가할 수 있지만 기존 field는 제거할 수 없음
+- **Choices from a template** -- Choice가 존재하면 향후 모든 version에 유지해야 함
+- **Constructors from a variant type** -- Variant type에 새 constructor를 추가할 수 있지만 기존 constructor를 잃을 수 없음
+
+이 rule은 old Package version에서 생성된 Contract가 새 version에서도 valid하며 exercise 가능한 상태로 유지되도록 합니다. Validator가 version 1 Contract를 계속 보유하면 version 2 Package가 해당 Contract를 interpret할 수 있어야 합니다.
+
+## Changing Field Types Is Restricted
+
+기존 field type을 변경할 수 없습니다. `amount`가 version 1에서 `Decimal`이면 version 2에서도 `Decimal`로 유지해야 합니다. Type change는 기존 Contract를 읽을 수 없게 만드는 breaking modification입니다.
+
+## What You Can Do
+
+비교를 위해 다음 modification은 Package version 간 허용됩니다.
+
+- 새 Template 추가
+- 기존 Template에 새 optional field(default value 포함) 추가
+- 기존 Template에 새 Choice 추가
+- 새 Variant constructor 추가
+- 새 Interface implementation 추가(새 Template에만)
+- Choice body(implementation logic) 변경
+
+## Planning Around Limitations
+
+{/* COPIED_START source="docs-website:manual/build/3.5/sdlc-howtos/applications/upgrade/arch-considerations-upgrading.rst" hash="0acbea7d" */}
+
+### Manage Backward-Incompatible Changes
+
+모든 변경이 backward compatibility를 유지할 수 있는 것은 아닙니다. Daml model update strategy는 service-based architecture에서 API가 evolve하는 방식과 유사한 principle을 따릅니다.
+
+기존 API, 즉 현재 Daml code에는 backward-compatible change만 허용됩니다. Choice의 parameter 제거와 같은 API 변경을 만들어 backward-incompatible change를 도입합니다. Backward-incompatible upgrade를 구현하려면 다음을 수행합니다.
+
+- Backward-incompatible change가 있는 새 Template을 기존 Template의 consuming `Upgrade` Choice와 함께 도입합니다. 이 Choice는 old Contract를 archive하고 새 Template instance를 생성하여 backward-compatible upgrade를 보장합니다.
+- 필요한 경우 추가 Choice argument를 통해 `Upgrade` Choice에 default value 같은 reference data를 제공합니다.
+- Backend automation을 사용하여 old Contract를 새 Contract로 migrate합니다. Automation이 Contract를 convert할 때까지 workflow에 downtime이 발생할 수 있습니다.
+
+{/* COPIED_END */}
+
+이 접근 방식은 explicit하며 Contract Stakeholder의 active cooperation이 필요합니다. 이는 feature입니다. Stakeholder는 자신의 Contract에 영향을 주는 변경에 항상 consent합니다.
+
+## Further Reading
+
+- [Upgrade Compatibility](/appdev/modules/m6-upgrade-compatibility) -- SCU의 전체 compatibility rule
+- [Package Naming](/appdev/modules/m6-package-naming) -- Breaking change를 고려한 naming convention
+- [Smart Contract Upgrades in Production](/appdev/modules/m7-smart-contract-upgrades) -- Rollout operational consideration

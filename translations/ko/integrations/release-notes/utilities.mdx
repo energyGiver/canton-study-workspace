@@ -1,0 +1,189 @@
+---
+title: "Canton Network Utilities Release Note"
+description: "Canton Network Utilities(Registry App) 0.12 release line의 release note입니다."
+source_id: "SRC-74EB7C4A31"
+source_path: "integrations/release-notes/utilities"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "a66b29e9a6dce6591742762742896668a97337d399f3aa4120a0e717fc93b4dc"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/utilities.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/manual/utilities/releases/0.12.rst" hash="d98b766c" */}
+
+
+## 0.12.9
+
+- transfer proof를 위한 transfer detail 복사 문제를 수정했습니다.
+
+## 0.12.8
+
+- 무료 credential 수락 문제를 수정했습니다. 무료 credential을 수락할 때 validator scan proxy를 불필요하게 호출하던 동작을 제거했습니다.
+
+## 0.12.7
+
+- 좁은 viewport에서 login screen layout을 수정했습니다.
+- app 이름을 Canton에서 Registry로 변경했습니다. 기존 Canton logo를 DA logo로 교체했습니다.
+- dApp mode에서 `useIsPackageAvailable` hook을 수정했습니다.
+
+## 0.12.6
+
+- dApp 지원을 추가했습니다.
+
+## 0.12.5
+
+- frontend에 custom token scope를 지정하는 기능을 추가했습니다.
+
+## 0.12.4
+
+### Backend
+
+- 기존 scope parameter를 darsyncer와 scribe에 전달하도록 했습니다.
+- custom token scope 지정을 지원하도록 darsyncer base image version을 2.9.3으로 올렸습니다.
+- DPM version을 1.0.12로 올렸습니다.
+
+## 0.12.3
+
+이 patch release에는 user-facing 변경 사항이 없습니다.
+
+### Backend
+
+- scribe container의 participant-query-store version을 3.4.5로 올렸습니다.
+- security vulnerability를 해결하도록 darsyncer base image를 업데이트했습니다.
+
+## 0.12.2
+
+이 patch release에는 user-facing 변경 사항이 없습니다.
+
+## 0.12.1
+
+### Synchronizer ID Migration
+
+`utility.yaml`을 2.0.0에서 2.1.0으로 업데이트하면서 utility endpoint에 `synchronizerId`를 도입했습니다. 이 새 field는 기존 `domainId`와 동일한 값을 사용합니다. `domainId`는 이제 deprecated 상태이지만 backwards compatibility를 위해 계속 사용할 수 있습니다. 모든 사용자는 `synchronizerId`로 전환하는 것이 좋습니다.
+
+### Documentation
+
+documentation의 기존 How-To Tutorial을 version 0.12.x에 맞게 업데이트했습니다.
+
+### Independent Transaction Validation
+
+participant가 UpdateID 및 Transfer Object를 제출해 Registry asset의 asset transfer 결과를 독립적으로 확인할 수 있는 새로운 verification API를 도입했습니다. 이 service는 표준화된 Success, Failure, Pending status 또는 invalid input을 제공합니다.
+
+### Historical Transfer Verification
+
+prune된 transaction의 proof data를 조회하도록 Transfer Proof API를 개선했습니다. 이를 통해 Ledger data가 archive된 이후에도 과거 transfer를 검증할 수 있습니다.
+
+## 0.12.0
+
+### 새로운 DAR
+
+**0.12.0의 새로운 DAR**
+
+| Package | Version | Hash |
+|---------|---------|------|
+| utility-commercials-v0 | 0.4.1 | fa5b1cc5c8368dff7c2e6a74aa2af9d520d755e2a508f44acd17343326e41839 |
+| utility-credential-app-v0 | 0.4.1 | e9a3b7df354dfd2f15c7d015328c34256308c90ba96f86f185dad58ffca8299b |
+| utility-registry-app-v0 | 0.7.0 | 7a75ef6e69f69395a4e60919e228528bb8f3881150ccfde3f31bcc73864b18ab |
+| utility-registry-v0 | 0.6.0 | a236e8e22a3b5f199e37d5554e82bafd2df688f901de02b00be3964bdfa8c1ab |
+| utility-registry-holding-v0 | 0.2.1 | 8107899ac4723ce986bf7d27416534e576e54b92161e46150a595fb78ff3d3a1 |
+
+0.12.0의 새로운 DAR
+
+### 새로운 Registry App 기능
+
+#### Batched Featured App Marker
+
+Registry Daml workflow는 더 이상 featured app activity marker를 생성하지 않습니다. 이제 Digital Asset이 운영하는 batched app marker automation을 통해 marker가 생성됩니다.
+
+이 automation은 최신 tokenomics guideline에 따라 Asset Issuer(Registry Provider)에 최적의 app marker 수가 적용되도록 보장합니다.
+
+featured party의 marker 생성을 DA operator에게 위임하려면 이 service를 opt-in해야 합니다. Registry Onboarding tab의 UI에서 Delegate Marker Creation을 클릭하면 `DelegatedBatchedMarkersProxy` instance가 생성됩니다.
+
+backwards-compatible Registry workflow(version 0.10 및 0.11)를 계속 사용하는 경우 Utility Operator Backend API가 activity marker 생성에 필요한 context를 더 이상 제공하지 않는다는 점에 유의하세요. 이는 최신 Tokenomics guideline을 준수하기 위한 조치입니다.
+
+또한 이 변경은 Registry transaction submitter에게 발생하는 transaction cost를 줄이는 데 중요한 역할을 합니다. 자세한 내용은 아래와 같습니다.
+
+#### 추가 Transaction Cost 절감
+
+모든 Registry workflow를 최적화하여 전반적으로 상당한 cost 절감을 달성했습니다. 아래 표는 third-party credential이 없고 input holding 수가 최소라고 가정할 때 여러 workflow의 예상 cost 절감 수준을 보여 줍니다.
+
+**추가 Transaction Cost 절감**
+
+| Workflow | Choice | Template | 대략적인<br />Cost<br />(USD) | 대략적인<br />Cost<br />절감<br />(0.11 대비) |
+|----------|--------|----------|---------------------------------|-----------------------------------------------|
+| **Direct Transfer** | TransferFactory_Transfer | TransferPreapproval | $ 0.5 | 70% |
+| **2-Step Transfer** | TransferFactory_Transfer | AllocationFactory | $ 0.5 | 50% |
+|  | TransferInstruction_Accept | TransferOffer | $ 0.4 | 50% |
+| **Merge** | TransferFactory_Transfer | AllocationFactory | $ 0.5 | 40% |
+| **BurnMint** | BurnMintFactory_BurnMint | AllocationFactory | $ 0.5 | 60% |
+| **Allocation** | AllocationFactory_Allocate | AllocationFactory | $ 0.5 | 50% |
+|  | AllocationFactory_ExecuteTransfer | DvpLegAllocation | $ 0.4 | 50% |
+| **Burn Request** | AllocationFactory_RequestBurn | AllocationFactory | $ 0.3 | 60% |
+|  | BurnRequest_Accept | BurnRequest | $ 0.3 | 60% |
+| **Burn Offer** | AllocationFactory_OfferBurn | AllocationFactory | $ 0.3 | 50% |
+|  | BurnOffer_Accept | BurnOffer | $ 0.3 | 60% |
+| **Mint Request** | AllocationFactory_RequestMint | AllocationFactory | $ 0.3 | 30% |
+|  | MintRequest_Accept | MintRequest | $ 0.3 | 60% |
+| **Mint Offer** | AllocationFactory_OfferMint | AllocationFactory | $ 0.3 | 50% |
+|  | MintOffer_Accept | MintOffer | $ 0.3 | 60% |
+
+추가 Transaction Cost 절감
+
+input holding 수가 늘어날수록 비례 cost 절감 효과가 더욱 커집니다. 예를 들어 여러 UTXO를 merge하는 cost가 이전보다 크게 낮아졌습니다.
+
+#### ExecutedTransfer 및 기타 Result Contract
+
+- **Batch Archival:** `ExecutedTransfer` 및 `RejectedTransfer` contract를 더 cost-efficient하게 batch archive할 수 있도록 `RegistrarService`에 choice를 추가했습니다.
+- **Observer Removal:** `ExecutedTransfer`, `RejectedTransfer` 및 기타 모든 Executed\*/Rejected\* contract를 포함한 모든 result contract에서 operator를 observer에서 제거했습니다.
+
+#### Allocation 및 TransferRule
+
+이제 allocation 실행은 새로 도입된 `TransferRule_ExecuteAllocation` choice를 통해 `TransferRule`을 활용합니다. 따라서 실행에 성공하려면 token admin 또는 registrar의 TransferRule instance가 있어야 합니다.
+
+또한 rule이 호출되는 역할을 더 명확히 구분할 수 있도록 TransferRule에 전용 choice를 추가했습니다.
+
+- `TransferRule_TwoStepTransfer`
+- `TransferRule_DirectTransfer`
+
+이는 향후 계획된 TransferRule validation logic 개선의 prerequisite입니다.
+
+### UX 개선
+
+- self-issuing credential UX를 개선했습니다. 일반적으로 Registry allowlist에 사용되는 기능입니다.
+- deprecated 상태인 `HolderService`는 더 이상 UI에 표시되지 않습니다. `ProviderServiceConfiguration`의 `holderCredentialRequirements` field는 비어 있으면 숨겨지고 configuration이 수정될 때마다 0으로 설정됩니다.
+
+### 기타 변경 사항
+
+Splice dependency를 splice-amulet-0.1.16으로 업그레이드했습니다.
+
+### Deprecation 및 지원 Version
+
+이 DA Apps version에서는 0.9.x release line 지원이 제거되었습니다. 모든 사용자는 적어도 0.10.x release line과 함께 제공된 Daml model을 실행해야 합니다.
+
+`HolderService`는 version 0.8.0부터 deprecated 상태입니다. 활성 `HolderService` instance가 있는 Provider는 해당 instance를 archive하고 `RegistrarConfiguration`에서 대응하는 holder requirement를 0으로 설정하는 것이 좋습니다. UI를 통해 빠르게 처리할 수 있습니다. 다음 release에서는 ensure false clause를 통해 Daml에서 HolderService를 완전히 비활성화할 계획입니다.
+
+기존 3-step mint/burn flow는 Daml에서 비활성화되었습니다.
+
+### Integration Guide 및 Backwards Compatibility
+
+#### Tokenizer
+
+- batched app marker 생성을 위해 featured provider는 새로 도입된 `DelegatedBatchedMarkersProxy` template을 통해 가능한 한 빨리 app marker 생성을 operator에게 위임해야 합니다. UI에서 Registry Onboarding tab으로 이동하고 Delegate Marker Creation button을 클릭하세요. 이 작업은 operator가 해당 release를 활성화하는 package를 deploy한 이후에 수행할 수 있습니다. 이 설정이 완료될 때까지 marker 생성이 중단되지 않도록 임시 방안으로 operator의 featured app right를 사용합니다.
+- 또한 Tokenizer는 Canton Foundation의 Validator release schedule을 따르고, marker 생성이 중단되지 않도록 최신 Splice version을 사용해야 합니다.
+- allocation 실행을 성공시키려면 token administrator 또는 registrar가 token에 대응하는 `TransferRule` instance가 있는지 확인해야 합니다. 없으면 transaction이 실패합니다.
+
+#### Wallet Provider
+
+Utility asset을 지원하는 Wallet Provider는 transaction history를 표시할 수 있도록 transfer를 성공적으로 parse할 수 있어야 합니다. 2-step transfer는 `TransferRule_DirectTransfer` choice 사용에서 새로 도입된 전용 `TransferRule_TwoStepTransfer` choice 사용으로 전환되었습니다.
+
+#### Third-Party Application
+
+그 밖의 모든 third-party application, 예를 들어 Token Standard Allocation workflow를 통해 Utility와 compose하는 exchange는 최신 Daml package를 upload하고 vet해야 합니다. 추가 단계는 필요하지 않습니다.
+
+
+{/* COPIED_END */}

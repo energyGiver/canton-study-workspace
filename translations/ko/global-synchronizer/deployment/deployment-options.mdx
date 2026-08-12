@@ -1,0 +1,125 @@
+---
+title: "Deployment Option"
+description: "Canton Network Validator deployment를 위한 Docker Compose와 Kubernetes 선택"
+source_id: "SRC-E930C9A7A9"
+source_path: "global-synchronizer/deployment/deployment-options"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "671fc8e8bdc779c2767ae67d9f86e996aa1beb93799316948410fdd19fc7543e"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/deployment/deployment-options.md)을 사용하세요.
+</Warning>
+
+Canton Network Validator는 Docker Compose 또는 Helm chart를 사용하는 Kubernetes로 deploy할 수 있습니다. 선택은 target environment, operational maturity 및 scale requirement에 따라 달라집니다.
+
+## Docker Compose
+
+Docker Compose는 Validator를 실행하는 가장 간단한 방법입니다. 모든 component를 shell script로 관리되는 single-host deployment로 package합니다.
+
+**Docker Compose를 사용할 때:**
+
+- LocalNet 및 DevNet development
+- Proof-of-concept 및 integration test
+- High availability requirement가 없는 소규모 deployment
+- Kubernetes expertise가 없는 team
+
+**제공되는 항목:**
+
+- 단일 `start.sh`/`stop.sh` workflow
+- Splice Node bundle의 pre-configured Compose file
+- UI routing용 local Traefik reverse proxy
+- Process management용 systemd integration
+
+**제한 사항:**
+
+- 단일 host에서 실행되며 built-in high availability가 없음
+- Manual scaling 및 failover
+- Production MainNet deployment에는 권장되지 않음
+- External PostgreSQL instance를 구성하지 않으면 database가 container 내부에서 실행됨
+
+## Helm을 사용하는 Kubernetes
+
+Kubernetes는 TestNet 및 MainNet에 권장되는 deployment 방법입니다. Helm chart는 모든 Validator component에 parameterized configuration을 제공합니다.
+
+**Kubernetes를 사용할 때:**
+
+- TestNet 및 MainNet production deployment
+- High availability 및 automated failover가 필요한 environment
+- 기존 Kubernetes infrastructure가 있는 조직
+- Managed database service(RDS, Cloud SQL, Azure Database)가 필요한 deployment
+
+**제공되는 항목:**
+
+- Validator, Participant, Wallet UI 및 CNS UI용 Helm chart
+- `helm upgrade`를 통한 managed rolling upgrade
+- Cloud-native service(managed database, KMS, monitoring)와 integration
+- TLS termination 및 routing용 ingress controller 지원
+- Environment 전반에서 scalable하고 reproducible함
+
+**Requirement:**
+
+- Kubernetes 1.27 이상
+- Helm 3.11.1 이상
+- Ingress controller(NGINX, Traefik 또는 cloud-native)
+- External PostgreSQL(production에서는 managed 또는 self-hosted를 사용하며 container 내부에서 실행하지 않음)
+
+## Cloud provider 고려 사항
+
+주요 cloud provider 세 곳은 모두 Validator deployment를 지원합니다. 주요 차이는 managed service name입니다.
+
+**AWS:**
+- Kubernetes용 EKS, PostgreSQL용 RDS 또는 Aurora
+- Static egress IP용 NAT Gateway
+- Key Management용 AWS KMS(Community Edition)
+- Storage용 gp3 EBS volume
+
+**Google Cloud:**
+- Kubernetes용 GKE, PostgreSQL용 Cloud SQL
+- Static egress IP용 Cloud NAT
+- Key Management용 Cloud KMS(Community Edition)
+- Storage용 SSD persistent disk
+
+**Azure:**
+- Kubernetes용 AKS, PostgreSQL용 Azure Database
+- Static egress IP용 NAT Gateway
+- Storage용 Premium SSD
+
+Cloud provider와 관계없이 managed database를 Kubernetes cluster와 동일한 region 및 availability zone에 배치하세요. Database latency는 Validator performance에 직접 영향을 미칩니다.
+
+## Option 선택
+
+대부분 team의 결정은 environment와 operational capacity에 따라 달라집니다.
+
+- **시작 단계 또는 DevNet test**: Docker Compose를 사용합니다. 최소한의 infrastructure로 몇 분 안에 실행할 수 있습니다.
+- **TestNet으로 이동**: 두 option 모두 사용할 수 있습니다. High availability가 필요 없다면 Docker Compose를 사용할 수 있습니다. Production에서 사용할 것과 동일한 deployment 방법을 원하면 Kubernetes가 선호됩니다.
+- **MainNet production**: Kubernetes를 사용합니다. High availability를 유지해야 하는 production Validator에는 operational tooling(rolling upgrade, health check, autoscaling)이 필요합니다.
+
+<Note>
+DevNet에서 Docker Compose로 시작한 후 TestNet/MainNet에서 Kubernetes로 migration할 수 있습니다. Validator state는 PostgreSQL에 있으며 database를 유지하는 한 onboarding identity가 deployment 전반에서 persist됩니다.
+</Note>
+
+## Super Validator deployment
+
+Super Validator는 Kubernetes를 사용해야 합니다. 추가 component(CometBFT Node, Sequencer, Mediator, SV app, Scan service)에는 Docker Compose가 production scale에서 지원하지 않는 orchestration이 필요합니다. [Kubernetes Deployment](/global-synchronizer/deployment/kubernetes-deployment) guide를 참조하세요.
+
+## 다음 단계
+
+<CardGroup cols={2}>
+
+<Card title="Prerequisites" icon="list-check" href="/global-synchronizer/deployment/prerequisites">
+  선택한 deployment 방법의 system requirement입니다.
+</Card>
+
+<Card title="Docker Compose validator deployment" icon="docker" href="/global-synchronizer/deployment/validator-docker-compose">
+  단계별 Docker Compose Validator deployment입니다.
+</Card>
+
+<Card title="Kubernetes validator deployment" icon="dharmachakra" href="/global-synchronizer/deployment/validator-kubernetes">
+  Helm chart를 사용한 단계별 Kubernetes Validator deployment입니다.
+</Card>
+
+</CardGroup>

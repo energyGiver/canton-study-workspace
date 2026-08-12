@@ -1,0 +1,65 @@
+---
+title: "0.19.0 — 2026-03-02"
+description: "Wallet Gateway 0.19.0 release note"
+source_id: "SRC-AB6B8A176D"
+source_path: "integrations/release-notes/wallet-gateway-releases/0-19-0"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "342676484a4d695db35efce94a17eccd6b0dc597172e7cb995a70f4a846cf9a8"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/integrations/release-notes/wallet-gateway-releases/0-19-0.md)을 사용하세요.
+</Warning>
+
+
+{/* GENERATED_RELEASE_NOTES target="wallet-gateway" format="split-release" version="0.19.0" source="@canton-network/wallet-gateway-remote@0.19.0" */}
+
+# 0.19.0 — 2026-03-02
+
+### 🚀 기능
+
+- 새로운 discovery ([#1337](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1337))
+- **wallet-gateway-remote:** transaction 삭제 ([#1296](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1296))
+- 설정을 변경할 수 있는 admin role ([#1295](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1295))
+- bootstrap을 static config에서 분리 ([#1275](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1275))
+- **dapp-sdk:** 개선된 Provider interface ([#1247](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1247))
+- dApp method 이름 변경(CIP-103) ([#1239](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1239))
+
+### 🩹 수정 사항
+
+- **wallet-gateway-remote:** Vite serve에서 relative base를 지원하지 않는 문제 ([#1391](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1391))
+- **wallet-gateway-remote:** Vite asset의 relative path build ([#1385](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1385))
+- **wallet-gateway-remote:** cost estimation logging 추가 ([#1363](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1363))
+- **wallet-gateway-remote:** file의 relative path 처리 추가 ([#1365](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1365))
+- OpenRPC spec(dApp, dApp remote, user, signing)에서 additionalProperties 비활성화 ([#1259](https://github.com/hyperledger-labs/splice-wallet-kernel/pull/1259), [#1260](https://github.com/hyperledger-labs/splice-wallet-kernel/issues/1260))
+
+### 🧱 Dependency update
+
+- @canton-network/core-wallet-dapp-rpc-client version update: 0.25.0
+- @canton-network/core-wallet-user-rpc-client version update: 0.25.0
+- @canton-network/core-wallet-store-inmemory version update: 0.25.0
+- @canton-network/core-wallet-ui-components version update: 0.25.0
+- @canton-network/core-signing-blockdaemon version update: 0.22.0
+- @canton-network/core-signing-participant version update: 0.24.0
+- @canton-network/core-signing-fireblocks version update: 0.22.0
+- @canton-network/core-signing-store-sql version update: 0.25.0
+- @canton-network/core-signing-internal version update: 0.24.0
+- @canton-network/core-wallet-store-sql version update: 0.24.0
+- @canton-network/core-ledger-client version update: 0.29.0
+- @canton-network/core-rpc-transport version update: 0.6.0
+- @canton-network/core-tx-visualizer version update: 0.21.0
+- @canton-network/core-wallet-store version update: 0.24.0
+- @canton-network/core-signing-lib version update: 0.24.0
+- @canton-network/core-wallet-auth version update: 0.21.0
+- @canton-network/core-rpc-errors version update: 0.17.0
+- @canton-network/core-types version update: 0.20.0
+
+### ❤️ 감사의 말
+
+- Alex Matson @alexmatson-da
+- Marc Juchli @mjuchli-da
+- pawelstepien-da
+- Phillip Olesen @PHOL-DA

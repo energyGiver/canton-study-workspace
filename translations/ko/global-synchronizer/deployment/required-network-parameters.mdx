@@ -1,0 +1,75 @@
+---
+title: "필수 Network Parameter"
+description: "Validator Node initialize 및 Network 연결에 필요한 parameter"
+source_id: "SRC-F3217B162C"
+source_path: "global-synchronizer/deployment/required-network-parameters"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "b8686825c3ce8111ad413df773ef200bda5805920f5e895a6bde47d5c649f12f"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/deployment/required-network-parameters.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/validator_operator/required_network_parameters.rst" hash="236187bd" */}
+
+{/* NETWORKVARS_START source="/snippets/networkvars/global-synchronizer/deployment/required-network-parameters-1.mdx" */}
+<Tabs>
+
+<Tab title="DevNet (0.7.1)">
+
+Validator Node를 initialize하려면 onboarding할 Network와 이에 필요한 secret을 정의하는 다음 parameter가 필요합니다.
+
+- **MIGRATION_ID**: 연결하려는 Network(DevNet/TestNet/MainNet)의 current migration ID입니다. 이 값은 고정되며 last value에서 변경해서는 안 됩니다. [https://sync.global/sv-network/](https://sync.global/sv-network/)에서 확인할 수 있습니다.
+- **SPONSOR_SV_URL**: SV sponsor의 SV app URL입니다. <a href="https://sv.sv-1.dev.global.canton.network.YOUR_SV_SPONSOR">https://sv.sv-1.dev.global.canton.network.YOUR_SV_SPONSOR</a> 형식이어야 합니다. 예를 들어 Global Synchronizer Foundation이 sponsor이면 <a href="https://sv.sv-1.dev.global.canton.network.sync.global">https://sv.sv-1.dev.global.canton.network.sync.global</a>을 사용합니다.
+
+ONBOARDING_SECRET
+Sponsor가 제공한 onboarding secret입니다. 아직 없다면 sponsor에게 요청하세요. Onboarding secret은 한 번만 사용할 수 있으며 48시간 후 expire됩니다. Expire 전에 join하지 못하면 SV sponsor에게 새 secret을 요청해야 합니다.
+
+<Note>
+
+아무 SV에서나 다음 endpoint를 call하여 onboarding secret을 자동으로 얻을 수 있습니다. `SPONSOR_SV_URL`을 위에 정의한 SV app URL로 바꾸세요.
+
+```bash
+curl -X POST SPONSOR_SV_URL/api/sv/v0/devnet/onboard/validator/prepare
+```
+
+Scan URL(`scan.`으로 시작)이 아니라 **SV app URL**(`sv.`로 시작)을 사용하세요.
+
+이 self-served secret은 1시간 동안만 valid합니다.
+
+</Note>
+
+</Tab>
+
+<Tab title="TestNet (0.7.0)">
+
+Validator Node를 initialize하려면 onboarding할 Network와 이에 필요한 secret을 정의하는 다음 parameter가 필요합니다.
+
+- **MIGRATION_ID**: 연결하려는 Network(DevNet/TestNet/MainNet)의 current migration ID입니다. 이 값은 고정되며 last value에서 변경해서는 안 됩니다. [https://sync.global/sv-network/](https://sync.global/sv-network/)에서 확인할 수 있습니다.
+- **SPONSOR_SV_URL**: SV sponsor의 SV app URL입니다. <a href="https://sv.sv-1.test.global.canton.network.YOUR_SV_SPONSOR">https://sv.sv-1.test.global.canton.network.YOUR_SV_SPONSOR</a> 형식이어야 합니다. 예를 들어 Global Synchronizer Foundation이 sponsor이면 <a href="https://sv.sv-1.test.global.canton.network.sync.global">https://sv.sv-1.test.global.canton.network.sync.global</a>을 사용합니다.
+
+ONBOARDING_SECRET
+Sponsor가 제공한 onboarding secret입니다. 아직 없다면 sponsor에게 요청하세요. Onboarding secret은 한 번만 사용할 수 있으며 48시간 후 expire됩니다. Expire 전에 join하지 못하면 SV sponsor에게 새 secret을 요청해야 합니다.
+
+</Tab>
+
+<Tab title="MainNet (0.6.14)">
+
+Validator Node를 initialize하려면 onboarding할 Network와 이에 필요한 secret을 정의하는 다음 parameter가 필요합니다.
+
+- **MIGRATION_ID**: 연결하려는 Network(DevNet/TestNet/MainNet)의 current migration ID입니다. 이 값은 고정되며 last value에서 변경해서는 안 됩니다. [https://sync.global/sv-network/](https://sync.global/sv-network/)에서 확인할 수 있습니다.
+- **SPONSOR_SV_URL**: SV sponsor의 SV app URL입니다. <a href="https://sv.sv-1.global.canton.network.YOUR_SV_SPONSOR">https://sv.sv-1.global.canton.network.YOUR_SV_SPONSOR</a> 형식이어야 합니다. 예를 들어 Global Synchronizer Foundation이 sponsor이면 <a href="https://sv.sv-1.global.canton.network.sync.global">https://sv.sv-1.global.canton.network.sync.global</a>을 사용합니다.
+
+ONBOARDING_SECRET
+Sponsor가 제공한 onboarding secret입니다. 아직 없다면 sponsor에게 요청하세요. Onboarding secret은 한 번만 사용할 수 있으며 48시간 후 expire됩니다. Expire 전에 join하지 못하면 SV sponsor에게 새 secret을 요청해야 합니다.
+
+</Tab>
+
+</Tabs>
+{/* NETWORKVARS_END */}
+
+{/* COPIED_END */}

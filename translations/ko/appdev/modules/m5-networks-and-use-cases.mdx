@@ -1,0 +1,69 @@
+---
+title: "SV Operated Networks and Use-cases"
+description: "App developer를 위한 DevNet, TestNet, MainNet의 목적과 testing guideline"
+source_id: "SRC-5F964A8A50"
+source_path: "appdev/modules/m5-networks-and-use-cases"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "64e8bec97780fa8d7cdd49cef761e0316170628b95fb2056baf8abfc7f28682f"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m5-networks-and-use-cases.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/app_dev/testing/networks_and_usecases.rst" hash="91779539" */}
+
+Super Validator는 서로 다른 세(3) Network를 운영합니다.
+
+1.  DevNet
+2.  TestNet
+3.  MainNet
+
+## DevNet
+
+이 Network는 TestNet의 staging ground 역할을 하며 self-featured application, CC tapping, Validator Node self-service onboarding을 포함한 원활한 탐색을 지원하도록 DevNet을 구성할 수 있습니다. Super Validator는 high availability를 목표로 DevNet을 관리하고 best-effort로 운영하며 upgrade를 적시에 적절하게 validate합니다. 이 environment를 load testing에 사용하고 MainNet의 실제 scalability bottleneck과 다른 bottleneck에 도달하지 않도록 약 3개월마다 periodic reset을 수행합니다. 해결되지 않은 issue를 reset 없이 수정하는 cost가 지나치게 큰 exceptional circumstance에서는 unscheduled reset을 수행할 수 있습니다.
+
+DevNet은 App Operator가 새 Validator Node가 필요한 onboarding workflow를 test할 기회를 제공합니다.
+
+<Note>
+모든 User는 과도한 load를 피하고 Network를 공정하게 사용해야 합니다. Operational overhead를 관리할 수 있는 동안 Network가 open 상태로 유지될 것으로 예상됩니다.
+</Note>
+
+## TestNet
+
+TestNet은 Super Validator, Validator, App Operator를 위한 pre-production environment이며 MainNet deployment 전에 예정된 SV/Validator Node software upgrade를 test할 수 있습니다. 이 environment는 MainNet configuration을 정확히 mirror합니다. App Operator는 TestNet을 사용하여 application의 long-running test instance를 유지하며 두 가지 주요 기능을 수행합니다.
+
+Application code의 data continuity를 보장하면서 upgrade testing을 지원합니다. 다른 App Operator가 해당 application과의 integration을 test할 수 있게 합니다.
+
+{/* DIVERGENCE: updated locally to reflect CIP-0096 (validator liveness rewards discontinued, $0 cap effective 2026-04-30); upstream splice source (docs/src/app_dev/testing/networks_and_usecases.rst, hash 91779539) still describes liveness rewards as an active mechanism. See cf-docs issue #1049. */}
+
+<Note>
+App Operator는 activity reward, featured app reward, friendly Super Validator와의 collaboration을 통해 traffic expense를 충당하는 데 필요한 TestNet-CC를 확보해야 합니다.
+</Note>
+
+## MainNet
+
+이 Network는 Super Validator, Validator, App Operator가 application을 Network에 deploy하는 production environment입니다.
+
+## Testing Guidelines
+
+<div className="todo">
+
+Testing guideline reference 추가
+
+</div>
+
+App Operator가 다음 testing approach로 application을 test하는 것을 권장합니다.
+
+1)  **Unit Testing with Daml Script:** Daml Script로 Daml code를 철저히 test하는 것으로 시작합니다. Logic과 data model correctness를 validate하기 위해 모든 dependency를 포함한 application workflow 전체를 다뤄야 합니다.
+2)  **Integration Testing in CI:** Continuous Integration(CI) pipeline 안에 integration test를 구현합니다. Mocked dependency를 사용하고 standalone Canton Synchronizer(domain)에 연결된 standalone Canton Participant를 대상으로 실행해야 합니다. 이 단계는 controlled environment에서 component 간 원활한 interaction을 보장합니다.
+3)  **TestNet Deployment:** TestNet에 application test instance를 deploy하고 다음 critical use case를 지원하는 다른 application의 test instance와 integrate합니다.
+    1)  Infrastructure upgrade
+    2)  App version upgrade
+    3)  Dependency를 사용하는 app upgrade
+
+
+{/* COPIED_END */}

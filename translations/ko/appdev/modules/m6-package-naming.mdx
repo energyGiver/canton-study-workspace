@@ -1,0 +1,108 @@
+---
+title: "Package Naming"
+description: "Daml Smart Contract Upgrade를 위한 naming convention과 Package structure"
+source_id: "SRC-5F195B162A"
+source_path: "appdev/modules/m6-package-naming"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "1ee619c953331060d4b884fca61d68fa24f0a0aec438deaf53db81728d39b313"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m6-package-naming.md)을 사용하세요.
+</Warning>
+
+올바른 Package naming은 application이 여러 version으로 evolve할 때 confusion을 방지합니다. 명확한 naming scheme은 ownership, purpose, version을 한눈에 전달합니다.
+
+## Reverse DNS Convention
+
+{/* COPIED_START source="docs-website:manual/build/3.5/sdlc-howtos/applications/upgrade/arch-considerations-upgrading.rst" hash="0acbea7d" */}
+
+특히 서로 다른 App Provider가 publish한 Package 간 name conflict를 피하세요. Package name 앞에 App Provider의 reverse Domain Name System(DNS) name을 붙이는 Java ecosystem convention을 따릅니다. 예를 들어 Acme Inc.가 제공하는 money market fund app의 issuance workflow에는 다음 <span class="title-ref">daml.yaml</span> configuration이 권장됩니다. <span class="title-ref">name: com-acme-money-market-fund-issuance</span>.
+
+Daml Package name은 dot이 아닌 hyphen을 separator로 사용합니다. Reverse DNS prefix는 organizational ownership을 정하고 나머지 segment는 Package purpose를 설명합니다.
+
+{/* COPIED_END */}
+
+```
+com-acme-money-market-fund-issuance
+com-acme-money-market-fund-trading
+org-example-token-registry
+```
+
+## Version Markers in Package Names
+
+Application lifecycle에 breaking change가 예상되면 Package name에 version marker를 포함합니다. Package가 나타내는 Contract model major version을 명확히 합니다.
+
+```
+com-acme-asset-main-v1
+com-acme-asset-main-v2
+com-acme-asset-interfaces-v1
+```
+
+Version marker는 build version이 아닌 **Contract model version**을 나타냅니다. [Upgrade Limitations](/appdev/modules/m6-limitations)에 설명된 대로 새 Package가 필요한 breaking change를 만들 때만 증가시킵니다. Non-breaking upgrade(optional field, 새 Choice 추가)는 같은 Package name 안에서 이루어지며 SCU가 transparent하게 처리합니다.
+
+Template name에는 version number를 포함하지 마세요.
+
+
+## Separating Interfaces from Templates
+
+Daml code를 최소 두 Package로 분리합니다.
+
+- **Interface package** -- Public API를 구성하는 Interface definition을 포함합니다. 다른 application이 Contract와 상호 작용하기 위해 이 Package에 depend합니다.
+- **Template package** -- Interface를 구현하는 Template definition을 포함합니다. Private implementation입니다.
+
+```
+com-acme-asset-interfaces-v1    -- interfaces only
+com-acme-asset-main-v1          -- templates implementing those interfaces
+```
+
+이 분리가 중요한 이유는 다음과 같습니다.
+
+- Interface는 upgrade할 수 없습니다. 자체 Package에 두면 Interface Package를 변경하지 않고 Template Package가 evolve할 수 있습니다(field, Choice, 새 Template 추가).
+- Interface에 depend하는 다른 application은 Interface Package만 import하면 됩니다. Implementation detail에 dependency를 갖지 않습니다.
+- Breaking interface change를 피할 수 없으면 `v1`과 함께 `com-acme-asset-interfaces-v2`를 publish합니다. Consumer는 각자 속도로 migrate할 수 있습니다.
+
+## Breaking Changes via New Package Names
+
+SCU compatibility rule로 in-place upgrade가 불가능할 때(예: field type 변경 또는 Template 제거) version marker를 증가시킨 새 Package를 생성합니다.
+
+```
+com-acme-asset-main-v1   -- original version
+com-acme-asset-main-v2   -- breaking changes
+```
+
+두 Package는 Validator에 공존합니다. `v1`의 기존 Contract는 valid한 상태로 유지됩니다. Migration path를 제공합니다. 일반적으로 `v1` Template의 Choice가 old Contract를 archive하고 `v2` replacement를 생성합니다. Stakeholder는 이 Choice를 exercise하여 Contract를 migrate합니다.
+
+이 접근 방식은 upgrade를 explicit하게 유지합니다. Choice exercise에는 Signatory authorization이 필요하므로 Stakeholder가 migration에 동의해야 합니다.
+
+## Naming Checklist
+
+새 Package naming 시 다음을 verify합니다.
+
+- Name이 organization reverse DNS prefix로 시작
+- Name에 명확한 functional description 포함("main" 또는 "core"만 사용하지 않음)
+- Interface Package와 Template Package를 별도로 naming
+- Breaking change가 예상되면 version marker 포함
+- 기존 Package와 name이 consistent함(같은 prefix style/separator convention)
+
+## Example: Multi-Package Application
+
+Real-world application은 다음과 같을 수 있습니다.
+
+```
+com-acme-lending-interfaces-v1       -- public interfaces for loan contracts
+com-acme-lending-main-v1             -- loan templates, choices, workflows
+com-acme-lending-reporting-v1        -- reporting-specific templates
+com-acme-lending-test-fixtures-v1    -- test data generators (not deployed to production)
+```
+
+각 Package는 독립적으로 versioning할 수 있습니다. Interface Package는 드물게 변경됩니다. Main Package는 feature release마다 변경됩니다(SCU를 통한 non-breaking change). Reporting Package는 뒤처질 수 있습니다. Test fixture는 development environment를 벗어나지 않습니다.
+
+## Further Reading
+
+- [Upgrade Limitations](/appdev/modules/m6-limitations) -- Package naming decision을 이끄는 constraint
+- [Upgrade Compatibility](/appdev/modules/m6-upgrade-compatibility) -- Breaking/non-breaking change를 구성하는 rule
+- [Building and Packaging](/appdev/modules/m3-building-packaging) -- `dpm build`를 사용하여 Daml code compile/package

@@ -1,0 +1,92 @@
+---
+title: "Network Bootstrap 방법"
+description: "Super Validator로 새 Canton Network를 처음부터 bootstrap"
+source_id: "SRC-D802CDB2A1"
+source_path: "global-synchronizer/deployment/sv-scratchnet"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "6e7e4bfd7f5cb5740ba6e44e57f18bca400c1519ae3cdd5e1df9f2129b1af170"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/deployment/sv-scratchnet.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="splice:docs/src/sv_operator/sv_scratchnet.rst" hash="21f98ad1" */}
+
+<div className="todo">
+
+adjust style of write-up below to the rest of docs
+
+</div>
+
+## CometBFT Helm values
+
+1)  State sync 비활성화
+
+{/* */}
+
+    stateSync:
+    -      enable: true
+    -      rpcServers: "..."
+    +      enable: false
+
+2)  Single SV config에서는 이제 하나의 SV를 bootstrap하므로 자체 key를 입력합니다.
+
+{/* */}
+
+    sv1:
+    +    keyAddress: "..."
+    +    nodeId: "..."
+    +    publicKey: "..."
+
+## Scan Helm values
+
+Value 하나를 추가합니다.
+
+    +    isFirstSv: true
+
+## SV Helm values
+
+1)  joinWithKeyOnboarding 제거
+
+{/* */}
+
+    -    joinWithKeyOnboarding:
+    -      sponsorApiUrl: https://sv.sv-2.whatever.global.canton.network.digitalasset.com
+
+2)  Initial Helm values를 추가합니다. 이 number value를 사용하거나 다른 값을 선택할 수 있습니다.
+
+{/* */}
+
+    +    isDevNet: true
+    +    onboardingType: found-dso
+    +
+    +    // see note below about the rest of these:
+    +    initialSynchronizerFeesConfig:
+    +      baseRateBurstAmount: 400000
+    +      baseRateBurstWindowMins: 20
+    +      extraTrafficPrice: 16.670000000000002
+    +      minTopupAmount: 200000
+    +      readVsWriteScalingFactor: 4
+    +    onboardingFoundingSvRewardWeightBps: 10000
+
+3)  `sv-values.yaml`에서 `decentralizedSynchronizerUrl` config를 제거합니다. Initial SV 이후에 join하는 Node에만 사용됩니다.
+
+## 고려할 수 있는 다른 Helm values
+
+- TARGET_CLUSTER/TARGET_HOSTNAME을 사용하는 모든 위치에서 자체 Network base domain을 가리키도록 설정합니다.
+  - 예를 들어 Network 기반 domain이 hub-scratch.global.canton.network.digitalasset.com이면 다음과 같이 설정합니다.
+    - targetCluster = hub-scratch
+    - targetHostname = hub-scratch.global.canton.network.digitalasset.com
+- walletSweep를 사용하는 경우 Validator도 deploy할 계획이 아니라면 이 scratch environment에서는 아마 사용하지 않을 것입니다.
+
+## 고려할 수 있는 infrastructure level 사항
+
+- Internal VPN 또는 사용자가 제어하는 유사 Network에 cluster를 expose하도록 IP allowlist를 구성합니다. 현 시점에는 public Internet에 expose하지 않는 것이 좋습니다.
+- 승인된 SV identity(SV Helm values에 반영됨): 하나의 bootstrapping Node를 deploy하는 경우 이를 `\[\]`로 설정할 수 있습니다.
+
+
+{/* COPIED_END */}

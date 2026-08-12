@@ -1,0 +1,119 @@
+---
+title: "Error Handling"
+description: "Canton application을 위한 error handling 및 recovery pattern"
+source_id: "SRC-BFE32A9131"
+source_path: "appdev/modules/m7-error-handling"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "1f30ed7baab432685920f541819a152466736b9625ebee04b470302917b48477"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m7-error-handling.md)을 사용하세요.
+</Warning>
+
+import DamlDocsAppdevModulesM7ErrorHandlingL46 from "/snippets/daml-docs/appdev_modules_m7-error-handling_L46.mdx";
+import DamlDocsAppdevModulesM7ErrorHandlingL88 from "/snippets/daml-docs/appdev_modules_m7-error-handling_L88.mdx";
+
+
+Canton application은 distributed multi-party Ledger를 다룹니다. error는 서로 다른 category로 나뉘며 각 category에는 다른 recovery strategy가 필요합니다. 이 page에서는 발생할 수 있는 error type과 backend에서 이를 처리하는 방법을 설명합니다.
+
+## Error Category
+
+### Command Rejection
+
+Ledger API가 transaction이 Synchronizer에 도달하기 전에 거부하면 command rejection이 발생합니다. 일반적인 원인은 다음과 같습니다.
+
+- **INVALID_ARGUMENT** — command payload가 template 또는 choice signature와 일치하지 않습니다. field type이 잘못되었거나 required field가 누락된 경우입니다.
+- **NOT_FOUND** — reference한 contract ID가 존재하지 않거나 submitting party에게 표시되지 않습니다.
+- **PERMISSION_DENIED** — authenticated party에게 action 수행 권한이 없습니다.
+
+이러한 error는 application logic의 bug 또는 stale data를 나타냅니다. 같은 command를 retry하면 같은 결과가 발생합니다. payload를 수정하고, 유효한 contract ID를 다시 query하거나, party authorization을 확인해 root cause를 해결하세요.
+
+### Contention
+
+둘 이상의 command가 같은 contract를 동시에 consume하려 할 때 contention이 발생합니다. 하나만 성공하며 나머지는 contract가 이미 archive되었다는 **FAILED_PRECONDITION** 또는 `ABORTED` error를 받습니다.
+
+이는 multi-party application에서 정상적인 현상입니다. 두 user가 거의 동시에 같은 contract에서 같은 choice를 exercise할 수 있습니다. Canton consistency model은 하나만 성공하도록 보장합니다.
+
+### Timeout
+
+Synchronizer가 설정된 deadline 안에 command를 처리하지 못하면 timeout이 발생할 수 있습니다. `StatusRuntimeException`에는 `DEADLINE_EXCEEDED` code가 있습니다. network congestion 또는 counterparty Validator의 response가 느릴 때 timeout이 발생할 수 있습니다.
+
+timeout이 command 실패를 의미하지는 **않습니다**. command는 성공했지만 response가 제시간에 도착하지 않았을 수 있습니다. retry하기 전에 completion stream을 확인하거나 PQS를 query해 command 적용 여부를 확인하세요.
+
+### Insufficient Traffic
+
+Validator의 traffic budget이 소진되면 insufficient traffic을 나타내는 error와 함께 command submission이 실패합니다. 이는 transient error가 아니므로 traffic budget이 수동 또는 auto-top-up으로 보충되기 전에는 retry해도 해결되지 않습니다.
+
+traffic credit 관리 방법은 [Canton Coin 및 Traffic](/appdev/modules/m4-canton-coin)을 참고하세요.
+
+## Contention 처리
+
+consuming contract에서 발생하는 contention은 Canton application에서 가장 일반적인 error pattern입니다. 표준 접근 방식은 다음과 같습니다.
+
+1. **error catch** — gRPC response에서 `FAILED_PRECONDITION` 또는 `ABORTED`를 감지합니다.
+2. **contract 다시 읽기** — PQS에서 현재 state를 query합니다. 대상 contract가 archive되었고 competing transaction에서 생성된 새 contract가 active 상태일 수 있습니다.
+3. **새 command ID로 resubmit** — 현재 contract를 대상으로 새 command를 build하고 새로운 command ID로 submit합니다.
+
+<DamlDocsAppdevModulesM7ErrorHandlingL46 />
+
+retry 사이에는 exponential backoff를 사용하세요. backoff가 없으면 competing command가 계속 충돌합니다.
+
+### Retry하지 않아야 하는 경우
+
+다음 error에는 retry하지 마세요.
+
+- **INVALID_ARGUMENT** — command 자체가 잘못되었습니다.
+- **PERMISSION_DENIED** — retry 사이에 authorization은 바뀌지 않습니다.
+- **Insufficient traffic** — command가 아니라 traffic budget의 문제입니다.
+
+## Idempotent Command Submission
+
+Ledger API는 command ID를 기준으로 command를 deduplicate합니다. 같은 ID로 command 두 개를 submit하면 두 번째 command는 duplicate로 취급되어 첫 번째 결과를 반환합니다.
+
+이를 사용해 backend를 idempotent하게 만드세요.
+
+- operation input을 기반으로 deterministic command ID를 생성합니다. 예를 들어 user ID, action type 및 frontend nonce의 hash를 사용합니다.
+- network failure로 response를 받지 못하면 같은 command ID로 resubmit합니다.
+- Ledger API는 command를 두 번 실행하는 대신 원래 결과를 반환합니다.
+
+<DamlDocsAppdevModulesM7ErrorHandlingL88 />
+
+deduplication window는 설정할 수 있습니다. 기본값은 대부분의 application에 충분하지만 operation이 긴 시간에 걸쳐 수행된다면 window가 retry horizon을 포함하는지 확인하세요.
+
+## Completion Stream Monitoring
+
+Ledger API completion stream은 submit된 모든 command의 최종 status를 보고합니다. 신뢰할 수 있는 결과 추적을 위해 subscribe하세요.
+
+- **Successful completion**은 transaction commit을 확인합니다.
+- **Failed completion**에는 error code와 detail이 포함됩니다.
+- 예상 window 안의 **missing completion**은 command가 Synchronizer에 도달하기 전에 유실되었음을 시사합니다.
+
+cn-quickstart의 synchronous `CommandService`는 `CommandSubmissionService`와 달리 내부에서 completion을 기다리고 single round-trip으로 결과를 반환합니다. 대신 asynchronous `CommandSubmissionService`를 사용하면 completion을 직접 monitor해야 합니다.
+
+## Backend Recovery Pattern
+
+### Startup Recovery
+
+backend가 restart되면 결과를 알 수 없는 in-flight command가 있을 수 있습니다. startup 시 다음을 수행하세요.
+
+1. 마지막으로 알려진 offset부터 completion stream을 읽습니다.
+2. in-flight command와 completion status를 reconcile합니다.
+3. submit되지 않은 command를 retry합니다. completion이 없고 PQS에 일치하는 contract도 없는 command가 이에 해당합니다.
+
+### Circuit Breaker
+
+Ledger API를 사용할 수 없게 되면 Validator restart 또는 network partition 상황에서 submission logic을 circuit breaker로 감싸세요. 설정한 수만큼 연속으로 실패하면 submit을 중지하고 caller에게 service-unavailable error를 표시합니다. recovery를 감지하도록 Ledger API를 주기적으로 probe합니다.
+
+### Dead Letter Handling
+
+모든 retry 후에도 실패한 command는 전체 context(command ID, template, choice, argument, error)와 함께 log하고 dead letter queue 또는 table로 보내야 합니다. 이는 audit trail을 제공하고 edge case에 수동으로 개입할 수 있게 합니다.
+
+## 추가 자료
+
+- [Backend Development](/appdev/modules/m4-backend-dev) — error handling example을 포함한 Ledger API client 설정
+- [Canton Coin 및 Traffic](/appdev/modules/m4-canton-coin) — submission failure 방지를 위한 traffic 관리
+- [Observability](/appdev/modules/m4-observability) — error tracking을 위한 logging 및 metric

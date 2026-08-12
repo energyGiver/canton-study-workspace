@@ -12,11 +12,11 @@ Snapshot date: 2026-08-12
 |---|---:|---:|---:|
 | Root API Reference | 1 | 1 | 100.0% |
 | Overview | 46 | 47 | 97.9% |
-| App Development | 37 | 145 | 25.5% |
-| Global Synchronizer | 47 | 106 | 44.3% |
-| Integrations | 120 | 140 | 85.7% |
+| App Development | 51 | 145 | 35.2% |
+| Global Synchronizer | 52 | 106 | 49.1% |
+| Integrations | 140 | 140 | 100.0% |
 | Reference corpus | 0 | 365 | 0.0% |
-| **Total** | **251** | **804** | **31.2%** |
+| **Total** | **290** | **804** | **36.1%** |
 
 Run `python3 -m portal validate` to obtain the live totals. Update this checkpoint in the same commit as each translation batch.
 

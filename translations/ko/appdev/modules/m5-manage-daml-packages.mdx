@@ -1,0 +1,103 @@
+---
+title: "How to upload and query Daml packages"
+description: "Participant에 DAR file을 upload하고 runtime에 사용 가능한 Daml Package query"
+source_id: "SRC-88F9CBF7D4"
+source_path: "appdev/modules/m5-manage-daml-packages"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "fc704bc1dbb1299fe1ee3e60e5bc0801ed91037493e876073ea269ecce5b8eb5"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m5-manage-daml-packages.md)을 사용하세요.
+</Warning>
+
+{/* COPIED_START source="docs-website:docs/replicated/canton/3.5/sdk/sdlc-howtos/applications/develop/manage-daml-packages.rst" hash="7472e767" */}
+
+Canton Participant Node는 Daml Package upload와 discovery를 지원하는 [Package Management Service](/sdks-tools/api-reference/ledger-api-services#package-management-service)를 expose합니다.
+이 guide에서는 OpenAPI specification으로 설명되는 JSON Ledger API를 사용하여 Package를 programmatically 조작하는 방법을 설명합니다.
+
+Daml Package를 알아보려면 [Manage Daml packages and archives](/global-synchronizer/production-operations/manage-packages#manage-daml-packages-and-archives)를 참조하세요.
+
+DAR file 관리, dependency management, Package distribution coordination은 [package management](/appdev/modules/m7-package-management#package-management)를 참조하세요.
+
+## Prerequisites
+
+Canton Participant Node가 JSON Ledger API HTTP port를 여는지 확인합니다. 방법은 Get started with Canton and the JSON Ledger API tutorial을 읽으세요.
+
+Assistant(`daml`)와 Compiler(`damlc`) 같은 Daml tool에 access할 수 있는지 확인합니다.
+
+HTTP protocol interaction을 지원하는 `curl` 또는 유사 tool을 설치합니다.
+
+`curl` Command response의 JSON output을 format/filter하려면 `jq` 또는 유사 tool을 설치합니다.
+
+Ledger interaction 전에 model을 .dar file로 build해야 합니다.
+
+## How to upload a DAR archive file
+
+`MyModel`이라는 Daml model로 작업하며 이를 바탕으로 on-ledger interaction을 시작한다고 가정합니다. 첫 단계는 이를 포함하는 Package를 upload하고 상호 작용하는 모든 Participant Node에서 vet되었는지 확인하는 것입니다.
+
+JSON Ledger API는 upload process의 intrinsic part로 Package를 upload하고 Participant Node에서 vet하는 endpoint를 제공합니다.
+
+대부분의 interaction은 Package ID를 기반으로 하므로 damlc compiler로 결과 DAR archive file을 inspect하여 project main Package의 Package ID를 extract합니다.
+
+``` sh
+dpm damlc inspect-dar --json .daml/dist/mymodel-1.0.0.dar | jq '.main_package_id'
+```
+
+damlc가 Package ID로 응답합니다.
+
+``` none
+"47fc5f9bf30bdc147465d7b5fe170a0bc26b3677b45b005573130d951fdaebed"
+```
+
+Package를 upload하려면 `v2/packages` endpoint에서 POST Command를 invoke합니다.
+
+``` sh
+curl --data-binary @.daml/dist/mymodel-1.0.0.dar http://localhost:7575/v2/packages
+```
+
+Package가 Ledger에 있으며 register되었는지 verify할 수 있습니다.
+
+``` sh
+curl -s http://localhost:7575/v2/packages/47fc5f9bf30bdc147465d7b5fe170a0bc26b3677b45b005573130d951fdaebed/status
+```
+
+Ledger가 Package status로 응답합니다.
+
+```json
+{
+  "packageStatus": "PACKAGE_STATUS_REGISTERED"
+}
+```
+
+## How to query for existing packages
+
+Participant Node가 아는 모든 Package를 list하려면 `v2/packages` endpoint에 GET request를 issue합니다.
+
+``` sh
+curl -s http://localhost:7575/v2/packages
+```
+
+Participant는 알려진 모든 Package를 포함하는 message로 응답합니다.
+
+```json
+{
+  "packageIds": [
+    "9e70a8b3510d617f8a136213f33d6a903a10ca0eeec76bb06ba55d1ed9680f69",
+    "47fc5f9bf30bdc147465d7b5fe170a0bc26b3677b45b005573130d951fdaebed",
+    "bfda48f9aa2c89c895cde538ec4b4946c7085959e031ad61bde616b9849155d7"
+  ]
+}
+```
+
+List가 길면 `jq`로 output을 filter하여 예상 Package ID가 result에 있는지 확인합니다.
+
+``` sh
+curl -s http://localhost:7575/v2/packages | jq '.packageIds | .[] | select(startswith("47"))'
+```
+
+
+{/* COPIED_END */}

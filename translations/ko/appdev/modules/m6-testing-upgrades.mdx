@@ -1,0 +1,122 @@
+---
+title: "Testing Upgrades"
+description: "Upgrade compatibility verify, cross-version workflow testing, regression testing strategy"
+source_id: "SRC-90319FF416"
+source_path: "appdev/modules/m6-testing-upgrades"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "5d70164ac965d2d76a9b9717b4817cccf4bdb88f03dcbb484388671154384cd0"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m6-testing-upgrades.md)을 사용하세요.
+</Warning>
+
+import DamlAppdevModulesM6TestingUpgradesL60 from "/snippets/daml-docs/appdev_modules_m6-testing-upgrades_L60.mdx";
+import DamlAppdevModulesM6TestingUpgradesL81 from "/snippets/daml-docs/appdev_modules_m6-testing-upgrades_L81.mdx";
+
+
+Distributed Network 전반에서 Daml Package를 upgrade할 때 guesswork는 허용되지 않습니다. Compiler가 upgrade를 accept하는지, mixed Package version에서도 workflow가 계속 작동하는지를 모두 verify해야 합니다.
+
+## Type-Level Compatibility Tests
+
+{/* COPIED_START source="docs-website:manual/build/3.5/sdlc-howtos/applications/upgrade/arch-considerations-upgrading.rst" hash="type-level-testing" */}
+
+Type-level compatibility test는 같은 name을 가진 old/new Package version이 break 없이 공존할 수 있는지 확인합니다. Development 중 가장 간단한 test 방법은 `dpm upgrade-check` Command를 사용하는 것입니다.
+
+Production에 사용할 DAR file로 old/new version을 모두 새 Participant Node에 upload하여 CI 일부로 수행하는 것도 권장합니다. 이상적으로 dedicated artifact repository에 저장해야 하지만 size가 작으므로(일반적으로 1 MB 미만) source control에 check-in할 수도 있습니다.
+
+{/* COPIED_END */}
+
+실제로 CI pipeline은 다음을 수행해야 합니다.
+
+1. `dpm build`로 V2 DAR build
+2. `dpm sandbox`로 Sandbox 시작
+3. Production V1 DAR upload
+4. V2 DAR upload
+5. 두 upload가 error 없이 성공하면 type-level compatibility 확인
+
+## Workflow-Level Compatibility Tests
+
+{/* COPIED_START source="docs-website:manual/build/3.5/sdlc-howtos/applications/upgrade/arch-considerations-upgrading.rst" hash="workflow-testing" */}
+
+Workflow-level compatibility test는 core business process가 upgrade 후 계속 올바르게 작동하는지 verify합니다. Basic integration test는 다음 단계를 따라야 합니다.
+
+1. V2 software로 application을 시작하되 backward compatibility를 test하기 위해 V1 DAR file만 upload합니다.
+2. Application을 initialize하고 모든 core workflow instance를 하나씩 시작합니다.
+3. V2 DAR을 upload합니다.
+4. Backend가 V2 DAR을 사용하기 시작하도록 configuration을 update합니다.
+5. Workflow가 올바른 state를 유지하고 issue 없이 계속될 수 있는지 verify합니다.
+
+더 복잡한 upgrade에는 추가 test가 필요할 수 있습니다.
+
+{/* COPIED_END */}
+
+## Daml Script Upgrade Tests
+
+Cross-version scenario를 명시적으로 test하는 Daml Script test를 작성합니다. 다뤄야 할 핵심 pattern은 다음과 같습니다.
+
+### Creating v1 contracts, reading with v2
+
+<DamlAppdevModulesM6TestingUpgradesL60 />
+
+### Exercising v2 choices on existing contracts
+
+<DamlAppdevModulesM6TestingUpgradesL81 />
+
+### Testing incompatible downgrades
+
+실제 cross-version downgrade testing에는 V1/V2 DAR을 모두 Sandbox에 upload하고 version boundary를 넘어 Contract를 exercise해야 합니다. Daml Script는 단일 Package version 안에서 실행되므로 하나의 Daml Script test에서 수행할 수 없습니다. 위 workflow-level testing approach를 사용하세요. 두 DAR을 Sandbox에 upload하고 V2 data(non-`None` optional field)가 있는 Contract를 생성한 다음 V1 code가 예상대로 fetch에 실패하는지 verify합니다.
+
+## Regression Testing
+
+모든 upgrade는 새 Package version을 대상으로 기존 전체 test suite를 실행해야 합니다. V1 test는 V2를 대상으로 변경 없이 통과해야 합니다. 그렇지 않으면 backward-compatibility issue가 있습니다.
+
+Regression test와 upgrade-specific test가 분리되도록 test Package를 구성합니다.
+
+```text
+daml/
+├── v1/              # Production v1
+├── v2/              # Production v2
+└── test/
+    ├── regression/  # Existing tests, run against v2
+    └── upgrade/     # New tests for cross-version scenarios
+```
+
+## CI Integration
+
+Standard build/test 후 실행되는 별도 stage로 upgrade testing을 CI pipeline에 추가합니다.
+
+```bash
+# Standard build and test
+dpm build
+dpm test
+
+# Upgrade compatibility
+dpm sandbox &
+SANDBOX_PID=$!
+
+# Wait for sandbox to be ready (use a health check loop in production CI)
+sleep 30
+
+# Upload production v1 DAR
+curl -X POST "http://localhost:7575/v2/packages" \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary @artifacts/v1.dar
+
+# Upload v2 DAR — if this succeeds, type-level compatibility is confirmed
+curl -X POST "http://localhost:7575/v2/packages" \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary @artifacts/v2.dar
+
+# Run your project's upgrade test suite here
+
+kill $SANDBOX_PID
+```
+
+## Next Steps
+
+- [Deploying Upgrades](/appdev/modules/m6-deployment) — Test한 upgrade를 environment 전체에 rollout
+- [Upgrade Compatibility](/appdev/modules/m6-upgrade-compatibility) — 허용되는 변경 reference
