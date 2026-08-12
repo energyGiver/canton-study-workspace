@@ -1,0 +1,132 @@
+---
+title: "Operational Issue"
+description: "DevNet, TestNet 및 MainNet의 traffic exhaustion, upgrade problem 및 PQS failure troubleshooting"
+source_id: "SRC-0ED6C5EDAF"
+source_path: "appdev/troubleshooting-guide/operational-issues"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "9b5b4e4f70f98bba43edf6fff9eafb718d6139985f5d517851ecca8c6050744a"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/troubleshooting-guide/operational-issues.md)을 사용하세요.
+</Warning>
+
+import DamlDocsAppdevTroubleshootingGuideOperationalIssuesL24 from "/snippets/daml-docs/appdev_troubleshooting-guide_operational-issues_L24.mdx";
+import DamlDocsAppdevTroubleshootingGuideOperationalIssuesL34 from "/snippets/daml-docs/appdev_troubleshooting-guide_operational-issues_L34.mdx";
+import DamlDocsAppdevTroubleshootingGuideOperationalIssuesL66 from "/snippets/daml-docs/appdev_troubleshooting-guide_operational-issues_L66.mdx";
+import DamlDocsAppdevTroubleshootingGuideOperationalIssuesL103 from "/snippets/daml-docs/appdev_troubleshooting-guide_operational-issues_L103.mdx";
+
+
+이 page는 application을 live network, 즉 DevNet, TestNet 또는 MainNet에서 실행할 때 발생하는 problem을 다룹니다. local development issue는 [Development Issues](/appdev/troubleshooting-guide/development-issues)를 참고하세요.
+
+## Traffic Exhaustion
+
+Canton Network의 모든 transaction은 traffic을 consume하며 Canton Coin(CC)으로 비용을 지급합니다. Validator의 traffic이 소진되면 transaction이 reject됩니다.
+
+### 증상
+
+```
+FAILED_PRECONDITION: INSUFFICIENT_TRAFFIC - Not enough traffic remaining
+```
+
+또는 `MEDIATOR_SAYS_TX_TIMED_OUT`과 함께 transaction timeout이 발생하고 `unresponsiveParties` field가 Validator를 가리킵니다.
+
+### Balance 확인
+
+Admin API를 통해 Validator traffic state를 query합니다.
+
+<DamlDocsAppdevTroubleshootingGuideOperationalIssuesL24 />
+
+Validator에 Wallet UI가 설정되어 있다면 여기서도 확인할 수 있습니다.
+
+### Auto-top-up 활성화
+
+traffic이 소진되기 전에 Validator가 추가 traffic을 구매하도록 automatic traffic purchase를 설정합니다.
+
+<DamlDocsAppdevTroubleshootingGuideOperationalIssuesL34 />
+
+### DevNet Tap
+
+DevNet에서는 faucet에서 무료 test CC를 요청할 수 있습니다. Wallet UI를 열고 **Tap** function을 사용하거나 tap endpoint를 직접 호출합니다. test CC는 실제 가치가 없으며 development testing에만 사용됩니다.
+
+<Note>
+MainNet에서 CC는 실제 가치가 있습니다. production workload를 deploy하기 전에 balance를 monitor하고 auto-top-up을 설정하세요.
+</Note>
+
+## Upgrade Issue
+
+### Daml Package 간 Version Skew
+
+기존 version과 함께 새 Daml package version을 deploy할 때 contract를 처리하는 모든 Validator에 둘 다 upload되고 vet되어야 합니다. Validator A에 package v2가 있지만 Validator B에는 v1만 있으면 두 party가 관련된 transaction이 실패합니다.
+
+```
+NOT_FOUND: PACKAGE_NOT_FOUND - Could not find package <new-package-id>
+```
+
+**해결:** 새 package를 reference하는 transaction을 submit하기 전에 모든 Validator의 package deployment를 synchronize합니다. SCU(Smart Contract Upgrade) mechanism을 사용해 v1의 기존 contract를 v2 code로 exercise할 수 있게 합니다.
+
+### Mixed-Version Deployment
+
+application backend가 Validator에 deploy된 Daml package보다 새 version을 기대하면 command가 submission time에 실패합니다. application version과 deploy된 DAR를 synchronize하세요.
+
+새 DAR upload 후 vet 여부를 검증합니다.
+
+<DamlDocsAppdevTroubleshootingGuideOperationalIssuesL66 />
+
+### Splice Version Mismatch
+
+network가 upgrade되면, 예를 들어 Splice 0.4.x에서 0.5.x로 변경되면 Validator가 compatible version을 실행해야 합니다. incompatible Validator는 다음과 같은 error를 log합니다.
+
+```
+You don't speak 0.5.x
+```
+
+[canton.foundation/sv-network-status](https://canton.foundation/sv-network-status/)에서 현재 network version을 확인하고 required version으로 직접 upgrade하세요. intermediate version을 차례로 거치지 마세요.
+
+## PQS Issue
+
+Participant Query Store(PQS)는 efficient query를 위해 Ledger data를 PostgreSQL database로 mirror합니다. 여러 문제가 발생할 수 있습니다.
+
+### Connection Failure
+
+PQS가 PostgreSQL database 또는 Validator Ledger API에 연결할 수 없으면 error를 log하고 streaming을 중지합니다.
+
+```
+UNAVAILABLE: io exception - Connection refused to localhost:5001
+```
+
+**Checklist:**
+- PostgreSQL이 실행 중이며 설정된 host/port에서 connection을 accept함
+- PQS database user에게 required permission이 있음
+- PQS process에서 Ledger API(gRPC) port에 access할 수 있음
+- network policy 또는 firewall이 connection을 block하지 않음
+
+### Stale Data
+
+PQS는 Ledger API와 streaming connection을 유지합니다. connection이 끊어지면 PQS가 뒤처질 수 있습니다. PQS offset과 Ledger end를 비교하세요.
+
+<DamlDocsAppdevTroubleshootingGuideOperationalIssuesL103 />
+
+PQS가 크게 뒤처지면 restart합니다. 마지막 committed offset부터 resume합니다.
+
+### Flyway Schema Migration
+
+PQS는 database schema management에 Flyway를 사용합니다. PQS upgrade 시 Flyway가 migration을 자동 실행합니다. migration이 실패하면 다음 error가 발생할 수 있습니다.
+
+```
+FlywayException: Validate failed: Migration checksum mismatch
+```
+
+이는 보통 database가 수동 변경되었거나 이전 migration이 일부만 적용되었음을 의미합니다. recovery 단계는 다음과 같습니다.
+
+1. PQS database를 backup합니다.
+2. 적용된 migration을 확인합니다: `SELECT * FROM flyway_schema_history;`
+3. migration이 failed로 표시되면 history를 repair합니다: `flyway repair`
+4. PQS startup을 다시 실행합니다.
+
+<Warning>
+Flyway가 관리하는 PQS table을 수동으로 편집하지 마세요. schema change는 PQS upgrade를 통해서만 이루어져야 합니다.
+</Warning>

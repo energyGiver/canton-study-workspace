@@ -1,0 +1,386 @@
+---
+title: "ChangeAssignation"
+source_id: "SRC-44B90F4DB1"
+source_path: "reference/admin-api/protobuf/operations/com-digitalasset-canton-admin-participant-v30/participantrepairservice/changeassignation"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "e0e21ff8ba88c21d68fd07f76231e145a2bd959b3f4ed6f4e5ee33c32ba06411"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/reference/admin-api/protobuf/operations/com-digitalasset-canton-admin-participant-v30/participantrepairservice/changeassignation.md)을 사용하세요.
+</Warning>
+
+<div class="x2mdx-ref-page x2mdx-ref-page--operation"></div>
+
+<div className="x2mdx-ref-operation-shell">
+<div className="x2mdx-ref-operation-main">
+
+
+<div class="x2mdx-ref-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+
+
+  <span>Participant Administration</span>
+
+
+  <span class="x2mdx-ref-breadcrumb-separator">›</span>
+
+
+
+  <a href="../../../index">Protobuf</a>
+
+
+  <span class="x2mdx-ref-breadcrumb-separator">›</span>
+
+
+
+  <a href="../../../packages/com-digitalasset-canton-admin-participant-v30">com.digitalasset.canton.admin.participant.v30</a>
+
+
+  <span class="x2mdx-ref-breadcrumb-separator">›</span>
+
+
+
+  <span>ChangeAssignation</span>
+
+
+
+</div>
+
+
+<div class="x2mdx-ref-hero">
+
+  <p class="x2mdx-ref-eyebrow">com.digitalasset.canton.admin.participant.v30</p>
+
+
+  <h1 class="x2mdx-ref-title">ChangeAssignation</h1>
+
+
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--protocol">gRPC</span>
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--added">버전 3.4.0</span>
+
+</div>
+
+
+</div>
+
+<div class="x2mdx-ref-operation-bar">
+
+  <span class="x2mdx-ref-operation-method x2mdx-ref-operation-method--rpc">RPC</span>
+
+  <code>/com.digitalasset.canton.admin.participant.v30.ParticipantRepairService/ChangeAssignation</code>
+</div>
+
+## Protocol 상세
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Protocol</dt>
+    <dd>gRPC</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Service</dt>
+    <dd>ParticipantRepairService</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>RPC</dt>
+    <dd>ChangeAssignation</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Client stream</dt>
+    <dd>아니요</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Server stream</dt>
+    <dd>아니요</dd>
+  </div>
+
+</dl>
+
+
+## Input
+
+
+<div class="x2mdx-ref-panel">
+  <div class="x2mdx-ref-panel-head">
+    <h3>ChangeAssignationRequest</h3>
+
+  </div>
+
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>com.digitalasset.canton.admin.participant.v30.ChangeAssignationRequest</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Client stream</dt>
+    <dd>아니요</dd>
+  </div>
+
+</dl>
+
+
+
+
+<div class="x2mdx-ref-fields">
+
+  <div class="x2mdx-ref-field-row">
+    <div class="x2mdx-ref-field-main">
+      <code class="x2mdx-ref-field-name">source_synchronizer_alias</code>
+      <span class="x2mdx-ref-type-badge">string</span>
+
+    </div>
+
+  </div>
+
+  <div class="x2mdx-ref-field-row">
+    <div class="x2mdx-ref-field-main">
+      <code class="x2mdx-ref-field-name">target_synchronizer_alias</code>
+      <span class="x2mdx-ref-type-badge">string</span>
+
+    </div>
+
+  </div>
+
+  <div class="x2mdx-ref-field-row">
+    <div class="x2mdx-ref-field-main">
+      <code class="x2mdx-ref-field-name">skip_inactive</code>
+      <span class="x2mdx-ref-type-badge">bool</span>
+
+    </div>
+
+  </div>
+
+  <div class="x2mdx-ref-field-row">
+    <div class="x2mdx-ref-field-main">
+      <code class="x2mdx-ref-field-name">contracts</code>
+      <span class="x2mdx-ref-type-badge">repeated Contract</span>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+
+
+</div>
+
+
+## Output
+
+
+<div class="x2mdx-ref-panel">
+  <div class="x2mdx-ref-panel-head">
+    <h3>ChangeAssignationResponse</h3>
+
+  </div>
+
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>com.digitalasset.canton.admin.participant.v30.ChangeAssignationResponse</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Server stream</dt>
+    <dd>아니요</dd>
+  </div>
+
+</dl>
+
+
+
+
+
+
+
+
+</div>
+
+
+
+
+
+## Lifecycle 변경
+
+<div class="x2mdx-ref-change-list">
+
+  <div class="x2mdx-ref-change-item">
+    <span class="x2mdx-ref-change-version">3.4.0</span>
+    <span class="x2mdx-ref-change-detail">도입</span>
+  </div>
+
+</div>
+
+
+
+## 관련 Schema
+
+<AccordionGroup>
+
+<Accordion title="com.digitalasset.canton.admin.participant.v30.ChangeAssignationRequest">
+<div class="x2mdx-ref-schema" id="schema-com-digitalasset-canton-admin-participant-v30-changeassignationrequest">
+
+
+<div class="x2mdx-ref-fields">
+
+  <div class="x2mdx-ref-field-row">
+    <div class="x2mdx-ref-field-main">
+      <code class="x2mdx-ref-field-name">source_synchronizer_alias</code>
+      <span class="x2mdx-ref-type-badge">string</span>
+
+    </div>
+
+  </div>
+
+  <div class="x2mdx-ref-field-row">
+    <div class="x2mdx-ref-field-main">
+      <code class="x2mdx-ref-field-name">target_synchronizer_alias</code>
+      <span class="x2mdx-ref-type-badge">string</span>
+
+    </div>
+
+  </div>
+
+  <div class="x2mdx-ref-field-row">
+    <div class="x2mdx-ref-field-main">
+      <code class="x2mdx-ref-field-name">skip_inactive</code>
+      <span class="x2mdx-ref-type-badge">bool</span>
+
+    </div>
+
+  </div>
+
+  <div class="x2mdx-ref-field-row">
+    <div class="x2mdx-ref-field-main">
+      <code class="x2mdx-ref-field-name">contracts</code>
+      <span class="x2mdx-ref-type-badge">repeated Contract</span>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+</div>
+</Accordion>
+
+<Accordion title="com.digitalasset.canton.admin.participant.v30.ChangeAssignationRequest.Contract">
+<div class="x2mdx-ref-schema" id="schema-com-digitalasset-canton-admin-participant-v30-changeassignationrequest-contract">
+
+
+<div class="x2mdx-ref-fields">
+
+  <div class="x2mdx-ref-field-row">
+    <div class="x2mdx-ref-field-main">
+      <code class="x2mdx-ref-field-name">id</code>
+      <span class="x2mdx-ref-type-badge">string</span>
+
+    </div>
+
+  </div>
+
+  <div class="x2mdx-ref-field-row">
+    <div class="x2mdx-ref-field-main">
+      <code class="x2mdx-ref-field-name">reassignment_counter_override</code>
+      <span class="x2mdx-ref-type-badge">int64</span>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+</div>
+</Accordion>
+
+<Accordion title="com.digitalasset.canton.admin.participant.v30.ChangeAssignationResponse">
+<div class="x2mdx-ref-schema" id="schema-com-digitalasset-canton-admin-participant-v30-changeassignationresponse">
+
+
+
+
+</div>
+</Accordion>
+
+</AccordionGroup>
+
+
+</div>
+
+<div className="x2mdx-ref-right-rail" role="complementary" aria-label="Examples and responses">
+
+  <div className="x2mdx-ref-rail-panel">
+  <div className="x2mdx-ref-rail-code">
+<div className="x2mdx-ref-rail-head">
+  <span className="x2mdx-ref-rail-heading">grpcurl</span>
+
+</div>
+
+```bash grpcurl
+# Add -plaintext if the server is not using TLS.
+grpcurl \
+  -d @ \
+  <HOST:PORT> \
+  com.digitalasset.canton.admin.participant.v30.ParticipantRepairService/ChangeAssignation <<'EOF'
+{
+  "sourceSynchronizerAlias": "string",
+  "targetSynchronizerAlias": "string",
+  "skipInactive": true,
+  "contracts": [
+    {
+      "id": "string",
+      "reassignmentCounterOverride": "0"
+    }
+  ]
+}
+EOF
+```
+
+</div>
+  </div>
+
+  <div className="x2mdx-ref-rail-panel">
+  <div className="x2mdx-ref-rail-code x2mdx-ref-rail-code--response">
+<div className="x2mdx-ref-rail-head">
+  <span className="x2mdx-ref-rail-heading">OK</span>
+
+  <span className="x2mdx-ref-response-label">application/json</span>
+
+</div>
+
+```json OK
+{}
+```
+
+</div>
+  </div>
+
+</div>
+
+</div>

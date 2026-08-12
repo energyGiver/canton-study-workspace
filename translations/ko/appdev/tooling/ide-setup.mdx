@@ -1,0 +1,95 @@
+---
+title: "IDE Setup"
+description: "Daml, Java 및 full-stack tooling을 사용한 Canton application development를 위한 VS Code 및 기타 IDE 설정"
+source_id: "SRC-B348CCFDF7"
+source_path: "appdev/tooling/ide-setup"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "fd748417906cb0dab36173591d412cb3cccd56c07027cc32e3baf2b708b56fea"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/tooling/ide-setup.md)을 사용하세요.
+</Warning>
+
+import DamlDocsAppdevToolingIdeSetupL18 from "/snippets/daml-docs/appdev_tooling_ide-setup_L18.mdx";
+import DamlDocsAppdevToolingIdeSetupL74 from "/snippets/daml-docs/appdev_tooling_ide-setup_L74.mdx";
+
+
+IDE를 올바르게 설정하면 Canton development 속도가 크게 향상됩니다. 이 page에서는 Daml contract 작성, backend service build 및 전체 application stack 작업을 위한 설정을 다룹니다.
+
+## Daml Studio(VS Code)
+
+Daml Studio는 Daml Smart Contract 작성을 위한 기본 IDE입니다. Daml에 특화된 language support를 제공하는 VS Code extension입니다.
+
+### 설치
+
+1. [VS Code](https://code.visualstudio.com/) version 1.87 이상을 설치합니다.
+2. 아직 설치하지 않았다면 [DPM](/sdks-tools/cli-tools/dpm)을 설치합니다.
+3. project directory에서 다음을 실행합니다.
+
+<DamlDocsAppdevToolingIdeSetupL18 />
+
+그러면 project에 맞게 Daml extension이 설정된 VS Code가 실행됩니다. 또는 VS Code extension marketplace에서 "Daml"을 검색해 수동으로 설치할 수 있습니다.
+
+### 기능
+
+**Type checking**은 편집 중 계속 실행됩니다. error와 warning이 inline으로 표시되고 Problems panel에 요약이 나타납니다. test를 실행하기 전에 대부분의 issue를 발견합니다.
+
+**Script result**를 사용하면 editor에서 직접 Daml Script를 실행할 수 있습니다. script definition 위에 나타나는 "Script results" lens를 클릭하세요. result panel은 Active Contract, archived contract 및 transaction trace를 table 형태로 보여 줍니다. contract logic이 예상대로 동작하는지 가장 빠르게 확인하는 방법입니다.
+
+**Go-to-definition**은 template, choice, type definition 및 imported module에 사용할 수 있습니다. identifier에서 `Ctrl+Click`을 사용하세요. macOS에서는 `Cmd+Click`입니다.
+
+**Code completion**은 입력할 때 template field, choice parameter, standard library function 및 imported name을 제안합니다.
+
+### Daml Studio Troubleshooting
+
+type checking이 작동하지 않으면 다음을 확인하세요.
+
+- command line에서 `dpm build`가 성공하는지 검증합니다. build가 실패하면 IDE가 type-check할 수 없습니다.
+- `daml.yaml` file에 올바른 SDK version과 source directory가 나열되어 있는지 확인합니다.
+- Daml language server를 restart합니다. VS Code command palette(`Ctrl+Shift+P`)를 열고 "Daml: Restart Language Server"를 실행하세요.
+
+## Java 및 Scala Backend Development
+
+backend가 Java 또는 Scala인 경우, 즉 Java binding을 사용하는 Canton application에서 흔한 구성이라면 IntelliJ IDEA가 가장 좋은 경험을 제공합니다.
+
+### IntelliJ Setup
+
+1. [IntelliJ IDEA](https://www.jetbrains.com/idea/)(Community 또는 Ultimate edition)를 설치합니다.
+2. project를 엽니다. Maven 또는 Gradle을 사용하면 IntelliJ가 build system을 자동 감지합니다.
+3. `dpm codegen-java` 실행 후 IntelliJ가 generated class를 index하도록 generated code directory를 source root로 지정합니다.
+
+IntelliJ는 generated Daml Java binding으로 type-safe navigation을 제공하므로 backend code에서 contract definition까지 쉽게 추적할 수 있습니다.
+
+### TypeScript Backend Development
+
+cn-quickstart와 같은 TypeScript backend에는 VS Code가 자연스러운 선택입니다. `dpm codegen-js` 실행 후 generated TypeScript type이 VS Code built-in TypeScript language service와 통합되어 autocompletion 및 type checking을 제공합니다.
+
+## 권장 VS Code Extension
+
+Daml Studio 외에 다음 extension이 Canton full-stack development에 유용합니다.
+
+- **Daml** -- Daml language support(필수)
+- **YAML**(Red Hat) -- `daml.yaml`, `docker-compose.yml` 및 configuration file syntax support
+- **Docker**(Microsoft) -- LocalNet에 유용한 Docker container 관리
+- **Kubernetes**(Microsoft) -- Kubernetes deployment 시 유용
+- **ESLint** -- TypeScript/JavaScript frontend 및 backend code linting
+- **Prettier** -- TypeScript, JSON 및 YAML code formatting
+- **GitLens** -- 향상된 Git integration
+
+## Project-Level Configuration
+
+team consistency를 위해 Daml extension을 권장하는 `.vscode/extensions.json`을 repository에 추가하는 것을 고려하세요.
+
+<DamlDocsAppdevToolingIdeSetupL74 />
+
+file association 및 editor formatting rule과 같은 project-specific setting을 담은 `.vscode/settings.json`도 추가할 수 있습니다.
+
+## 다음 단계
+
+- [Development Tools Overview](/appdev/tooling/development-tools-overview) -- 모든 Canton development tool 요약
+- [Development Environment Setup](/appdev/modules/m3-dev-environment) -- Daml development 시작
+- [Debugging Tools](/appdev/tooling/debugging-tools) -- development 중 issue troubleshooting

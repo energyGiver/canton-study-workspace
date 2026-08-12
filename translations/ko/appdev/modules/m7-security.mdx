@@ -1,0 +1,118 @@
+---
+title: "Security Best Practice"
+description: "Canton application을 위한 authorization pattern, API authentication, key management 및 secure configuration"
+source_id: "SRC-6A2C7B5D6D"
+source_path: "appdev/modules/m7-security"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "0b961a88c7062a26e552d6722e6ce196c03b236314ca7b5cd2f49e8d26361764"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m7-security.md)을 사용하세요.
+</Warning>
+
+import DamlAppdevModulesM7SecurityL24 from "/snippets/daml-docs/appdev_modules_m7-security_L24.mdx";
+
+
+Canton은 protocol level에서 structural security guarantee를 제공합니다. authorization은 Daml에 선언되고 privacy는 Synchronizer가 enforce하며 Ledger는 non-repudiation을 보장합니다. application developer의 역할은 off-ledger layer에 gap을 만들지 않으면서 이러한 기반 위에 build하는 것입니다.
+
+## On-Ledger Security
+
+### Signatory 및 controller 선언
+
+Daml authorization model은 첫 번째 방어선입니다. 모든 template은 signatory, 즉 creation을 authorize해야 하는 party를 선언하며 각 choice는 이를 exercise할 수 있는 controller를 선언합니다. protocol은 이 선언을 enforce하므로 어떤 API 조작으로도 우회할 수 없습니다.
+
+design principle은 다음과 같습니다.
+
+- 각 template에 필요한 최소한의 signatory set을 선언합니다.
+- `observer` keyword를 사용해 contract를 볼 수 있지만 action을 수행할 수는 없는 party를 제어합니다.
+- 어느 party도 다른 party에게 일방적으로 obligation을 만들 수 없도록 multi-party agreement에 propose-accept pattern을 우선 사용합니다.
+- creation 시와 모든 fetch/exercise에서 실행되는 `ensure` clause로 business logic을 validate합니다.
+
+### Authorization Chain
+
+복잡한 workflow에서는 광범위한 permission을 부여하는 대신 delegation pattern을 사용하세요. party는 별도의 authorization contract를 통해 특정 action을 delegate할 수 있습니다.
+
+<DamlAppdevModulesM7SecurityL24 />
+
+이렇게 하면 authorization이 명시적이고 audit 가능합니다. principal은 `AuthorizedAgent` contract를 archive하여 delegation을 revoke할 수 있습니다.
+
+## Ledger API Authentication
+
+Canton Validator는 token 기반 authentication(JWT)으로 Ledger API를 보호합니다. application은 유효한 token을 받아 모든 API call에 제시해야 합니다.
+
+### Backend의 Token Management
+
+- token을 안전하게 저장하세요. client-side code, log에 노출되는 environment variable 또는 version control에 저장하지 마세요.
+- command 실패를 피하려면 expiry 전에 token refresh를 구현하세요.
+- token compromise 시 blast radius를 제한하도록 application component별로 별도 service account를 사용하세요. backend, automation, admin tool 등이 이에 해당합니다.
+- gRPC client에서는 token으로 call credential을 설정합니다. HTTP/JSON client에서는 participant integrated JSON API endpoint에 `Authorization: Bearer <token>` header를 사용합니다.
+
+### TLS Configuration
+
+production deployment에서는 모든 Ledger API connection에 TLS를 사용해야 합니다. Validator CA certificate로 gRPC client를 설정하세요.
+
+```java
+ManagedChannel channel = NettyChannelBuilder
+    .forAddress(host, port)
+    .sslContext(GrpcSslContexts.forClient()
+        .trustManager(new File("ca-cert.pem"))
+        .build())
+    .build();
+```
+
+LocalNet development에서는 기본적으로 TLS가 비활성화됩니다. 이 configuration을 production으로 가져가지 마세요.
+
+## Key Management
+
+Canton은 party identity, node identity 및 transaction signing에 cryptographic key를 사용합니다. sensitivity에 따라 key를 보호하세요.
+
+### Development와 Production
+
+LocalNet에서는 key가 local에서 생성되고 저장됩니다. development에는 적합합니다. production에서는 다음을 준수하세요.
+
+- private key에는 [Hardware Security Module(HSM) 또는 cloud Key Management Service(KMS)](/global-synchronizer/production-operations/kms-operations)를 사용합니다.
+- production key를 developer machine이나 CI system에 저장하지 않습니다.
+- organization security policy에 따라 key를 rotate합니다.
+- key material을 안전하게 backup합니다. key를 잃으면 party identity에 대한 access도 잃습니다.
+
+### Validator Key 보호
+
+자체 Validator를 운영한다면 signing key가 가장 중요한 secret입니다. 이 key에 access할 수 있는 사람은 party로 transaction을 submit할 수 있습니다. HSM 또는 KMS에 저장하고 Validator runtime environment로 access를 제한하세요.
+
+## Secure Configuration
+
+### Secret Management
+
+- database credential, API key 및 auth token에는 secret manager(Vault, AWS Secrets Manager, GCP Secret Manager)를 사용합니다.
+- process listing이나 container inspection에 나타날 수 있는 environment variable을 통해 secret을 전달하지 않습니다.
+- credential을 정기적으로 rotate하고 application이 downtime 없이 rotation을 처리할 수 있게 합니다.
+
+### Network Isolation
+
+- Validator를 private network segment에 배치합니다.
+- application server에는 Ledger API port만 노출합니다.
+- firewall rule 또는 security group으로 Validator Admin API에 연결할 수 있는 system을 제한합니다.
+- Admin API는 party management, package upload와 같은 privileged operation을 제공하므로 application code에 노출해서는 안 됩니다.
+
+### System Boundary의 Input Validation
+
+모든 user input이 Ledger API에 도달하기 전에 validate하세요. Daml type system과 authorization model이 여러 attack category를 방지하지만 backend에서도 다음을 수행해야 합니다.
+
+- request의 party identifier가 authenticated user와 일치하는지 validate합니다.
+- contract payload에 포함하기 전에 text field를 sanitize합니다.
+- request payload에 size limit을 enforce합니다.
+- abuse 방지를 위해 API endpoint에 rate limit을 적용합니다.
+
+## 다음 단계
+
+- [Package Management](/appdev/modules/m7-package-management) — DAR distribution 및 deployment 보안
+- [Performance](/appdev/modules/m7-performance) — Canton application optimization strategy
+
+## Advanced Topic
+
+- [Ledger API Client Application의 Open Tracing](/appdev/deep-dives/open-tracing) — Ledger API를 사용하는 application에 OpenTelemetry 기반 distributed tracing 추가
+- [Authorization](/appdev/deep-dives/authorization) — Ledger API의 access token, Identity Provider, scope 및 right

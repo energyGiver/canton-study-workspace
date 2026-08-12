@@ -1,0 +1,121 @@
+---
+title: "일반적인 질문"
+description: "Validator setup, operation 및 upgrade에 관한 자주 묻는 질문"
+source_id: "SRC-686073792F"
+source_path: "global-synchronizer/troubleshooting-guide/common-questions"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "6a5ae697bafe6e2f803faa4a216c2c2369ffa760289e5e573d71a015f03de2f7"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+import CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_COMMON_QUESTIONS_0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/global-synchronizer-troubleshooting-guide-common-questions-0.mdx";
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/global-synchronizer/troubleshooting-guide/common-questions.md)을 사용하세요.
+</Warning>
+
+## Setup
+
+### TestNet 또는 MainNet에 어떻게 onboarding하나요?
+
+TestNet onboarding에는 Super Validator(SV) sponsor가 필요합니다. 함께 작업하는 SV에 문의하거나 `#validator-operations-onboarding` Slack channel에서 sponsor를 찾으세요. Sponsor가 Validator 승인을 위한 vote를 제출합니다. Process에는 일반적으로 2~4주가 걸립니다.
+
+MainNet onboarding도 같은 pattern을 따르지만 requirement가 더 엄격합니다. Signed operator agreement가 필요하며 TestNet에서 성공적으로 운영했음을 입증해야 합니다. 전체 checklist는 [onboarding process](/global-synchronizer/deployment/onboarding-process) documentation을 참조하세요.
+
+### 어떤 port를 열어야 하나요?
+
+Validator에는 다음 outbound access가 필요합니다.
+
+- **TCP 443** -- Synchronizer Sequencer로의 HTTPS/gRPC-TLS
+- **TCP 5432** -- PostgreSQL database가 external hosting된 경우 해당 database로의 access
+- **TCP 443** -- OIDC provider(Auth0, Keycloak 등)로의 access
+
+Inbound access는 setup에 따라 달라집니다.
+
+- **TCP 443** -- Ledger API 또는 Validator Wallet UI를 externally expose하는 경우
+- **TCP 26656** -- CometBFT Node를 실행하는 경우(SV operator)
+
+DevNet에는 VPN connectivity도 필요합니다.
+
+### Validator 실행 비용은 얼마인가요?
+
+비용은 infrastructure와 Network fee로 나뉩니다.
+
+**Infrastructure 비용**은 deployment 선택, cloud provider 및 Transaction volume에 따라 달라집니다. Hardware sizing guide는 [Prerequisite](/global-synchronizer/deployment/prerequisites)를 참조하세요. 단일 VM의 Docker Compose는 fixed cost가 더 낮지만 production에는 권장되지 않습니다.
+
+**Network fee**는 Canton Coin(CC)으로 구매하는 traffic을 통해 지불합니다. 금액은 Transaction volume에 따라 달라집니다. Validator가 얻는 reward로 이 비용을 상쇄할 수 있습니다. Current reward rate는 [Canton Foundation](https://sync.global/) website에서 확인하세요.
+
+## Operation
+
+### Traffic balance는 어떻게 확인하나요?
+
+Canton Console 사용:
+
+<CANTON_DOCS_CN_GS_TROUBLESHOOTING_GUIDE_COMMON_QUESTIONS_0 />
+
+
+Validator API 사용:
+
+```bash
+curl -s http://localhost/api/validator/readyz | jq '.traffic'
+```
+
+Balance가 낮으면 traffic을 추가로 구매하거나 `validator-values.yaml`에서 auto-top-up을 활성화합니다.
+
+### 얼마나 자주 pruning해야 하나요?
+
+Database를 관리 가능한 크기로 유지할 만큼 자주 pruning하세요. 일반적인 schedule은 retention 90일로 10분마다 실행하는 것입니다.
+
+```yaml
+participantPruningSchedule:
+  cron: "0 */10 * * * ?"
+  maxDuration: 30m
+  retention: 90d
+```
+
+Application용 PQS(Participant Query Store)를 실행하는 경우 PQS가 query용 data store를 자체적으로 유지하므로 Participant에서 더 짧은 retention period를 사용할 수 있습니다.
+
+### Network reset 중에는 어떤 일이 발생하나요?
+
+Network reset은 드물며 DevNet과 TestNet에서만 발생합니다. Reset 중에는 다음이 적용됩니다.
+
+- 모든 ledger state가 삭제됩니다.
+- Validator identity를 다시 등록해야 할 수 있습니다.
+- Initial setup과 같은 process를 사용하여 Validator를 re-onboard합니다.
+
+MainNet은 reset된 적이 없으며 앞으로도 예상되지 않습니다. Network upgrade process(Synchronizer migration)는 version 변경 전후에 state를 보존합니다.
+
+## Upgrade
+
+### Version을 건너뛸 수 있나요?
+
+Upgrade type에 따라 다릅니다. 동일한 Splice version 내 minor patch release에서는 일반적으로 intermediate patch를 건너뛸 수 있습니다. Synchronizer migration이 포함된 major version upgrade에서는 release note에 설명된 특정 upgrade path를 따라야 합니다.
+
+Validator가 offline인 동안 Network가 여러 version 앞으로 이동했다면 current Network version으로 직접 upgrade합니다. Network가 incompatible protocol version을 거부하므로 이전 version을 실행하면 `You don't speak X.Y.Z` error가 발생합니다.
+
+### Type 1, Type 2 및 Type 3 upgrade의 차이는 무엇인가요?
+
+이 category는 upgrade의 scope와 impact를 설명합니다.
+
+- **Type 1(patch)** -- Bug fix와 minor improvement입니다. Synchronizer migration이 없고 downtime이 예상되지 않습니다. Helm chart version을 update하고 `helm upgrade`를 실행하여 적용합니다.
+- **Type 2(minor)** -- 새 feature 또는 behavior 변경입니다. Configuration update가 필요할 수 있습니다. Synchronizer migration은 없지만 rolling restart가 필요합니다.
+- **Type 3(major)** -- Synchronizer migration이 포함됩니다. Network가 새 Synchronizer ID로 이동하며 Validator는 database configuration을 update해야 합니다(예: `participant_4`가 `participant_5`로 변경). Scheduled migration window에 모든 Validator가 coordination하여 수행합니다.
+
+각 version의 release note에서 upgrade type을 확인하고 해당 procedure를 따르세요.
+
+### Validator가 올바른 version을 실행하는지 어떻게 확인하나요?
+
+Upgrade 후 실행 중인 version을 확인합니다.
+
+```bash
+# Kubernetes
+kubectl -n validator get deploy validator-app \
+  -o "jsonpath={.spec.template.spec.containers[0].image}"
+
+# Docker
+docker inspect validator-app --format='{{.Config.Image}}'
+```
+
+각 registered Validator가 report한 version을 보여 주는 Network의 public Validator status page에서도 확인할 수 있습니다.

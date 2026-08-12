@@ -1,0 +1,303 @@
+---
+title: "Observability와 Tracing"
+description: "Canton Quickstart component 전반에서 request를 관찰하고 추적합니다."
+source_id: "SRC-3AEF1EC415"
+source_path: "appdev/quickstart/observability-and-tracing"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "e9fe775a5ebf229409c0543caee2ed79fb4104bd598ac4326a1341db5a8b022e"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/quickstart/observability-and-tracing.md)을 사용하세요.
+</Warning>
+
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartObserveObservabilityTroubleshootingOverviewNone164 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-observe-observability-troubleshooting-overview-none-164.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartObserveObservabilityTroubleshootingOverviewNone179 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-observe-observability-troubleshooting-overview-none-179.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartObserveObservabilityTroubleshootingOverviewNone271 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-observe-observability-troubleshooting-overview-none-271.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartObserveObservabilityTroubleshootingOverviewNone275 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-observe-observability-troubleshooting-overview-none-275.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartObserveObservabilityTroubleshootingOverviewNone356 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-observe-observability-troubleshooting-overview-none-356.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartObserveObservabilityTroubleshootingOverviewNone387 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-observe-observability-troubleshooting-overview-none-387.mdx";
+
+{/* COPIED_START source="docs-website:docs/replicated/quickstart/3.4/sdk/quickstart/observe/observability-troubleshooting-overview.rst" hash="57ec2d59" */}
+
+# Canton Network Quickstart observability 및 문제 해결 개요
+
+<Note>
+이 가이드의 screenshot은 여러 session에서 가져왔기 때문에 서로 일관되지 않습니다. 일부 update가 commit되면 이를 바로잡을 예정입니다.
+</Note>
+
+Quickstart 시작 가이드와 demo 살펴보기를 이미 읽었다고 가정합니다. 아직 읽지 않았다면 observability의 기본적인 이해를 갖추기 위해 해당 문서를 읽어 보기를 강력히 권장합니다.
+
+## Observability 개요
+
+Canton Network Quickstart deployment configuration에는 완전한 observability suite가 포함되어 있습니다. 개발 환경과 production 환경 모두에서 분산 Canton application을 monitoring하고 문제를 해결할 수 있도록 tool이 미리 구성되어 있습니다. Observability suite는 다음 세 가지 핵심 monitoring data를 제공합니다.
+
+- Application 및 system event를 위한 **통합 structured log**
+- End-to-end transaction flow를 시각화하는 **distributed trace**
+- 핵심 성능 지표를 monitoring하는 **metric**
+
+이 suite를 사용하면 data type을 서로 연결하여 root cause analysis를 위한 insight를 얻을 수 있습니다. 또한 Canton Ledger는 여러 조직과 환경에 걸쳐 Transaction의 provenance를 추적할 수 있도록 다양한 correlation ID와 tracing ID를 제공합니다.
+
+### LocalNet configuration
+
+Quickstart runtime configuration은 `.env.local`에 정의되며, 이를 통해 Observability Stack의 local deployment를 실행할지 선택할 수 있습니다. 이 파일은 `$ make setup`으로 만들 수 있으며, 이 command는 `$ ./gradlew configureProfiles --no-daemon --console=plain --quiet`를 감쌉니다. 또는 직접 편집하여 환경 변수 `LOCALNET_ENABLED`와 `OBSERVABILITY_ENABLED`를 필요에 따라 `true` 또는 `false`로 설정할 수 있습니다.
+
+`LocalNet` runtime configuration은 `docker-compose`가 처리하며, `compose.yaml`에서 `.env`의 환경 변수를 사용하도록 구성됩니다. 이 파일은 `quickstart/` project root directory에 있습니다. 일반적인 Docker command와 tooling을 적용할 수 있습니다.
+
+바로 유용하게 사용할 수 있으며 이미 알고 있을 가능성이 높은 command는 다음과 같습니다.
+
+- `$ docker ps`는 실행 중인 container를 나열합니다.
+- `$ docker logs [-f] <container>`는 container log를 가져오며, `-f` option을 사용하면 log를 계속 추적합니다.
+  - 나중에 설명할 observability stack을 신뢰하기 어려울 정도로 system이 제대로 작동하지 않는다면, 문제 원인을 파악할 단서를 제공하는 error를 찾기 위해 `docker logs backend-service`부터 확인하는 것이 좋습니다.
+- Container가 멈춘 것처럼 보일 때는 `$ docker restart <container>`를 사용합니다.
+
+### Observability 개괄
+
+Quickstart application은 production Daml application의 기초를 제공합니다. Application 문제 해결과 debug에 도움이 되는 완전한 observability configuration이 포함되어 있습니다. 실행 가능한 demo인 Quickstart는 선택한 technology stack에 대해 명확한 방향성을 갖지만, platform 자체는 특정 기술에 종속되지 않습니다. 필요에 따라 개별 component를 교체할 수 있습니다.
+
+현재 제공되는 문제 해결 및 debugging service는 다음과 같습니다.
+
+- [Daml Shell](/sdks-tools/cli-tools/daml-shell)을 통한 local ledger 검사
+- **OpenTelemetry**를 통한 datasource 수집 및 관리
+  - **OTEL Collector**를 사용합니다([https://opentelemetry.io/docs/collector](https://opentelemetry.io/docs/collector)).
+- **Prometheus**를 사용한 metric 집계([https://prometheus.io/](https://prometheus.io/))
+- **lnav**를 사용한 log 검사([lnav 다운로드 및 문서](/appdev/quickstart/lnav) page 참조)
+- **Tempo**를 사용한 trace 집계([https://grafana.com/oss/tempo/](https://grafana.com/oss/tempo/))
+- Observability field를 hyperlink로 탐색할 수 있게 해주는 **Grafana**를 통한 집계된 관측 결과(metric, log, trace) 확인([https://grafana.com/oss/grafana/](https://grafana.com/oss/grafana/))
+
+#### Daml Shell
+
+Daml Shell은 PQS 위에서 대화형 local ledger 검사를 제공하는 terminal application입니다. Quickstart는 Docker container에서 Daml Shell을 실행하고 포함된 application provider의 PQS instance에 연결하도록 구성되어 있습니다. 최상위 project script를 `make`로 실행하는 것이 가장 간단하며, 이 script는 `quickstart/`에서 접근합니다. 실제로 확인하려면 Quickstart app을 build하고 시작한 다음 아래 절차를 따릅니다.
+
+`$ make create-app-install-request`를 실행하여 `curl`로 `create AppInstallRequest ...` command를 ledger에 제출하고[^1] user onboarding을 시작합니다.[^2] 그런 다음 다음 Daml Shell command를 사용할 수 있습니다.
+
+\> `active`: 생성한 contract의 요약을 확인합니다.
+
+\> `active quickstart-licensing:Licensing.AppInstall:AppInstallRequest`: Ledger의 Asset contract에 대한 contract 상세 정보를 확인합니다.
+
+\> `contract [contract-id from the previous command]`[^3]: Ledger의 `AppInstallRequest` contract 전체 상세 정보를 확인합니다.
+
+\> `help [command]`: Daml Shell command에 대한 상황별 도움말을 제공합니다.[^4]
+
+#### Grafana
+
+Grafana는 [http://localhost:3030/](http://localhost:3030/)에 port mapping된 web interface를 통해 접근할 수 있으며, command line에서 `make open-observe`를 실행하면 현재 browser에서 열 수 있습니다.
+
+Debugging할 때는 Grafana의 trace와 log 기능, 그리고 Daml Shell을 통한 ledger 검사에 집중해야 합니다. 개발 중 debugging을 지원하기에 충분한 log와 trace를 export하도록 하면 production에서도 진단을 지원할 가능성이 높아집니다.
+
+Quickstart에는 `LocalNet` debugging에 도움이 되는 추가 access도 구성되어 있습니다. 개발과 production에서 동일한 진단 tool을 사용하세요. 개발 중 bug를 식별하고 수정할 수 있는 log line을 추가했다면 이를 `trace` 또는 `debug` log level로 유지하면 운영 준비 수준이 높아집니다. Production에서 사용할 수 없는 tool로 개발 환경을 debug하면 운영 준비 수준이 낮아집니다.
+
+#### Postgres 직접 접근
+
+예제 application의 모든 persistent state는 하나 이상의 Postgres database에 저장됩니다. `.env`의 Postgres configuration을 사용해 이러한 instance에 직접 연결할 수 있습니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartObserveObservabilityTroubleshootingOverviewNone164 />
+
+예를 들어 `postgres-splice-app-provider` container에 연결하면(default username `cnadmin`, dbname `scribe`, password `supersafe`) PQS의 SQL interface를 사용해 app-provider Participant의 local ledger를 검사할 수 있습니다. PQS SQL API는 [PQS SQL reference](/appdev/reference/pqs-sql-reference)에 설명되어 있습니다.
+
+#### Interactive debugger
+
+Backend-service의 remote-debug configuration은 `docker/backend-service/debug.yaml`에 있으며, deployment 시 `DEBUG_ENABLED=true`가 설정된 경우에만 적용됩니다(예: `.env.local`). 이 파일을 살펴보면 다음 line이 있습니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartObserveObservabilityTroubleshootingOverviewNone179 />
+
+이를 통해 user application의 Java component backend인 backend-service를 remote debugging할 수 있습니다. 필요한 경우 IDE Debugger를 runtime의 service에 연결할 수 있습니다. 먼저 Grafana를 사용하고 [lnav](/appdev/quickstart/lnav)로 통합 log를 검사하는 것을 권장합니다. 이렇게 해야 production에서도 system을 debug할 수 있습니다.
+
+## Observability와 tracing
+
+오류가 있는 분산 system은 진단하기 매우 어려울 수 있습니다. Quickstart는 보통 project 후반에야 개발되는 observability와 진단 기능을 project 시작부터 제공합니다. 각 project의 처음부터 새로운 Canton Network Application의 진단을 단순화하는 것이 Quickstart를 개발한 동기 중 하나입니다.
+
+개요의 link에는 Quickstart에 포함된 여러 tool의 공식 user 및 reference documentation이 있습니다. 공식 documentation을 대체할 수는 없지만, 다음 Quickstart 기능 둘러보기가 직접 실험을 시작하는 출발점이 되기를 바랍니다.
+
+### Correlation identifier
+
+다른 분산 system을 검사할 때와 마찬가지로 Canton 검사도 identifier를 서로 연결하는 것에서 시작합니다. Canton은 시간, 여러 node 및 변화하는 ledger state 전반의 correlation에 적합한 다양한 identifier를 수신하거나 생성할 수 있습니다.
+
+알아 두어야 할 핵심 identifier는 다음과 같습니다.
+
+| `Identifier`       | `Specified by`                | `Scope`                                                                                                                                                                                                                                                      |
+|--------------------|-------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `ApplicationId`    | `The Ledger Client`           | `Identifies the ledger client during command submission and processing.`                                                                                                                                                                                     |
+| `WorkflowId`       | `The Ledger Client`           | `Identifies the business process. Persisted to the ledger.`                                                                                                                                                                                                  |
+| `CommandId`        | `The Ledger Client`           | `Identifies the business “act” associated with a ledger command. Persisted to the ledger. Visible only to the submitting party. Common across retries.`                                                                                                      |
+| `SubmissionId`     | `The Ledger Client`           | `Identifies an individual ledger submission to a participant node.`                                                                                                                                                                                          |
+| `TransactionId`    | `Daml Ledger`                 | `Global identifier for a committed transaction to the ledger. Only visible to participant nodes that witness or are informed of the transaction.`[^5]                                                                                                        |
+| `LedgerEventId`    | `Daml Ledger`                 | `Global identifier for a node within a committed transaction tree corresponding to a ledger event.`                                                                                                                                                          |
+| `Trace/SpanId`[^6] | `Ledger Client (or upstream)` | `Accepted by GRPC/HTTP ledger interfaces and honoured throughout the Canton Network code. Where one is not provided may sometimes be generated internally to provide tracing support within the network.`                                                    |
+| `LedgerOffset`     | `Participant Node`            | `The height of a transaction within the local linearization of the ledger by a participant node.`[^7]                                                                                                                                                        |
+| `ContractId`       | `Daml Ledger`                 | `Global identifier for a contract that was created successfully on the ledger at some point. If the contract has been subsequently archived the id remains a stable and valid way to refer to it even though the associated contract can no longer be used.` |
+| `TemplateId`       | `Daml Application`            | `Combined with a PackageId this provides a global identifier for a Daml smart contract.`                                                                                                                                                                     |
+| `PartyId`          | `Participant Node`            | `Identifier of the Party on the Canton ledger.`[^8]                                                                                                                                                                                                          |
+
+유용한 Correlation Identifier
+
+Observability configuration의 목표는 더 넓은 system에 있는 state나 event의 provenance를 쉽게 탐색하도록 하는 것입니다. 이러한 identifier 일부 또는 전부를 사용해 log, metric 및 state의 조합을 연결할 수 있습니다. 특히 application-id, workflow-id, command-id 세 가지는 해당 business domain에서 파생된 business identifier에 맞춰 설정하기 위한 것입니다.
+
+가능한 한 많은 component에서 structured log를 사용하여 탐색할 수 있습니다.[^9] Custom component도 OpenTelemetry가 더 정확히 처리할 수 있도록 structured log를 내보내는 것이 좋습니다.
+
+### Correlation identifier를 사용한 직접 Ledger 검사
+
+`$ make stop clean-all && make build start`에서 시작하여 예제 application의 app-user onboarding을 진행합니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartObserveObservabilityTroubleshootingOverviewNone271 />
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartObserveObservabilityTroubleshootingOverviewNone275 />
+
+이것은 app-user의 Participant Node에 create command를 제출한 script output이며, 위에서 설명한 여러 correlation ID가 이미 포함되어 있습니다.
+
+|        |                |                                                                                                                |
+|--------|----------------|----------------------------------------------------------------------------------------------------------------|
+| 14     | TemplateId     | \#quickstar t-licensing:Licensing.AppInstall:AppInstallRequest                                                 |
+| 16 -18 | Party Ids      | DSO::1220015e721c8ec5c1a5868b…ddfec4 AppProvider::12202fe7b2bf950d…e816ff Org1::122072b20a515d939910f94…4d4551 |
+| 25     | Workflow Id    | create-app-install-request                                                                                     |
+| 26     | Application Id | ledger-api-user                                                                                                |
+| 27     | Command Id     | create-app-install-request                                                                                     |
+| 31     | Submission Id  | create-app-install-request                                                                                     |
+| 36     | Transaction Id | 1220e48d6d59af99a1b61eca414fe…7ed5c0                                                                           |
+
+Daml Shell에서 Transaction ID를 바로 사용하여 관련 ledger Transaction을 확인할 수 있습니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartObserveObservabilityTroubleshootingOverviewNone356 />
+
+여기에서 더 많은 identifier를 얻을 수 있습니다.
+
+|                 |                             |
+|-----------------|-----------------------------|
+| Ledger Offset   | 48                          |
+| Ledger Event Id | \#122026e55e3f82e27542...:0 |
+| Contract Id     | 00cb53139ff0eb7ec57b...     |
+
+Workflow ID, Template ID 및 Party ID도 여기에서 볼 수 있습니다. PQS나 Ledger API를 직접 query하여 추가 정보를 찾으려 할 때 ledger offset이 매우 유용할 수 있습니다. Contract ID는 Daml Shell에서 contract를 즉시 표시하는 데 사용할 수 있습니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartObserveObservabilityTroubleshootingOverviewNone387 />
+
+Smart contract의 bug가 문제라면 일반적으로 Daml Shell에서 Transaction과 관련 provenance를 탐색하고 Daml IDE로 관련 Transaction을 합성하여 다시 실행하면 문제를 식별할 수 있습니다. 그러나 상대적인 code line 수만 보더라도 대부분의 문제에서 root cause는 ledger 외부에 있을 것입니다. 따라서 이러한 identifier의 중요한 가치는 OpenTelemetry를 통해 수집한 통합 log 및 기타 정보와 이 identifier를 연결하는 데서 나옵니다.
+
+### Correlation Identifier를 사용한 연관 Log와 Trace
+
+예제를 계속 진행하기 위해 AppProvider로 login하고 AppInstallRequest를 accept하면 다음 결과가 나타납니다.
+
+![AppProvider가 AppInstallRequest를 accept하는 화면](/images/docs_website/01-app-provider-app-installs.png)
+
+일반적인 browser 기반 developer inspection tool로 관련 correlation ID를 추출할 수 있습니다.
+
+![연결된 ID를 표시하는 browser developer tool](/images/docs_website/02-browser-inspection-tool.png)
+
+새 license를 발급할 때 Backend-Service에 보내는 HTTP call도 볼 수 있으며, 이 call의 response 역시 추가 identifier를 제공합니다.
+
+![Backend-Service에 대한 HTTP call을 표시하는 browser developer tool](/images/docs_website/03-http-backend-service-call.png)
+
+![Backend-Service HTTP call의 payload를 표시하는 browser tool](/images/docs_website/04-payload.png)
+
+![Backend-Service의 HTTP response를 표시하는 browser tool](/images/docs_website/05-http-response.png)
+
+| `Id Type`     | `Description` | `ID`                                      |
+|-----------------|---------------|-------------------------------------------|
+| `Command Id`    |               | `79062314-1354-439b-b5c8-b889bec1024f`    |
+| `Contract Id`   | `AppInstall`  | `002ac6577aa4aee9906cee4aec9c82c45312...` |
+| `Contract Id`   | `License`     | `79062314-1354-439b-b5c8-b889bec1024f`    |
+
+이미 살펴본 것처럼 contract ID를 사용하여 Daml Shell에서 contract를 직접 검사할 수 있습니다. 또한 Backend용 OpenAPI interface의 설계 방식 때문에 POST query parameter로 Command ID가 표시됩니다. 이를 사용해 Grafana에서 통합 log를 query할 수 있습니다.
+
+![command-id를 사용하는 Grafana 통합 log query](/images/docs_website/06-grafana-consolidated-logs.png)
+
+Command-id를 통해 backend 앞에 있는 App-Provider의 Nginx reverse proxy와 해당 Participant Node의 log를 확인했습니다. Nginx log가 browser에서 확인한 request와 일치하는지 검증할 수 있습니다.
+
+![command-id의 Nginx log entry](/images/docs_website/07-nginx-log.png)
+
+더 중요하게는 같은 집계 log에서 Participant Node가 Canton Synchronization Domain에 Transaction을 제출했음을 나타내는 entry도 확인할 수 있습니다.
+
+![command-id의 Participant Node log entry](/images/docs_website/08-participant-node-aggregated-log.png)
+
+Transaction이 Canton Ledger에 성공적으로 commit되었다는 알림을 받았습니다.
+
+![Transaction commit의 Participant Node log entry](/images/docs_website/09-committed-transaction.png)
+
+마지막으로 App-Provider의 local ledger에 추가되었습니다.[^10]
+
+![Ledger에 추가된 Transaction의 Participant Node log entry](/images/docs_website/10-app-provider-local-ledger.png)
+
+여기에서 추가 correlation ID를 얻을 수 있으며, 어느 것이든 이 log line을 찾는 데 사용할 수 있습니다.
+
+| Ledger Offset   |     | 000000000000000088                    |
+|-----------------|-----|---------------------------------------|
+| Transaction Id  |     | 122053c509d405e77eab680a855…2d10bb    |
+| Submission Id   |     | 0b837b1c-855a-45f1-885d-ddef0bd7a5a3 |
+| Trace Id        |     | 442fd29567f04e2fa3f8d1dc9cf51628     |
+
+특히 Trace ID는 Tempo로 직접 연결하여 distributed operation span을 볼 수 있으므로 매우 유용합니다.
+
+![Trace ID](/images/docs_website/11-trace-id.png)
+
+여기서는 backend reverse proxy 뒤에서 create license operation이 흐르는 과정을 볼 수 있습니다.
+
+- Backend Service의 초기 POST handler
+- AppInstall contract를 가져오기 위한 backend의 PQS query
+- Backend Service에서 App-Provider Ledger API로 보내는 call
+- Participant Node의 Transaction 준비 및 Canton Network 제출
+
+Grafana suite의 매우 강력한 측면 중 하나는 Quickstart stack의 여러 observability tool을 통합하는 수준입니다. 앞서 통합 log에서 Tempo로 연결되는 link를 확인했지만 반대 방향도 가능합니다. Tempo에서 span을 펼치면 “Logs for this span” link가 제공됩니다.
+
+![Tempo span log link](/images/docs_website/12-temo-span.png)
+
+이 link는 해당 span과 연결된 특정 component(backend-service, Participant, Sequencer 등)의 log로 이동합니다.
+
+서로 다른 correlation ID를 사용하면 분산 application의 변경 이력을 탐색할 수 있습니다. Participant Node 내 ACS에 Transaction이 commit되는 것을 확인했지만, PQS도 index하는 Transaction과 연관된 identifier를 기록합니다.
+
+TransactionId와 traceId를 모두 사용해 create-license backend operation 및 그 이후 과정에 대한 이해를 넓힐 수 있습니다.
+
+![log](/images/docs_website/13-logs.png)
+
+PQS ingestion은 background process가 수행하는 별도의 operation입니다. 따라서 이 log의 traceId는 서로 다르지만, ingestion 중인 ledger data와 연관된 trace 및 Transaction identifier로 다시 연결됩니다. Tempo link를 따라가면 이를 확인할 수 있습니다.
+
+![PQS ingestion trace](/images/docs_website/14-pqs-ingestion.png)
+
+“export transaction” span에서 펼친 “references” section에는 관련 PQS process의 trace와, 특히 해당 Transaction을 만든 command 제출 trace로 연결되는 link가 포함되어 있습니다. 이 link는 해당 trace로 바로 이동하며, 여기서는 방금 출발한 trace와 동일합니다.
+
+연결된 log, trace 및 span을 query하고 탐색하면 Canton Network Application과 관련된 여러 구성 요소를 훨씬 쉽게 이해할 수 있습니다. 내보낸 log와 trace만 탐색할 수 있고 포함되거나 첨부된 identifier만 query할 수 있다는 점을 기억하세요. 따라서 application의 logging을 보강하고 확장할 기회가 있는지 주기적으로 시간을 내어 살펴보기를 강력히 권장합니다.
+
+마지막으로 바로 보이지는 않지만 log line 위에 pointer를 놓으면 해당 line의 log context를 보는 option이 나타납니다.
+
+![Grafana log context link](/images/docs_website/15-log-line-hover.png)
+
+그러면 해당 시간대 component log의 필터링되지 않은 전체 view가 관련 line을 강조한 상태로 window에 표시됩니다. Nginx log line의 경우 동일한 시간에 처리된 다른 traffic을 한 번의 click으로 볼 수 있습니다.
+
+![Grafana log context view](/images/docs_website/16-log-context-view.png)
+
+Grafana가 Tempo 및 Prometheus의 raw query에 대한 access를 제공한다는 점도 기억할 만합니다. 이를 직접 실험하며 observability stack을 통해 제공되는 통합 metric과 trace를 조사하는 방법을 찾아보는 것은 충분히 가치가 있습니다. Log 검사에는 [lnav](/appdev/quickstart/lnav)를 사용하세요.
+
+![Tempo TraceQL](/images/docs_website/17-tempo-trace-ql.png)
+
+관련 문서를 찾기 위한 출발점은 다음과 같습니다.
+
+- lnav: [lnav 다운로드 및 문서](/appdev/quickstart/lnav)
+- Tempo: [https://grafana.com/docs/tempo/latest/traceql/](https://grafana.com/docs/tempo/latest/traceql/)
+- Prometheus: [https://grafana.com/docs/grafana/latest/datasources/prometheus/query-editor/](https://grafana.com/docs/grafana/latest/datasources/prometheus/query-editor/)
+
+[^1]: 구체적으로는 `CreateCommand`를 Application User의 Participant Node에 있는 `submit-and-wait` service로 보냅니다.
+
+[^2]: 자세한 내용은 Canton Network Quickstart Guide의 “Project Structure”를 참조하세요.
+
+[^3]: Daml Shell은 `active`의 Template ID argument와 contract의 Contract ID argument를 포함하여 대부분 command argument의 tab completion을 지원합니다.
+
+[^4]: 추가 documentation은 [Daml Shell reference](/sdks-tools/cli-tools/daml-shell)에서 확인할 수 있습니다.
+
+    !["Daml Shell command line interface"](/images/docs_website/footnote-04-daml-shell-cli.png)
+
+[^5]: Canton을 다른 모든 layer-one blockchain과 구분하는 핵심 요소는 privacy를 제공한다는 점입니다. Canton은 의사 익명성이나 모호함을 통한 은닉 대신 알 권리를 강제하여 이를 구현합니다. Canton은 두 가지 privacy 보장을 제공합니다. 암호화된 형태라 하더라도 (sub-)transaction은 이를 통지받을 권리가 있는 Participant Node에만 전송되며, Participant Node는 통지받을 권리가 있는 모든 (sub-)transaction을 통지받습니다. Canton이 "권리"를 정의하는 방식과 기타 측면에 대한 자세한 내용은 [Daml ledger privacy model](/appdev/deep-dives/privacy-model)을 참조하세요.
+
+[^6]: Distributed tracing은 분산 application을 효율적으로 debug하고 진단하는 데 필수적입니다. Trace ID와 Span ID는 기술적으로 별개의 identifier지만 밀접하게 연결되어 있습니다. 사용법이 익숙하지 않다면 OpenTelemetry의 유용한 입문 자료([https://opentelemetry.io/docs/concepts/signals/traces/](https://opentelemetry.io/docs/concepts/signals/traces/)), Grafana demo([https://grafana.com/docs/tempo/latest/introduction/](https://grafana.com/docs/tempo/latest/introduction/))를 확인하세요. 이 가이드의 뒷부분에서도 사용법을 설명합니다.
+
+[^7]: Privacy를 지원하지 않는 다른 public blockchain의 “blockheight”에 해당합니다. Privacy에 따라 각 Participant Node가 global blockchain의 서로 다른 projection을 보게 되므로 서로 다른 Participant Node의 offset은 비교할 수 없습니다. 한 Participant Node가 확인한 ledger event에 대해 단순하고 단조 증가하며 total order를 제공하기 때문에 단일 Participant Node를 다룰 때 일반적으로 선호되는 ID입니다.
+
+[^8]: Ledger Model에서의 역할에 따라 모든 Party는 (그리고 연관된 entity도) (sub-)transaction 또는 ledger event를 승인할 수 있어야 합니다. 자세한 내용은 [Daml ledger authorization model](/appdev/deep-dives/authorization)을 참조하세요.
+
+[^9]: Logger가 structured log를 직접 내보내도록 구성할 수 없는 경우 일반적인 방식으로 log parser를 사용해 raw log file을 변환합니다. 이는 주로 OTEL Collector configuration에서 수행됩니다.
+
+[^10]: 이는 Canton Network의 중요한 기능을 보여주는 예입니다. Participant Node는 관련 Daml Smart Contract와 Daml Ledger Model의 privacy semantics에 의해 해당 Transaction을 통지받도록 승인되었기 때문에 이 Transaction의 존재를 알 수 있습니다. Privacy는 contract data를 ciphertext로 가리기 때문에 보장되는 것이 아니라, 알 권리가 검증되지 않은 Participant에게 ledger model이 어떤 형태로든 Transaction을 전달하지 않도록 하기 때문에 보장됩니다.
+
+
+{/* COPIED_END */}

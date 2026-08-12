@@ -1,0 +1,158 @@
+---
+title: "Debugging Tools"
+description: "Canton application debugging을 위한 test output, Canton Console, PQS query 및 log analysis tool/workflow"
+source_id: "SRC-8637C9625B"
+source_path: "appdev/tooling/debugging-tools"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "036b5398cccc00b8cc9868a922fb3df89fbb62b3f6e9699134eab1bce1f2f34b"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/tooling/debugging-tools.md)을 사용하세요.
+</Warning>
+
+import CANTON_DOCS_CN_DEBUGGING_TOOLS_0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/debugging-tools-0.mdx";
+import CANTON_DOCS_CN_DEBUGGING_TOOLS_1 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/debugging-tools-1.mdx";
+import CANTON_DOCS_CN_DEBUGGING_TOOLS_2 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/debugging-tools-2.mdx";
+import DamlAppdevModulesM5LocalnetDevelopmentL190 from "/snippets/daml-docs/appdev_modules_m5-localnet-development_L190.mdx";
+
+
+
+transaction이 실패하거나 contract가 사라지거나 application이 예상과 다르게 동작할 때 Canton은 조사에 사용할 여러 tool을 제공합니다. 이 page에서는 사용할 수 있는 debugging tool과 issue 진단을 위한 일반 workflow를 다룹니다.
+
+## dpm test Output
+
+`dpm test`는 Daml Script test를 실행하고 terminal에 결과를 보고합니다. test가 실패하면 output에 다음이 포함됩니다.
+
+- script name 및 failure 발생 line
+- error type(예: `ContractNotFound`, `AuthorizationError`, `PreconditionFailed`)
+- assertion failure의 expected/actual value
+
+error message를 주의 깊게 읽으세요. Daml error는 구체적입니다. `ContractNotFound`는 reference한 contract ID가 archive되었거나 party에 대해 존재한 적이 없음을 의미합니다. `AuthorizationError`는 submitting party에게 필요한 signatory 또는 controller role이 없음을 의미합니다.
+
+### Choice Coverage
+
+`dpm test --show-coverage`를 실행해 testing 중 template의 어떤 choice가 exercise되었는지 확인합니다. 낮은 coverage는 test되지 않은 edge case와 관련되는 경우가 많습니다. choice coverage가 0이면 test suite가 해당 choice를 exercise하는지 검토하세요.
+
+## Canton Console
+
+Canton Console은 실행 중인 Canton node에 연결되는 interactive REPL입니다. development 중 Ledger state를 가장 직접적으로 검사하는 방법입니다.
+
+### Active Contract Set 검사
+
+party에 현재 존재하는 contract를 확인하려면 다음을 사용합니다.
+
+
+<CANTON_DOCS_CN_DEBUGGING_TOOLS_0 />
+
+
+존재할 것으로 예상한 contract가 ACS에 없다면 archive되었거나 party가 stakeholder였던 적이 없는 것입니다.
+
+### Transaction 검사
+
+최근 transaction을 확인하려면 다음을 사용합니다.
+
+
+<CANTON_DOCS_CN_DEBUGGING_TOOLS_1 />
+
+
+transaction detail은 생성, archive 및 exercise된 contract를 보여 줍니다. transaction trace와 기대 결과를 비교해 logic이 달라진 지점을 찾으세요.
+
+### Package Upload
+
+실행 중인 node에서 Daml package를 업데이트해야 하는 경우 다음을 사용합니다.
+
+
+<CANTON_DOCS_CN_DEBUGGING_TOOLS_2 />
+
+
+## PQS SQL Query
+
+PQS는 Ledger state를 PostgreSQL table로 project합니다. 여러 template의 contract state를 조사하거나 historical event를 추적해야 할 때 SQL이 가장 빠른 방법인 경우가 많습니다.
+
+### Contract 찾기
+
+```sql
+-- Find active contracts of a given template
+SELECT contract_id, create_arguments
+FROM active_contracts
+WHERE template_id LIKE '%MyTemplate%';
+```
+
+### Archived Contract 추적
+
+```sql
+-- Find when and why a contract was archived
+SELECT contract_id, archive_event_id, effective_at
+FROM contracts
+WHERE template_id LIKE '%MyTemplate%'
+  AND contract_id = 'your-contract-id';
+```
+
+### Event History 확인
+
+```sql
+-- List recent events for a template
+SELECT event_id, event_type, contract_id, effective_at
+FROM events
+WHERE template_id LIKE '%MyTemplate%'
+ORDER BY effective_at DESC
+LIMIT 20;
+```
+
+PQS query는 party data로 scope가 제한됩니다. PQS에서 contract를 찾을 수 없다면 party가 해당 contract의 stakeholder가 아닐 수 있습니다.
+
+## Log Analysis
+
+LocalNet 또는 local Sandbox를 실행하면 log에 transaction processing, validation error 및 node behavior에 관한 상세 정보가 기록됩니다.
+
+### Log Capture
+
+cn-quickstart environment에서는 다음을 사용합니다.
+
+<DamlAppdevModulesM5LocalnetDevelopmentL190 />
+
+모든 Docker container의 log를 분석할 수 있도록 local directory에 수집합니다.
+
+### lnav 사용
+
+[lnav](https://lnav.org/)은 structured log를 잘 처리하는 log file viewer입니다. 여러 log file에서 동시에 filtering, searching 및 timeline navigation을 지원합니다.
+
+```bash
+lnav logs/*.log
+```
+
+lnav 안에서 `:filter-in`으로 transaction ID 또는 error keyword 같은 특정 pattern에 집중하고 `:filter-out`으로 noise를 제거합니다.
+
+### 확인할 항목
+
+- **WARN 및 ERROR level message** -- problem을 나타냅니다. 실패한 operation의 transaction ID 또는 command ID를 검색하세요.
+- **Rejection reason** -- Mediator가 transaction을 reject하면 log에 timeout, inconsistency, authorization failure 등의 이유가 포함됩니다.
+- **Connectivity issue** -- Validator가 Synchronizer에 연결하지 못하면 transaction이 정체됩니다. connection error 또는 timeout message를 찾으세요.
+
+## 일반 Debugging Workflow
+
+### "transaction이 실패한 이유는 무엇인가?"
+
+1. Ledger API 또는 backend가 반환한 error를 확인하고 command ID를 기록합니다.
+2. Validator log에서 해당 command ID를 검색해 상세 rejection reason을 찾습니다.
+3. 일반적인 원인은 insufficient authorization, 즉 잘못된 submitting party, 이미 archive된 contract(race condition), insufficient traffic credit입니다. Validator traffic budget을 확인하세요.
+
+### "contract는 어디에 있는가?"
+
+1. PQS 또는 Canton Console ACS에서 contract ID나 template을 query합니다.
+2. contract가 ACS에 없다면 PQS에서 archive event를 확인합니다. choice에 의해 consume되었을 수 있습니다.
+3. contract가 전혀 보이지 않으면 party가 stakeholder(signatory 또는 observer)인지 검증합니다. Canton privacy model에서는 stake가 없는 contract가 party에게 표시되지 않습니다.
+
+### "이 contract가 보이지 않는 이유는 무엇인가?"
+
+대부분 privacy 문제입니다. party가 signatory, observer이거나 divulgence 또는 explicit disclosure를 통해 contract를 받은 경우에만 볼 수 있습니다. template definition에서 party role을 확인하세요. party가 나열되지 않았다면 Daml model에서 observer로 추가하거나 explicit disclosure를 사용해야 합니다.
+
+## 다음 단계
+
+- [Development Tools Overview](/appdev/tooling/development-tools-overview) -- 사용할 수 있는 모든 tool 요약
+- [Troubleshooting](/appdev/troubleshooting) -- 일반적인 Canton development issue 해결
+- [Daml Contract Testing](/appdev/modules/m3-testing) -- issue를 조기에 발견하는 효과적인 test 작성

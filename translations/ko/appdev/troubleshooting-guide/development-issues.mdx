@@ -1,0 +1,326 @@
+---
+title: "Development Issue"
+description: "development 중 Daml compilation error, API connection problem 및 transaction failure troubleshooting"
+source_id: "SRC-91C098FDF3"
+source_path: "appdev/troubleshooting-guide/development-issues"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "6a32d91cbfad2b10faf176d180b58cb363f5ab0ae67efa310ab865f4d1e0c356"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/troubleshooting-guide/development-issues.md)을 사용하세요.
+</Warning>
+
+import DamlAppdevTroubleshootingGuideDevelopmentIssuesL21 from "/snippets/daml-docs/appdev_troubleshooting-guide_development-issues_L21.mdx";
+import DamlAppdevTroubleshootingGuideDevelopmentIssuesL43 from "/snippets/daml-docs/appdev_troubleshooting-guide_development-issues_L43.mdx";
+
+
+이 page는 local development 중 Daml code 작성, API connection 및 transaction submission에서 발생할 가능성이 높은 problem을 다룹니다.
+
+## Daml Compilation Error
+
+### 일반적인 Type Mismatch
+
+Daml compiler는 strict typing을 enforce합니다. 흔한 실수는 template type이 필요한 곳에 `ContractId`를 전달하거나 그 반대로 전달하는 것입니다.
+
+```
+error:
+  Couldn't match expected type 'Asset' with actual type 'ContractId Asset'
+```
+
+**해결:** `fetch`로 `ContractId`에서 contract payload를 조회합니다.
+
+<DamlAppdevTroubleshootingGuideDevelopmentIssuesL21 />
+
+또 다른 일반적인 경우는 `Party`와 `Text`를 혼동하는 것입니다.
+
+```
+Couldn't match expected type 'Party' with actual type 'Text'
+```
+
+Daml Script에서는 `getParty`를 사용하거나 string 대신 `Party` value를 직접 전달합니다.
+
+### Missing Import
+
+compiler가 unknown type 또는 function을 보고하면 import가 필요할 가능성이 높습니다. Daml은 module을 자동 import하지 않습니다.
+
+```
+error: Not in scope: 'DA.Optional.fromSome'
+```
+
+**해결:**
+
+<DamlAppdevTroubleshootingGuideDevelopmentIssuesL43 />
+
+### SCU Compatibility Check Failure
+
+Daml package upgrade 시 Smart Contract Upgrade(SCU) compatibility checker가 변경을 reject할 수 있습니다. template field 제거 또는 field type 변경이 일반적인 violation입니다.
+
+```
+error: Upgrade check failed: field 'amount' has changed type from 'Int' to 'Decimal'
+```
+
+SCU는 새 package version이 이전 version과 wire-compatible하도록 요구합니다. default가 있는 optional field는 추가할 수 있지만 기존 field를 제거하거나 변경할 수 없습니다.
+
+<Warning>
+Daml exception은 deprecated 상태입니다. exception 사용에 대한 compiler warning이 나타나면 `Either` 또는 다른 error-handling pattern을 사용하도록 refactor하세요.
+</Warning>
+
+## API Connection Problem
+
+### 잘못된 Port
+
+각 Canton component는 다른 port에서 listen합니다. application에 `Connection refused`가 발생하면 올바른 port를 대상으로 하는지 확인합니다.
+
+- **Ledger API(gRPC)** -- 5001
+- **JSON API** -- 7575
+- **Admin API** -- 5002
+- **Participant health** -- 5003
+
+실제로 사용 중인 port를 확인합니다.
+
+```bash
+docker ps --format "table {{.Names}}\t{{.Ports}}"
+```
+
+### Auth Token Issue
+
+Ledger API가 `UNAUTHENTICATED`를 반환하면 token이 expired 상태이거나 audience가 잘못되었거나 required scope가 없을 수 있습니다.
+
+```
+UNAUTHENTICATED: Could not verify JWT token: token is expired
+```
+
+**Checklist:**
+- token에 `daml_ledger_api` scope가 있음
+- token audience가 config의 `LEDGER_API_AUTH_AUDIENCE`와 일치함
+- token이 만료되지 않음(`exp` claim 확인)
+
+claim을 검사하도록 token을 decode합니다.
+
+```bash
+echo "$TOKEN" | cut -d'.' -f2 | base64 -d 2>/dev/null | jq .
+```
+
+### Sandbox가 아직 준비되지 않음
+
+`dpm sandbox` 실행 후 Sandbox initialization에 몇 초가 걸립니다. application이 즉시 연결하면 다음 error가 발생할 수 있습니다.
+
+```
+UNAVAILABLE: io exception - Connection refused
+```
+
+request를 보내기 전에 Sandbox health endpoint가 response할 때까지 기다립니다.
+
+```bash
+until curl -s http://localhost:5003/health | grep -q "SERVING"; do
+  sleep 1
+done
+```
+
+## Development 중 Transaction Failure
+
+### Authorization Error
+
+가장 흔한 transaction rejection은 authorization failure입니다. submitting party가 signatory 또는 controller로 authorize되지 않으면 Canton이 transaction을 reject합니다.
+
+```
+INVALID_ARGUMENT: Interpretation error:
+  ... requires authorizers Party('Alice'), but only Party('Bob') were given
+```
+
+**해결:** command를 submit하는 party가 관련 choice의 `signatory` 또는 `controller`로 나열되었는지 확인합니다. 다른 party가 act해야 한다면 authorized party가 exercise right를 부여하는 contract를 생성하는 delegation pattern을 사용합니다.
+
+### 같은 Contract의 Contention
+
+두 transaction이 같은 contract에서 consuming choice를 동시에 exercise하면 하나가 reject됩니다.
+
+```
+ABORTED: Interpretation error: ... contract not active
+```
+
+이는 Canton UTXO 기반 model에서 예상되는 behavior입니다. use case에 따라 다음을 적용합니다.
+
+- operation이 idempotent하면 **backoff를 사용해 retry**합니다.
+- 자주 경합하는 single-contract bottleneck을 줄이도록 **workflow를 redesign**합니다. 예를 들어 counter contract를 shard로 분할합니다.
+- ordering이 중요하면 client side에서 **operation을 sequence**합니다.
+
+### Package Vetting: DAR가 Upload되지 않음
+
+transaction이 Validator가 모르는 package를 reference하면 다음 error가 발생합니다.
+
+```
+NOT_FOUND: PACKAGE_NOT_FOUND - Could not find package <package-id>
+```
+
+transaction submission 전에 DAR file을 upload합니다.
+
+```bash
+# Using dpm
+dpm build
+dpm sandbox
+
+# Or upload manually via the Admin API
+curl -X POST http://localhost:5002/v2/packages \
+  -F "dar=@.build/your-package.dar"
+```
+
+package가 알려져 있는지 검증합니다.
+
+```bash
+curl http://localhost:5002/v2/packages | jq '.package_ids | length'
+```
+
+<Note>
+cn-quickstart에서는 `make start` 전에 `make setup`, 이어서 `make build`를 실행합니다. build 단계는 Daml을 compile하고 local environment에 DAR를 upload합니다.
+</Note>
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/sdlc-howtos/smart-contracts/debug/troubleshooting.rst" hash="f7ed3422" */}
+
+## 추가 Daml Error Message
+
+### Error: "\<X\> is not authorized to commit an update"
+
+이 error는 contract에 obligable이 여러 명일 때 발생합니다. Daml의 기본 원칙은 다른 party에게 obligation을 강제하는 contract를 생성할 수 없다는 것입니다. 즉 party가 다른 party의 consent 없이 agreement를 강제하려는 상황입니다.
+
+해결하려면 각 party가 choice exercise를 통해 자유롭게 contract에 참여하도록 합니다. "initial and accept" pattern이 좋은 방법입니다.
+
+### Error: "Argument is not of serializable type"
+
+function을 template parameter로 사용할 때 발생합니다. compilation error 위에 hover하면 다음이 표시됩니다.
+
+``` none
+[Type checker] Argument expands to non-serializable type Party -> Party.
+```
+
+### Error: "Recursion limit overflow in module"
+
+DAR를 Ledger에 upload하거나 Sandbox에서 script를 사용할 때 흔히 발생합니다. upload 시 다음과 같이 나타날 수 있습니다.
+
+``` text
+{"code":"DAR_PARSE_ERROR", "cause": "Failed to parse the dar file content.", ...}
+```
+
+또는 log에 다음과 같이 나타납니다.
+
+``` text
+Recursion limit overflow in module '<pkgid>:<modulename>'
+```
+
+보통 DAR의 expression serialized representation이 1000 layer depth를 넘을 때 발생합니다. 긴 Daml Script에서는 `do` block의 function call 또는 variable binding용 `<-`가 각각 여러 recursion layer를 만들 수 있습니다. `deriving` clause가 있고 field가 160개보다 많은 대형 datatype도 원인이 될 수 있습니다.
+
+### Script Recursion Limit 해결
+
+일반적으로 `do` 안의 call 하나는 recursion 4 layer를 도입하므로 script의 bind 약 250개가 overflow를 일으킬 수 있습니다. let bind 같은 다른 expression도 layer를 추가하므로 더 적은 bind로도 limit에 도달할 수 있습니다.
+
+large script를 여러 script로 분할하거나 logic을 helper function으로 분리하세요. 아래 script는 bind 300개로 잠정 limit 250개를 크게 넘는 예입니다.
+
+```haskell
+data State = State { partA : Text, partB : Text, partC : Text }
+
+-- MyTemplate defines three choices that update parts A, B, and C of the State
+myScript : Party -> ContractId MyTemplate -> State -> Script State
+myScript party cid state0 = do
+  newPartA <- party `submit` exerciseCmd cid (UpdateStatePartA state0)
+  newPartB <- party `submit` exerciseCmd cid (UpdateStatePartB state0)
+  newPartC <- party `submit` exerciseCmd cid (UpdateStatePartC state0)
+  let state1 = State newPartA newPartB newPartC
+
+  newPartA <- party `submit` exerciseCmd cid (UpdateStatePartA state1)
+  newPartB <- party `submit` exerciseCmd cid (UpdateStatePartB state1)
+  newPartC <- party `submit` exerciseCmd cid (UpdateStatePartC state1)
+  let state2 = State newPartA newPartB newPartC
+
+  ...
+  newPartA <- party `submit` exerciseCmd cid (UpdateStatePartA state99)
+  newPartB <- party `submit` exerciseCmd cid (UpdateStatePartB state99)
+  newPartC <- party `submit` exerciseCmd cid (UpdateStatePartC state99)
+  let state100 = State newPartA newPartB newPartC
+
+  pure state100
+```
+
+compiler가 많은 bind에도 recursion limit을 넘지 않도록 optimize하는 경우가 많지만 이 예는 의도적으로 optimization이 어려운 구조입니다. helper를 사용하면 exercise 세 개 block이 single bind로 줄어 `myScript`는 limit보다 낮은 100개 bind만 갖습니다.
+
+```haskell
+data State = State { partA : Text, partB : Text, partC : Text }
+  deriving (Show, Eq)
+
+helper : Party -> ContractId MyTemplate -> State -> Script State
+helper party cid state = do
+  newPartA <- party `submit` exerciseCmd cid (UpdateStatePartA state.partA)
+  newPartB <- party `submit` exerciseCmd cid (UpdateStatePartB state.partB)
+  newPartC <- party `submit` exerciseCmd cid (UpdateStatePartC state.partC)
+  pure (State newPartA newPartB newPartC)
+
+myScript : Party -> ContractId MyTemplate -> State -> Script State
+myScript party cid state0 = do
+  state1 <- helper party cid state0
+  state2 <- helper party cid state1
+  ...
+  state100 <- helper party cid state99
+
+  pure state100
+```
+
+일반적으로 code reuse를 최대화하고 logic을 maintainable chunk로 분리해 script를 작게 유지하는 것이 좋습니다.
+
+### Datatype Recursion Limit 해결
+
+`deriving` clause가 있는 대형 datatype도 overflow error를 일으킬 수 있습니다. field 300개와 `deriving Show` instance가 있는 datatype을 생각해 보세요.
+
+```haskell
+data MyData = MyData
+  { field1A : Text
+  , field1B : Text
+  , field1C : Text
+  , field2A : Text
+  , field2B : Text
+  , field2C : Text
+  ...
+  , field100A : Text
+  , field100B : Text
+  , field100C : Text
+  }
+  deriving Show
+```
+
+`deriving Show` clause가 자동 생성하는 `show` definition은 field 수가 늘수록 깊이 nested됩니다. field 수가 약 160개를 넘으면 DAR serialized representation에서 overflow를 일으킬 수 있는 depth에 도달할 가능성이 있습니다.
+
+```haskell
+-- Something similar to this code is implicitly autogenerated by the `deriving Show` clause
+instance Show MyData where
+  show MyData {..} =
+    show field1A <> (show field1B <> (show field1C <> (
+      (show field2A <> (show field2B <> (show field2C <> (
+        ...
+        (show field100A <> (show field100B <> (show field100C)))
+      ))))
+    )))
+```
+
+Daml Script와 마찬가지로 datatype을 여러 part로 분할하는 것이 좋습니다. `a`, `b`, `c` element를 포함하는 `Helper` datatype을 만들고 `MyData`에서 사용합니다.
+
+```haskell
+data Helper = Helper
+  { a : Text
+  , b : Text
+  , c : Text
+  }
+  deriving Show
+
+data MyData = MyData
+  { field1 : Helper
+  , field2 : Helper
+  ...
+  , field100 : Helper
+  }
+  deriving Show
+```
+
+이제 generated `MyData` code가 traverse하고 nest할 field는 100개뿐입니다. script와 마찬가지로 code reuse를 최대화하고 logic을 maintainable chunk로 분리해 datatype을 작게 유지하세요.
+
+{/* COPIED_END */}

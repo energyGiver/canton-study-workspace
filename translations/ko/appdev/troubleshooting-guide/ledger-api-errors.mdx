@@ -1,0 +1,73 @@
+---
+title: "Ledger API Error"
+description: "command submission 중 발생하는 일반적인 Ledger API error code와 원인 및 해결 방법"
+source_id: "SRC-6B3602B80D"
+source_path: "appdev/troubleshooting-guide/ledger-api-errors"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "9c780dbd1ff53637b4088b91356463e74274deb584913b05b832204575a30fd7"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/troubleshooting-guide/ledger-api-errors.md)을 사용하세요.
+</Warning>
+
+import DamlDocsAppdevTroubleshootingGuideErrorCodeReferenceL127 from "/snippets/daml-docs/appdev_troubleshooting-guide_error-code-reference_L127.mdx";
+import DamlDocsAppdevTroubleshootingGuideErrorCodeReferenceL144 from "/snippets/daml-docs/appdev_troubleshooting-guide_error-code-reference_L144.mdx";
+import DamlDocsAppdevTroubleshootingGuideErrorCodeReferenceL158 from "/snippets/daml-docs/appdev_troubleshooting-guide_error-code-reference_L158.mdx";
+
+이 gRPC status code는 Ledger API layer에서 발생합니다.
+
+### AUTH_INVALID_TOKEN
+
+```
+UNAUTHENTICATED: Could not verify JWT token
+```
+
+**원인:** bearer token이 누락되었거나 malformed, expired 상태이거나 인식되지 않는 key로 서명되었습니다.
+
+**해결:**
+- token이 만료되지 않았는지 확인합니다. `exp` claim을 확인하세요.
+- token audience가 `LEDGER_API_AUTH_AUDIENCE`와 일치하는지 확인합니다.
+- token에 `daml_ledger_api` scope가 포함되었는지 확인합니다.
+- Validator에 설정된 JWKS URL에 연결할 수 있고 올바른 signing key를 반환하는지 확인합니다.
+
+### PACKAGE_NOT_FOUND
+
+```
+NOT_FOUND: PACKAGE_NOT_FOUND - Could not find package <package-id>
+```
+
+**원인:** Validator에 reference된 package를 포함하는 DAR가 없거나 package가 vet되지 않았습니다.
+
+**해결:** DAR를 upload합니다.
+
+<DamlDocsAppdevTroubleshootingGuideErrorCodeReferenceL127 />
+
+upload 후 command를 retry하기 전에 package list에 package가 나타나는지 확인합니다.
+
+### PARTY_NOT_KNOWN
+
+```
+NOT_FOUND: PARTY_NOT_KNOWN - Party not known on participant
+```
+
+**원인:** command의 party identifier가 이 Validator에 allocate된 party와 일치하지 않습니다.
+
+**해결:** 먼저 party를 allocate하거나 올바른 party identifier를 사용 중인지 확인합니다. Party ID는 case-sensitive이며 fingerprint suffix를 포함합니다(예: `Alice::1220abcd...`). 알려진 party를 나열합니다.
+
+<DamlDocsAppdevTroubleshootingGuideErrorCodeReferenceL144 />
+
+### PERMISSION_DENIED
+
+```
+PERMISSION_DENIED: An error occurred. Please contact the operator.
+```
+
+**원인:** authenticated user에게 요청한 party로 act할 right가 없습니다.
+
+**해결:** Admin API를 통해 user에게 party read/write access를 부여합니다.
+
+<DamlDocsAppdevTroubleshootingGuideErrorCodeReferenceL158 />

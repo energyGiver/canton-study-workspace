@@ -1,0 +1,132 @@
+---
+title: "Installation Issue"
+description: "Canton Network development 설정 중 Nix, Docker 및 memory problem troubleshooting"
+source_id: "SRC-3108B3FD26"
+source_path: "appdev/troubleshooting-guide/installation-issues"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "a367f114fd6e2d7b299e9a022075461a64017def7ac364caf1ad7caaa99c6463"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/troubleshooting-guide/installation-issues.md)을 사용하세요.
+</Warning>
+
+import DamlDocsAppdevTroubleshootingGuideInstallationIssuesL14 from "/snippets/daml-docs/appdev_troubleshooting-guide_installation-issues_L14.mdx";
+import DamlDocsAppdevTroubleshootingGuideInstallationIssuesL24 from "/snippets/daml-docs/appdev_troubleshooting-guide_installation-issues_L24.mdx";
+import DamlDocsAppdevTroubleshootingGuideInstallationIssuesL34 from "/snippets/daml-docs/appdev_troubleshooting-guide_installation-issues_L34.mdx";
+import DamlDocsAppdevTroubleshootingGuideInstallationIssuesL40 from "/snippets/daml-docs/appdev_troubleshooting-guide_installation-issues_L40.mdx";
+import DamlDocsAppdevTroubleshootingGuideInstallationIssuesL51 from "/snippets/daml-docs/appdev_troubleshooting-guide_installation-issues_L51.mdx";
+import DamlDocsAppdevTroubleshootingGuideInstallationIssuesL73 from "/snippets/daml-docs/appdev_troubleshooting-guide_installation-issues_L73.mdx";
+import DamlDocsAppdevTroubleshootingGuideInstallationIssuesL82 from "/snippets/daml-docs/appdev_troubleshooting-guide_installation-issues_L82.mdx";
+import DamlDocsAppdevTroubleshootingGuideInstallationIssuesL88 from "/snippets/daml-docs/appdev_troubleshooting-guide_installation-issues_L88.mdx";
+import DamlDocsAppdevTroubleshootingGuideInstallationIssuesL102 from "/snippets/daml-docs/appdev_troubleshooting-guide_installation-issues_L102.mdx";
+import DamlDocsAppdevTroubleshootingGuideInstallationIssuesL117 from "/snippets/daml-docs/appdev_troubleshooting-guide_installation-issues_L117.mdx";
+import DamlDocsAppdevTroubleshootingGuideInstallationIssuesL126 from "/snippets/daml-docs/appdev_troubleshooting-guide_installation-issues_L126.mdx";
+import DamlDocsAppdevTroubleshootingGuideInstallationIssuesL132 from "/snippets/daml-docs/appdev_troubleshooting-guide_installation-issues_L132.mdx";
+
+
+이 page는 Canton Network development environment 설정 중 발생할 수 있는 일반적인 installation problem을 다룹니다. Nix shell failure, Docker configuration 및 memory allocation이 포함됩니다.
+
+## Nix Problem
+
+### Nix shell 시작 실패
+
+`nix-shell`이 hash mismatch 또는 download error와 함께 종료되면 local Nix cache가 stale 상태일 수 있습니다.
+
+<DamlDocsAppdevTroubleshootingGuideInstallationIssuesL14 />
+
+evaluation 중 `nix-shell`이 멈추면 `NIX_PATH`가 올바르게 설정되었고 conflicting Nix channel이 없는지 확인합니다.
+
+<DamlDocsAppdevTroubleshootingGuideInstallationIssuesL24 />
+
+예상하지 않은 channel을 제거하고 `nix-shell`을 다시 실행합니다.
+
+### 설치 후 "command not found: nix"
+
+shell profile이 Nix environment를 source하지 않을 수 있습니다. `~/.bashrc` 또는 `~/.zshrc`에 다음을 추가합니다.
+
+<DamlDocsAppdevTroubleshootingGuideInstallationIssuesL34 />
+
+또는 terminal session을 완전히 restart합니다. macOS에서는 system update 후 Nix를 다시 설치해야 하는 경우가 있습니다.
+
+<DamlDocsAppdevTroubleshootingGuideInstallationIssuesL40 />
+
+### Nix와 System Package 간 PATH Conflict
+
+system에 설치된 tool, 예를 들어 다른 Java version이 Nix 제공 version보다 우선하면 PATH 순서를 검증합니다.
+
+<DamlDocsAppdevTroubleshootingGuideInstallationIssuesL51 />
+
+`nix-shell` 내부에서 Nix는 path를 `$PATH` 앞에 추가합니다. 계속 system binary가 보이면 shell profile이 Nix 이후에 path를 append하거나 override하는지 확인합니다.
+
+## Docker Configuration
+
+### LocalNet Memory 부족
+
+LocalNet은 전체 Canton topology를 local에서 실행하므로 많은 resource가 필요합니다. container가 OOM(Out of Memory) kill로 crash하거나 시작하지 못하면 Docker memory allocation을 늘립니다.
+
+**LocalNet 최소 requirement:**
+- Memory: 16 GB
+- CPU: 4 core
+- Disk: 여유 공간 50 GB
+
+**Docker Desktop:** Settings > Resources > Memory를 16 GB 이상으로 설정하고 Apply & Restart를 선택합니다.
+
+**Colima(macOS):**
+
+<DamlDocsAppdevTroubleshootingGuideInstallationIssuesL73 />
+
+### Volume Mount Permission Error
+
+Linux에서 user ID가 container expected UID와 일치하지 않으면 Docker container가 mounted volume에 쓰지 못할 수 있습니다. host directory에 적절한 permission을 설정합니다.
+
+<DamlDocsAppdevTroubleshootingGuideInstallationIssuesL82 />
+
+또는 host UID와 일치하는 `--user` flag로 Docker를 실행합니다.
+
+<DamlDocsAppdevTroubleshootingGuideInstallationIssuesL88 />
+
+### Docker Compose Version Mismatch
+
+Canton Quickstart에는 Docker Compose 2.27.0 이상이 필요합니다. 다음 error가 나타나면:
+
+```
+'env_file[1]' expected type 'string', got unconvertible type 'map[string]interface {}'
+```
+
+Docker Compose를 upgrade합니다.
+
+<DamlDocsAppdevTroubleshootingGuideInstallationIssuesL102 />
+
+## Memory Allocation
+
+### Sandbox JVM Heap
+
+Daml Sandbox는 JVM에서 실행되며 보수적인 heap setting을 기본 사용합니다. `java.lang.OutOfMemoryError: Java heap space`가 발생하면 heap을 늘립니다.
+
+<DamlDocsAppdevTroubleshootingGuideInstallationIssuesL117 />
+
+### LocalNet OOM Kill
+
+Docker가 container를 조용히 kill하면 OOM event를 확인합니다.
+
+<DamlDocsAppdevTroubleshootingGuideInstallationIssuesL126 />
+
+`true`가 반환되면 Docker memory allocation을 늘려야 합니다. 위 Docker section을 참고하세요. system-level OOM event도 확인할 수 있습니다.
+
+<DamlDocsAppdevTroubleshootingGuideInstallationIssuesL132 />
+
+### Resource Limit 요약
+
+| Environment | 최소 Memory | 권장 Memory | 최소 CPU |
+|-------------|-----------|-------------------|---------|
+| Sandbox only | 4 GB | 8 GB | 2 cores |
+| LocalNet | 16 GB | 24 GB | 4 cores |
+| cn-quickstart | 8 GB | 16 GB | 4 cores |
+
+<Note>
+cn-quickstart 실행 전 `make start`보다 먼저 `make setup` 및 `make build`를 실행해야 합니다. 이 단계를 건너뛰면 resource problem처럼 보이는 startup failure가 발생합니다.
+</Note>

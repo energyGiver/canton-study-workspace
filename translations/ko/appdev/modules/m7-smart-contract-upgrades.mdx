@@ -1,0 +1,128 @@
+---
+title: "Production Smart Contract Upgrade"
+description: "production에서 Smart Contract Upgrade를 rollout할 때의 operational 고려 사항"
+source_id: "SRC-30547E07B2"
+source_path: "appdev/modules/m7-smart-contract-upgrades"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "c144b3903ec9e6f4d768feb0e77b2389787f72504ff9f6d1e50ad02311872f0a"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/modules/m7-smart-contract-upgrades.md)을 사용하세요.
+</Warning>
+
+
+import DamlDocsAppdevModulesM7SmartContractUpgradesL39 from "/snippets/daml-docs/appdev_modules_m7-smart-contract-upgrades_L39.mdx";
+import DamlDocsAppdevModulesM7SmartContractUpgradesL68 from "/snippets/daml-docs/appdev_modules_m7-smart-contract-upgrades_L68.mdx";
+
+
+실행 중인 production environment에서 Smart Contract를 upgrade하는 것은 development 중 upgrade와 다릅니다. contract는 party 간에, 흔히 organization boundary를 넘어 공유되며 자체 Validator에서 작동하는 upgrade라도 counterparty가 mixed version을 실행할 때는 다르게 동작할 수 있습니다. 이 page는 production SCU rollout의 operational 측면을 다룹니다.
+
+## Upgrade 전
+
+### Pre-Upgrade Checklist
+
+새 package version을 production에 upload하기 전에 다음을 확인하세요.
+
+- CI pipeline에서 upgrade가 `dpm build` 및 `dpm test`를 통과하는지 검증합니다.
+- 새 package가 현재 version과 SCU-compatible인지 확인합니다. local 또는 CI에서 compatibility check를 실행하세요.
+- breaking modification이 없는지 [upgrade limitation](/appdev/modules/m6-limitations)과 대조해 변경 목록을 review합니다.
+- 현실적인 data volume으로 DevNet 또는 TestNet에서 upgrade를 test합니다.
+- upgrade의 영향을 받는 contract를 보유한 counterparty와 소통합니다. 아래 내용을 참고하세요.
+- 시작 전에 rollback procedure를 document합니다.
+
+### Counterparty와 소통
+
+Canton Network에서 contract는 다른 Validator에 hosted된 signatory 또는 observer를 가질 수 있습니다. 새 package version을 upload하면 해당 Validator도 upgraded contract를 올바르게 해석할 수 있도록 새 package가 필요합니다.
+
+단계는 다음과 같습니다.
+
+1. **counterparty에 사전 통지**합니다. 새 DAR file과 변경 요약을 공유합니다.
+2. **rollout window에 합의**합니다. 영향을 받는 contract의 party를 host하는 모든 Validator가 정해진 기간 안에 새 package를 upload해야 합니다.
+3. **package availability를 검증**합니다. upload 후 관련된 모든 Validator가 새 package ID를 인식하는지 확인합니다.
+
+counterparty가 아직 새 package를 upload하지 않았는데 application이 새 version으로 contract를 생성하면 해당 Validator는 이를 처리할 수 없습니다. 그 counterparty에 대한 transaction이 실패합니다.
+
+## Upgrade 진행 중
+
+### Package Upload
+
+Admin API 또는 deployment tooling을 사용해 새 DAR를 Validator에 upload합니다.
+
+<DamlDocsAppdevModulesM7SmartContractUpgradesL39 />
+
+upload는 non-destructive operation입니다. 이전 package version은 계속 사용할 수 있으며 이전 version의 기존 contract도 계속 작동합니다. downtime은 필요하지 않습니다.
+
+### Mixed-Version Deployment
+
+새 package를 upload하면 system은 **mixed-version state**에 들어갑니다. 일부 Active Contract는 이전 version으로 생성되었고 새 contract는 새 version으로 생성됩니다.
+
+Canton은 이를 다음과 같이 처리합니다.
+
+- **기존 contract**는 자신이 생성된 package version과 계속 연결됩니다.
+- **새 contract**는 최근 upload된 version으로 생성됩니다.
+- 이전 version contract에서 **choice를 exercise**하면 contract template이 SCU-compatible인 경우 새 package의 choice body를 사용합니다. contract payload는 새 version type definition에 따라 해석됩니다.
+- 새 version에 **추가된 Optional field**는 이전 contract를 읽을 때 기본값을 받습니다.
+
+이 mixed state는 모든 이전 version contract가 archive될 때까지 지속됩니다. consume 또는 명시적 migration으로 archive할 수 있습니다. 자동 bulk migration은 없습니다.
+
+### Rollout Monitoring
+
+upgrade 중과 이후에 다음 indicator를 추적하세요.
+
+- **Command error rate** — compatibility issue를 나타낼 수 있는 `FAILED_PRECONDITION` 또는 `INVALID_ARGUMENT` error 급증을 확인합니다.
+- **Contract version distribution** — PQS를 query해 이전 version과 새 version에 남아 있는 Active Contract 수를 확인합니다.
+- **Counterparty readiness** — missing package로 인해 counterparty와 관련된 transaction이 성공 또는 실패하는지 monitor합니다.
+
+contract version distribution을 확인하는 PQS query는 다음과 같습니다.
+
+<DamlDocsAppdevModulesM7SmartContractUpgradesL68 />
+
+## Rollback Procedure
+
+SCU에는 built-in rollback mechanism이 없습니다. package는 upload 후 제거할 수 없으므로 rollback은 upload를 되돌리는 것이 아니라 상황을 관리하는 것을 의미합니다.
+
+새 version에 문제가 있으면 다음을 수행하세요.
+
+1. 문제가 있는 version으로 **새 contract 생성을 중지**합니다. tooling이 지원하면 contract 생성 시 이전 package version을 명시적으로 reference하도록 backend를 업데이트합니다.
+2. issue를 **조사하고 수정**한 뒤 corrected version, 즉 사실상 version 3을 upload합니다.
+3. counterparty가 issue를 인지하고 system을 조정할 수 있도록 **소통**합니다.
+
+이전 package version은 계속 존재하므로 해당 version으로 생성된 contract도 계속 작동합니다. risk는 주로 새 contract 또는 새 version 전용 logic을 exercise하는 choice에 있습니다.
+
+### Rollback만으로 충분하지 않은 경우
+
+새 version이 test에서 발견되지 않은 breaking change를 도입했다면 다음 작업이 필요할 수 있습니다. compatibility check로 방지해야 하지만 실수는 발생할 수 있습니다.
+
+- corrected package version upload
+- 명시적 migration choice를 사용해 영향을 받는 contract migration
+- 영향을 받는 contract를 보유한 모든 counterparty와 migration 조율
+
+이는 가장 disruptive한 scenario이며 production deployment 전 DevNet/TestNet에서 철저히 test하는 것이 중요함을 보여 줍니다.
+
+## Operational Checklist
+
+각 production upgrade에 이 checklist를 사용하세요.
+
+- [ ] 새 DAR가 `dpm build` 및 `dpm test`를 통과함
+- [ ] 현재 production package에 대한 compatibility check 통과
+- [ ] 현실적인 data로 DevNet 또는 TestNet에서 upgrade test 완료
+- [ ] counterparty에 통지하고 rollout window에 합의함
+- [ ] rollback procedure를 document함
+- [ ] version-specific metric을 추적하도록 monitoring dashboard를 업데이트함
+- [ ] production Validator에 DAR upload 완료
+- [ ] counterparty가 upload 완료를 확인함
+- [ ] upgrade 후 24~48시간 동안 error rate monitor
+- [ ] 이전 version contract migration plan 수립(해당하는 경우)
+
+## 추가 자료
+
+- [Upgrade Limitation](/appdev/modules/m6-limitations) -- production rollout에 영향을 주는 constraint
+- [Upgrade Test](/appdev/modules/m6-testing-upgrades) -- production 이전 testing strategy
+- [Error Handling](/appdev/modules/m7-error-handling) -- mixed-version deployment에서 발생할 수 있는 error 처리
+- [Deployment Progression](/appdev/modules/m5-deployment-progression) -- DevNet에서 TestNet을 거쳐 MainNet으로 가는 경로
+- [Smart Contract Upgrading Reference](/appdev/deep-dives/smart-contract-upgrading-reference) — 상세 package validation 및 runtime upgrade rule
+- [Ledger API의 Value](/appdev/deep-dives/values-in-the-ledger-api) — Ledger API가 command submission 및 query 중 value를 validate하고 normalize하는 방법

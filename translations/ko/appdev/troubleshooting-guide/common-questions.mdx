@@ -1,0 +1,198 @@
+---
+title: "Common Questions"
+description: "Canton Network application development에 관해 자주 묻는 질문"
+source_id: "SRC-5E779F5294"
+source_path: "appdev/troubleshooting-guide/common-questions"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "e22c37976010bd2a0e1d15f10085e9cccf6586d33ba3ff0e70b7cb9bb72919a1"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/troubleshooting-guide/common-questions.md)을 사용하세요.
+</Warning>
+
+import CANTON_DOCS_CN_COMMON_QUESTIONS_0 from "/snippets/external/canton/main/docs-open/target/snippet_json_data/docs-cn/common-questions-0.mdx";
+import DamlAppdevTroubleshootingGuideCommonQuestionsL49 from "/snippets/daml-docs/appdev_troubleshooting-guide_common-questions_L49.mdx";
+
+
+
+Canton Network application development에서 자주 나오는 질문에 대한 답변입니다. Validator operation 질문은 [Common Issues FAQ](/appdev/faq)를 참고하세요.
+
+## 시작하기
+
+### 어떤 SDK version을 사용해야 합니까?
+
+최신 stable Daml SDK(3.x series)를 사용하세요. 2.x Daml SDK는 historical development용이며 Global Synchronizer 또는 Canton Coin 같은 Canton Network 기능을 지원하지 않습니다.
+
+configuration에 compatible SDK version을 항상 pin하는 [cn-quickstart repository](https://github.com/digital-asset/cn-quickstart)에서 현재 권장 version을 확인하세요.
+
+### JavaScript, Python 또는 Go를 사용할 수 있습니까?
+
+Daml model은 Daml language로 작성해야 합니다. 그러나 application backend와 frontend는 gRPC 또는 HTTP를 지원하는 모든 language를 사용할 수 있습니다.
+
+- **Java 및 Scala**에는 official language binding과 Daml package code generation이 있습니다.
+- **JavaScript/TypeScript**는 JSON API(HTTP) 또는 gRPC client library를 사용할 수 있습니다. cn-quickstart에는 reference용 TypeScript frontend가 포함됩니다.
+- **Python 및 Go**는 Ledger API `.proto` file에서 생성된 gRPC client library를 사용할 수 있습니다.
+
+일부 language에는 community-maintained binding도 있습니다. [language binding](/sdks-tools/language-bindings/community) page를 참고하세요.
+
+### example code는 어디에서 찾습니까?
+
+[cn-quickstart](https://github.com/digital-asset/cn-quickstart) repository가 기본 reference application입니다. 다음을 포함합니다.
+
+- SCU-compatible upgrade가 있는 완전한 Daml model
+- TypeScript frontend
+- Daml Script 기반 backend automation
+- LocalNet용 Docker Compose configuration
+- CI/CD pattern
+
+repository를 clone하고 README에 따라 실행 가능한 application을 local에서 시작하세요.
+
+## Development
+
+### multi-party workflow를 local에서 test하는 방법은 무엇입니까?
+
+Sandbox와 LocalNet 모두 여러 party를 지원합니다. 같은 local environment 안에서 party를 allocate하고 다른 identity로 command를 submit할 수 있습니다.
+
+`dpm sandbox`에서는 Daml Script로 party를 allocate합니다.
+
+<DamlAppdevTroubleshootingGuideCommonQuestionsL49 />
+
+
+cn-quickstart를 통한 LocalNet에서는 party가 Docker Compose setup에 미리 설정됩니다. bootstrap script를 수정해 추가할 수 있습니다.
+
+여러 Validator에 걸친 workflow testing에는 single-node Sandbox 대신 LocalNet을 사용하세요. LocalNet은 local Synchronizer를 통해 통신하는 별도 Validator process를 실행하므로 실제 network topology를 더 잘 simulate합니다.
+
+### contract contention을 처리하는 방법은 무엇입니까?
+
+여러 transaction이 같은 contract를 동시에 대상으로 하면 Canton은 하나를 제외한 나머지를 reject합니다. application은 exponential backoff retry logic을 구현해야 합니다.
+
+```typescript
+async function submitWithRetry(command: Command, maxRetries = 5) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await ledgerClient.submit(command);
+    } catch (error) {
+      if (error.code === "ABORTED" && attempt < maxRetries - 1) {
+        await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 100));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+```
+
+contention이 높은 scenario에서는 자주 경합하는 contract를 independent shard로 분할하도록 Daml model redesign을 고려하세요.
+
+### Sandbox와 LocalNet의 차이는 무엇입니까?
+
+**Sandbox**는 lightweight single-process Daml Ledger입니다. `dpm sandbox`로 실행합니다. 빠르게 시작되며 Daml model/script unit testing에 적합하지만 전체 Canton protocol stack을 실행하지는 않습니다.
+
+**LocalNet**은 실제 Canton Validator, Synchronizer 및 supporting service(JSON API, PQS, Wallet)를 실행하는 multi-container environment입니다. cn-quickstart에서 `make start`로 시작하며 실제 network deployment와 유사합니다.
+
+Daml code의 빠른 iteration에는 Sandbox를 사용하세요. Validator 간 multi-party transaction, traffic consumption 또는 Wallet interaction 같은 network-level behavior testing에는 LocalNet을 사용하세요.
+
+## Deployment
+
+### LocalNet에서 DevNet으로 이동하는 방법은 무엇입니까?
+
+1. `dpm build`로 DAR를 build합니다.
+2. Super Validator sponsor에게 DevNet access를 요청합니다. 승인에는 2~4주가 걸릴 수 있습니다.
+3. VPN credential을 받고 IP가 allowlist에 등록되면 DevNet Validator에 DAR를 upload합니다.
+4. application connection setting이 localhost 대신 DevNet Ledger API endpoint를 가리키게 합니다.
+5. DevNet faucet(Tap)에서 traffic용 test Canton Coin을 받습니다.
+
+environment 간에 Daml code는 바뀌지 않습니다. connection configuration과 authentication setup만 다릅니다.
+
+### remote Validator에 DAR를 upload하는 방법은 무엇입니까?
+
+Validator Admin API 또는 Canton Console을 사용합니다.
+
+**Admin API 사용:**
+
+```bash
+curl -X POST "https://your-validator:5002/v2/packages" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "dar=@.build/your-package.dar"
+```
+
+**Canton Console 사용:**
+
+
+<CANTON_DOCS_CN_COMMON_QUESTIONS_0 />
+
+
+upload 후 package visibility를 검증합니다.
+
+```bash
+curl "https://your-validator:5002/v2/packages" \
+  -H "Authorization: Bearer $TOKEN" | jq '.package_ids | length'
+```
+
+### Canton Network featured app이 되는 방법은 무엇입니까?
+
+application은 Canton Improvement Proposal(CIP) process를 통해 featured status를 신청할 수 있습니다. [CIP 소개](/overview/understand/cips-introduction)와 [app featured guide](/overview/understand/getting-app-featured)를 검토하세요.
+
+process에는 application, network에 제공하는 가치 및 Canton Network infrastructure 활용 방식을 설명하는 proposal 제출이 포함됩니다. featured app은 canton.network에서 visibility를 얻고 Canton Foundation의 지원을 받을 수 있습니다.
+
+{/* COPIED_START source="docs-website:docs/replicated/daml/3.4/sdk/sdlc-howtos/smart-contracts/debug/troubleshooting.rst" hash="f7ed3422" */}
+
+## Modeling Question
+
+### 다른 Party와 Agreement Modeling
+
+agreement를 체결하려면 명시적 `signatory` statement가 있는 template에서 contract를 생성합니다. contract choice를 통해 각 party에게 consent 기회를 주는 일련의 contract가 필요합니다.
+
+Daml enforce rule 때문에 single party가 multi-party agreement instance를 생성할 수 없습니다. 그러한 creation은 다른 party에게 참여 선택권을 주지 않고 agreement를 강제하기 때문입니다.
+
+### Right Modeling
+
+right는 contract choice로 modeling합니다. party는 choice를 exercise해 right를 행사합니다.
+
+### Contract 무효화
+
+contract를 무효화할 수 있게 하려면 새 contract를 생성하지 않는 choice를 제공합니다. consuming choice가 실행되면 Daml contract는 삭제되지 않고 archive되므로 choice exercise가 사실상 contract를 무효화합니다.
+
+다른 signatory의 consent를 다시 받지 않고 contract를 무효화할 수 있는 party가 누구인지 특히 주의하세요.
+
+### Off-Ledger Party 표현
+
+Daml `Party` type은 cryptographic key와 연결되므로 그에 맞게 설정된 party에만 사용할 수 있습니다. 모든 party를 Ledger participant로 설정할 수 없다면 off-ledger party를 표현해야 합니다.
+
+Daml에서 off-ledger party는 대신 서명할 수 있는 participant가 on-ledger에서 표현해야 합니다. 일반 `Text` argument로 나타낼 수 있습니다. privacy를 높이려면 numeric ID/accountId로 off-ledger client를 식별할 수 있습니다.
+
+### 시간으로 Choice 제한
+
+일부 right에는 exercise deadline 또는 exercise할 수 없는 기간이 있습니다. `getTime`으로 현재 시간을 얻어 원하는 시간과 비교합니다. time condition을 충족하지 않으면 `assert`로 choice를 abort합니다.
+
+### Mandatory Action Modeling
+
+party가 정해진 기간 안에 action을 수행하도록 보장하고, 이행하지 않으면 contract breach로 penalty가 발생하게 할 수 있습니다. 예를 들어 특정 날짜까지 지급해야 하고 interest charge 또는 penalty fee가 있는 Invoice를 modeling할 수 있습니다. 기간이 지난 *후*에만 exercise 가능한 time-limited Penalty choice를 사용할 수 있습니다.
+
+다만 penalty action은 initial contract가 breach되었다는 모든 party의 agreement를 나타내는 다른 on-ledger contract만 생성할 수 있습니다. breach에 대한 최종 recourse는 법적 조치입니다. Daml은 agreement violation의 증명을 제공합니다.
+
+### Optional 사용
+
+standard library의 `Optional` type은 값이 optional이며 일부 경우 누락될 수 있음을 나타냅니다. functional language에서 `Optional`은 Java 같은 imperative language의 "NULL"보다 missing value를 더 잘 나타냅니다.
+
+`Optional`을 사용하려면 standard library의 `Optional.daml`을 포함합니다. `Optional` value의 존재 여부를 여러 방식으로 test할 수 있으며 value 추출에는 `optional` function을 사용합니다. "Optional.daml"에는 `Optional` value를 포함하는 structure에 familiar functional operation을 수행하는 `map`, `filter` 등의 function도 있습니다.
+
+## Testing
+
+### Party에 Contract가 표시되는지 Test
+
+`queryContractId`를 사용합니다. 첫 argument는 party, 두 번째는 `ContractId`입니다. 해당 contract가 존재하고 party에게 표시되면 결과가 `Some`으로 wrap되고 그렇지 않으면 `None`입니다.
+
+`submit` block과 `fetch` operation을 사용합니다. `submit` block은 contract가 party에게 표시되는지 test하고 `fetch`는 contract가 실제로 존재하는지 검증합니다. `Some` constructor에 pattern match하므로 contract가 없거나 party에게 표시되지 않으면 pattern match error로 test가 실패합니다.
+
+### Update Action을 Commit할 수 없는지 Test
+
+`submitMustFail` function을 사용합니다. 형태는 `submit`과 유사하지만 어떤 Party가 시도한 update가 실패할 것이라는 assertion입니다.
+
+{/* COPIED_END */}
+
+{/* COPIED_END */}

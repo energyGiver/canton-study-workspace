@@ -1,0 +1,114 @@
+---
+title: "Daml Error Code"
+description: "Daml compilation, Canton runtime 및 Ledger API의 일반적인 error code reference"
+source_id: "SRC-72D7CFC7C7"
+source_path: "appdev/troubleshooting-guide/error-code-reference"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "abadc24d12e39f48f0255d4c0e6f416972cb328dadecdf737850e3cfd11e3dc3"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/troubleshooting-guide/error-code-reference.md)을 사용하세요.
+</Warning>
+
+
+
+이 page는 Canton Network application development 중 발생 가능성이 높은 error code를 발생 위치별로 나열합니다. 각 항목에는 error message, 일반적인 원인 및 해결 방법이 포함됩니다.
+
+## Daml Compilation Error
+
+이 error는 `dpm build` 실행 또는 Daml source compile 시 나타납니다.
+
+### Type mismatch
+
+```
+Couldn't match expected type 'X' with actual type 'Y'
+```
+
+**원인:** function argument 또는 binding의 type이 잘못되었습니다. `T`가 필요한 곳에 `ContractId T`를 전달하거나(`fetch` 사용), `Party`가 필요한 곳에 `Text`를 전달하는 경우가 일반적입니다.
+
+**해결:** 호출하는 function의 type signature를 확인합니다. `ContractId`를 payload로 변환하려면 `fetch`를 사용하고 Daml Script에서 `Text`를 `Party`로 변환하려면 `getParty`를 사용합니다.
+
+### Record의 missing field
+
+```
+Fields not initialised: 'fieldName'
+```
+
+**원인:** required field를 모두 제공하지 않고 record 또는 template instance를 생성했습니다.
+
+**해결:** record construction에 누락된 field를 추가합니다. 최근 template에 field를 추가했다면 모든 call site를 업데이트합니다.
+
+### SCU compatibility violation
+
+```
+Upgrade check failed: field 'X' has changed type from 'A' to 'B'
+```
+
+**원인:** Smart Contract Upgrade compatibility check가 실패했습니다. SCU는 새 package version이 이전 version과 wire-compatible하도록 요구합니다. field 제거, field type 변경 또는 field reorder는 허용되지 않습니다.
+
+**해결:** 기존 field를 수정하는 대신 default가 있는 새 optional field를 추가합니다. 근본적으로 다른 구조가 필요하면 새 template을 만들고 contract를 명시적으로 migrate합니다.
+
+### Deprecated exception warning
+
+```
+warning: Daml exceptions are deprecated
+```
+
+**원인:** code가 `exception` declaration 또는 `try/catch` block을 사용합니다.
+
+**해결:** exception 기반 error handling을 `Either`, `Optional` 또는 명시적 error contract pattern으로 교체합니다. Daml exception은 deprecated 상태이며 향후 release에서 제거됩니다.
+
+## Runtime Error
+
+이 error는 실행 중인 Canton Validator에 transaction을 submit할 때 발생합니다.
+
+### INVALID_ARGUMENT
+
+```
+INVALID_ARGUMENT: <detail>
+```
+
+**원인:** submit된 command가 malformed 상태이거나 precondition을 위반합니다. 하위 원인은 다음과 같습니다.
+- create 또는 exercise command의 required field 누락
+- 유효하지 않은 party identifier format
+- upload된 package에 없는 template reference
+
+**해결:** Ledger API specification과 command payload를 대조합니다. template name, party identifier 및 모든 required field가 존재하고 올바른 type인지 검증합니다.
+
+### NOT_FOUND
+
+```
+NOT_FOUND: CONTRACT_NOT_FOUND - Contract could not be found with id <contract-id>
+```
+
+**원인:** contract가 이미 archive되었거나, 즉 이전 exercise에서 consume되었거나 submitting party에게 표시된 적이 없습니다.
+
+**해결:** exercise 전에 Active Contract Set(ACS)을 query해 contract가 여전히 존재하는지 확인합니다. fetch-then-exercise pattern을 구현하거나 현재 contract ID를 다시 fetch하는 retry로 이 error를 처리합니다.
+
+### ALREADY_EXISTS
+
+```
+ALREADY_EXISTS: CONTRACT_KEY_ALREADY_EXISTS - Contract key already exists
+```
+
+**원인:** 이미 active 상태인 contract와 key가 일치하는 contract를 생성하려 했습니다. Daml은 party visibility 내에서 template별 key uniqueness를 enforce합니다.
+
+**해결:** 생성 전에 같은 key의 기존 contract를 확인합니다. Daml에서 `lookupByKey`를 사용하거나 Ledger API로 ACS를 query합니다. 기존 contract를 교체하려면 먼저 archive합니다.
+
+### ABORTED(contention)
+
+```
+ABORTED: Interpretation error: ... contract not active
+```
+
+**원인:** read와 exercise 사이에 concurrent transaction이 contract를 consume했습니다. concurrent environment에서는 정상적인 현상입니다.
+
+**해결:** exponential backoff로 operation을 retry합니다. retry pattern은 [Development Issues](/appdev/troubleshooting-guide/development-issues)를 참고하세요.
+
+## Ledger API Error
+
+Ledger API runtime error code(AUTH_INVALID_TOKEN, PACKAGE_NOT_FOUND, PARTY_NOT_KNOWN, PERMISSION_DENIED 등)는 별도 page인 [Ledger API Error](/appdev/troubleshooting-guide/ledger-api-errors)를 참고하세요.

@@ -1,0 +1,1449 @@
+---
+title: "세부 정보와 변경 이력"
+description: "Package별로 구성한 descriptor 기반 Protobuf API 변경 이력"
+source_id: "SRC-976E14478E"
+source_path: "reference/admin-api/protobuf/index"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "7e6f45aedaf6e664aabfb903cd93812a6091848841eb49f0287c578175e8cef2"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/reference/admin-api/protobuf/index.md)을 사용하세요.
+</Warning>
+
+
+<div class="x2mdx-ref-hero">
+
+  <p class="x2mdx-ref-eyebrow">Protobuf Reference</p>
+
+
+  <h1 class="x2mdx-ref-title">세부 정보와 변경 이력</h1>
+
+
+  <p class="x2mdx-ref-summary">Operation 중심의 gRPC page이며 package-level 탐색과 재귀적인 관련 schema section을 제공합니다.</p>
+
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--protocol">Protobuf</span>
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">v3.5.12</span>
+
+</div>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Source</dt>
+    <dd>Published release bundle의 Canton Admin API protobuf tree</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Version 필터</dt>
+    <dd>stable Canton release bundles &gt;= 3.2.0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>최신 release</dt>
+    <dd>v3.5.12</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Package</dt>
+    <dd>12</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>124</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>370</dd>
+  </div>
+
+</dl>
+
+</div>
+
+
+## Release 요약
+
+
+각 release 구간의 수치는 추가 / 변경 / 제거 순서로 표시됩니다.
+
+
+
+<div class="x2mdx-ref-card-grid">
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.4.0</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>123 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>366 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>10 / 0 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.4.6</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0 / 1 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.4.7</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.4.8</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.4.9</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.4.10</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.4.11</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>0 / 2 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>1 / 0 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.5.1</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>9 / 11 / 8</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>30 / 34 / 28</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0 / 2 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.5.2</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.5.3</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.5.4</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>2 / 2 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>1 / 0 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.5.5</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.5.6</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.5.7</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.5.8</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.5.9</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.5.10</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.5.11</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card x2mdx-ref-card--static">
+
+    <div class="x2mdx-ref-card-head">
+      <span class="x2mdx-ref-card-title">3.5.12</span>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--neutral">Release</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">이 release의 endpoint / message / enum 변경량입니다.</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0 / 0 / 0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+</div>
+
+
+
+
+
+## Participant 관리
+
+
+
+
+<div class="x2mdx-ref-card-grid">
+
+
+  <div class="x2mdx-ref-card">
+
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="./packages/com-digitalasset-canton-admin-participant-v30">com.digitalasset.canton.admin.participant.v30</a>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--protocol">gRPC</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">11 services, 70 endpoints, 171 messages, 8 enums</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Service</dt>
+    <dd>11</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>70</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>171</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>8</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+</div>
+
+
+
+
+
+## Sequencer
+
+
+
+
+<div class="x2mdx-ref-card-grid">
+
+
+  <div class="x2mdx-ref-card">
+
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="./packages/com-digitalasset-canton-admin-sequencer-v30">com.digitalasset.canton.admin.sequencer.v30</a>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--protocol">gRPC</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">1 services, 1 endpoints, 12 messages, 1 enums</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Service</dt>
+    <dd>1</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>1</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>12</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>1</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+</div>
+
+
+
+
+
+## Mediator
+
+
+
+
+<div class="x2mdx-ref-card-grid">
+
+
+  <div class="x2mdx-ref-card">
+
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="./packages/com-digitalasset-canton-admin-mediator-v30">com.digitalasset.canton.admin.mediator.v30</a>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--protocol">gRPC</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">1 services, 1 endpoints, 3 messages</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Service</dt>
+    <dd>1</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>1</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>3</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+</div>
+
+
+
+
+
+## 공통 관리
+
+
+
+
+<div class="x2mdx-ref-card-grid">
+
+
+  <div class="x2mdx-ref-card">
+
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="./packages/com-digitalasset-canton-admin-health-v30">com.digitalasset.canton.admin.health.v30</a>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--protocol">gRPC</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">1 services, 2 endpoints, 9 messages, 1 enums</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Service</dt>
+    <dd>1</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>2</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>9</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>1</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card">
+
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="./packages/com-digitalasset-canton-crypto-admin-v30">com.digitalasset.canton.crypto.admin.v30</a>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--protocol">gRPC</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">1 services, 12 endpoints, 33 messages</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Service</dt>
+    <dd>1</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>12</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>33</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card">
+
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="./packages/com-digitalasset-canton-time-admin-v30">com.digitalasset.canton.time.admin.v30</a>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--protocol">gRPC</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">1 services, 2 endpoints, 4 messages</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Service</dt>
+    <dd>1</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>2</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>4</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card">
+
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="./packages/com-digitalasset-canton-topology-admin-v30">com.digitalasset.canton.topology.admin.v30</a>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--protocol">gRPC</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">4 services, 36 endpoints, 106 messages, 1 enums</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Service</dt>
+    <dd>4</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>36</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>106</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>1</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+</div>
+
+
+
+
+
+## Schema Package
+
+
+
+
+<div class="x2mdx-ref-card-grid">
+
+
+  <div class="x2mdx-ref-card">
+
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="./packages/com-digitalasset-canton-admin">com.digitalasset.canton.admin</a>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--protocol">gRPC</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">0 services, 0 endpoints, 0 messages</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Service</dt>
+    <dd>0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card">
+
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="./packages/com-digitalasset-canton-admin-crypto-v30">com.digitalasset.canton.admin.crypto.v30</a>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--protocol">gRPC</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">0 services, 0 endpoints, 1 messages, 1 enums</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Service</dt>
+    <dd>0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>1</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>1</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card">
+
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="./packages/com-digitalasset-canton-admin-pruning-v30">com.digitalasset.canton.admin.pruning.v30</a>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--protocol">gRPC</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">0 services, 0 endpoints, 28 messages</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Service</dt>
+    <dd>0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>28</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card">
+
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="./packages/com-digitalasset-canton-admin-time-v30">com.digitalasset.canton.admin.time.v30</a>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--protocol">gRPC</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">0 services, 0 endpoints, 2 messages</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Service</dt>
+    <dd>0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>2</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+
+  <div class="x2mdx-ref-card">
+
+    <div class="x2mdx-ref-card-head">
+      <a class="x2mdx-ref-card-title" href="./packages/com-digitalasset-canton-admin-topology-v30">com.digitalasset.canton.admin.topology.v30</a>
+
+<div class="x2mdx-ref-badges">
+
+  <span class="x2mdx-ref-badge x2mdx-ref-badge--protocol">gRPC</span>
+
+</div>
+
+    </div>
+
+    <p class="x2mdx-ref-card-summary">0 services, 0 endpoints, 1 messages</p>
+
+
+<dl class="x2mdx-ref-meta-grid">
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Service</dt>
+    <dd>0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Endpoint</dt>
+    <dd>0</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Message</dt>
+    <dd>1</dd>
+  </div>
+
+  <div class="x2mdx-ref-meta-item">
+    <dt>Enum</dt>
+    <dd>0</dd>
+  </div>
+
+</dl>
+
+
+  </div>
+
+
+</div>

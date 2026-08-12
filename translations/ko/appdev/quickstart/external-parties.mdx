@@ -1,0 +1,318 @@
+---
+title: "Quickstart에서 External Party Onboarding"
+description: "OpenSSL keygen, Topology API call 및 signing flow를 포함하여 Canton Network Quickstart project에서 External Party를 onboarding하고 사용하는 단계별 안내입니다."
+source_id: "SRC-9DAD432F75"
+source_path: "appdev/quickstart/external-parties"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "4ce3c4f00c48605ec4cd688201d07bcfc17a855d82fed2bbf4a0e42d6f9359dc"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한국어 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/quickstart/external-parties.md)을 사용하세요.
+</Warning>
+
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash37 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-37.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartText54 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-text-54.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash67 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-67.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash79 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-79.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash96 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-96.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash103 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-103.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartJson117 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-json-117.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash156 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-156.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash185 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-185.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash212 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-212.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartJson237 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-json-237.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash250 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-250.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash255 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-255.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash265 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-265.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash275 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-275.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash317 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-317.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash327 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-327.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash367 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-367.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash380 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-380.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash392 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-392.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash408 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-408.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash423 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-423.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash470 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-470.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash482 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-482.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartJson488 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-json-488.mdx";
+import ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash503 from "/snippets/external/cn-quickstart/main/cn-quickstart-rst-code-sdk-docs-sharable-sdk-quickstart-operate-how-to-onboard-external-parties-in-quickstart-bash-503.mdx";
+
+{/* COPIED_START source="docs-website:docs/replicated/quickstart/3.5/sdk/quickstart/operate/how-to-onboard-external-parties-in-quickstart.rst" hash="98e63e58" */}
+
+## 소개
+
+External Party는 자체 cryptographic signing key를 제어하므로 Transaction 승인과 관련해 어떤 Participant Node도 신뢰할 필요가 없습니다. External Party는 Transaction signing을 완전히 제어하고 Transaction 승인에 대한 규제 준수를 보장하며 Participant Node operator로부터 독립적입니다.
+
+## 사전 요구 사항
+
+- Admin API credential이 있는 Participant Node에 대한 access
+- Key 생성을 위한 OpenSSL 또는 동등한 tool
+- API call을 위한 curl 또는 gRPC용 grpcurl
+
+## Quickstart LocalNet 설정
+
+Canton Network Quickstart application을 설치하지 않았다면 [사전 요구 사항 및 설치](/appdev/quickstart/prerequisites)를 참조하세요.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash37 />
+
+`.env.local` file은 다음과 같아야 합니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartText54 />
+
+**Admin Token 획득**
+
+External Party Topology API에는 authentication이 필요합니다. Shared-secret mode에서는 `splice-onboarding` container를 사용하여 `app-user`를 subject로 하는 JWT token을 생성합니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash67 />
+
+## Cryptographic Key 생성
+
+External Party를 위한 Ed25519 key pair를 생성합니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash79 />
+
+## External Party Onboarding
+
+### Topology Transaction 생성
+
+아래 `party_hint` 값을 `.env.local` configuration과 일치하도록 변경합니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash96 />
+
+Validator API를 사용하여 필요한 세 개의 Topology Transaction을 생성합니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash103 />
+
+**응답 예시:**
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartJson117 />
+
+응답에는 다음 항목이 포함됩니다.
+
+- `party_id`: 할당된 Party identifier(Party hint + key fingerprint)
+- `topology_txs`: Hash가 포함된 세 개의 Topology Transaction 배열
+  1. **Root namespace transaction**: Party를 생성하고 namespace를 제어하는 public key를 설정합니다.
+  2. **Party to participant mapping**: Confirmation right를 사용하여 Participant에서 Party를 host합니다.
+  3. **Party to key mapping**: Daml Transaction을 승인할 key를 설정합니다.
+
+### Topology Transaction Hash 서명
+
+Generate API가 반환하는 각 Topology Transaction에는 private key로 서명해야 하는 `hash` field가 있습니다. Hash는 hex encoding되어 있습니다.
+
+**응답 값 추출:**
+
+위 curl command에서 `GENERATE_RESPONSE` 변수를 설정했습니다. 이제 Party ID, Topology Transaction 및 hash를 추출합니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash156 />
+
+**Ed25519 private key로 각 hash 서명:**
+
+Signing command는 여러 platform과의 호환성을 위해 temporary file을 사용합니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash185 />
+
+<div class="note" markdown="1">
+
+<div class="title" markdown="1">
+
+참고
+
+</div>
+
+Hash와 signature는 hex-encoded string입니다. Submit API는 다음을 요구합니다.
+
+- `topology_tx`: Generate가 반환한 Base64-encoded Topology Transaction
+- `signed_hash`: Transaction hash의 hex-encoded Ed25519 signature
+
+</div>
+
+### 서명된 Topology Transaction 제출
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash212 />
+
+**성공 응답:**
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartJson237 />
+
+### Party 생성 검증
+
+서명된 Topology Transaction을 제출한 후 External Party가 성공적으로 생성되었는지 확인합니다.
+
+`ledger-api-user`의 Ledger API token을 생성합니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash250 />
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash255 />
+
+**Synchronizer ID 확인**
+
+Synchronizer ID는 Participant가 연결된 network를 식별하며 Topology 검증과 Transaction 제출에 필요합니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash265 />
+
+일반적으로 `global-domain::12209d604bfb...`와 같은 값이 반환됩니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash275 />
+
+<div class="note" markdown="1">
+
+<div class="title" markdown="1">
+
+참고
+
+</div>
+
+Topology Transaction 제출은 asynchronous 방식입니다. 성공적으로 제출한 후 Topology state에 Party가 나타나기까지 몇 초가 걸릴 수 있습니다. 즉시 검증해야 한다면 짧은 delay가 있는 retry loop를 구현하세요.
+
+</div>
+
+## External Party로 Transaction 제출
+
+### 개요
+
+한 단계로 제출하는 internal Party와 달리 External Party는 세 단계의 interactive submission process를 사용합니다.
+
+1. **Prepare**: Participant Node에 Transaction 준비를 요청합니다.
+2. **Sign**: External key로 Transaction hash에 서명합니다.
+3. **Execute**: 서명된 Transaction을 제출합니다.
+
+### 1단계: Transaction 준비
+
+`InteractiveSubmissionService/PrepareSubmission` gRPC endpoint를 사용하여 Transaction을 준비합니다.
+
+`Canton.Internal.Ping` template는 DAR file을 배포하지 않아도 모든 Canton Participant에서 사용할 수 있습니다. Ping template에는 `initiator`(External Party)와 `responder`(알려진 다른 Party)가 필요합니다.
+
+Responder로 사용할 `app_user` Party를 Quickstart LocalNet에서 가져옵니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash317 />
+
+`Ping` contract를 제출합니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash327 />
+
+<div class="note" markdown="1">
+
+<div class="title" markdown="1">
+
+참고
+
+</div>
+
+`user_id`는 `ledger-api-user`여야 하며, 이는 `LEDGER_TOKEN`에 사용된 JWT subject와 일치해야 합니다.
+
+</div>
+
+<div class="tip" markdown="1">
+
+<div class="title" markdown="1">
+
+팁
+
+</div>
+
+Built-in Ping 대신 자체 Daml template를 사용하려면 `template_id` field를 package ID, module 이름 및 template 이름으로 바꿉니다. 다음을 사용해 배포된 package를 확인할 수 있습니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash367 />
+
+</div>
+
+**응답 field:**
+
+- `prepared_transaction`: 서명할 전체 Transaction 및 metadata
+- `prepared_transaction_hash`: 미리 계산된 hash. 보안을 위해 client 측에서 다시 계산합니다.
+- `hashing_scheme_version`: Hashing algorithm version. 일반적으로 `HASHING_SCHEME_VERSION_V2`입니다.
+
+서명할 prepared Transaction과 hash를 추출합니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash380 />
+
+### 2단계: 검증 및 서명
+
+**1. Transaction 검증**
+
+서명하기 전에 prepared Transaction이 의도와 일치하는지 검사합니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash392 />
+
+**2. Hash 서명**
+
+`$TRANSACTION_HASH`는 `PrepareSubmission`이 반환한 값이며, 여기에 Ed25519 private key로 서명합니다.
+
+<div class="note" markdown="1">
+
+<div class="title" markdown="1">
+
+참고
+
+</div>
+
+Production deployment에서는 미리 계산된 hash를 신뢰하는 대신 client 측에서 Transaction hash를 다시 계산할 수 있습니다. Python 구현은 Canton release artifact의 `examples/08-interactive-submission/daml_transaction_hashing_v2.py`에서 확인할 수 있습니다.
+
+</div>
+
+**Private key로 hash 서명:**
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash408 />
+
+Execute 단계에서 사용할 signature를 저장합니다.
+
+### 3단계: Submission 실행
+
+`InteractiveSubmissionService/ExecuteSubmission`을 사용하여 서명된 Transaction을 제출합니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash423 />
+
+**핵심 field:**
+
+- `submission_id`: 이 제출 시도를 위한 새 UUID. 다시 서명하지 않고 새 ID로 retry할 수 있습니다.
+- `party_signatures`: Format, algorithm spec 및 signing key fingerprint가 있는 signature를 포함합니다.
+
+### Transaction 결과 관찰
+
+`CompletionStream` endpoint를 사용하여 Transaction이 처리되었는지 확인합니다.
+
+<div class="note" markdown="1">
+
+<div class="title" markdown="1">
+
+참고
+
+</div>
+
+`CompletionStream`은 새 completion을 기다리는 blocking endpoint입니다. 3단계를 실행하기 **전에** **두 번째 terminal**을 열고 이 command를 실행하거나, 먼저 새 terminal에서 `LEDGER_TOKEN`과 `PARTY_ID`를 다시 생성하세요.
+
+</div>
+
+두 번째 terminal에서 다음을 실행합니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash470 />
+
+Original terminal에서 3단계를 실행한 후 stream이 completion을 capture합니다. Stream을 중지한 다음 결과를 검사합니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash482 />
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartJson488 />
+
+**Transaction 상세 정보 Query(선택 사항)**
+
+Completion에서 `offset`을 추출하고 `GetUpdates`를 사용하여 전체 Transaction 상세 정보를 가져옵니다.
+
+<ExternalCnQuickstartMainCnQuickstartRstCodeSdkDocsSharableSdkQuickstartOperateHowToOnboardExternalPartiesInQuickstartBash503 />
+
+<div class="note" markdown="1">
+
+<div class="title" markdown="1">
+
+참고
+
+</div>
+
+External Party는 ledger user right가 아니라 cryptographic signature로 authentication합니다. 따라서 `GetUpdateById`는 `can_read_as` right가 필요하므로 External Party Transaction에 사용할 수 없습니다. 대신 offset range와 함께 `GetUpdates`를 사용하세요.
+
+</div>
+
+{/* COPIED_END */}

@@ -1,0 +1,107 @@
+---
+title: "Development Tools Overview"
+description: "Canton development toolchain 개요: DPM, Daml Studio, Canton Console, Sandbox, LocalNet 및 PQS"
+source_id: "SRC-5DF5D2B740"
+source_path: "appdev/tooling/development-tools-overview"
+source_commit: "5ce61f7ca8ec6ad9af3d5e19db3583588ba49d65"
+source_sha256: "1cf06ac3c4476c32c991655b08c1bcf25e3083aa0b4d7cf28b84d27c2e94439b"
+translation_status: "ai_draft"
+translated_at: "2026-08-12"
+reviewed_by: null
+---
+
+<Warning>
+  이 페이지는 팀 리서치를 위한 비공식 한글 번역입니다. 기술적 판단에는 [공식 영어 원문](https://docs.canton.network/appdev/tooling/development-tools-overview.md)을 사용하세요.
+</Warning>
+
+import DamlDocsAppdevToolingDevelopmentToolsOverviewL12 from "/snippets/daml-docs/appdev_tooling_development-tools-overview_L12.mdx";
+import DamlDocsAppdevToolingDevelopmentToolsOverviewL53 from "/snippets/daml-docs/appdev_tooling_development-tools-overview_L53.mdx";
+import DamlDocsAppdevToolingDevelopmentToolsOverviewL67 from "/snippets/daml-docs/appdev_tooling_development-tools-overview_L67.mdx";
+
+
+Canton application development에는 Daml contract 작성/compile부터 local test 및 Ledger state query까지 workflow의 서로 다른 부분을 담당하는 여러 tool이 사용됩니다. 이 page에서는 각 tool과 사용 시점을 요약합니다.
+
+## DPM(Daml Package Manager)
+
+DPM은 Canton project management의 기본 command-line tool입니다. project initialization, dependency management, compilation, code generation 및 testing을 처리합니다.
+
+<DamlDocsAppdevToolingDevelopmentToolsOverviewL12 />
+
+DPM은 이전 `daml` CLI를 대체하며 모든 build 및 project task의 권장 entry point입니다. 전체 command set은 [DPM reference](/sdks-tools/cli-tools/dpm)를 참고하세요.
+
+## Daml Studio(VS Code Extension)
+
+Daml Studio는 Daml Smart Contract 작성을 위한 IDE experience를 제공하는 VS Code extension입니다. 다음 기능을 포함합니다.
+
+- 입력 중 real-time type checking 및 error diagnostic
+- Go-to-definition 및 find-references navigation
+- Script result visualization: editor에서 직접 Daml Script를 실행하고 결과 Ledger state를 table view에서 검사
+- template, choice 및 standard library function code completion
+
+project directory에서 `dpm studio`를 실행하거나 VS Code extension marketplace에서 "Daml"을 검색해 설치하세요. VS Code 1.87 이상이 필요합니다.
+
+전체 설정 instruction은 [IDE Setup](/appdev/tooling/ide-setup)을 참고하세요.
+
+## Canton Console
+
+Canton Console은 Canton node를 검사하고 관리하는 interactive Scala 기반 REPL입니다. 다음 작업에 사용할 수 있습니다.
+
+- Validator의 Active Contract Set(ACS) query
+- transaction tree 및 event detail 검사
+- Validator에 DAR package upload
+- party 및 hosting 관리
+- node health 및 connectivity 확인
+
+Console은 실행 중인 Canton node에 연결되어 administrative 및 diagnostic operation에 직접 access합니다. development 중 transaction이 예상 state를 생성했는지 검증하는 데 특히 유용합니다.
+
+## Sandbox
+
+Sandbox는 빠른 local testing을 위한 lightweight single-node Canton environment입니다. 다음과 같이 시작합니다.
+
+<DamlDocsAppdevToolingDevelopmentToolsOverviewL53 />
+
+Sandbox는 in-memory Ledger가 있는 local Validator를 제공합니다. 빠르게 시작되며 Daml Script test 실행, contract logic 실험 및 external dependency 없이 Daml code를 반복 개발하는 데 적합합니다.
+
+Sandbox는 multi-Validator 또는 서로 다른 Validator의 multi-party scenario를 simulate하지 않습니다. 그러한 경우 LocalNet을 사용하세요.
+
+configuration option은 [Sandbox](/sdks-tools/development-tools/sandbox)를 참고하세요.
+
+## LocalNet
+
+LocalNet은 여러 Validator로 Global Synchronizer를 simulate하는 Docker Compose 기반 local environment입니다. [cn-quickstart](https://github.com/digital-asset/cn-quickstart) repository는 development setup의 일부로 LocalNet을 package합니다.
+
+<DamlDocsAppdevToolingDevelopmentToolsOverviewL67 />
+
+LocalNet은 local Synchronizer, 여러 Validator node, faucet access가 있는 test Canton Coin 및 Splice Wallet을 제공합니다. DevNet deployment 전 integration testing, multi-party workflow 및 end-to-end application testing에 적합한 environment입니다.
+
+자세한 내용은 [LocalNet](/sdks-tools/development-tools/localnet)을 참고하세요.
+
+## PQS(Participant Query Store)
+
+PQS는 Validator Ledger state와 synchronize된 PostgreSQL database를 유지합니다. Ledger event(create, archive, exercise)를 standard SQL로 query할 수 있는 SQL table로 project합니다.
+
+PQS는 다음이 필요할 때 유용합니다.
+
+- 여러 contract type에 걸친 complex query(join, aggregation, filter)
+- historical Ledger data reporting 및 analytics
+- SQL을 사용하는 BI tool 또는 dashboard integration
+- contract payload full-text search 또는 custom indexing
+
+PQS는 Ledger API와 동일한 privacy boundary를 준수합니다. party가 볼 권한이 있는 data만 포함합니다.
+
+schema detail 및 query example은 [PQS](/sdks-tools/development-tools/pqs) 및 [PQS SQL Reference](/api-reference)를 참고하세요.
+
+## 올바른 Tool 선택
+
+- **Daml contract 작성 및 compile** -- DPM + Daml Studio
+- **contract logic unit test 실행** -- `dpm test`(Daml Script)
+- **Daml code의 빠른 local iteration** -- Sandbox
+- **multi-Validator integration testing** -- LocalNet
+- **contract state interactive 검사** -- Canton Console
+- **complex query 및 reporting** -- PQS
+
+## 다음 단계
+
+- [IDE Setup](/appdev/tooling/ide-setup) -- Canton development를 위한 editor 설정
+- [Debugging Tools](/appdev/tooling/debugging-tools) -- transaction 및 contract state troubleshooting
+- [Canton Development Stack](/appdev/modules/m1-development-stack) -- 모든 component가 함께 동작하는 방식
