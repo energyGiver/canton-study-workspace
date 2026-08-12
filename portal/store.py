@@ -69,6 +69,36 @@ class PortalStore:
             )
         return status
 
+    def is_favorite(self, source_id: str) -> bool:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT 1 FROM page_favorites WHERE source_id = ?", (source_id,)
+            ).fetchone()
+        return row is not None
+
+    def all_favorites(self) -> set[str]:
+        with self.connect() as connection:
+            rows = connection.execute("SELECT source_id FROM page_favorites").fetchall()
+        return {row["source_id"] for row in rows}
+
+    def set_favorite(self, source_id: str, favorite: bool) -> bool:
+        with self.connect() as connection:
+            if favorite:
+                connection.execute(
+                    """
+                    INSERT INTO page_favorites(source_id, updated_at)
+                    VALUES (?, ?)
+                    ON CONFLICT(source_id) DO UPDATE SET
+                        updated_at = excluded.updated_at
+                    """,
+                    (source_id, self.now()),
+                )
+            else:
+                connection.execute(
+                    "DELETE FROM page_favorites WHERE source_id = ?", (source_id,)
+                )
+        return favorite
+
     def get_draft(self, source_id: str, kind: str) -> dict | None:
         if kind not in VALID_DRAFT_KINDS:
             raise ValueError(f"Invalid draft kind: {kind}")

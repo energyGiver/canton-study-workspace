@@ -340,6 +340,12 @@
   background: color-mix(in srgb, #7f8792 14%, transparent);
 }
 
+.research-nav-scope[data-navigation-state="favorite"] {
+  border-color: color-mix(in srgb, #d97706 58%, transparent);
+  color: #b45309;
+  background: color-mix(in srgb, #f59e0b 16%, transparent);
+}
+
 .research-nav-scope:hover {
   border-color: currentColor;
   transform: translateY(-1px);
@@ -368,6 +374,177 @@
 .research-nav-marker[data-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.research-favorites-header-link {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid transparent;
+  border-radius: 0.55rem;
+  padding: 0.3rem 0.5rem;
+  color: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.research-favorites-header-link > span:first-child {
+  color: #d97706;
+  font-size: 0.9rem;
+}
+
+.research-favorites-header-link:hover,
+.research-favorites-header-link:focus-visible,
+.research-favorites-header-link[aria-current="page"] {
+  border-color: color-mix(in srgb, #d97706 42%, transparent);
+  background: color-mix(in srgb, #f59e0b 12%, transparent);
+  outline: none;
+}
+
+.research-favorites-navigation {
+  height: 100%;
+  overflow-y: auto;
+  padding: 1.25rem 0.5rem 3rem 0;
+}
+
+.research-favorites-navigation-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0.5rem 0.75rem;
+  color: #b45309;
+}
+
+.research-favorites-navigation-heading h3 {
+  flex: 1;
+  margin: 0;
+  color: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.research-favorites-navigation-heading > span:last-child {
+  border-radius: 999px;
+  padding: 0.1rem 0.4rem;
+  background: color-mix(in srgb, #f59e0b 14%, transparent);
+  font-size: 0.68rem;
+}
+
+.research-favorites-navigation ul {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.research-favorite-navigation-link {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 0.65rem;
+  border-radius: 0.65rem;
+  padding: 0.45rem 0.5rem;
+  color: inherit;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  text-decoration: none;
+}
+
+.research-favorite-navigation-link:hover,
+.research-favorite-navigation-link:focus-visible {
+  background: var(--research-primary-soft);
+  color: var(--research-primary);
+  outline: none;
+}
+
+.research-favorite-navigation-link > span:not(.research-nav-scope, .research-nav-marker) {
+  min-width: 0;
+  flex: 1;
+}
+
+.research-favorites-navigation-empty {
+  margin: 0.75rem 0.5rem;
+  color: var(--research-muted);
+  font-size: 0.78rem;
+}
+
+.research-favorites-page-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  margin-bottom: 1.25rem;
+}
+
+.research-favorites-page-star {
+  display: inline-flex;
+  width: 2.4rem;
+  height: 2.4rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.7rem;
+  color: #b45309;
+  background: color-mix(in srgb, #f59e0b 16%, transparent);
+  font-size: 1.2rem;
+}
+
+.research-favorites-page-heading h2,
+.research-favorites-page-heading p {
+  margin: 0;
+}
+
+.research-favorites-page-heading p {
+  color: var(--research-muted);
+  font-size: 0.8rem;
+}
+
+.research-favorite-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+  gap: 0.7rem;
+}
+
+.research-favorite-card {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 0.65rem;
+  border: 1px solid var(--research-border);
+  border-radius: 0.75rem;
+  padding: 0.85rem;
+  color: inherit;
+  background: var(--research-surface);
+  text-decoration: none;
+}
+
+.research-favorite-card:hover,
+.research-favorite-card:focus-visible {
+  border-color: color-mix(in srgb, #d97706 50%, transparent);
+  background: color-mix(in srgb, #f59e0b 8%, transparent);
+  outline: none;
+}
+
+.research-favorite-card-star {
+  color: #d97706;
+}
+
+.research-favorite-card > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.research-favorite-card strong {
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.research-favorite-card small {
+  color: var(--research-muted);
+  font-size: 0.7rem;
 }
 
 .research-nav-excluded {

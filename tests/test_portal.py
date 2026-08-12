@@ -248,6 +248,16 @@ class ContentHelpersTest(unittest.TestCase):
         )
         self.assertIn("research_file_sha256", row)
 
+    def test_status_rows_include_personal_favorites(self) -> None:
+        repository = ContentRepository()
+        page = repository.page("overview/understand/what-is-canton")
+        row = next(
+            item
+            for item in repository.status_rows({}, {page.source_id})
+            if item["source_id"] == page.source_id
+        )
+        self.assertTrue(row["favorite"])
+
     def test_page_scope_override_wins_over_public_testnet_profile(self) -> None:
         repository = ContentRepository()
         research = repository.research(
@@ -271,6 +281,14 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(self.store.get_progress("SRC-TEST"), "unreviewed")
         self.store.set_progress("SRC-TEST", "in_progress")
         self.assertEqual(self.store.get_progress("SRC-TEST"), "in_progress")
+
+    def test_favorites_default_toggle_and_list(self) -> None:
+        self.assertFalse(self.store.is_favorite("SRC-TEST"))
+        self.assertTrue(self.store.set_favorite("SRC-TEST", True))
+        self.assertTrue(self.store.is_favorite("SRC-TEST"))
+        self.assertEqual(self.store.all_favorites(), {"SRC-TEST"})
+        self.assertFalse(self.store.set_favorite("SRC-TEST", False))
+        self.assertFalse(self.store.is_favorite("SRC-TEST"))
 
     def test_draft_uses_optimistic_version(self) -> None:
         first = self.store.save_draft("SRC-TEST", "summary", "draft", None, 0)

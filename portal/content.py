@@ -507,7 +507,10 @@ class ContentRepository:
             )
         return items
 
-    def status_rows(self, progress: dict[str, str]) -> list[dict]:
+    def status_rows(
+        self, progress: dict[str, str], favorites: set[str] | None = None
+    ) -> list[dict]:
+        favorites = favorites or set()
         rows = []
         for page in self.pages:
             research = self.research(page)
@@ -519,6 +522,7 @@ class ContentRepository:
                     "path": page.path,
                     "title": page.title,
                     "progress": progress.get(page.source_id, "unreviewed"),
+                    "favorite": page.source_id in favorites,
                     "scope": research["scope"],
                     "scope_reason": research["scope_reason"],
                     "scope_category": research["scope_category"],

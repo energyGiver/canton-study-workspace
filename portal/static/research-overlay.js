@@ -15,6 +15,7 @@
   const state = {
     statusByPath: new Map(),
     activePath: null,
+    favoritesNavigationSignature: null,
     refreshTimer: null,
     mermaidTimer: null,
     mermaidPromise: null,
@@ -169,54 +170,91 @@
 
   function updateScopeControl(control, item) {
     const excluded = item.scope === "excluded";
-    const label = excluded ? "Excluded from launch scope" : "Included in launch scope";
+    const favorite = Boolean(item.favorite);
+    const label = favorite
+      ? "Favorite and included in launch scope"
+      : excluded
+        ? "Excluded from launch scope"
+        : "Included in launch scope";
     const rawReason = (item.scope_reason || "No reason recorded").trim();
     const reason = /[.!?]$/.test(rawReason) ? rawReason : `${rawReason}.`;
-    if (control.textContent !== (excluded ? "✕" : "○")) {
-      control.textContent = excluded ? "✕" : "○";
+    const icon = favorite ? "★" : excluded ? "✕" : "○";
+    if (control.textContent !== icon) {
+      control.textContent = icon;
     }
     control.dataset.scope = item.scope;
-    control.title = excluded
-      ? `${label}. ${reason} Click to include.`
-      : `${label}. Click to exclude.`;
+    control.dataset.navigationState = favorite
+      ? "favorite"
+      : excluded
+        ? "excluded"
+        : "included";
+    control.title = favorite
+      ? `${label}. Click to remove from Favorites.`
+      : excluded
+        ? `${label}. ${reason} Click to add to Favorites.`
+        : `${label}. Click to exclude.`;
     control.setAttribute("aria-label", control.title);
   }
 
-  async function toggleScope(item, control) {
-    const nextScope = item.scope === "excluded" ? "included" : "excluded";
-    const reason =
-      nextScope === "excluded"
-        ? window.prompt("Reason for excluding this page from the current scope:", "")
-        : "";
-    if (nextScope === "excluded" && !reason) return;
+  async function setScope(item, scope, reason = "") {
+    const research = await request(`/api/pages/${encodeURIComponent(item.source_id)}/scope`, {
+      method: "PUT",
+      body: JSON.stringify({
+        scope,
+        reason,
+        base_file_sha256: item.research_file_sha256 || null,
+      }),
+    });
+    Object.assign(item, {
+      scope: research.scope,
+      scope_reason: research.scope_reason,
+      scope_category: research.scope_category,
+      scope_category_label: research.scope_category_label,
+      scope_source: research.scope_source,
+      research_file_sha256: research.file_sha256,
+    });
+    if (scope === "excluded") item.favorite = false;
+  }
 
+  async function setFavorite(item, favorite) {
+    const payload = await request(`/api/favorites/${encodeURIComponent(item.source_id)}`, {
+      method: "PUT",
+      body: JSON.stringify({ favorite }),
+    });
+    item.favorite = payload.favorite;
+  }
+
+  async function cycleNavigationState(item, control) {
     control.dataset.busy = "true";
     control.setAttribute("aria-busy", "true");
     try {
-      const research = await request(`/api/pages/${encodeURIComponent(item.source_id)}/scope`, {
-        method: "PUT",
-        body: JSON.stringify({
-          scope: nextScope,
-          reason,
-          base_file_sha256: item.research_file_sha256 || null,
-        }),
-      });
-      Object.assign(item, {
-        scope: research.scope,
-        scope_reason: research.scope_reason,
-        scope_category: research.scope_category,
-        scope_category_label: research.scope_category_label,
-        scope_source: research.scope_source,
-        research_file_sha256: research.file_sha256,
-      });
+      if (item.favorite) {
+        await setFavorite(item, false);
+      } else if (item.scope === "excluded") {
+        await setScope(item, "included");
+        await setFavorite(item, true);
+      } else {
+        const reason = window.prompt(
+          "Reason for excluding this page from the current scope:",
+          ""
+        );
+        if (!reason) return;
+        await setScope(item, "excluded", reason);
+      }
+      state.favoritesNavigationSignature = null;
+      renderFavoritesNavigation();
       decorateNavigation();
-      if (canonicalPath() === item.path) await refreshCurrentPage(true);
+      if (canonicalPath() === item.path || canonicalPath() === "research/favorites") {
+        await refreshCurrentPage(true);
+      }
     } catch (error) {
-      console.warn("Unable to update page scope", error);
-      window.alert(`Scope update failed: ${error.message}`);
+      console.warn("Unable to update page navigation state", error);
+      window.alert(`Page state update failed: ${error.message}`);
     } finally {
-      control.removeAttribute("aria-busy");
-      delete control.dataset.busy;
+      if (control.isConnected) {
+        control.removeAttribute("aria-busy");
+        delete control.dataset.busy;
+      }
     }
   }
 
@@ -240,7 +278,7 @@
         event.preventDefault();
         event.stopPropagation();
         if (scopeControl.dataset.busy === "true") return;
-        await toggleScope(item, scopeControl);
+        await cycleNavigationState(item, scopeControl);
       };
       scopeControl.onclick = changeScope;
       scopeControl.onkeydown = (event) => {
@@ -283,6 +321,81 @@
           if (event.key === "Enter" || event.key === " ") advance(event);
         };
       }
+    });
+  }
+
+  function favoritesLanguage() {
+    const requested = new URLSearchParams(window.location.search).get("lang");
+    return requested === "ko" || window.location.pathname.startsWith("/ko/")
+      ? "ko"
+      : "en";
+  }
+
+  function favoriteDocumentHref(item) {
+    return favoritesLanguage() === "ko" && item.translation_available
+      ? `/ko/${item.path}`
+      : `/${item.path}`;
+  }
+
+  function decorateFavoritesHeaderLink() {
+    const themeButton = [...document.querySelectorAll("header button")].find((button) =>
+      /change theme preference/i.test(
+        `${button.getAttribute("aria-label") || ""} ${button.getAttribute("title") || ""}`
+      )
+    );
+    if (!themeButton?.parentElement) return;
+
+    let link = document.querySelector(".research-favorites-header-link");
+    if (!link) {
+      link = document.createElement("a");
+      link.className = "research-favorites-header-link";
+      link.innerHTML = '<span aria-hidden="true">★</span><span>Favorites</span>';
+      themeButton.parentElement.insertBefore(link, themeButton);
+    }
+    const language = favoritesLanguage();
+    link.href = `/research/favorites${language === "ko" ? "?lang=ko" : ""}`;
+    link.setAttribute("aria-label", "Open Favorites");
+    if (canonicalPath() === "research/favorites") link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  }
+
+  function renderFavoritesNavigation() {
+    if (canonicalPath() !== "research/favorites") return;
+    const navigation = document.querySelector('nav[aria-label="Pages"]');
+    if (!navigation || !state.statusByPath.size) return;
+
+    const favorites = [...state.statusByPath.values()]
+      .filter((item) => item.favorite)
+      .sort((left, right) => left.title.localeCompare(right.title));
+    const signature = `${favoritesLanguage()}:${favorites
+      .map((item) => item.source_id)
+      .join(",")}`;
+    if (state.favoritesNavigationSignature === signature) return;
+    state.favoritesNavigationSignature = signature;
+
+    navigation.innerHTML = `<div class="research-favorites-navigation">
+      <div class="research-favorites-navigation-heading">
+        <span aria-hidden="true">★</span>
+        <h3>Favorites</h3>
+        <span>${favorites.length}</span>
+      </div>
+      ${
+        favorites.length
+          ? `<ul>${favorites
+              .map(
+                (item) => `<li><a class="research-favorite-navigation-link" href="${escapeHtml(
+                  favoriteDocumentHref(item)
+                )}" data-favorite-document-link><span>${escapeHtml(item.title)}</span></a></li>`
+              )
+              .join("")}</ul>`
+          : '<p class="research-favorites-navigation-empty">No favorite pages yet.</p>'
+      }
+    </div>`;
+    navigation.querySelectorAll("[data-favorite-document-link]").forEach((link) => {
+      link.onclick = (event) => {
+        event.preventDefault();
+        window.location.assign(link.href);
+      };
     });
   }
 
@@ -738,6 +851,18 @@
     </article>`;
   }
 
+  function renderFavoriteCard(item) {
+    const href = favoriteDocumentHref(item);
+    const language = href.startsWith("/ko/") ? "KOR" : "ENG";
+    return `<a class="research-favorite-card" href="${escapeHtml(href)}">
+      <span class="research-favorite-card-star" aria-hidden="true">★</span>
+      <span>
+        <strong>${escapeHtml(item.title)}</strong>
+        <small>${escapeHtml(item.area)} / ${language}</small>
+      </span>
+    </a>`;
+  }
+
   function renderScopeDashboard(payload, root) {
     const profile = payload.profile || {};
     const items = [...(payload.items || [])].sort(
@@ -889,6 +1014,29 @@
       }
       const statusPayload = await request("/api/pages/status");
       const items = statusPayload.items;
+      if (view === "favorites") {
+        const favorites = items
+          .filter((item) => item.favorite)
+          .sort((left, right) => left.title.localeCompare(right.title));
+        root.innerHTML = `<section class="research-favorites-page">
+          <div class="research-favorites-page-heading">
+            <span class="research-favorites-page-star" aria-hidden="true">★</span>
+            <div>
+              <span class="research-eyebrow">Personal local collection</span>
+              <h2>Favorites</h2>
+              <p>${favorites.length} saved page${favorites.length === 1 ? "" : "s"}</p>
+            </div>
+          </div>
+          ${
+            favorites.length
+              ? `<div class="research-favorite-grid">${favorites
+                  .map(renderFavoriteCard)
+                  .join("")}</div>`
+              : '<p class="research-empty">Cycle a page marker to ★ to add it here.</p>'
+          }
+        </section>`;
+        return;
+      }
       if (view === "changes") {
         const changed = items.filter((item) => item.summary_stale || item.translation_stale);
         root.innerHTML = changed.length
@@ -951,7 +1099,9 @@
     try {
       const payload = await request("/api/pages/status");
       state.statusByPath = new Map(payload.items.map((item) => [item.path, item]));
+      renderFavoritesNavigation();
       decorateNavigation();
+      decorateFavoritesHeaderLink();
     } catch (error) {
       console.warn("Research API unavailable", error);
     }
@@ -983,7 +1133,9 @@
     window.clearTimeout(state.refreshTimer);
     scheduleMermaidFallback();
     state.refreshTimer = window.setTimeout(() => {
+      renderFavoritesNavigation();
       decorateNavigation();
+      decorateFavoritesHeaderLink();
       localizeKoreanDocumentLinks();
       refreshCurrentPage();
     }, 120);
@@ -994,6 +1146,7 @@
     document.addEventListener("click", preserveKoreanDocumentNavigation, true);
     await loadStatuses();
     await refreshCurrentPage(true);
+    decorateFavoritesHeaderLink();
     localizeKoreanDocumentLinks();
     scheduleMermaidFallback();
     new MutationObserver(scheduleRefresh).observe(document.body, { childList: true, subtree: true });

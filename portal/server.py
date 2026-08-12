@@ -38,6 +38,7 @@ class PortalApplication:
         page = self.content.page(value)
         payload = self.content.details(page)
         payload["progress"] = self.store.get_progress(page.source_id)
+        payload["favorite"] = self.store.is_favorite(page.source_id)
         payload["draft"] = self.store.get_draft(page.source_id, "summary")
         payload["note_draft"] = self.store.get_draft(page.source_id, "note")
         return payload
@@ -144,7 +145,9 @@ def make_handler(application: PortalApplication) -> type[BaseHTTPRequestHandler]
                 self._send(HTTPStatus.OK, application.content.comparison(page))
                 return
             if path == "/api/pages/status":
-                rows = application.content.status_rows(application.store.all_progress())
+                rows = application.content.status_rows(
+                    application.store.all_progress(), application.store.all_favorites()
+                )
                 self._send(HTTPStatus.OK, {"items": rows})
                 return
             if path == "/api/claims":
@@ -157,7 +160,9 @@ def make_handler(application: PortalApplication) -> type[BaseHTTPRequestHandler]
                 self._send(HTTPStatus.OK, {"items": application.content.changes()})
                 return
             if path == "/api/scope":
-                rows = application.content.status_rows(application.store.all_progress())
+                rows = application.content.status_rows(
+                    application.store.all_progress(), application.store.all_favorites()
+                )
                 self._send(
                     HTTPStatus.OK,
                     {
@@ -192,6 +197,19 @@ def make_handler(application: PortalApplication) -> type[BaseHTTPRequestHandler]
                 status = application.store.set_progress(page.source_id, str(body.get("status")))
                 self._send(HTTPStatus.OK, {"source_id": page.source_id, "status": status})
                 return
+            if len(parts) == 3 and parts[:2] == ["api", "favorites"]:
+                page = application.content.page(parts[2])
+                favorite = body.get("favorite")
+                if not isinstance(favorite, bool):
+                    raise ValueError("Favorite must be a boolean")
+                if favorite and application.content.research(page)["scope"] == "excluded":
+                    raise ValueError("An excluded page must be included before favoriting")
+                favorite = application.store.set_favorite(page.source_id, favorite)
+                self._send(
+                    HTTPStatus.OK,
+                    {"source_id": page.source_id, "favorite": favorite},
+                )
+                return
             if len(parts) == 4 and parts[:2] == ["api", "drafts"]:
                 page = application.content.page(parts[2])
                 draft = application.store.save_draft(
@@ -211,6 +229,8 @@ def make_handler(application: PortalApplication) -> type[BaseHTTPRequestHandler]
                     str(body.get("reason", "")),
                     body.get("base_file_sha256"),
                 )
+                if research["scope"] == "excluded":
+                    application.store.set_favorite(page.source_id, False)
                 self._send(HTTPStatus.OK, research)
                 return
             self._send(HTTPStatus.NOT_FOUND, {"error": "Unknown endpoint"})

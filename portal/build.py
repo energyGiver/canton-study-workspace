@@ -31,6 +31,7 @@ MEDIA_SUFFIXES = {".avif", ".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"}
 
 RESEARCH_PAGES = {
     "research/index.mdx": ("Research Workspace", "overview"),
+    "research/favorites.mdx": ("Favorites", "favorites"),
     "research/claims.mdx": ("Claim Ledger", "claims"),
     "research/questions.mdx": ("Open Questions", "questions"),
     "research/progress.mdx": ("Research Progress", "progress"),
@@ -305,6 +306,7 @@ def _extend_docs_config(translation_count: int) -> None:
                     "group": "Research",
                     "pages": [
                         "research/index",
+                        "research/favorites",
                         "research/progress",
                         "research/scope",
                         "research/changes",
