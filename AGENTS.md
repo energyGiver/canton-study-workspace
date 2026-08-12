@@ -33,3 +33,12 @@
 - Use `INFERRED` only when the reasoning and all supporting sources are identified.
 - Use `UNCLEAR` when the official corpus is incomplete, internally inconsistent, or insufficiently precise.
 - Add unresolved gaps to `questions/open-questions.md`; do not silently resolve them.
+
+## Git commit policy
+
+- Use the repository skill at `.agents/skills/commit-workspace/SKILL.md` for commit operations.
+- Write exactly one Conventional Commit subject in the form `type(scope): clear summary`; do not add a body unless the user explicitly requests one.
+- Use the configured human Git identity for author and committer.
+- Never add Codex, Claude Code, ChatGPT, Copilot, or any other AI agent as an author, committer, co-author, signer, or contributor.
+- Never add `Co-authored-by` or generated-by trailers for an AI agent.
+- Preserve unrelated user changes and commit only the files in the requested scope.

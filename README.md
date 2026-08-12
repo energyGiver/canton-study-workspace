@@ -13,6 +13,7 @@ The knowledge base is useful only under three conditions: conclusions remain tra
 3. Use [the claim ledger](claims/claim-ledger.md) for classified conclusions and [the open questions registry](questions/open-questions.md) for gaps.
 4. Consult [the glossary](glossary/canton-glossary.md) when terminology differs across documentation areas.
 5. Use `corpus/manifest.jsonl` to resolve a source ID to its exact URL, local file, headings, retrieval time, and checksum.
+6. Use [the local research portal development design](development/local-research-portal.md) for the official-document mirror, Korean translation, research workflow, and storage architecture.
 
 ## Repository layout
 
@@ -26,6 +27,7 @@ The knowledge base is useful only under three conditions: conclusions remain tra
 | `use-cases/` | Use cases derived from protocol and application mechanisms |
 | `glossary/` | Curated terminology with ambiguity notes |
 | `scripts/` | Reproducible official-document collector; it does not inspect Canton source code |
+| `development/` | Development designs for the local documentation and research portal |
 
 ## Evidence model
 

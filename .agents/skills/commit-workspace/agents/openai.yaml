@@ -1,0 +1,4 @@
+interface:
+  display_name: "Commit Workspace"
+  short_description: "Create focused one-line Conventional Commits"
+  default_prompt: "Use $commit-workspace to review and commit the current workspace changes."
