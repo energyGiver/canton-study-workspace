@@ -167,12 +167,85 @@
     control.setAttribute("aria-label", `Research status: ${display.label}`);
   }
 
+  function updateScopeControl(control, item) {
+    const excluded = item.scope === "excluded";
+    const label = excluded ? "Excluded from launch scope" : "Included in launch scope";
+    const rawReason = (item.scope_reason || "No reason recorded").trim();
+    const reason = /[.!?]$/.test(rawReason) ? rawReason : `${rawReason}.`;
+    if (control.textContent !== (excluded ? "✕" : "○")) {
+      control.textContent = excluded ? "✕" : "○";
+    }
+    control.dataset.scope = item.scope;
+    control.title = excluded
+      ? `${label}. ${reason} Click to include.`
+      : `${label}. Click to exclude.`;
+    control.setAttribute("aria-label", control.title);
+  }
+
+  async function toggleScope(item, control) {
+    const nextScope = item.scope === "excluded" ? "included" : "excluded";
+    const reason =
+      nextScope === "excluded"
+        ? window.prompt("Reason for excluding this page from the current scope:", "")
+        : "";
+    if (nextScope === "excluded" && !reason) return;
+
+    control.dataset.busy = "true";
+    control.setAttribute("aria-busy", "true");
+    try {
+      const research = await request(`/api/pages/${encodeURIComponent(item.source_id)}/scope`, {
+        method: "PUT",
+        body: JSON.stringify({
+          scope: nextScope,
+          reason,
+          base_file_sha256: item.research_file_sha256 || null,
+        }),
+      });
+      Object.assign(item, {
+        scope: research.scope,
+        scope_reason: research.scope_reason,
+        scope_category: research.scope_category,
+        scope_category_label: research.scope_category_label,
+        scope_source: research.scope_source,
+        research_file_sha256: research.file_sha256,
+      });
+      decorateNavigation();
+      if (canonicalPath() === item.path) await refreshCurrentPage(true);
+    } catch (error) {
+      console.warn("Unable to update page scope", error);
+      window.alert(`Scope update failed: ${error.message}`);
+    } finally {
+      control.removeAttribute("aria-busy");
+      delete control.dataset.busy;
+    }
+  }
+
   function decorateNavigation() {
     if (!state.statusByPath.size) return;
     document.querySelectorAll("aside a[href], nav a[href]").forEach((link) => {
       if (link.closest("main")) return;
       const item = state.statusByPath.get(canonicalPath(link.href));
       if (!item) return;
+
+      let scopeControl = link.querySelector(".research-nav-scope");
+      if (!scopeControl) {
+        scopeControl = document.createElement("span");
+        scopeControl.className = "research-nav-scope";
+        scopeControl.setAttribute("role", "button");
+        scopeControl.setAttribute("tabindex", "0");
+        link.prepend(scopeControl);
+      }
+      updateScopeControl(scopeControl, item);
+      const changeScope = async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (scopeControl.dataset.busy === "true") return;
+        await toggleScope(item, scopeControl);
+      };
+      scopeControl.onclick = changeScope;
+      scopeControl.onkeydown = (event) => {
+        if (event.key === "Enter" || event.key === " ") changeScope(event);
+      };
 
       let marker = link.querySelector(".research-nav-marker");
       if (!marker) {
@@ -181,25 +254,25 @@
         link.append(marker);
       }
 
+      updateProgressControl(marker, item);
       if (item.scope === "excluded") {
-        if (marker.textContent !== "✕") marker.textContent = "✕";
-        marker.dataset.status = "excluded";
-        marker.title = item.scope_reason || "Excluded from current research scope";
-        marker.setAttribute("aria-hidden", "true");
-        marker.removeAttribute("role");
-        marker.removeAttribute("tabindex");
-        marker.removeAttribute("aria-label");
+        marker.dataset.disabled = "true";
+        marker.title = `${marker.title}. Include this page in scope to update its review status.`;
+        marker.setAttribute("aria-label", marker.title);
+        marker.setAttribute("aria-disabled", "true");
+        marker.setAttribute("tabindex", "-1");
+        marker.setAttribute("role", "button");
         link.classList.add("research-nav-excluded");
-        link.title = marker.title;
+        link.removeAttribute("title");
         marker.onclick = null;
         marker.onkeydown = null;
       } else {
+        delete marker.dataset.disabled;
         marker.setAttribute("role", "button");
         marker.setAttribute("tabindex", "0");
-        marker.removeAttribute("aria-hidden");
+        marker.removeAttribute("aria-disabled");
         link.classList.remove("research-nav-excluded");
         link.removeAttribute("title");
-        updateProgressControl(marker, item);
         const advance = async (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -245,6 +318,7 @@
     ) {
       return;
     }
+    if (event.target.closest?.(".research-nav-scope, .research-nav-marker")) return;
     const link = event.target.closest?.("a[data-research-localized-href]");
     if (!link || link.target === "_blank" || link.hasAttribute("download")) return;
 

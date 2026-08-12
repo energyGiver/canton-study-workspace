@@ -186,6 +186,15 @@ class ContentHelpersTest(unittest.TestCase):
             "included",
         )
 
+    def test_status_rows_expose_scope_write_conflict_hash(self) -> None:
+        repository = ContentRepository()
+        row = next(
+            item
+            for item in repository.status_rows({})
+            if item["path"] == "overview/understand/what-is-canton"
+        )
+        self.assertIn("research_file_sha256", row)
+
     def test_page_scope_override_wins_over_public_testnet_profile(self) -> None:
         repository = ContentRepository()
         research = repository.research(

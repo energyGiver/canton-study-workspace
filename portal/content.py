@@ -524,6 +524,7 @@ class ContentRepository:
                     "scope_category": research["scope_category"],
                     "scope_category_label": research["scope_category_label"],
                     "scope_source": research["scope_source"],
+                    "research_file_sha256": research["file_sha256"],
                     "area": AREA_LABELS.get(
                         area_id, area_id.replace("-", " ").title()
                     ),

@@ -295,6 +295,7 @@
   font: inherit;
 }
 
+.research-nav-scope,
 .research-nav-marker {
   display: inline-flex;
   width: 1.1rem;
@@ -309,6 +310,45 @@
   cursor: pointer;
 }
 
+.research-nav-scope {
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  margin-left: 0;
+  margin-top: 0.05rem;
+  background: transparent;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease,
+    transform 120ms ease;
+}
+
+.research-nav-scope[data-scope="included"] {
+  border-color: color-mix(in srgb, #734be2 45%, transparent);
+  color: #734be2;
+  background: color-mix(in srgb, #734be2 8%, transparent);
+}
+
+.research-nav-scope[data-scope="excluded"] {
+  border-color: color-mix(in srgb, #7f8792 45%, transparent);
+  color: #6f7782;
+  background: color-mix(in srgb, #7f8792 14%, transparent);
+}
+
+.research-nav-scope:hover {
+  border-color: currentColor;
+  transform: translateY(-1px);
+}
+
+.research-nav-scope:focus-visible {
+  outline: 2px solid #734be2;
+  outline-offset: 2px;
+}
+
+.research-nav-scope[data-busy="true"] {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 .research-nav-marker[data-status="complete"] {
   background: #18945b;
   color: white;
@@ -319,10 +359,9 @@
   color: white;
 }
 
-.research-nav-marker[data-status="excluded"] {
-  background: color-mix(in srgb, #7f8792 18%, transparent);
-  color: #7f8792;
-  cursor: default;
+.research-nav-marker[data-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .research-nav-excluded {
