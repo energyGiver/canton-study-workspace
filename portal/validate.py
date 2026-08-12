@@ -61,6 +61,73 @@ def _normalize_code_whitespace(text: str) -> str:
     return re.sub(r"[ \t]+(?=\n|$)", "", text)
 
 
+def _scope_profile_errors(repository: ContentRepository) -> list[str]:
+    profile = repository.scope_profile
+    errors: list[str] = []
+    required_text = ("profile_id", "title", "decision")
+    for key in required_text:
+        if not isinstance(profile.get(key), str) or not profile[key].strip():
+            errors.append(f"scope profile {key} is required")
+
+    conditions = profile.get("conditions")
+    if not isinstance(conditions, list) or not conditions:
+        errors.append("scope profile conditions must be a non-empty list")
+
+    matched_by_path: dict[str, list[str]] = {}
+    rule_ids: set[str] = set()
+    rules = profile.get("rules")
+    if not isinstance(rules, list) or not rules:
+        return errors + ["scope profile rules must be a non-empty list"]
+
+    for rule in rules:
+        rule_id = str(rule.get("id", "")).strip()
+        label = str(rule.get("label", "")).strip()
+        reason = str(rule.get("reason", "")).strip()
+        if not rule_id or not label or not reason:
+            errors.append("every scope profile rule requires id, label, and reason")
+            continue
+        if rule_id in rule_ids:
+            errors.append(f"scope profile rule id is duplicated: {rule_id}")
+        rule_ids.add(rule_id)
+
+        exact_paths = set(rule.get("paths", []))
+        prefixes = set(rule.get("path_prefixes", []))
+        unknown = sorted(exact_paths - repository.by_path.keys())
+        for path in unknown:
+            errors.append(f"scope profile path is not in the manifest: {path}")
+
+        matched = {
+            page.path
+            for page in repository.pages
+            if page.path in exact_paths
+            or any(page.path.startswith(prefix) for prefix in prefixes)
+        }
+        if not matched:
+            errors.append(f"scope profile rule matches no pages: {rule_id}")
+        for path in matched:
+            matched_by_path.setdefault(path, []).append(rule_id)
+
+    for path, matching_rules in sorted(matched_by_path.items()):
+        if len(matching_rules) > 1:
+            errors.append(
+                "scope profile page matches multiple rules: "
+                f"{path} ({', '.join(matching_rules)})"
+            )
+
+    expected = profile.get("expected_excluded_pages")
+    if not isinstance(expected, int):
+        errors.append("scope profile expected_excluded_pages must be an integer")
+    elif len(matched_by_path) != expected:
+        errors.append(
+            "scope profile excluded-page count changed: "
+            f"expected {expected}, found {len(matched_by_path)}"
+        )
+
+    if MIDDLE_DOT in json.dumps(profile, ensure_ascii=False):
+        errors.append("scope profile contains forbidden U+00B7")
+    return errors
+
+
 @dataclass(frozen=True)
 class ValidationReport:
     pages: int
@@ -76,7 +143,7 @@ class ValidationReport:
 
 def validate_workspace() -> ValidationReport:
     repository = ContentRepository()
-    errors: list[str] = []
+    errors: list[str] = _scope_profile_errors(repository)
     warnings: list[str] = []
     summaries = 0
     translations = 0

@@ -22,7 +22,7 @@ RESEARCH_PAGES = {
     "research/claims.mdx": ("Claim Ledger", "claims"),
     "research/questions.mdx": ("Open Questions", "questions"),
     "research/progress.mdx": ("Research Progress", "progress"),
-    "research/scope.mdx": ("Research Scope", "scope"),
+    "research/scope.mdx": ("Excluded Pages", "scope"),
     "research/changes.mdx": ("Upstream Changes", "changes"),
 }
 

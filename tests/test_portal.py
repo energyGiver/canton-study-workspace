@@ -92,6 +92,43 @@ class ContentHelpersTest(unittest.TestCase):
         self.assertTrue(repository.official_source_path(page).exists())
         self.assertEqual(repository.source_sha256(page), page.published_sha256)
 
+    def test_public_testnet_scope_profile_is_conservative_and_stable(self) -> None:
+        repository = ContentRepository()
+        excluded = [
+            row for row in repository.status_rows({}) if row["scope"] == "excluded"
+        ]
+        self.assertEqual(len(excluded), 153)
+        self.assertEqual(
+            repository.research(repository.page("appdev/app-rewards"))["scope"],
+            "excluded",
+        )
+        self.assertEqual(
+            repository.research(
+                repository.page(
+                    "global-synchronizer/extension-synchronizers/private-synchronizers"
+                )
+            )["scope"],
+            "included",
+        )
+        self.assertEqual(
+            repository.research(repository.page("overview/reference/topology"))["scope"],
+            "included",
+        )
+        self.assertEqual(
+            repository.research(
+                repository.page("integrations/wallet-gateway/overview")
+            )["scope"],
+            "included",
+        )
+
+    def test_page_scope_override_wins_over_public_testnet_profile(self) -> None:
+        repository = ContentRepository()
+        research = repository.research(
+            repository.page("overview/understand/what-is-canton")
+        )
+        self.assertEqual(research["scope"], "included")
+        self.assertEqual(research["scope_source"], "page-override")
+
 
 class StoreTest(unittest.TestCase):
     def setUp(self) -> None:

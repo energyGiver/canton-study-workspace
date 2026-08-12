@@ -66,8 +66,8 @@ Personal progress, UI preferences, drafts, browsing history, and rebuildable ind
 | Korean translations | `translations/ko/<official-path>.mdx` | Shared content requiring diff, review, and source-version tracking |
 | Three-line page summaries | `research/pages/<official-path>.md` | Shared AI draft and human edits |
 | Page-level research analysis | `research/pages/<official-path>.md` | Cross-person knowledge linked to the source page |
-| Scope inclusion or exclusion | Page research frontmatter | A team launch-scope decision, not a personal preference |
-| Scope exclusion reason | Page research frontmatter and body | Makes the `X` status reviewable and understandable |
+| Default launch-scope profile | `research/scope/public-testnet.json` | Applies one reviewable decision consistently across the official corpus |
+| Page-specific scope override | Page research frontmatter | Records an intentional exception to the default profile |
 | Summary approval state | Page research frontmatter | Shared review state such as `ai_draft`, `human_edited`, or `approved` |
 | Claims and open questions | Existing `claims/` and `questions/` | Shared evidence and engineering backlog |
 | Topics, maps, glossary, use cases | Existing directories | Shared knowledge base |
@@ -192,9 +192,13 @@ Progress is stored in SQLite by stable `source_id`, not by page title. Renaming 
 
 ## Scope exclusion UX
 
-Scope is independent from personal progress. A page-level action named **Exclude from current scope** writes `scope: excluded` and a reason to the shared page research file.
+Scope is independent from personal progress. The Git-tracked profile at `research/scope/public-testnet.json` defines the conservative default for the current standalone private Synchronizer public testnet. It excludes only documentation that clearly depends on historical releases, Global Synchronizer economics and rewards, Super Validator-only operations, or existing Global network services. Core protocol, Daml, APIs, topology, onboarding, security, monitoring, wallet, custody, traffic, and private Synchronizer material remains included.
+
+A page-level action named **Exclude from current scope** or **Include in scope** writes an explicit override and reason to the shared page research file. A summary publish does not create a scope override by itself, so later profile updates continue to apply unless a team member deliberately made a page-specific decision.
 
 Excluded pages show a small gray `X` badge at the far right of the left-navigation row. The progress checkbox is hidden or disabled for that page, and the tooltip shows the exclusion reason. The action is reversed from the same page menu. This avoids treating exclusion as a fourth progress state.
+
+The `/research/scope` view lists only X-marked pages. It shows the active profile and conditions, exclusion counts, search, documentation-area and reason filters, per-page rationale, and ENG/KOR links when a Korean translation exists.
 
 Because exclusion changes the team's research and launch coverage, it must be committed and reviewed through Git rather than stored only in SQLite.
 

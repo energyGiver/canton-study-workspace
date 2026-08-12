@@ -71,8 +71,6 @@
       if (!marker) {
         marker = document.createElement("span");
         marker.className = "research-nav-marker";
-        marker.setAttribute("role", "button");
-        marker.setAttribute("tabindex", "0");
         link.append(marker);
       }
 
@@ -80,10 +78,20 @@
         if (marker.textContent !== "✕") marker.textContent = "✕";
         marker.dataset.status = "excluded";
         marker.title = item.scope_reason || "Excluded from current research scope";
-        marker.setAttribute("aria-label", marker.title);
+        marker.setAttribute("aria-hidden", "true");
+        marker.removeAttribute("role");
+        marker.removeAttribute("tabindex");
+        marker.removeAttribute("aria-label");
+        link.classList.add("research-nav-excluded");
+        link.title = marker.title;
         marker.onclick = null;
         marker.onkeydown = null;
       } else {
+        marker.setAttribute("role", "button");
+        marker.setAttribute("tabindex", "0");
+        marker.removeAttribute("aria-hidden");
+        link.classList.remove("research-nav-excluded");
+        link.removeAttribute("title");
         updateProgressControl(marker, item);
         const advance = async (event) => {
           event.preventDefault();
@@ -108,6 +116,14 @@
     return `<span class="research-badge ${escapeHtml(status)}">${escapeHtml(
       status.replaceAll("_", " ")
     )}</span>`;
+  }
+
+  function scopeBadge(research) {
+    if (research.scope !== "excluded") return "";
+    const reason = research.scope_reason || "Excluded from the current public testnet scope";
+    return `<a class="research-scope-badge" href="/research/scope" title="${escapeHtml(
+      reason
+    )}"><span aria-hidden="true">✕</span> Out of testnet scope</a>`;
   }
 
   function relatedRecords(data) {
@@ -212,11 +228,17 @@
       <details>
         <summary>
           <span>Research summary</span>
-          <span class="research-summary-meta">${summaryBadge(research)}</span>
+          <span class="research-summary-meta">${scopeBadge(research)}${summaryBadge(
+            research
+          )}</span>
         </summary>
         <div class="research-summary-body">
           <div class="research-toolbar">
-            <button class="research-button" type="button" data-page-progress-control></button>
+            ${
+              research.scope === "excluded"
+                ? '<span class="research-button scope-disabled" title="Progress is not tracked for excluded pages"><span aria-hidden="true">✕</span> Excluded</span>'
+                : '<button class="research-button" type="button" data-page-progress-control></button>'
+            }
             <a class="research-button subtle" href="/${escapeHtml(data.path)}">ENG</a>
             ${languageLink}
             ${compareButton}
@@ -232,7 +254,17 @@
           <ol class="research-summary-lines">${lines
             .map((line) => `<li>${escapeHtml(line)}</li>`)
             .join("")}</ol>
-          ${research.scope === "excluded" ? `<p class="research-scope-note">Excluded: ${escapeHtml(research.scope_reason)}</p>` : ""}
+          ${
+            research.scope === "excluded"
+              ? `<aside class="research-scope-note">
+                  <div><span class="research-scope-x" aria-hidden="true">✕</span><strong>${escapeHtml(
+                    research.scope_category_label || "Excluded from current scope"
+                  )}</strong></div>
+                  <p>${escapeHtml(research.scope_reason)}</p>
+                  <a href="/research/scope">View all excluded pages</a>
+                </aside>`
+              : ""
+          }
           ${relatedRecords(data)}
           <div class="research-editor" hidden>
             <label>Exactly three summary lines
@@ -274,8 +306,10 @@
       scope: research.scope,
     };
     const progressControl = panel.querySelector("[data-page-progress-control]");
-    updateProgressControl(progressControl, item);
-    progressControl.onclick = () => setProgress(item, nextProgress(item.progress));
+    if (progressControl) {
+      updateProgressControl(progressControl, item);
+      progressControl.onclick = () => setProgress(item, nextProgress(item.progress));
+    }
 
     const editor = panel.querySelector(".research-editor");
     const feedback = panel.querySelector(".research-feedback");
@@ -420,8 +454,8 @@
   function statusCounts(items) {
     return items.reduce(
       (counts, item) => {
-        counts[item.progress] = (counts[item.progress] || 0) + 1;
         if (item.scope === "excluded") counts.excluded += 1;
+        else counts[item.progress] = (counts[item.progress] || 0) + 1;
         return counts;
       },
       { unreviewed: 0, in_progress: 0, complete: 0, excluded: 0 }
@@ -449,6 +483,134 @@
         )
         .join("")}</tbody>
     </table></div>`;
+  }
+
+  function optionMarkup(value, label) {
+    return `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`;
+  }
+
+  function renderExcludedCard(item) {
+    const koreanLink = item.translation_available
+      ? `<a class="research-button subtle" href="/ko/${escapeHtml(item.path)}">Open KOR</a>`
+      : "";
+    return `<article class="research-excluded-card">
+      <header>
+        <span class="research-scope-badge"><span aria-hidden="true">✕</span> ${escapeHtml(
+          item.scope_category_label
+        )}</span>
+        <span class="research-area-badge">${escapeHtml(item.area)}</span>
+      </header>
+      <h3><a href="/${escapeHtml(item.path)}">${escapeHtml(item.title)}</a></h3>
+      <code>/${escapeHtml(item.path)}</code>
+      <p>${escapeHtml(item.scope_reason)}</p>
+      <footer>
+        <a class="research-button subtle" href="/${escapeHtml(item.path)}">Open ENG</a>
+        ${koreanLink}
+      </footer>
+    </article>`;
+  }
+
+  function renderScopeDashboard(payload, root) {
+    const profile = payload.profile || {};
+    const items = [...(payload.items || [])].sort(
+      (left, right) =>
+        left.area.localeCompare(right.area) || left.title.localeCompare(right.title)
+    );
+    const areaCounts = items.reduce((counts, item) => {
+      counts.set(item.area, (counts.get(item.area) || 0) + 1);
+      return counts;
+    }, new Map());
+    const areas = [...areaCounts].sort((left, right) => left[0].localeCompare(right[0]));
+    const categoryCounts = items.reduce((counts, item) => {
+      const current = counts.get(item.scope_category) || {
+        label: item.scope_category_label,
+        count: 0,
+      };
+      current.count += 1;
+      counts.set(item.scope_category, current);
+      return counts;
+    }, new Map());
+    const categories = [...categoryCounts].sort((left, right) =>
+      left[1].label.localeCompare(right[1].label)
+    );
+    const includedCount = Math.max(0, (profile.total_pages || 0) - items.length);
+
+    root.innerHTML = `
+      <section class="research-scope-hero">
+        <span class="research-eyebrow">Current launch profile</span>
+        <h2>${escapeHtml(profile.title || "Public testnet scope")}</h2>
+        <p>${escapeHtml(profile.decision || "")}</p>
+        <details>
+          <summary>Decision conditions</summary>
+          <ul>${(profile.conditions || [])
+            .map((condition) => `<li>${escapeHtml(condition)}</li>`)
+            .join("")}</ul>
+        </details>
+      </section>
+      <div class="research-stats research-scope-stats">
+        ${card("Official pages", profile.total_pages || 0)}
+        ${card("In launch scope", includedCount)}
+        ${card("Excluded with X", items.length)}
+      </div>
+      <section class="research-scope-browser" aria-labelledby="excluded-pages-heading">
+        <div class="research-scope-browser-heading">
+          <div>
+            <span class="research-eyebrow">Scope review queue</span>
+            <h2 id="excluded-pages-heading">Excluded pages</h2>
+          </div>
+          <p data-scope-count role="status" aria-live="polite"></p>
+        </div>
+        <form class="research-scope-filters" data-scope-filters>
+          <label class="research-scope-search">Search
+            <input type="search" name="query" autocomplete="off" placeholder="Title, path, or reason">
+          </label>
+          <label>Documentation area
+            <select name="area">${optionMarkup("", "All areas")}${areas
+              .map(([area, total]) => optionMarkup(area, `${area} (${total})`))
+              .join("")}</select>
+          </label>
+          <label>Exclusion reason
+            <select name="category">${optionMarkup("", "All reasons")}${categories
+              .map(([value, item]) => optionMarkup(value, `${item.label} (${item.count})`))
+              .join("")}</select>
+          </label>
+          <button class="research-button subtle" type="reset">Clear filters</button>
+        </form>
+        <div class="research-excluded-list" data-scope-results></div>
+      </section>`;
+
+    const form = root.querySelector("[data-scope-filters]");
+    const results = root.querySelector("[data-scope-results]");
+    const count = root.querySelector("[data-scope-count]");
+    const update = () => {
+      const formData = new FormData(form);
+      const query = String(formData.get("query") || "").trim().toLocaleLowerCase();
+      const area = String(formData.get("area") || "");
+      const category = String(formData.get("category") || "");
+      const filtered = items.filter((item) => {
+        const searchable = [
+          item.title,
+          item.path,
+          item.scope_reason,
+          item.scope_category_label,
+          item.area,
+        ]
+          .join(" ")
+          .toLocaleLowerCase();
+        return (
+          (!query || searchable.includes(query)) &&
+          (!area || item.area === area) &&
+          (!category || item.scope_category === category)
+        );
+      });
+      count.textContent = `Showing ${filtered.length} of ${items.length}`;
+      results.innerHTML = filtered.length
+        ? filtered.map(renderExcludedCard).join("")
+        : '<p class="research-empty">No excluded pages match these filters.</p>';
+    };
+    form.addEventListener("input", update);
+    form.addEventListener("reset", () => window.setTimeout(update, 0));
+    update();
   }
 
   async function renderDashboard(view, root) {
@@ -493,15 +655,12 @@
         return;
       }
 
-      const statusPayload = await request("/api/pages/status");
-      const items = statusPayload.items;
       if (view === "scope") {
-        const excluded = items.filter((item) => item.scope === "excluded");
-        root.innerHTML = excluded.length
-          ? renderStatusTable(excluded)
-          : '<p class="research-empty">No pages are excluded from the current scope.</p>';
+        renderScopeDashboard(await request("/api/scope"), root);
         return;
       }
+      const statusPayload = await request("/api/pages/status");
+      const items = statusPayload.items;
       if (view === "changes") {
         const changed = items.filter((item) => item.summary_stale || item.translation_stale);
         root.innerHTML = changed.length
@@ -510,7 +669,7 @@
         return;
       }
       if (view === "progress") {
-        root.innerHTML = renderStatusTable(items);
+        root.innerHTML = renderStatusTable(items.filter((item) => item.scope !== "excluded"));
         return;
       }
 

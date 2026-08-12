@@ -19,6 +19,14 @@ TRANSLATION_ROOT = ROOT / "translations" / "ko"
 UPSTREAM_DOCS = ROOT / "upstream" / "cf-docs" / "docs-main"
 CLAIMS_PATH = ROOT / "claims" / "claim-ledger.md"
 QUESTIONS_PATH = ROOT / "questions" / "open-questions.md"
+SCOPE_PROFILE_PATH = ROOT / "research" / "scope" / "public-testnet.json"
+AREA_LABELS = {
+    "appdev": "App Development",
+    "global-synchronizer": "Global Synchronizer",
+    "integrations": "Integrations",
+    "overview": "Overview",
+    "reference": "SDKs & API Reference",
+}
 
 
 class ContentConflictError(RuntimeError):
@@ -92,6 +100,8 @@ def render_frontmatter(metadata: dict[str, object]) -> str:
         "source_sha256",
         "scope",
         "scope_reason",
+        "scope_category",
+        "scope_category_label",
         "summary_status",
         "updated_at",
         "updated_by",
@@ -152,6 +162,7 @@ class ContentRepository:
         self.pages = self._load_manifest()
         self.by_id = {page.source_id: page for page in self.pages}
         self.by_path = {page.path: page for page in self.pages}
+        self.scope_profile = json.loads(SCOPE_PROFILE_PATH.read_text(encoding="utf-8"))
         self.upstream_commit = self._upstream_commit()
         self._source_hashes: dict[str, str | None] = {}
 
@@ -216,6 +227,41 @@ class ContentRepository:
             self._source_hashes[page.source_id] = file_sha256(self.official_source_path(page))
         return self._source_hashes[page.source_id]
 
+    def profile_scope(self, page: PageRecord) -> dict[str, str]:
+        for rule in self.scope_profile.get("rules", []):
+            paths = rule.get("paths", [])
+            prefixes = rule.get("path_prefixes", [])
+            if page.path in paths or any(page.path.startswith(prefix) for prefix in prefixes):
+                return {
+                    "scope": "excluded",
+                    "scope_category": str(rule["id"]),
+                    "scope_category_label": str(rule["label"]),
+                    "scope_reason": str(rule["reason"]),
+                    "scope_source": "public-testnet-profile",
+                }
+        return {
+            "scope": "included",
+            "scope_category": "launch-scope",
+            "scope_category_label": "Current launch scope",
+            "scope_reason": "",
+            "scope_source": "public-testnet-profile",
+        }
+
+    def scope_profile_summary(self) -> dict:
+        excluded = [
+            page
+            for page in self.pages
+            if self.profile_scope(page)["scope"] == "excluded"
+        ]
+        return {
+            "profile_id": self.scope_profile["profile_id"],
+            "title": self.scope_profile["title"],
+            "decision": self.scope_profile["decision"],
+            "conditions": self.scope_profile["conditions"],
+            "excluded_pages": len(excluded),
+            "total_pages": len(self.pages),
+        }
+
     def research(self, page: PageRecord) -> dict:
         path = self.research_path(page)
         text = path.read_text(encoding="utf-8") if path.is_file() else ""
@@ -223,6 +269,28 @@ class ContentRepository:
         source_sha = self.source_sha256(page)
         saved_source_sha = metadata.get("source_sha256")
         related = extract_section(body, "Related records")
+        profile_scope = self.profile_scope(page)
+        scope = str(metadata.get("scope", profile_scope["scope"]))
+        scope_reason = str(
+            metadata.get(
+                "scope_reason",
+                profile_scope["scope_reason"] if scope == "excluded" else "",
+            )
+        )
+        scope_category = str(
+            metadata.get(
+                "scope_category",
+                profile_scope["scope_category"] if scope == "excluded" else "launch-scope",
+            )
+        )
+        scope_category_label = str(
+            metadata.get(
+                "scope_category_label",
+                profile_scope["scope_category_label"]
+                if scope == "excluded"
+                else "Current launch scope",
+            )
+        )
         return {
             "exists": path.is_file(),
             "metadata": metadata,
@@ -231,8 +299,13 @@ class ContentRepository:
             "file_sha256": file_sha256(path),
             "source_sha256": source_sha,
             "stale": bool(path.is_file() and source_sha != saved_source_sha),
-            "scope": metadata.get("scope", "included"),
-            "scope_reason": metadata.get("scope_reason", ""),
+            "scope": scope,
+            "scope_reason": scope_reason,
+            "scope_category": scope_category,
+            "scope_category_label": scope_category_label,
+            "scope_source": (
+                "page-override" if "scope" in metadata else profile_scope["scope_source"]
+            ),
             "summary_status": metadata.get("summary_status", "missing"),
             "related_claim_ids": sorted(set(re.findall(r"CLM-\d{3}", related))),
             "related_question_ids": sorted(set(re.findall(r"OQ-\d{3}", related))),
@@ -304,8 +377,6 @@ class ContentRepository:
             "source_path": page.path,
             "source_commit": self.upstream_commit,
             "source_sha256": self.source_sha256(page) or "",
-            "scope": existing.get("scope", "included"),
-            "scope_reason": existing.get("scope_reason", ""),
             "summary_status": existing.get("summary_status", "missing"),
             "updated_at": PortalClock.date(),
             "updated_by": existing.get("updated_by", "workspace-user"),
@@ -371,6 +442,10 @@ class ContentRepository:
         metadata = self._base_metadata(page, metadata)
         metadata["scope"] = scope
         metadata["scope_reason"] = reason.strip()
+        metadata["scope_category"] = "manual" if scope == "excluded" else "launch-scope"
+        metadata["scope_category_label"] = (
+            "Manual scope decision" if scope == "excluded" else "Current launch scope"
+        )
         if "## Three-line summary" not in body:
             body = replace_section(body, "Three-line summary", "")
         if "## Research notes" not in body:
@@ -437,6 +512,7 @@ class ContentRepository:
         for page in self.pages:
             research = self.research(page)
             translation = self.translation(page)
+            area_id = page.path.split("/", 1)[0]
             rows.append(
                 {
                     "source_id": page.source_id,
@@ -445,6 +521,12 @@ class ContentRepository:
                     "progress": progress.get(page.source_id, "unreviewed"),
                     "scope": research["scope"],
                     "scope_reason": research["scope_reason"],
+                    "scope_category": research["scope_category"],
+                    "scope_category_label": research["scope_category_label"],
+                    "scope_source": research["scope_source"],
+                    "area": AREA_LABELS.get(
+                        area_id, area_id.replace("-", " ").title()
+                    ),
                     "summary_status": research["summary_status"],
                     "summary_stale": research["stale"],
                     "translation_available": translation["available"],

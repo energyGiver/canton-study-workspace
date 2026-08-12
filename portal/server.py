@@ -129,6 +129,7 @@ def make_handler(application: PortalApplication) -> type[BaseHTTPRequestHandler]
                         "upstream_commit": application.content.upstream_commit,
                         "documents": len(application.content.pages),
                         "indexed_documents": application.indexed_documents,
+                        "scope_profile": application.content.scope_profile_summary(),
                         "settings": application.store.settings(),
                     },
                 )
@@ -159,7 +160,10 @@ def make_handler(application: PortalApplication) -> type[BaseHTTPRequestHandler]
                 rows = application.content.status_rows(application.store.all_progress())
                 self._send(
                     HTTPStatus.OK,
-                    {"items": [row for row in rows if row["scope"] == "excluded"]},
+                    {
+                        "profile": application.content.scope_profile_summary(),
+                        "items": [row for row in rows if row["scope"] == "excluded"],
+                    },
                 )
                 return
             if path == "/api/search":

@@ -1,0 +1,71 @@
+{
+  "profile_id": "standalone-public-testnet-2026",
+  "title": "Standalone private Synchronizer public testnet",
+  "decision": "Exclude only documentation that is clearly not a direct dependency of the current Canton public testnet launch.",
+  "conditions": [
+    "The network uses a standalone private Synchronizer rather than the Global Synchronizer.",
+    "The launch does not issue Canton Coin or participate in Global Synchronizer reward programs.",
+    "Validator operators are permissioned and governance uses independent identities with internal 2-of-3 control.",
+    "Core protocol, Daml, Ledger API, Admin API, topology, onboarding, security, monitoring, wallet, custody, and private Synchronizer material remains in scope."
+  ],
+  "expected_excluded_pages": 153,
+  "rules": [
+    {
+      "id": "historical-release-notes",
+      "label": "Historical release notes",
+      "reason": "Historical version change logs are not required to design or launch the pinned testnet baseline. Review them when selecting an upgrade or investigating a version-specific incident.",
+      "path_prefixes": [
+        "global-synchronizer/release-notes/",
+        "integrations/release-notes/"
+      ]
+    },
+    {
+      "id": "global-economics-and-rewards",
+      "label": "Global economics and rewards",
+      "reason": "The current testnet does not issue Canton Coin or use Global Synchronizer reward and tokenomics programs. Its fee and traffic design uses the project-selected stablecoin model.",
+      "paths": [
+        "appdev/app-rewards",
+        "appdev/modules/m4-featured-app-activity-marker",
+        "appdev/modules/m7-canton-coin-preapprovals",
+        "overview/reference/canton-coin-tokenomics",
+        "overview/reference/tokenomics-of-gs",
+        "overview/understand/canton-coin",
+        "overview/understand/getting-app-featured",
+        "global-synchronizer/splice-fundamentals/glossary",
+        "global-synchronizer/splice-fundamentals/reward-sharing",
+        "global-synchronizer/splice-fundamentals/rewards-minting",
+        "global-synchronizer/splice-fundamentals/sv-live-tokenomics",
+        "global-synchronizer/splice-fundamentals/traffic-based-app-rewards",
+        "global-synchronizer/splice-fundamentals/validator-development-fund",
+        "global-synchronizer/splice-fundamentals/validator-liveness"
+      ]
+    },
+    {
+      "id": "super-validator-only",
+      "label": "Super Validator only",
+      "reason": "The standalone private Synchronizer uses independent operator identities and project governance rather than Global Synchronizer Super Validator infrastructure.",
+      "paths": [
+        "overview/reference/super-validator-components",
+        "overview/reference/sv-governance-reference",
+        "global-synchronizer/deployment/kubernetes-deployment",
+        "global-synchronizer/deployment/sv-network-resets",
+        "global-synchronizer/deployment/sv-operations",
+        "global-synchronizer/production-operations/sv-backup",
+        "global-synchronizer/production-operations/sv-pruning",
+        "global-synchronizer/production-operations/sv-security",
+        "global-synchronizer/production-operations/sv-upgrades"
+      ]
+    },
+    {
+      "id": "global-network-service",
+      "label": "Existing Global network service",
+      "reason": "This existing Global Synchronizer service or discovery material is not a launch dependency for the standalone private Synchronizer testnet.",
+      "paths": [
+        "overview/reference/canton-name-service",
+        "overview/reference/gsf-policies",
+        "integrations/apps/finding-apps",
+        "integrations/ecosystem"
+      ]
+    }
+  ]
+}
