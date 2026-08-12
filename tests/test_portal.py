@@ -10,6 +10,7 @@ from portal.build import (
     _localized_navigation,
     _relative_media_references,
     _translated_navigation_entries,
+    _translated_navigation_products,
 )
 from portal.content import (
     ContentRepository,
@@ -91,10 +92,68 @@ class ContentHelpersTest(unittest.TestCase):
         self.assertEqual(first, ["ko/overview/one"])
         self.assertEqual(second, [])
 
+    def test_korean_navigation_preserves_product_boundaries(self) -> None:
+        products = [
+            {
+                "product": "Overview",
+                "icon": "book-open",
+                "groups": [
+                    {
+                        "group": "Welcome",
+                        "pages": ["overview/one", "overview/two"],
+                    }
+                ],
+            },
+            {
+                "product": "API Reference",
+                "icon": "brackets-curly",
+                "root": "api-reference",
+                "pages": [
+                    "api-reference",
+                    {"group": "Java", "pages": ["reference/java/one"]},
+                ],
+            },
+        ]
+        korean_products = _translated_navigation_products(
+            products,
+            {"overview/one", "api-reference", "reference/java/one"},
+        )
+        self.assertEqual(
+            korean_products,
+            [
+                {
+                    "product": "Overview",
+                    "icon": "book-open",
+                    "groups": [
+                        {"group": "Welcome", "pages": ["ko/overview/one"]}
+                    ],
+                },
+                {
+                    "product": "API Reference",
+                    "icon": "brackets-curly",
+                    "root": "ko/api-reference",
+                    "pages": [
+                        "ko/api-reference",
+                        {
+                            "group": "Java",
+                            "pages": ["ko/reference/java/one"],
+                        },
+                    ],
+                },
+            ],
+        )
+
     def test_localized_navigation_partitions_english_and_korean(self) -> None:
         products = [{"product": "Overview", "groups": []}]
-        korean_groups = [{"group": "Overview", "pages": ["ko/overview/one"]}]
-        navigation = _localized_navigation(products, korean_groups)
+        korean_products = [
+            {
+                "product": "Overview",
+                "groups": [
+                    {"group": "Welcome", "pages": ["ko/overview/one"]}
+                ],
+            }
+        ]
+        navigation = _localized_navigation(products, korean_products)
         self.assertNotIn("products", navigation)
         self.assertEqual(
             navigation["languages"],
@@ -106,13 +165,7 @@ class ContentHelpersTest(unittest.TestCase):
                 },
                 {
                     "language": "ko",
-                    "products": [
-                        {
-                            "product": "한글 번역",
-                            "icon": "language",
-                            "groups": korean_groups,
-                        }
-                    ],
+                    "products": korean_products,
                 },
             ],
         )

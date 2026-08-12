@@ -228,13 +228,52 @@ def _translated_navigation_entries(
     return translated
 
 
+def _translated_navigation_products(
+    products: list[dict],
+    translated_pages: set[str],
+    seen_pages: set[str] | None = None,
+) -> list[dict]:
+    if seen_pages is None:
+        seen_pages = set()
+    translated_products: list[dict] = []
+    for product in products:
+        translated_product = {
+            key: value
+            for key, value in product.items()
+            if key not in {"groups", "pages", "root"}
+        }
+        groups: list[dict] = []
+        for group in product.get("groups", []):
+            pages = _translated_navigation_entries(
+                group.get("pages", []), translated_pages, seen_pages
+            )
+            if pages:
+                groups.append({**group, "pages": pages})
+        pages = _translated_navigation_entries(
+            product.get("pages", []), translated_pages, seen_pages
+        )
+        if not groups and not pages:
+            continue
+        root = product.get("root")
+        if isinstance(root, str) and root in translated_pages:
+            translated_product["root"] = f"ko/{root}"
+        if groups:
+            translated_product["groups"] = groups
+        if pages:
+            translated_product["pages"] = pages
+        translated_products.append(translated_product)
+    return translated_products
+
+
 def _localized_navigation(
-    products: list[dict], korean_groups: list[dict], global_navigation: dict | None = None
+    products: list[dict],
+    korean_products: list[dict],
+    global_navigation: dict | None = None,
 ) -> dict:
     navigation: dict = {}
     if global_navigation:
         navigation["global"] = global_navigation
-    if not korean_groups:
+    if not korean_products:
         navigation["products"] = products
         return navigation
 
@@ -246,13 +285,7 @@ def _localized_navigation(
         },
         {
             "language": "ko",
-            "products": [
-                {
-                    "product": "한글 번역",
-                    "icon": "language",
-                    "groups": korean_groups,
-                }
-            ],
+            "products": korean_products,
         },
     ]
     return navigation
@@ -289,26 +322,22 @@ def _extend_docs_config(translation_count: int) -> None:
         str(path.relative_to(TRANSLATIONS_DIR).with_suffix(""))
         for path in TRANSLATIONS_DIR.rglob("*.mdx")
     }
-    korean_groups: list[dict] = []
     seen_pages: set[str] = set()
-    for product in products:
-        for group in product.get("groups", []):
-            pages = _translated_navigation_entries(
-                group.get("pages", []), translated_pages, seen_pages
-            )
-            if pages:
-                korean_groups.append({"group": group["group"], "pages": pages})
+    korean_products = _translated_navigation_products(
+        products, translated_pages, seen_pages
+    )
     remaining_pages = sorted(translated_pages - seen_pages)
     if remaining_pages:
-        korean_groups.append(
+        korean_products.append(
             {
-                "group": "기타 공식 문서",
+                "product": "기타 공식 문서",
+                "icon": "language",
                 "pages": [f"ko/{page}" for page in remaining_pages],
             }
         )
     config["navigation"] = _localized_navigation(
         products,
-        korean_groups if translation_count else [],
+        korean_products if translation_count else [],
         original_navigation.get("global"),
     )
     config_path.write_text(
