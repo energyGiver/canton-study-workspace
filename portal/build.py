@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import base64
 import json
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -15,6 +17,16 @@ GENERATED_ROOT = ROOT / ".generated"
 SITE_DIR = GENERATED_ROOT / "site"
 TRANSLATIONS_DIR = ROOT / "translations" / "ko"
 STATIC_DIR = ROOT / "portal" / "static"
+
+MERMAID_FENCE = re.compile(
+    r"^```mermaid[ \t]*\n(?P<chart>.*?)^```[ \t]*$",
+    re.MULTILINE | re.DOTALL | re.IGNORECASE,
+)
+MEDIA_REFERENCE = re.compile(
+    r"(?:!\[[^\]]*\]\((?P<markdown>[^)]+)\)|"
+    r"\bsrc=[\"'](?P<html>[^\"']+)[\"'])"
+)
+MEDIA_SUFFIXES = {".avif", ".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"}
 
 
 RESEARCH_PAGES = {
@@ -86,6 +98,112 @@ def _copy_translations() -> int:
         shutil.copy2(source, destination)
         count += 1
     return count
+
+
+def _mermaid_source_marker(chart: str) -> str:
+    encoded = base64.b64encode(chart.encode("utf-8")).decode("ascii")
+    return (
+        '<div className="research-mermaid-source" '
+        f'data-research-mermaid-source="{encoded}" />'
+    )
+
+
+def _instrument_mermaid(
+    text: str, official_charts: list[str] | None = None
+) -> tuple[str, int]:
+    count = 0
+
+    def add_source_marker(match: re.Match[str]) -> str:
+        nonlocal count
+        chart = (
+            official_charts[count]
+            if official_charts is not None
+            else match.group("chart")
+        )
+        count += 1
+        original_fence = match.group(0)
+        mirrored_fence = original_fence.replace(match.group("chart"), chart, 1)
+        return f"{_mermaid_source_marker(chart)}\n\n{mirrored_fence}"
+
+    instrumented = MERMAID_FENCE.sub(add_source_marker, text)
+    if official_charts is not None and count != len(official_charts):
+        raise RuntimeError(
+            "Korean Mermaid diagram count does not match the official English page"
+        )
+    return instrumented, count
+
+
+def _instrument_mermaid_pages() -> int:
+    diagrams = 0
+    english_pages = [
+        path for path in SITE_DIR.rglob("*.mdx") if SITE_DIR / "ko" not in path.parents
+    ]
+    korean_pages = list((SITE_DIR / "ko").rglob("*.mdx"))
+    for path in english_pages:
+        text = path.read_text(encoding="utf-8")
+        instrumented, page_diagrams = _instrument_mermaid(text)
+        if page_diagrams:
+            path.write_text(instrumented, encoding="utf-8")
+            diagrams += page_diagrams
+    for path in korean_pages:
+        text = path.read_text(encoding="utf-8")
+        korean_charts = [match.group("chart") for match in MERMAID_FENCE.finditer(text)]
+        if not korean_charts:
+            continue
+        relative = path.relative_to(SITE_DIR / "ko")
+        official_path = SOURCE_SITE / relative
+        if not official_path.is_file():
+            raise RuntimeError(f"Official Mermaid source is missing: {relative}")
+        official_charts = [
+            match.group("chart")
+            for match in MERMAID_FENCE.finditer(
+                official_path.read_text(encoding="utf-8")
+            )
+        ]
+        instrumented, page_diagrams = _instrument_mermaid(text, official_charts)
+        path.write_text(instrumented, encoding="utf-8")
+        diagrams += page_diagrams
+    return diagrams
+
+
+def _relative_media_references(text: str) -> set[Path]:
+    references: set[Path] = set()
+    for match in MEDIA_REFERENCE.finditer(text):
+        raw = (match.group("markdown") or match.group("html")).strip()
+        value = raw.split("#", 1)[0].split("?", 1)[0]
+        if not value or value.startswith(("/", "#", "data:", "http://", "https://")):
+            continue
+        path = Path(value)
+        if path.suffix.lower() in MEDIA_SUFFIXES:
+            references.add(path)
+    return references
+
+
+def _copy_translation_media() -> int:
+    copied: set[Path] = set()
+    for translation in TRANSLATIONS_DIR.rglob("*.mdx"):
+        relative_page = translation.relative_to(TRANSLATIONS_DIR)
+        official_page = SOURCE_SITE / relative_page
+        for reference in _relative_media_references(
+            translation.read_text(encoding="utf-8")
+        ):
+            source = (official_page.parent / reference).resolve()
+            try:
+                relative_source = source.relative_to(SOURCE_SITE.resolve())
+            except ValueError as error:
+                raise RuntimeError(
+                    f"Translation media escapes the official site: {relative_page} -> {reference}"
+                ) from error
+            if not source.is_file():
+                raise RuntimeError(
+                    f"Translation media is missing from the official site: "
+                    f"{relative_page} -> {reference}"
+                )
+            destination = SITE_DIR / "ko" / relative_source
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
+            copied.add(relative_source)
+    return len(copied)
 
 
 def _translated_navigation_entries(
@@ -224,9 +342,11 @@ def build_site() -> BuildResult:
     shutil.copytree(SOURCE_SITE, SITE_DIR, symlinks=True)
 
     translation_count = _copy_translations()
+    _copy_translation_media()
     _write_research_pages()
     _extend_docs_config(translation_count)
     _install_overlay_assets()
+    _instrument_mermaid_pages()
 
     upstream_commit = _upstream_commit()
     metadata = {

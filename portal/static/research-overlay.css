@@ -641,3 +641,22 @@
     justify-self: start;
   }
 }
+/* Build-time Mermaid source metadata is hidden while the local fallback uses it. */
+.research-mermaid-source {
+  display: none !important;
+}
+
+.research-mermaid-error {
+  min-height: 3rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid rgb(239 68 68 / 0.35);
+  border-radius: 0.75rem;
+  color: rgb(185 28 28);
+  background: rgb(254 242 242);
+  font-size: 0.875rem;
+}
+
+.dark .research-mermaid-error {
+  color: rgb(252 165 165);
+  background: rgb(69 10 10 / 0.35);
+}

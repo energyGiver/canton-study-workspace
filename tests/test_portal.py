@@ -2,9 +2,15 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import base64
 from pathlib import Path
 
-from portal.build import _localized_navigation, _translated_navigation_entries
+from portal.build import (
+    _instrument_mermaid,
+    _localized_navigation,
+    _relative_media_references,
+    _translated_navigation_entries,
+)
 from portal.content import (
     ContentRepository,
     canonical_path,
@@ -22,6 +28,39 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ContentHelpersTest(unittest.TestCase):
+    def test_mermaid_instrumentation_preserves_chart_and_adds_source_marker(self) -> None:
+        source = "Before\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\nAfter\n"
+        instrumented, count = _instrument_mermaid(source)
+        self.assertEqual(count, 1)
+        self.assertIn("```mermaid\nflowchart LR\n  A --> B\n```", instrumented)
+        encoded = instrumented.split('data-research-mermaid-source="', 1)[1].split(
+            '"', 1
+        )[0]
+        self.assertEqual(
+            base64.b64decode(encoded).decode("utf-8"),
+            "flowchart LR\n  A --> B\n",
+        )
+
+    def test_korean_mermaid_uses_the_official_english_chart(self) -> None:
+        korean = "```mermaid\nflowchart LR\n  A[번역] --> B\n```\n"
+        official = ["flowchart LR\n  A[Official] --> B\n"]
+        instrumented, count = _instrument_mermaid(korean, official)
+        self.assertEqual(count, 1)
+        self.assertIn("A[Official] --> B", instrumented)
+        self.assertNotIn("A[번역] --> B", instrumented)
+
+    def test_relative_media_references_exclude_root_and_remote_assets(self) -> None:
+        text = """
+![Local](./images/local.svg)
+<img src='../media/example.png?raw=1' />
+![Root](/images/root.svg)
+![Remote](https://example.com/remote.png)
+"""
+        self.assertEqual(
+            _relative_media_references(text),
+            {Path("images/local.svg"), Path("../media/example.png")},
+        )
+
     def test_korean_navigation_preserves_nested_groups(self) -> None:
         entries = [
             "overview/one",

@@ -2,13 +2,120 @@
   "use strict";
 
   const API_BASE = "http://127.0.0.1:8787";
+  const MERMAID_FALLBACK_URL =
+    "https://cdn.jsdelivr.net/npm/mermaid@11.16.1/dist/mermaid.min.js";
+  const MERMAID_FALLBACK_INTEGRITY =
+    "sha384-aBQXj4hK6Jm05i7aQAsUV3bLdSUrHX1BGYfMB0166TtWt/RRaw+h0Eelme9OCOvy";
   const PROGRESS_ORDER = ["unreviewed", "in_progress", "complete"];
   const PROGRESS_DISPLAY = {
     unreviewed: { icon: "□", label: "Unreviewed" },
     in_progress: { icon: "◩", label: "In progress" },
     complete: { icon: "✓", label: "Complete" },
   };
-  const state = { statusByPath: new Map(), activePath: null, refreshTimer: null };
+  const state = {
+    statusByPath: new Map(),
+    activePath: null,
+    refreshTimer: null,
+    mermaidTimer: null,
+    mermaidPromise: null,
+    mermaidRenderId: 0,
+  };
+
+  function decodeMermaidSource(encoded) {
+    const bytes = Uint8Array.from(window.atob(encoded), (character) =>
+      character.charCodeAt(0)
+    );
+    return new TextDecoder().decode(bytes);
+  }
+
+  function mermaidTarget(marker) {
+    let candidate = marker.nextElementSibling;
+    while (candidate && !candidate.matches("h1, h2, h3, h4, h5, h6")) {
+      if (candidate.matches(".mermaid")) return candidate;
+      const nested = candidate.querySelector(".mermaid");
+      if (nested) return nested;
+      if (candidate.matches("[data-research-mermaid-source]")) return null;
+      candidate = candidate.nextElementSibling;
+    }
+    return null;
+  }
+
+  function loadMermaidFallback() {
+    if (window.mermaid?.render) return Promise.resolve(window.mermaid);
+    if (state.mermaidPromise) return state.mermaidPromise;
+
+    state.mermaidPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = MERMAID_FALLBACK_URL;
+      script.integrity = MERMAID_FALLBACK_INTEGRITY;
+      script.crossOrigin = "anonymous";
+      script.dataset.researchMermaidFallback = "true";
+      script.onload = () => {
+        if (window.mermaid?.render) resolve(window.mermaid);
+        else reject(new Error("Mermaid fallback loaded without a renderer"));
+      };
+      script.onerror = () => reject(new Error("Unable to load the Mermaid fallback"));
+      document.head.append(script);
+    });
+    return state.mermaidPromise;
+  }
+
+  async function renderMissingMermaid() {
+    const markers = [...document.querySelectorAll("[data-research-mermaid-source]")];
+    const pending = markers.filter((marker) => {
+      const target = mermaidTarget(marker);
+      return target && !target.querySelector("svg");
+    });
+    if (!pending.length) return;
+
+    let renderer;
+    try {
+      renderer = await loadMermaidFallback();
+    } catch (error) {
+      console.warn("Mermaid fallback unavailable", error);
+      for (const marker of pending) {
+        const target = mermaidTarget(marker);
+        if (!target || target.querySelector("svg")) continue;
+        target.classList.add("research-mermaid-error");
+        target.textContent = "Diagram unavailable. Check the network connection and reload.";
+      }
+      return;
+    }
+
+    const theme = document.documentElement.classList.contains("dark") ? "dark" : "default";
+    renderer.initialize({
+      startOnLoad: false,
+      securityLevel: "strict",
+      fontFamily: "inherit",
+      theme,
+      suppressErrorRendering: true,
+    });
+
+    for (const marker of pending) {
+      const target = mermaidTarget(marker);
+      if (!target || target.querySelector("svg")) continue;
+      try {
+        const chart = decodeMermaidSource(marker.dataset.researchMermaidSource || "");
+        const id = `research-mermaid-${Date.now()}-${++state.mermaidRenderId}`;
+        const { svg } = await renderer.render(id, chart);
+        if (!marker.isConnected || !target.isConnected || target.querySelector("svg")) continue;
+        target.innerHTML = svg;
+        target.classList.remove("research-mermaid-error");
+        target.dataset.researchMermaidFallback = "true";
+        target.setAttribute("role", "img");
+        target.setAttribute("aria-label", "Mermaid diagram");
+      } catch (error) {
+        console.warn("Unable to render Mermaid diagram", error);
+        target.classList.add("research-mermaid-error");
+        target.textContent = "This diagram could not be rendered.";
+      }
+    }
+  }
+
+  function scheduleMermaidFallback() {
+    window.clearTimeout(state.mermaidTimer);
+    state.mermaidTimer = window.setTimeout(renderMissingMermaid, 1200);
+  }
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -800,6 +907,7 @@
 
   function scheduleRefresh() {
     window.clearTimeout(state.refreshTimer);
+    scheduleMermaidFallback();
     state.refreshTimer = window.setTimeout(() => {
       decorateNavigation();
       localizeKoreanDocumentLinks();
@@ -813,6 +921,7 @@
     await loadStatuses();
     await refreshCurrentPage(true);
     localizeKoreanDocumentLinks();
+    scheduleMermaidFallback();
     new MutationObserver(scheduleRefresh).observe(document.body, { childList: true, subtree: true });
     window.addEventListener("popstate", () => refreshCurrentPage(true));
   }

@@ -82,7 +82,7 @@ def main() -> None:
             [
                 "npx",
                 "-y",
-                "mintlify@4.2.595",
+                "mintlify@4.2.796",
                 "dev",
                 "--port",
                 str(args.docs_port),
