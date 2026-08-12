@@ -101,6 +101,38 @@ def _copy_translations() -> int:
     return count
 
 
+def refresh_translations() -> int:
+    """Refresh Korean pages in an active preview without rebuilding the site."""
+    if not SITE_DIR.is_dir():
+        raise RuntimeError("Local preview is not prepared. Run python3 -m portal dev first.")
+    count = 0
+    for source in TRANSLATIONS_DIR.rglob("*.mdx"):
+        relative = source.relative_to(TRANSLATIONS_DIR)
+        official_path = SOURCE_SITE / relative
+        text = source.read_text(encoding="utf-8")
+        korean_charts = [match.group("chart") for match in MERMAID_FENCE.finditer(text)]
+        if korean_charts:
+            if not official_path.is_file():
+                raise RuntimeError(f"Official Mermaid source is missing: {relative}")
+            official_charts = [
+                match.group("chart")
+                for match in MERMAID_FENCE.finditer(
+                    official_path.read_text(encoding="utf-8")
+                )
+            ]
+            text, _ = _instrument_mermaid(text, official_charts)
+        destination = SITE_DIR / "ko" / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if not destination.is_file() or destination.read_text(encoding="utf-8") != text:
+            temporary = destination.with_suffix(destination.suffix + ".tmp")
+            temporary.write_text(text, encoding="utf-8")
+            temporary.replace(destination)
+        count += 1
+    _copy_translation_media()
+    _extend_docs_config(count)
+    return count
+
+
 def _mermaid_source_marker(chart: str) -> str:
     encoded = base64.b64encode(chart.encode("utf-8")).decode("ascii")
     return (
@@ -294,7 +326,7 @@ def _localized_navigation(
 
 def _extend_docs_config(translation_count: int) -> None:
     config_path = SITE_DIR / "docs.json"
-    config = json.loads(config_path.read_text(encoding="utf-8"))
+    config = json.loads((SOURCE_SITE / "docs.json").read_text(encoding="utf-8"))
     original_navigation = config.setdefault("navigation", {})
     products = original_navigation.get("products", [])
     products.append(

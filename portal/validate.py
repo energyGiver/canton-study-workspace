@@ -53,6 +53,14 @@ def _fenced_blocks(text: str) -> list[tuple[str, str]]:
     ]
 
 
+def _has_unclosed_fence(text: str) -> bool:
+    in_fence = False
+    for line in text.splitlines():
+        if re.match(r"^\s*```", line):
+            in_fence = not in_fence
+    return in_fence
+
+
 def _links(text: str) -> list[str]:
     return re.findall(r"\[[^\]]*\]\(([^)]+)\)", text)
 
@@ -209,7 +217,7 @@ def validate_workspace() -> ValidationReport:
             )
             if warning_url not in translation_text:
                 errors.append(f"{page.path}: Warning must link to the official English page")
-            if translation_text.count("```") % 2:
+            if _has_unclosed_fence(translation_text):
                 errors.append(f"{page.path}: translation has an unclosed code fence")
             if MIDDLE_DOT in translation_text:
                 errors.append(f"{page.path}: translation contains forbidden U+00B7")

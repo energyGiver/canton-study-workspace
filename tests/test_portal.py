@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 import base64
+import json
 from pathlib import Path
 
 from portal.build import (
@@ -12,6 +13,7 @@ from portal.build import (
     _translated_navigation_entries,
     _translated_navigation_products,
 )
+from portal.inventory import TranslationPolicy, official_navigation_paths
 from portal.content import (
     ContentRepository,
     canonical_path,
@@ -22,7 +24,11 @@ from portal.content import (
 )
 from portal.store import DraftConflictError, PortalStore
 from portal.server import write_origin_allowed
-from portal.validate import _frontmatter_syntax_errors, validate_workspace
+from portal.validate import (
+    _frontmatter_syntax_errors,
+    _has_unclosed_fence,
+    validate_workspace,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -201,14 +207,11 @@ class ContentHelpersTest(unittest.TestCase):
         self.assertGreater(len(repository.claims()), 0)
         self.assertGreater(len(repository.questions()), 0)
 
-    def test_repository_falls_back_to_published_snapshot(self) -> None:
+    def test_manifest_matches_current_file_backed_navigation(self) -> None:
         repository = ContentRepository()
-        page = repository.page(
-            "global-synchronizer/extension-synchronizers/private-synchronizers"
+        self.assertEqual(
+            [page.path for page in repository.pages], official_navigation_paths()
         )
-        self.assertFalse(repository.upstream_path(page).exists())
-        self.assertTrue(repository.official_source_path(page).exists())
-        self.assertEqual(repository.source_sha256(page), page.published_sha256)
 
     def test_public_testnet_scope_profile_is_conservative_and_stable(self) -> None:
         repository = ContentRepository()
@@ -217,7 +220,7 @@ class ContentHelpersTest(unittest.TestCase):
             for page in repository.pages
             if repository.profile_scope(page)["scope"] == "excluded"
         ]
-        self.assertEqual(len(excluded), 153)
+        self.assertEqual(len(excluded), 155)
         self.assertEqual(
             repository.research(repository.page("appdev/app-rewards"))["scope"],
             "excluded",
@@ -225,7 +228,7 @@ class ContentHelpersTest(unittest.TestCase):
         self.assertEqual(
             repository.research(
                 repository.page(
-                    "global-synchronizer/extension-synchronizers/private-synchronizers"
+                    "global-synchronizer/extension-synchronizers/dedicated-synchronizers"
                 )
             )["scope"],
             "included",
@@ -240,6 +243,27 @@ class ContentHelpersTest(unittest.TestCase):
             )["scope"],
             "included",
         )
+
+    def test_local_translation_exclusions_are_exact_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            policy_path = Path(directory) / "translation-exclusions.json"
+            policy_path.write_text(
+                json.dumps(
+                    {
+                        "categories": [
+                            {
+                                "id": "generated-reference",
+                                "reason": "Generated schema",
+                                "paths": ["reference/generated/operation"],
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            policy = TranslationPolicy(policy_path)
+            self.assertTrue(policy.excludes("reference/generated/operation"))
+            self.assertFalse(policy.excludes("overview/reference/ledger-model-detailed"))
 
     def test_status_rows_expose_scope_write_conflict_hash(self) -> None:
         repository = ContentRepository()
@@ -328,6 +352,10 @@ class StoreTest(unittest.TestCase):
 
 
 class WorkspaceValidationTest(unittest.TestCase):
+    def test_inline_triple_backticks_are_not_treated_as_fences(self) -> None:
+        self.assertFalse(_has_unclosed_fence("Use `` `elem ``` as an operator.\n"))
+        self.assertTrue(_has_unclosed_fence("```haskell\nexample\n"))
+
     def test_invalid_double_quoted_frontmatter_is_rejected(self) -> None:
         text = '---\ntitle: "Example"\ndescription: "new ContractId("test")"\n---\n'
         self.assertEqual(
