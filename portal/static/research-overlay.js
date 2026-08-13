@@ -6,8 +6,7 @@
     "https://cdn.jsdelivr.net/npm/mermaid@11.16.1/dist/mermaid.min.js";
   const MERMAID_FALLBACK_INTEGRITY =
     "sha384-aBQXj4hK6Jm05i7aQAsUV3bLdSUrHX1BGYfMB0166TtWt/RRaw+h0Eelme9OCOvy";
-  // Mintlify fetches this page's RSC payload but does not commit the SPA transition.
-  const FULL_PAGE_NAVIGATION_PATHS = new Set(["overview/learn/multi-synchronizer"]);
+  const DOCUMENT_NAVIGATION_FALLBACK_MS = 1500;
   const PROGRESS_ORDER = ["unreviewed", "complete"];
   const PROGRESS_DISPLAY = {
     unreviewed: { icon: "", label: "Unreviewed" },
@@ -19,6 +18,7 @@
     activePath: null,
     favoritesNavigationSignature: null,
     refreshTimer: null,
+    navigationFallbackTimer: null,
     mermaidTimer: null,
     mermaidPromise: null,
     mermaidRenderId: 0,
@@ -439,7 +439,19 @@
     window.location.assign(link.dataset.researchLocalizedHref);
   }
 
-  function preserveFullPageDocumentNavigation(event) {
+  function hasReadyDocumentPrefetch(target) {
+    return window.performance.getEntriesByType("resource").some((entry) => {
+      const resource = new URL(entry.name, window.location.href);
+      return (
+        resource.origin === target.origin &&
+        resource.pathname === target.pathname &&
+        resource.searchParams.has("_rsc") &&
+        entry.responseEnd > 0
+      );
+    });
+  }
+
+  function recoverSlowDocumentNavigation(event) {
     if (
       event.defaultPrevented ||
       event.button !== 0 ||
@@ -453,16 +465,36 @@
     }
     const link = event.target.closest?.("a[href]");
     if (!link || link.target === "_blank" || link.hasAttribute("download")) return;
+    if (link.dataset.researchLocalizedHref) return;
+    if (!link.closest('nav[aria-label="Pages"], nav[aria-label="Pagination"]')) {
+      return;
+    }
+
     const target = new URL(link.href, window.location.href);
+    const currentPath = canonicalPath(window.location.pathname);
+    const targetPath = canonicalPath(target.pathname);
     if (
       target.origin !== window.location.origin ||
-      !FULL_PAGE_NAVIGATION_PATHS.has(canonicalPath(target.pathname))
+      !targetPath ||
+      targetPath === currentPath
     ) {
       return;
     }
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    window.location.assign(target.href);
+
+    if (!hasReadyDocumentPrefetch(target)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      window.location.assign(target.href);
+      return;
+    }
+
+    window.clearTimeout(state.navigationFallbackTimer);
+    state.navigationFallbackTimer = window.setTimeout(() => {
+      state.navigationFallbackTimer = null;
+      if (canonicalPath(window.location.pathname) === currentPath) {
+        window.location.assign(target.href);
+      }
+    }, DOCUMENT_NAVIGATION_FALLBACK_MS);
   }
 
   function articleRoot() {
@@ -1163,7 +1195,7 @@
 
   async function boot() {
     document.documentElement.dataset.researchWorkspace = "ready";
-    document.addEventListener("click", preserveFullPageDocumentNavigation, true);
+    document.addEventListener("click", recoverSlowDocumentNavigation, true);
     document.addEventListener("click", preserveKoreanDocumentNavigation, true);
     await loadStatuses();
     await refreshCurrentPage(true);

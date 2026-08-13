@@ -376,6 +376,18 @@ class WorkspaceValidationTest(unittest.TestCase):
         self.assertFalse(write_origin_allowed("https://localhost:3000"))
         self.assertFalse(write_origin_allowed("https://example.com"))
 
+    def test_overlay_recovers_slow_document_navigation_without_path_allowlist(
+        self,
+    ) -> None:
+        overlay = (ROOT / "portal" / "static" / "research-overlay.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("DOCUMENT_NAVIGATION_FALLBACK_MS", overlay)
+        self.assertIn("hasReadyDocumentPrefetch", overlay)
+        self.assertIn("recoverSlowDocumentNavigation", overlay)
+        self.assertIn('nav[aria-label="Pages"], nav[aria-label="Pagination"]', overlay)
+        self.assertNotIn("FULL_PAGE_NAVIGATION_PATHS", overlay)
+
 
 if __name__ == "__main__":
     unittest.main()
