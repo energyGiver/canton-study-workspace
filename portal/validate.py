@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import re
 
+from .comments import CommentRepository
 from .content import ContentRepository, TRANSLATION_ROOT, canonical_path
 
 
@@ -152,6 +153,7 @@ class ValidationReport:
 def validate_workspace() -> ValidationReport:
     repository = ContentRepository()
     errors: list[str] = _scope_profile_errors(repository)
+    errors.extend(CommentRepository(repository).validation_errors())
     warnings: list[str] = []
     summaries = 0
     translations = 0

@@ -6,9 +6,12 @@ import base64
 import json
 from pathlib import Path
 
+from portal.comments import CommentConflictError, CommentRepository
 from portal.build import (
+    RESEARCH_PAGES,
     _instrument_mermaid,
     _localized_navigation,
+    _remove_upstream_giscus,
     _relative_media_references,
     _translated_navigation_entries,
     _translated_navigation_products,
@@ -176,6 +179,18 @@ class ContentHelpersTest(unittest.TestCase):
             ],
         )
 
+    def test_comments_workspace_is_a_generated_research_page(self) -> None:
+        self.assertEqual(RESEARCH_PAGES["research/comments.mdx"], ("Comments", "comments"))
+
+    def test_local_build_removes_giscus_without_touching_upstream(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            site = Path(directory)
+            widget = site / "giscus.js"
+            widget.write_text("upstream widget", encoding="utf-8")
+            self.assertTrue(_remove_upstream_giscus(site))
+            self.assertFalse(widget.exists())
+            self.assertFalse(_remove_upstream_giscus(site))
+
     def test_canonical_path_normalizes_locales_and_suffixes(self) -> None:
         self.assertEqual(
             canonical_path("/ko/overview/understand/what-is-canton.mdx?x=1"),
@@ -199,6 +214,7 @@ class ContentHelpersTest(unittest.TestCase):
         self.assertIn("CLM-001", repository.research(page)["related_claim_ids"])
         self.assertIn("OQ-001", repository.research(page)["related_question_ids"])
         self.assertTrue(repository.translation(page)["available"])
+        self.assertIsNotNone(repository.translation(page)["file_sha256"])
         self.assertFalse(repository.translation(page)["stale"])
         comparison = repository.comparison(page)
         self.assertIn("Canton Network is a public layer 1", comparison["english"])
@@ -293,6 +309,135 @@ class ContentHelpersTest(unittest.TestCase):
         self.assertEqual(research["scope_source"], "page-override")
 
 
+class CommentRepositoryTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.content = ContentRepository()
+        self.comments = CommentRepository(
+            self.content, Path(self.temporary.name) / "comments"
+        )
+        self.page = self.content.page("overview/understand/what-is-canton")
+        self.payload = {
+            "source_id": self.page.source_id,
+            "language": "en",
+            "document_sha256": self.content.source_sha256(self.page),
+            "selector": {
+                "type": "TextQuoteSelector",
+                "exact": "Canton Network",
+                "prefix": "About ",
+                "suffix": " documentation",
+                "start": 6,
+                "end": 20,
+                "heading": "What is Canton Network?",
+            },
+            "content": "Verify this documented mechanism.",
+        }
+
+    def tearDown(self) -> None:
+        self.temporary.cleanup()
+
+    def test_comment_create_update_list_search_and_delete(self) -> None:
+        created = self.comments.create(self.page, self.payload)
+        self.assertEqual(created["source_id"], self.page.source_id)
+        self.assertEqual(created["selector"]["exact"], "Canton Network")
+        self.assertFalse(created["stale"])
+        self.assertFalse(created["resolved"])
+        self.assertEqual(self.comments.list(self.page)[0]["comment_id"], created["comment_id"])
+        self.assertEqual(next(self.comments.search_documents())["kind"], "comment")
+        updated = self.comments.update(
+            created["comment_id"], "Updated mechanism note.", created["file_sha256"]
+        )
+        self.assertEqual(updated["content"], "Updated mechanism note.")
+        with self.assertRaises(CommentConflictError):
+            self.comments.update(created["comment_id"], "Stale", created["file_sha256"])
+        self.comments.delete(updated["comment_id"], updated["file_sha256"])
+        self.assertEqual(self.comments.list(), [])
+
+    def test_comment_resolve_and_reopen_are_shared_metadata_updates(self) -> None:
+        created = self.comments.create(self.page, self.payload)
+        resolved = self.comments.update(
+            created["comment_id"],
+            None,
+            created["file_sha256"],
+            True,
+            "reviewer",
+        )
+        self.assertTrue(resolved["resolved"])
+        self.assertTrue(resolved["resolved_at"])
+        self.assertEqual(resolved["resolved_by"], "reviewer")
+        reopened = self.comments.update(
+            resolved["comment_id"],
+            None,
+            resolved["file_sha256"],
+            False,
+        )
+        self.assertFalse(reopened["resolved"])
+        self.assertEqual(reopened["resolved_at"], "")
+        self.assertEqual(reopened["resolved_by"], "")
+
+    def test_comment_resolved_state_must_be_boolean(self) -> None:
+        created = self.comments.create(self.page, self.payload)
+        with self.assertRaises(ValueError):
+            self.comments.update(
+                created["comment_id"],
+                None,
+                created["file_sha256"],
+                "true",
+            )
+
+    def test_comment_publish_rejects_a_stale_document(self) -> None:
+        self.payload["document_sha256"] = "0" * 64
+        with self.assertRaises(CommentConflictError):
+            self.comments.create(self.page, self.payload)
+
+    def test_korean_comment_uses_the_translation_document_hash(self) -> None:
+        translation = self.content.translation(self.page)
+        self.payload.update(
+            {
+                "language": "ko",
+                "document_sha256": translation["file_sha256"],
+                "selector": {
+                    "type": "TextQuoteSelector",
+                    "exact": "Canton Network",
+                    "prefix": "",
+                    "suffix": "란 무엇인가",
+                    "start": 0,
+                    "end": 14,
+                    "heading": "Canton Network란 무엇인가?",
+                },
+            }
+        )
+        created = self.comments.create(self.page, self.payload)
+        self.assertEqual(created["language"], "ko")
+        self.assertEqual(created["document_sha256"], translation["file_sha256"])
+        self.assertFalse(created["stale"])
+
+    def test_comment_selector_accepts_browser_utf16_positions(self) -> None:
+        self.payload["selector"] = {
+            "type": "TextQuoteSelector",
+            "exact": "Canton 🚀",
+            "prefix": "About ",
+            "suffix": " Network",
+            "start": 6,
+            "end": 15,
+            "heading": "Overview",
+        }
+        created = self.comments.create(self.page, self.payload)
+        self.assertEqual(created["selector"]["end"], 15)
+
+    def test_comment_validation_is_fail_closed(self) -> None:
+        created = self.comments.create(self.page, self.payload)
+        path = self.comments._find(created["comment_id"])
+        path.write_text(
+            path.read_text(encoding="utf-8").replace(
+                'selector_exact: "Canton Network"',
+                'selector_exact: "Missing quote"',
+            ),
+            encoding="utf-8",
+        )
+        self.assertTrue(self.comments.validation_errors())
+
+
 class StoreTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -332,6 +477,28 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(first["version"], 1)
         with self.assertRaises(DraftConflictError):
             self.store.save_draft("SRC-TEST", "summary", "stale", None, 0)
+
+    def test_comment_draft_round_trip_and_conflict(self) -> None:
+        selector = {
+            "type": "TextQuoteSelector",
+            "exact": "Canton",
+            "prefix": "About ",
+            "suffix": " Network",
+            "start": 6,
+            "end": 12,
+            "heading": "Overview",
+        }
+        first = self.store.save_comment_draft(
+            "SRC-TEST", "en", selector, "Draft", 0
+        )
+        self.assertEqual(first["version"], 1)
+        self.assertEqual(
+            self.store.get_comment_draft("SRC-TEST", "en")["selector"], selector
+        )
+        with self.assertRaises(DraftConflictError):
+            self.store.save_comment_draft("SRC-TEST", "en", selector, "Stale", 0)
+        self.store.delete_comment_draft("SRC-TEST", "en")
+        self.assertIsNone(self.store.get_comment_draft("SRC-TEST", "en"))
 
     def test_full_text_search(self) -> None:
         count = self.store.rebuild_search(
@@ -387,6 +554,33 @@ class WorkspaceValidationTest(unittest.TestCase):
         self.assertIn("recoverSlowDocumentNavigation", overlay)
         self.assertIn('nav[aria-label="Pages"], nav[aria-label="Pagination"]', overlay)
         self.assertNotIn("FULL_PAGE_NAVIGATION_PATHS", overlay)
+
+    def test_overlay_uses_fail_closed_web_annotation_selectors(self) -> None:
+        overlay = (ROOT / "portal" / "static" / "research-overlay.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('type: "TextQuoteSelector"', overlay)
+        self.assertIn("quoteCandidateOffsets", overlay)
+        self.assertIn("candidates.length === 1", overlay)
+        self.assertIn('CSS.highlights.set("research-comments"', overlay)
+        self.assertIn("selectionOnlyExtendsPastBlock", overlay)
+        self.assertIn("blockEndPosition", overlay)
+
+    def test_overlay_closes_comment_popover_with_escape(self) -> None:
+        overlay = (ROOT / "portal" / "static" / "research-overlay.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('event.key !== "Escape"', overlay)
+        self.assertIn('document.addEventListener("keydown", handleCommentEscape)', overlay)
+
+    def test_overlay_strengthens_document_text_selection(self) -> None:
+        stylesheet = (ROOT / "portal" / "static" / "research-overlay.css").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('html[data-research-workspace="ready"] ::selection', stylesheet)
+        self.assertIn("rgb(124 58 237 / 0.38)", stylesheet)
+        self.assertIn("rgb(139 92 246 / 0.56)", stylesheet)
+        self.assertEqual(stylesheet.count("text-decoration-skip-ink: none"), 2)
 
 
 if __name__ == "__main__":

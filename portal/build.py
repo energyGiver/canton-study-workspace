@@ -27,11 +27,13 @@ MEDIA_REFERENCE = re.compile(
     r"\bsrc=[\"'](?P<html>[^\"']+)[\"'])"
 )
 MEDIA_SUFFIXES = {".avif", ".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"}
+UPSTREAM_GISCUS_ASSET = "giscus.js"
 
 
 RESEARCH_PAGES = {
     "research/index.mdx": ("Research Workspace", "overview"),
     "research/favorites.mdx": ("Favorites", "favorites"),
+    "research/comments.mdx": ("Comments", "comments"),
     "research/claims.mdx": ("Claim Ledger", "claims"),
     "research/questions.mdx": ("Open Questions", "questions"),
     "research/progress.mdx": ("Research Progress", "progress"),
@@ -64,6 +66,15 @@ def _clear_generated_site() -> None:
         raise RuntimeError(f"Refusing to clear unexpected path: {resolved}")
     if SITE_DIR.exists():
         shutil.rmtree(SITE_DIR)
+
+
+def _remove_upstream_giscus(site_dir: Path = SITE_DIR) -> bool:
+    """Disable the upstream discussion widget only in the composed local portal."""
+    target = site_dir / UPSTREAM_GISCUS_ASSET
+    if not target.is_file():
+        return False
+    target.unlink()
+    return True
 
 
 def _write_research_pages() -> None:
@@ -339,6 +350,7 @@ def _extend_docs_config(translation_count: int) -> None:
                     "pages": [
                         "research/index",
                         "research/favorites",
+                        "research/comments",
                         "research/progress",
                         "research/scope",
                         "research/changes",
@@ -403,6 +415,7 @@ def build_site() -> BuildResult:
     _clear_generated_site()
     GENERATED_ROOT.mkdir(parents=True, exist_ok=True)
     shutil.copytree(SOURCE_SITE, SITE_DIR, symlinks=True)
+    _remove_upstream_giscus()
 
     translation_count = _copy_translations()
     _copy_translation_media()

@@ -172,6 +172,85 @@ class PortalStore:
             "updated_at": updated_at,
         }
 
+    def get_comment_draft(self, source_id: str, language: str) -> dict | None:
+        if language not in {"en", "ko"}:
+            raise ValueError("Invalid comment draft language")
+        with self.connect() as connection:
+            row = connection.execute(
+                """
+                SELECT source_id, language, selector_json, content, version, updated_at
+                FROM comment_drafts WHERE source_id = ? AND language = ?
+                """,
+                (source_id, language),
+            ).fetchone()
+        if row is None:
+            return None
+        item = dict(row)
+        item["selector"] = json.loads(item.pop("selector_json"))
+        return item
+
+    def save_comment_draft(
+        self,
+        source_id: str,
+        language: str,
+        selector: dict,
+        content: str,
+        expected_version: int | None,
+    ) -> dict:
+        if language not in {"en", "ko"}:
+            raise ValueError("Invalid comment draft language")
+        if not isinstance(selector, dict):
+            raise ValueError("Comment draft selector must be an object")
+        with self.connect() as connection:
+            current = connection.execute(
+                "SELECT version FROM comment_drafts WHERE source_id = ? AND language = ?",
+                (source_id, language),
+            ).fetchone()
+            current_version = current["version"] if current else 0
+            if expected_version is not None and expected_version != current_version:
+                raise DraftConflictError(
+                    f"Comment draft version changed from {expected_version} to {current_version}"
+                )
+            next_version = current_version + 1
+            updated_at = self.now()
+            connection.execute(
+                """
+                INSERT INTO comment_drafts(
+                    source_id, language, selector_json, content, version, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(source_id, language) DO UPDATE SET
+                    selector_json = excluded.selector_json,
+                    content = excluded.content,
+                    version = excluded.version,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    source_id,
+                    language,
+                    json.dumps(selector, ensure_ascii=False),
+                    content,
+                    next_version,
+                    updated_at,
+                ),
+            )
+        return {
+            "source_id": source_id,
+            "language": language,
+            "selector": selector,
+            "content": content,
+            "version": next_version,
+            "updated_at": updated_at,
+        }
+
+    def delete_comment_draft(self, source_id: str, language: str) -> None:
+        if language not in {"en", "ko"}:
+            raise ValueError("Invalid comment draft language")
+        with self.connect() as connection:
+            connection.execute(
+                "DELETE FROM comment_drafts WHERE source_id = ? AND language = ?",
+                (source_id, language),
+            )
+
     def rebuild_search(self, documents: Iterable[Mapping[str, str]]) -> int:
         rows = [
             (

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Callable
 from urllib.parse import parse_qs, urlparse
 
+from .comments import CommentConflictError, CommentRepository
 from .content import ContentConflictError, ContentRepository
 from .store import DraftConflictError, PortalStore
 
@@ -27,12 +28,18 @@ def write_origin_allowed(origin: str | None) -> bool:
 class PortalApplication:
     def __init__(self, rebuild_index: bool = True) -> None:
         self.content = ContentRepository()
+        self.comments = CommentRepository(self.content)
         self.store = PortalStore(DATABASE_PATH, MIGRATIONS_DIR)
         self.indexed_documents = 0
         if rebuild_index:
-            self.indexed_documents = self.store.rebuild_search(
-                self.content.search_documents()
-            )
+            self.indexed_documents = self.rebuild_search()
+
+    def rebuild_search(self) -> int:
+        documents = [
+            *self.content.search_documents(),
+            *self.comments.search_documents(),
+        ]
+        return self.store.rebuild_search(documents)
 
     def page_payload(self, value: str) -> dict:
         page = self.content.page(value)
@@ -41,6 +48,7 @@ class PortalApplication:
         payload["favorite"] = self.store.is_favorite(page.source_id)
         payload["draft"] = self.store.get_draft(page.source_id, "summary")
         payload["note_draft"] = self.store.get_draft(page.source_id, "note")
+        payload["comments"] = self.comments.list(page)
         return payload
 
 
@@ -95,7 +103,7 @@ def make_handler(application: PortalApplication) -> type[BaseHTTPRequestHandler]
                 self._send(HTTPStatus.NOT_FOUND, {"error": str(error)})
             except (ValueError, json.JSONDecodeError) as error:
                 self._send(HTTPStatus.BAD_REQUEST, {"error": str(error)})
-            except (ContentConflictError, DraftConflictError) as error:
+            except (CommentConflictError, ContentConflictError, DraftConflictError) as error:
                 self._send(HTTPStatus.CONFLICT, {"error": str(error)})
             except PermissionError as error:
                 self._send(HTTPStatus.FORBIDDEN, {"error": str(error)})
@@ -111,7 +119,9 @@ def make_handler(application: PortalApplication) -> type[BaseHTTPRequestHandler]
             if origin:
                 self.send_header("Access-Control-Allow-Origin", origin)
                 self.send_header("Vary", "Origin")
-            self.send_header("Access-Control-Allow-Methods", "GET, PUT, POST, OPTIONS")
+            self.send_header(
+                "Access-Control-Allow-Methods", "DELETE, GET, PUT, POST, OPTIONS"
+            )
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.end_headers()
 
@@ -159,6 +169,11 @@ def make_handler(application: PortalApplication) -> type[BaseHTTPRequestHandler]
             if path == "/api/changes":
                 self._send(HTTPStatus.OK, {"items": application.content.changes()})
                 return
+            if path == "/api/comments":
+                value = query.get("page", [""])[0]
+                page = application.content.page(value) if value else None
+                self._send(HTTPStatus.OK, {"items": application.comments.list(page)})
+                return
             if path == "/api/scope":
                 rows = application.content.status_rows(
                     application.store.all_progress(), application.store.all_favorites()
@@ -181,6 +196,11 @@ def make_handler(application: PortalApplication) -> type[BaseHTTPRequestHandler]
                 return
             if len(parts) == 4 and parts[:2] == ["api", "drafts"]:
                 draft = application.store.get_draft(parts[2], parts[3])
+                self._send(HTTPStatus.OK, {"draft": draft})
+                return
+            if len(parts) == 4 and parts[:2] == ["api", "comment-drafts"]:
+                page = application.content.page(parts[2])
+                draft = application.store.get_comment_draft(page.source_id, parts[3])
                 self._send(HTTPStatus.OK, {"draft": draft})
                 return
             self._send(HTTPStatus.NOT_FOUND, {"error": "Unknown endpoint"})
@@ -219,6 +239,28 @@ def make_handler(application: PortalApplication) -> type[BaseHTTPRequestHandler]
                 )
                 self._send(HTTPStatus.OK, draft)
                 return
+            if len(parts) == 3 and parts[:2] == ["api", "comments"]:
+                comment = application.comments.update(
+                    parts[2],
+                    body.get("content") if "content" in body else None,
+                    body.get("base_file_sha256"),
+                    body.get("resolved") if "resolved" in body else None,
+                    body.get("resolved_by", "workspace-user"),
+                )
+                application.indexed_documents = application.rebuild_search()
+                self._send(HTTPStatus.OK, comment)
+                return
+            if len(parts) == 4 and parts[:2] == ["api", "comment-drafts"]:
+                page = application.content.page(parts[2])
+                draft = application.store.save_comment_draft(
+                    page.source_id,
+                    parts[3],
+                    body.get("selector") or {},
+                    str(body.get("content", "")),
+                    body.get("expected_version"),
+                )
+                self._send(HTTPStatus.OK, draft)
+                return
             if len(parts) == 4 and parts[:2] == ["api", "pages"] and parts[3] == "scope":
                 page = application.content.page(parts[2])
                 research = application.content.publish_scope(
@@ -238,6 +280,15 @@ def make_handler(application: PortalApplication) -> type[BaseHTTPRequestHandler]
             self._require_write_origin()
             _, parts, _ = self._route()
             body = self._read_json()
+            if self.path == "/api/comments":
+                page = application.content.page(str(body.get("source_id", "")))
+                comment = application.comments.create(page, body)
+                application.store.delete_comment_draft(
+                    page.source_id, str(body.get("language", ""))
+                )
+                application.indexed_documents = application.rebuild_search()
+                self._send(HTTPStatus.CREATED, comment)
+                return
             if len(parts) == 4 and parts[:2] == ["api", "pages"] and parts[3] == "summary":
                 page = application.content.page(parts[2])
                 lines = body.get("lines", [])
@@ -252,11 +303,28 @@ def make_handler(application: PortalApplication) -> type[BaseHTTPRequestHandler]
                 self._send(HTTPStatus.OK, research)
                 return
             if self.path == "/api/search/rebuild":
-                count = application.store.rebuild_search(
-                    application.content.search_documents()
-                )
+                count = application.rebuild_search()
                 application.indexed_documents = count
                 self._send(HTTPStatus.OK, {"indexed_documents": count})
+                return
+            self._send(HTTPStatus.NOT_FOUND, {"error": "Unknown endpoint"})
+
+        def do_DELETE(self) -> None:
+            self._guard(self._delete)
+
+        def _delete(self) -> None:
+            self._require_write_origin()
+            _, parts, _ = self._route()
+            body = self._read_json()
+            if len(parts) == 3 and parts[:2] == ["api", "comments"]:
+                application.comments.delete(parts[2], body.get("base_file_sha256"))
+                application.indexed_documents = application.rebuild_search()
+                self._send(HTTPStatus.OK, {"deleted": parts[2]})
+                return
+            if len(parts) == 4 and parts[:2] == ["api", "comment-drafts"]:
+                page = application.content.page(parts[2])
+                application.store.delete_comment_draft(page.source_id, parts[3])
+                self._send(HTTPStatus.OK, {"deleted": True})
                 return
             self._send(HTTPStatus.NOT_FOUND, {"error": "Unknown endpoint"})
 

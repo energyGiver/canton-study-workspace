@@ -321,6 +321,7 @@ class ContentRepository:
             "available": path.is_file(),
             "path": f"/ko/{page.path}" if path.is_file() else None,
             "metadata": metadata,
+            "file_sha256": file_sha256(path),
             "source_sha256": source_sha,
             "stale": bool(path.is_file() and source_sha != saved_source_sha),
         }
