@@ -19,6 +19,7 @@ The local portal must:
 5. Connect source pages to claims, open questions, topics, maps, and use cases.
 6. Detect upstream changes and identify research artifacts that require review.
 7. Allow official documentation updates without merging custom features into upstream files.
+8. Let researchers attach reviewable comments to selected source text without editing official MDX.
 
 ## Non-goals
 
@@ -66,6 +67,7 @@ Personal progress, UI preferences, drafts, browsing history, and rebuildable ind
 | Korean translations | `translations/ko/<official-path>.mdx` | Shared content requiring diff, review, and source-version tracking |
 | Three-line page summaries | `research/pages/<official-path>.md` | Shared AI draft and human edits |
 | Page-level research analysis | `research/pages/<official-path>.md` | Cross-person knowledge linked to the source page |
+| Published inline comments | `research/comments/<source_id>/<comment_id>.md` | Shared, source-anchored discussion with small merge-conflict boundaries |
 | Default launch-scope profile | `research/scope/public-testnet.json` | Applies one reviewable decision consistently across the official corpus |
 | Page-specific scope override | Page research frontmatter | Records an intentional exception to the default profile |
 | Summary approval state | Page research frontmatter | Shared review state such as `ai_draft`, `human_edited`, or `approved` |
@@ -86,6 +88,7 @@ One research file per official page is preferred over one large registry. This r
 | Preferred language, theme, and collapsed panels | Personal UI settings |
 | Bookmarks and private highlights | Personal until deliberately published |
 | Summary or translation autosave drafts | Prevents work loss before publishing a shared file |
+| Inline comment autosave drafts | Keeps incomplete or personal text out of Git until explicit publish |
 | AI chat sessions and temporary prompts | Potentially large and usually personal |
 | Full-text search index and parsed-document cache | Rebuildable and potentially large |
 | Upstream file hash cache and stale-comparison cache | Derived data that can be regenerated |
@@ -205,6 +208,22 @@ The `/research/scope` view lists only X-marked pages. It shows the active profil
 
 Because exclusion changes the team's research and launch coverage, it must be committed and reviewed through Git rather than stored only in SQLite.
 
+## Inline comment architecture
+
+Selecting text inside one rendered paragraph, list item, table cell, blockquote, or code block opens a compact comment composer. Draft text is debounced into local SQLite. **Publish to Git** creates one Markdown sidecar per comment at `research/comments/<source_id>/<comment_id>.md`; it never modifies the official MDX or translated MDX.
+
+The anchor uses the W3C Web Annotation model rather than a CSS selector or generated DOM path:
+
+- `TextQuoteSelector`: exact selected text plus bounded prefix and suffix context.
+- `TextPositionSelector`: start and end offsets in the visible article text stream.
+- Source identity: `source_id`, official path, pinned commit, official source SHA-256, rendered-language document SHA-256, and language.
+
+Restoration is fail-closed. The portal accepts the saved position only if it still contains the exact quote. Otherwise, it searches for exact quote matches filtered by prefix and suffix, and accepts only one unique candidate. Missing or ambiguous candidates become unresolved anchors and are not silently attached to nearby text. This follows the [W3C Web Annotation Data Model](https://www.w3.org/TR/annotation-model/) and the conservative anchoring behavior established by annotation systems such as [Hypothesis](https://github.com/hypothesis/client).
+
+Visible highlights use the [CSS Custom Highlight API](https://www.w3.org/TR/css-highlight-api-1/) so the portal does not wrap or rewrite Mintlify's article DOM. Hovering a highlight opens a small comment card. A deep link uses `?comment=<comment_id>` to scroll to a uniquely restored anchor. `/research/comments` groups all published comments by page and replaces the sidebar with a single cross-product list of pages that contain comments.
+
+Published writes, edits, resolve/reopen transitions, and deletes use current document/file hashes as optimistic concurrency tokens. A changed document blocks publish, and a changed comment file blocks later mutations. Resolve metadata is shared in the same comment sidecar so every team member sees the same lifecycle state. One-file-per-comment storage keeps concurrent Git changes independent. Comment text is rendered as escaped plain text in the overlay; Markdown execution is intentionally not supported in the first version.
+
 ## Summary, claims, and questions rendering
 
 Each official document page contains a collapsed **Research summary** panel above the article body. It displays:
@@ -247,6 +266,16 @@ drafts(
   version INTEGER NOT NULL,
   updated_at TEXT NOT NULL,
   PRIMARY KEY(source_id, kind)
+)
+
+comment_drafts(
+  source_id TEXT NOT NULL,
+  language TEXT NOT NULL,
+  selector_json TEXT NOT NULL,
+  content TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY(source_id, language)
 )
 
 bookmarks(
