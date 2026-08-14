@@ -662,17 +662,6 @@ html[data-theme="dark"][data-research-workspace="ready"] ::selection {
   text-underline-offset: 0.14em;
 }
 
-::highlight(research-comments-resolved) {
-  color: inherit;
-  background-color: color-mix(in srgb, #7f8792 15%, transparent);
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, #7f8792 48%, transparent);
-  text-decoration-skip-ink: none;
-  text-decoration-style: solid;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.14em;
-}
-
 .research-comment-selection-action,
 .research-comment-composer,
 .research-comment-popover,
@@ -863,45 +852,6 @@ html[data-theme="dark"][data-research-workspace="ready"] ::selection {
   white-space: nowrap;
 }
 
-.research-comment-resolve {
-  display: inline-flex;
-  width: 1.1rem;
-  height: 1.1rem;
-  flex: 0 0 1.1rem;
-  align-items: center;
-  justify-content: center;
-  margin-left: auto;
-  border: 1px solid color-mix(in srgb, #7f8792 52%, transparent);
-  border-radius: 0.25rem;
-  padding: 0;
-  color: #7f8792;
-  background: color-mix(in srgb, #7f8792 9%, transparent);
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 800;
-  line-height: 1;
-  cursor: pointer;
-  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
-}
-
-.research-comment-resolve[data-resolved="true"] {
-  border-color: #18945b;
-  color: white;
-  background: #18945b;
-}
-
-.research-comment-resolve:hover,
-.research-comment-resolve:focus-visible {
-  border-color: var(--research-primary);
-  outline: 2px solid var(--research-primary-soft);
-  outline-offset: 1px;
-}
-
-.research-comment-resolve[data-busy="true"] {
-  cursor: wait;
-  opacity: 0.58;
-}
-
 .research-comment-state {
   border-radius: 999px;
   padding: 0.1rem 0.35rem;
@@ -1032,18 +982,6 @@ html[data-theme="dark"][data-research-workspace="ready"] ::selection {
   border-radius: 0.7rem;
   padding: 0.78rem;
   background: var(--background, transparent);
-}
-
-.research-comment-card.is-resolved,
-.research-comment-popover.is-resolved {
-  border-color: color-mix(in srgb, #7f8792 30%, transparent);
-}
-
-.research-comment-card.is-resolved > blockquote,
-.research-comment-card.is-resolved > p,
-.research-comment-popover.is-resolved > blockquote,
-.research-comment-popover.is-resolved > p {
-  opacity: 0.66;
 }
 
 .research-comment-card > footer a {

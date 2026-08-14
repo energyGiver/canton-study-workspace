@@ -88,9 +88,6 @@ def _render(metadata: dict[str, object], content: str) -> str:
         "selector_end",
         "created_at",
         "created_by",
-        "resolved",
-        "resolved_at",
-        "resolved_by",
         "updated_at",
     ]
     lines = ["---"]
@@ -220,12 +217,6 @@ class CommentRepository:
             raise ValueError(f"Comment source hashes are invalid: {path}")
         current_document_sha256 = self._document_sha256(page, language)
         translation = self.content.translation(page)
-        resolved_value = metadata.get("resolved", "false").lower()
-        if resolved_value not in {"false", "true"}:
-            raise ValueError(f"Comment resolved state is invalid: {path}")
-        resolved = resolved_value == "true"
-        if resolved and not metadata.get("resolved_at"):
-            raise ValueError(f"Resolved comment is missing resolved_at: {path}")
         return {
             "comment_id": comment_id,
             "source_id": source_id,
@@ -247,9 +238,6 @@ class CommentRepository:
             "content": content,
             "created_at": metadata.get("created_at", ""),
             "created_by": metadata.get("created_by", "workspace-user"),
-            "resolved": resolved,
-            "resolved_at": metadata.get("resolved_at", ""),
-            "resolved_by": metadata.get("resolved_by", ""),
             "updated_at": metadata.get("updated_at", ""),
             "file_sha256": file_sha256(path),
         }
@@ -290,9 +278,6 @@ class CommentRepository:
             "selector_end": selector["end"],
             "created_at": now,
             "created_by": str(payload.get("created_by", "workspace-user"))[:200],
-            "resolved": "false",
-            "resolved_at": "",
-            "resolved_by": "",
             "updated_at": now,
         }
         path = self._path_for(page.source_id, comment_id)
@@ -304,31 +289,15 @@ class CommentRepository:
         comment_id: str,
         content: object | None,
         base_file_sha256: str | None,
-        resolved: object | None = None,
-        resolved_by: object = "workspace-user",
     ) -> dict:
         path = self._find(comment_id)
         current_sha256 = file_sha256(path)
         if base_file_sha256 is not None and current_sha256 != base_file_sha256:
             raise CommentConflictError("The shared comment changed before update")
-        metadata, body = _frontmatter(path.read_text(encoding="utf-8"))
-        previous_content = _comment_body(body)
-        if content is None and resolved is None:
-            raise ValueError("Comment update must change content or resolved state")
-        value = self._validate_content(
-            previous_content if content is None else content
-        )
-        metadata.setdefault("resolved", "false")
-        metadata.setdefault("resolved_at", "")
-        metadata.setdefault("resolved_by", "")
-        if resolved is not None:
-            if not isinstance(resolved, bool):
-                raise ValueError("Comment resolved state must be a boolean")
-            metadata["resolved"] = "true" if resolved else "false"
-            metadata["resolved_at"] = _now() if resolved else ""
-            metadata["resolved_by"] = (
-                str(resolved_by).strip()[:200] if resolved else ""
-            )
+        metadata, _ = _frontmatter(path.read_text(encoding="utf-8"))
+        if content is None:
+            raise ValueError("Comment update must include content")
+        value = self._validate_content(content)
         metadata["updated_at"] = _now()
         selector_start = int(metadata["selector_start"])
         selector_end = int(metadata["selector_end"])

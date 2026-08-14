@@ -114,7 +114,7 @@ python3 -m portal translations # 번역/로컬 제외/backlog 수와 todo JSON �
 
 ## Inline comment 사용과 충돌 방지
 
-공식 문서 본문에서 한 문장이나 한 단락을 선택하면 작은 `💬 Comment` action이 나타납니다. 작성 중인 내용은 local SQLite에 자동 저장되고, `Publish to Git`을 눌러야 팀 공유 Markdown이 생성됩니다. 공개된 문장은 보라색 highlight로 보이며 hover하면 comment를 읽거나 수정/삭제할 수 있습니다. Hover card와 Comments page의 회색 checkbox로 comment를 resolve할 수 있고, 다시 누르면 reopen됩니다. Resolve 상태도 Git에 공유됩니다. 우측 상단 `💬 Comments`는 모든 제품의 공개 comment를 page별로 묶어 보여줍니다.
+공식 문서 본문에서 한 문장이나 한 단락을 선택하면 작은 `💬 Comment` action이 나타납니다. 작성 중인 내용은 local SQLite에 자동 저장되고, `Publish to Git`을 눌러야 팀 공유 Markdown이 생성됩니다. 공개된 문장은 보라색 highlight로 보이며 hover하면 comment를 읽거나 수정/삭제할 수 있습니다. 우측 상단 `💬 Comments`는 모든 제품의 공개 comment를 page별로 묶어 보여줍니다.
 
 Comment는 공식 MDX에 삽입하지 않습니다. 각 comment는 선택한 exact quote, 앞뒤 문맥, text position, source ID, source commit과 SHA-256을 별도 파일에 저장합니다. Portal은 먼저 같은 위치를 확인하고, 실패하면 앞뒤 문맥까지 일치하는 quote가 정확히 하나일 때만 anchor를 복구합니다. 원문 변경 뒤 후보가 없거나 여러 개면 임의의 문장에 붙이지 않고 source-changed 상태로 남깁니다. 이 방식은 [W3C Web Annotation Data Model](https://www.w3.org/TR/annotation-model/)의 `TextQuoteSelector`와 `TextPositionSelector` 원칙을 따르며, highlight는 원문 DOM을 감싸지 않는 [CSS Custom Highlight API](https://www.w3.org/TR/css-highlight-api-1/)를 사용합니다.
 

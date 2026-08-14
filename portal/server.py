@@ -244,8 +244,6 @@ def make_handler(application: PortalApplication) -> type[BaseHTTPRequestHandler]
                     parts[2],
                     body.get("content") if "content" in body else None,
                     body.get("base_file_sha256"),
-                    body.get("resolved") if "resolved" in body else None,
-                    body.get("resolved_by", "workspace-user"),
                 )
                 application.indexed_documents = application.rebuild_search()
                 self._send(HTTPStatus.OK, comment)

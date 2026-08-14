@@ -341,7 +341,6 @@ class CommentRepositoryTest(unittest.TestCase):
         self.assertEqual(created["source_id"], self.page.source_id)
         self.assertEqual(created["selector"]["exact"], "Canton Network")
         self.assertFalse(created["stale"])
-        self.assertFalse(created["resolved"])
         self.assertEqual(self.comments.list(self.page)[0]["comment_id"], created["comment_id"])
         self.assertEqual(next(self.comments.search_documents())["kind"], "comment")
         updated = self.comments.update(
@@ -352,38 +351,6 @@ class CommentRepositoryTest(unittest.TestCase):
             self.comments.update(created["comment_id"], "Stale", created["file_sha256"])
         self.comments.delete(updated["comment_id"], updated["file_sha256"])
         self.assertEqual(self.comments.list(), [])
-
-    def test_comment_resolve_and_reopen_are_shared_metadata_updates(self) -> None:
-        created = self.comments.create(self.page, self.payload)
-        resolved = self.comments.update(
-            created["comment_id"],
-            None,
-            created["file_sha256"],
-            True,
-            "reviewer",
-        )
-        self.assertTrue(resolved["resolved"])
-        self.assertTrue(resolved["resolved_at"])
-        self.assertEqual(resolved["resolved_by"], "reviewer")
-        reopened = self.comments.update(
-            resolved["comment_id"],
-            None,
-            resolved["file_sha256"],
-            False,
-        )
-        self.assertFalse(reopened["resolved"])
-        self.assertEqual(reopened["resolved_at"], "")
-        self.assertEqual(reopened["resolved_by"], "")
-
-    def test_comment_resolved_state_must_be_boolean(self) -> None:
-        created = self.comments.create(self.page, self.payload)
-        with self.assertRaises(ValueError):
-            self.comments.update(
-                created["comment_id"],
-                None,
-                created["file_sha256"],
-                "true",
-            )
 
     def test_comment_publish_rejects_a_stale_document(self) -> None:
         self.payload["document_sha256"] = "0" * 64
@@ -562,7 +529,8 @@ class WorkspaceValidationTest(unittest.TestCase):
         self.assertIn('type: "TextQuoteSelector"', overlay)
         self.assertIn("quoteCandidateOffsets", overlay)
         self.assertIn("candidates.length === 1", overlay)
-        self.assertIn('CSS.highlights.set("research-comments"', overlay)
+        self.assertIn('"research-comments",\n      new Highlight', overlay)
+        self.assertNotIn("research-comments-resolved", overlay)
         self.assertIn("selectionOnlyExtendsPastBlock", overlay)
         self.assertIn("blockEndPosition", overlay)
 
@@ -580,7 +548,7 @@ class WorkspaceValidationTest(unittest.TestCase):
         self.assertIn('html[data-research-workspace="ready"] ::selection', stylesheet)
         self.assertIn("rgb(124 58 237 / 0.38)", stylesheet)
         self.assertIn("rgb(139 92 246 / 0.56)", stylesheet)
-        self.assertEqual(stylesheet.count("text-decoration-skip-ink: none"), 2)
+        self.assertEqual(stylesheet.count("text-decoration-skip-ink: none"), 1)
 
 
 if __name__ == "__main__":

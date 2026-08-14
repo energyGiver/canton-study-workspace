@@ -872,7 +872,6 @@
   function clearCommentHighlight() {
     if (window.CSS?.highlights) {
       CSS.highlights.delete("research-comments");
-      CSS.highlights.delete("research-comments-resolved");
     }
     state.commentAnchors = [];
     document.querySelectorAll("[data-research-comment-ui]").forEach((element) => element.remove());
@@ -883,14 +882,10 @@
 
   function applyCommentHighlight() {
     if (!window.CSS?.highlights || typeof window.Highlight !== "function") return;
-    const unresolved = state.commentAnchors
-      .filter((anchor) => !anchor.comment.resolved)
-      .map((anchor) => anchor.range);
-    const resolved = state.commentAnchors
-      .filter((anchor) => anchor.comment.resolved)
-      .map((anchor) => anchor.range);
-    CSS.highlights.set("research-comments", new Highlight(...unresolved));
-    CSS.highlights.set("research-comments-resolved", new Highlight(...resolved));
+    CSS.highlights.set(
+      "research-comments",
+      new Highlight(...state.commentAnchors.map((anchor) => anchor.range))
+    );
   }
 
   function commentAtPoint(x, y) {
@@ -921,45 +916,11 @@
     removeCommentPopover();
   }
 
-  function commentResolveControl(comment) {
-    const label = comment.resolved ? "Reopen comment" : "Resolve comment";
-    return `<button type="button" class="research-comment-resolve" role="checkbox" aria-checked="${
-      comment.resolved
-    }" aria-label="${label}" title="${label}" data-comment-resolve data-resolved="${
-      comment.resolved
-    }">${comment.resolved ? "✓" : ""}</button>`;
-  }
-
-  async function toggleCommentResolved(comment, control, onUpdated) {
-    if (control.dataset.busy === "true") return;
-    control.dataset.busy = "true";
-    control.setAttribute("aria-busy", "true");
-    try {
-      const updated = await request(`/api/comments/${encodeURIComponent(comment.comment_id)}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          resolved: !comment.resolved,
-          base_file_sha256: comment.file_sha256,
-        }),
-      });
-      Object.assign(comment, updated);
-      showCommentFeedback(comment.resolved ? "Comment resolved" : "Comment reopened", "success");
-      await onUpdated(updated);
-    } catch (error) {
-      showCommentFeedback(error.message, "error");
-    } finally {
-      if (control.isConnected) {
-        delete control.dataset.busy;
-        control.removeAttribute("aria-busy");
-      }
-    }
-  }
-
   function showCommentPopover(anchor, rect = null) {
     removeCommentPopover();
     const comment = anchor.comment;
     const popover = document.createElement("aside");
-    popover.className = `research-comment-popover${comment.resolved ? " is-resolved" : ""}`;
+    popover.className = "research-comment-popover";
     popover.dataset.researchCommentUi = "true";
     popover.setAttribute("role", "dialog");
     popover.setAttribute("aria-label", "Document comment");
@@ -967,7 +928,6 @@
       <div class="research-comment-popover-meta">
         <span>${escapeHtml(comment.heading)}</span>
         ${comment.stale ? '<span class="research-comment-state">Source changed</span>' : ""}
-        ${commentResolveControl(comment)}
       </div>
       <blockquote>${escapeHtml(comment.selector.exact)}</blockquote>
       <p>${escapeHtml(comment.content)}</p>
@@ -989,11 +949,6 @@
     popover.onmouseenter = () => window.clearTimeout(state.commentHoverTimer);
     popover.querySelector("[data-comment-edit]").onclick = () => openCommentEditor(anchor);
     popover.querySelector("[data-comment-delete]").onclick = () => deleteComment(anchor);
-    popover.querySelector("[data-comment-resolve]").onclick = (event) =>
-      toggleCommentResolved(comment, event.currentTarget, async () => {
-        removeCommentPopover();
-        await refreshCurrentPage(true);
-      });
   }
 
   function showCommentFeedback(message, kind = "") {
@@ -1590,14 +1545,13 @@
   }
 
   function renderCommentCard(comment) {
-    return `<article class="research-comment-card${comment.resolved ? " is-resolved" : ""}" id="${escapeHtml(
+    return `<article class="research-comment-card" id="${escapeHtml(
       comment.comment_id.toLowerCase()
     )}">
       <div class="research-comment-card-meta">
         <span>${escapeHtml(comment.heading)}</span>
         <span>${escapeHtml(comment.language.toUpperCase())}</span>
         ${comment.stale ? '<span class="research-comment-state">Source changed</span>' : ""}
-        ${commentResolveControl(comment)}
       </div>
       <blockquote>${escapeHtml(comment.selector.exact)}</blockquote>
       <p>${escapeHtml(comment.content)}</p>
@@ -1650,17 +1604,6 @@
           : '<p class="research-empty">No shared comments yet. Select text in a document and choose Comment to add the first one.</p>'
       }
     </section>`;
-    root.querySelectorAll("[data-comment-resolve]").forEach((control) => {
-      const card = control.closest(".research-comment-card");
-      const comment = comments.find(
-        (item) => item.comment_id.toLowerCase() === card?.id
-      );
-      if (!comment) return;
-      control.onclick = () =>
-        toggleCommentResolved(comment, control, async () => {
-          renderCommentsDashboard(comments, root);
-        });
-    });
     renderCommentsNavigation();
   }
 

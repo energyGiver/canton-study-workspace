@@ -20,7 +20,6 @@ Each comment records:
 - Language and rendered-language document SHA-256.
 - Exact selected quote, bounded prefix/suffix context, and start/end text offsets.
 - Nearest heading, author label, created time, and updated time.
-- Shared resolve state, resolver label, and resolved time.
 - Escaped plain-text comment content under `## Comment`.
 
 The selector follows the [W3C Web Annotation Data Model](https://www.w3.org/TR/annotation-model/). The portal restores a saved position only when the exact quote still matches, or restores a quote fallback only when prefix/suffix context identifies one unique candidate. Ambiguous or missing anchors are left unresolved rather than guessed.

@@ -222,7 +222,7 @@ Restoration is fail-closed. The portal accepts the saved position only if it sti
 
 Visible highlights use the [CSS Custom Highlight API](https://www.w3.org/TR/css-highlight-api-1/) so the portal does not wrap or rewrite Mintlify's article DOM. Hovering a highlight opens a small comment card. A deep link uses `?comment=<comment_id>` to scroll to a uniquely restored anchor. `/research/comments` groups all published comments by page and replaces the sidebar with a single cross-product list of pages that contain comments.
 
-Published writes, edits, resolve/reopen transitions, and deletes use current document/file hashes as optimistic concurrency tokens. A changed document blocks publish, and a changed comment file blocks later mutations. Resolve metadata is shared in the same comment sidecar so every team member sees the same lifecycle state. One-file-per-comment storage keeps concurrent Git changes independent. Comment text is rendered as escaped plain text in the overlay; Markdown execution is intentionally not supported in the first version.
+Published writes, edits, and deletes use current document/file hashes as optimistic concurrency tokens. A changed document blocks publish, and a changed comment file blocks later mutations. One-file-per-comment storage keeps concurrent Git changes independent. Comment text is rendered as escaped plain text in the overlay; Markdown execution is intentionally not supported in the first version.
 
 ## Summary, claims, and questions rendering
 
